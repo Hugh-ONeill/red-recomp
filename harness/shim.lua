@@ -124,6 +124,27 @@ local function observe(G, seq, result)
         o.map.warps[i] = { x = w.x, y = w.y, dest = w.destMap }
       end
     end
+    -- Interactable objects the player can see: G.overworld.npcs is the LIVE
+    -- list already filtered by objectVisible (taken items / beaten trainers /
+    -- toggled-off objects are gone). Classified so the model can walk_to and
+    -- interact with balls, NPCs, and signs instead of mashing blindly.
+    o.map.objects = {}
+    for _, npc in ipairs(G.overworld.npcs or {}) do
+      local d = npc.def or {}
+      local name = d.name or ""
+      local kind = "npc"
+      if name:find("POKE_BALL") or d.item then
+        kind = "item"
+      elseif d.trainerClass then
+        kind = "trainer"
+      elseif name:find("SIGN") or (d.text and not d.sprite) then
+        kind = "sign"
+      end
+      o.map.objects[#o.map.objects + 1] = {
+        x = npc.cellX, y = npc.cellY, kind = kind, name = name,
+        facing = npc.facing,
+      }
+    end
   elseif top and (top.enemy or top.kind) then
     o.mode = "battle"
     o.battle = scalars(top, 0)
@@ -409,6 +430,57 @@ function OPS.battle_switch(G, c)
     U.tap(G, "a"); U.wait(3)
   end
   return true
+end
+
+-- Walk adjacent to a target tile/object, face it, and press A. Decision-free
+-- executor: the model picks WHAT to interact with (by x,y or object name);
+-- the mechanical walk-adjacent-face-press is execution. Unblocks Poke Balls,
+-- NPCs, signs — anything the object list surfaces.
+function OPS.interact(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  local ow = G.overworld
+  local tx, ty = c.x, c.y
+  if c.name and not tx then
+    for _, npc in ipairs(ow.npcs or {}) do
+      if (npc.def or {}).name == c.name then tx, ty = npc.cellX, npc.cellY end
+    end
+    if not tx then return false, "object '" .. c.name .. "' not visible" end
+  end
+  if not tx then return false, "interact needs x,y or name" end
+  -- stand on an orthogonally adjacent walkable tile, then face the target
+  local adj = { {tx, ty + 1, "up"}, {tx, ty - 1, "down"},
+                {tx - 1, ty, "right"}, {tx + 1, ty, "left"} }
+  local p = ow.player
+  local function press_from_adjacent()
+    for _, a in ipairs(adj) do
+      if p.cellX == a[1] and p.cellY == a[2] then
+        if p.facing ~= a[3] then U.tap(G, a[3]); U.wait(3) end
+        U.tap(G, "a"); U.wait(4)
+        return true
+      end
+    end
+    return false
+  end
+  -- retry across ambient-dialog interruptions (e.g. the lab rival's timed
+  -- "fed up with waiting"): clear any text box, then approach and press.
+  for _ = 1, 4 do
+    for _ = 1, 12 do          -- clear any pending text
+      if G.stack:top() == ow then break end
+      U.tap(G, "a"); U.wait(3)
+    end
+    if G.stack:top() ~= ow then return false, "stuck in a menu/dialog" end
+    if press_from_adjacent() then return true end
+    for _, a in ipairs(adj) do
+      OPS.walk_to(G, { x = a[1], y = a[2], max_steps = 60 })
+      if G.stack:top() == ow and p.cellX == a[1] and p.cellY == a[2] then
+        break
+      end
+    end
+    if press_from_adjacent() then return true end
+  end
+  return false, "no reachable tile adjacent to target"
 end
 
 function OPS.screenshot(G, c)
