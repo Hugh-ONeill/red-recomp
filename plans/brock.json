@@ -68,7 +68,26 @@
       "done_when": {
         "flag": "EVENT_GOT_STARTER"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_SQUIRTLE_POKE_BALL"
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "menu",
+          "index": 2
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "hand-seeded",
+        "via": "fixed-pick-sequence",
+        "note": "gate-armed pick is interact+yes+decline-nickname; model authored it incrementally across rounds and checkpoint reset scrambled it"
+      }
     },
     {
       "id": "battle_rival_lab",
