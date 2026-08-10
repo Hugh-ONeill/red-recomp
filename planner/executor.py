@@ -193,8 +193,10 @@ door/stairs), {"op":"interact","name":"OBJECT_NAME"}, {"op":"menu","index":N}
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
 and MAY BE IMPERFECT — if it names a target that isn't in obs.map.objects /
-obs.map.warps, or one the feedback says did nothing, IGNORE the hint and use
-what the observation actually shows. Only interact objects/warps that appear
+obs.map.warps, or even a different STARTING MAP than the observation shows,
+IGNORE the hint and use what the observation actually shows. If a previous
+macro made partial progress, the state CARRIED FORWARD — author only the
+remaining ops from the current observation. Only interact objects/warps that appear
 in the current observation. (E.g. receiving a Pokemon usually means
 interacting an item/Poke-Ball object, not an NPC.)
 Reply with ONLY a JSON array of ops, e.g.
@@ -289,22 +291,28 @@ Reply with ONLY a JSON array of ops, e.g.
         """SPD escalation: the model AUTHORS a candidate macro (its strength),
         the executor RUNS it with a per-step trace, and on success distills.
         On failure the DIAGNOSTIC trace (which ops did nothing / where it
-        ended) is fed back so the model can rethink — not just 'try again'."""
+        ended) is fed back so the model can rethink — not just 'try again'.
+
+        Rounds CARRY STATE FORWARD and clean ops ACCUMULATE: a failed round's
+        partial progress (e.g. exiting a building the subgoal turned out to
+        start inside) stands, and the next round authors the remainder from
+        the current observation. The start checkpoint is only for the final
+        distill-then-verify replay (and a bail-out if the state is lost) —
+        restoring between rounds destroyed cross-round progress and made the
+        feedback describe a state the restore had just reverted (brock7
+        go_to_route_1: rounds 1 and 3 both escaped Oak's lab and the restore
+        pulled the player back inside both times)."""
         goal = sg.get("goal_text", sg["id"])
         done = sg.get("done_when")
         rounds = sg.get("escalation_rounds", 4)
         feedback = "This is the first attempt."
         inert = []          # targets that ran but did nothing / failed
+        progress = []       # clean ops accumulated across rounds
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
-        # capture the subgoal's start so each round retries from a clean state
-        # (a failed proposal otherwise corrupts the state and later rounds
-        # compound the mess — the 2F<->1F house bounce).
         cap = self.b.send("checkpoint_capture", token="esc")
         can_reset = bool((cap.get("result") or {}).get("ok"))
         self.log("escalate_checkpoint", subgoal=sg["id"], captured=can_reset)
         for rnd in range(1, rounds + 1):
-            if rnd > 1 and can_reset:
-                self.b.send("checkpoint_restore", token="esc")
             obs = model_view(self.settle())
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}\n"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
@@ -330,46 +338,60 @@ Reply with ONLY a JSON array of ops, e.g.
             self.log("escalate_proposal", subgoal=sg["id"], round=rnd,
                      macro=macro)
             ok, trace, clean = self._run_traced(sg, macro)
+            progress.extend(clean)
             if ok:
                 # DISTILL-THEN-VERIFY: a macro is only trustworthy if it
                 # reproduces the subgoal from the clean start (walk_to onto a
                 # door mat can fire the warp once by luck and fail on replay;
-                # use_warp is reliable). Replay the clean ops from the start
+                # use_warp is reliable). Replay the ACCUMULATED clean ops (all
+                # rounds' partial progress concatenated) from the start
                 # checkpoint; commit only if they reach done_when again.
                 restored = False
                 if can_reset:
                     rr = self.b.send("checkpoint_restore", token="esc")
                     restored = bool((rr.get("result") or {}).get("ok"))
                 if restored:
-                    v_ok, _, v_clean = self._run_traced(sg, clean)
+                    v_ok, _, v_clean = self._run_traced(sg, progress)
                     # a 0-op "verified" while the first run needed ops means the
                     # restore didn't actually reset the relevant state (some
                     # gate/event state isn't in the checkpoint) — the verify is
-                    # meaningless, so keep the first run's clean ops.
-                    if v_ok and (v_clean or not clean):
+                    # meaningless, so keep the accumulated clean ops.
+                    if v_ok and (v_clean or not progress):
                         self.log("escalate_verified", subgoal=sg["id"],
                                  round=rnd, ops=len(v_clean))
                         return True, v_clean
-                    if v_ok and not v_clean and clean:
+                    if v_ok and not v_clean and progress:
                         self.log("escalate_verify_noreset", subgoal=sg["id"],
-                                 round=rnd, ops=len(clean))
-                        return True, clean
+                                 round=rnd, ops=len(progress))
+                        return True, progress
                     self.log("escalate_unverified", subgoal=sg["id"], round=rnd)
                     feedback = (
-                        "Your macro reached the goal ONCE but did NOT reproduce "
+                        "Your ops reached the goal ONCE but did NOT reproduce "
                         "it on a clean replay — some op relied on luck or "
                         "approach. For doors/stairs/exits use use_warp{x,y} "
-                        "(reliable), NOT walk_to onto the tile. Re-author.")
+                        "(reliable), NOT walk_to onto the tile. You are back "
+                        "at the SUBGOAL START; author the FULL sequence from "
+                        "the current observation.")
                     self.b.send("checkpoint_restore", token="esc")
+                    progress = []
                     continue
                 # couldn't restore to verify (some states refuse it) — commit
-                # the first run's clean ops best-effort rather than a bogus
+                # the accumulated clean ops best-effort rather than a bogus
                 # 0-op "verified" from an un-reset replay.
                 self.log("escalate_success", subgoal=sg["id"], round=rnd,
-                         proposed=len(macro), distilled=len(clean),
+                         proposed=len(macro), distilled=len(progress),
                          verified=False)
-                return True, clean
+                return True, progress
             cur = self.settle() or {}
+            if not cur:
+                # bridge hiccup lost the state: fall back to the subgoal start
+                self.log("escalate_state_lost", subgoal=sg["id"], round=rnd)
+                if can_reset:
+                    self.b.send("checkpoint_restore", token="esc")
+                    progress = []
+                feedback = ("The game state was lost and reset to the subgoal "
+                            "start; author the full sequence again.")
+                continue
             # accumulate targets that failed or did nothing, so the model is
             # told NOT to repeat them (it looped on the pokedex before).
             for t in trace:
@@ -390,17 +412,20 @@ Reply with ONLY a JSON array of ops, e.g.
             feedback = ("Per-step results of your last macro:\n"
                         + "\n".join(f"  {i + 1}. {t}"
                                     for i, t in enumerate(trace))
-                        + f"\nAfter it, DONE_WHEN was NOT met. Now: map="
+                        + f"\nAfter it, DONE_WHEN was NOT met. You are STILL "
+                        f"at that end state (no reset): map="
                         f"{(cur.get('map') or {}).get('id')}, mode="
                         f"{cur.get('mode')}, party size="
-                        f"{len(cur.get('party') or [])}."
+                        f"{len(cur.get('party') or [])}. Your next macro "
+                        f"CONTINUES from here — author only the REMAINING "
+                        f"steps, do not repeat ones that already took effect."
                         + open_prompt
                         + (f"\nObjects here you can interact: {objs}" if objs
                            else "")
                         + (f"\nThese targets did NOTHING — do NOT repeat them, "
                            f"pick a DIFFERENT one: {inert}" if inert else ""))
             self.log("escalate_feedback", subgoal=sg["id"], round=rnd,
-                     trace=trace, inert=inert)
+                     trace=trace, inert=inert, progress_ops=len(progress))
         self.log("escalate_end", subgoal=sg["id"], success=False)
         return False, sg.get("macro", [])
 
