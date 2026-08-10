@@ -209,24 +209,87 @@ Reply with ONLY a JSON array of ops, e.g.
                 out.append(step)
         return out or None
 
+    @staticmethod
+    def _snapshot(obs):
+        p = (obs or {}).get("player") or {}
+        return ((obs or {}).get("map", {}).get("id") if obs else None,
+                p.get("x"), p.get("y"), (obs or {}).get("mode"),
+                len((obs or {}).get("party") or []),
+                len((obs or {}).get("flags") or []))
+
+    def _run_traced(self, sg, macro):
+        """Run a proposed macro step-by-step, returning (done, trace). Each
+        trace entry is a plain-English outcome — including 'ran but had NO
+        visible effect' — so escalation feedback tells the model WHY, not just
+        that it failed (an inert interact is the get_starter tell)."""
+        done = sg.get("done_when")
+        trace = []
+        for step in macro:
+            step = dict(step)
+            step.pop("when", None)
+            op = step.pop("op", None)
+            if not op:
+                continue
+            obs = self.settle()
+            if obs and obs.get("mode") == "battle":
+                obs = self.handle_battle(sg, obs)
+                obs = self.settle()
+            if pred_holds(done, obs):
+                return True, trace
+            before = self._snapshot(obs)
+            traversal = op in ("cross", "walk_to")
+            for _ in range(12):
+                try:
+                    obs = self.b.send(op, **step)
+                except TimeoutError:
+                    obs = self.b.obs()
+                    break
+                if obs and obs.get("mode") == "battle":
+                    obs = self.handle_battle(sg, obs)
+                    obs = self.settle()
+                    if traversal and not pred_holds(done, obs):
+                        continue
+                break
+            r = (obs or {}).get("result") or {}
+            after = self._snapshot(obs)
+            note = f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
+            if not r.get("ok"):
+                note += f": FAILED — {r.get('detail')}"
+            elif before == after:
+                note += ": ran but had NO visible effect (nothing changed)"
+            else:
+                chg = []
+                if before[0] != after[0]:
+                    chg.append(f"map->{after[0]}")
+                if before[4] != after[4]:
+                    chg.append("party changed")
+                if (before[1], before[2]) != (after[1], after[2]):
+                    chg.append("moved")
+                note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
+            trace.append(note)
+            if pred_holds(done, self.settle()):
+                return True, trace
+        return pred_holds(done, self.settle()), trace
+
     def escalate(self, sg: dict) -> tuple[bool, list]:
         """SPD escalation: the model AUTHORS a candidate macro (its strength),
-        the executor RUNS it (run_subgoal), and on success it distills. On
-        failure the outcome is fed back for a revised proposal. This replaces
-        live piloting, which drops the model into its weak spot (tile-by-tile
-        nav) — the model wanders, but it writes good op sequences."""
+        the executor RUNS it with a per-step trace, and on success distills.
+        On failure the DIAGNOSTIC trace (which ops did nothing / where it
+        ended) is fed back so the model can rethink — not just 'try again'."""
         goal = sg.get("goal_text", sg["id"])
         done = sg.get("done_when")
         rounds = sg.get("escalation_rounds", 4)
-        outcome = "first attempt"
+        feedback = "This is the first attempt."
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
         for rnd in range(1, rounds + 1):
             obs = model_view(self.settle())
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}\n"
-                    f"LAST_ATTEMPT: {outcome}\n"
+                    f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
                     f"CURRENT_OBSERVATION: "
                     f"{json.dumps(obs, separators=(',', ':'))}\n"
-                    "Author the op-list macro to achieve DONE_WHEN from here.")
+                    "Author the op-list macro to achieve DONE_WHEN from here. "
+                    "If ops in the feedback 'had no visible effect', they did "
+                    "NOT do what you intended — try a different approach.")
             try:
                 reply = brock_probe.chat(
                     [{"role": "system", "content": self.MACRO_AUTHOR_SYS},
@@ -238,19 +301,27 @@ Reply with ONLY a JSON array of ops, e.g.
             if not macro:
                 self.log("escalate_bad_proposal", subgoal=sg["id"], round=rnd,
                          reply=reply[:160])
-                outcome = "your last reply was not a JSON op array; return one"
+                feedback = "Your last reply was not a JSON op array. Return " \
+                           "ONLY a JSON array of op objects."
                 continue
             self.log("escalate_proposal", subgoal=sg["id"], round=rnd,
                      macro=macro)
-            sg["macro"] = macro          # run the proposal via the macro runner
-            if self.run_subgoal(sg):
+            ok, trace = self._run_traced(sg, macro)
+            if ok:
+                sg["macro"] = macro
                 self.log("escalate_success", subgoal=sg["id"], round=rnd,
                          n_ops=len(macro))
                 return True, macro
             cur = self.settle() or {}
-            outcome = (f"macro ran but DONE_WHEN not met; now map="
-                       f"{(cur.get('map') or {}).get('id')} mode="
-                       f"{cur.get('mode')} pos={cur.get('player')}")
+            feedback = ("Per-step results of your last macro:\n"
+                        + "\n".join(f"  {i + 1}. {t}"
+                                    for i, t in enumerate(trace))
+                        + f"\nAfter it, DONE_WHEN was NOT met. Now: map="
+                        f"{(cur.get('map') or {}).get('id')}, mode="
+                        f"{cur.get('mode')}, party size="
+                        f"{len(cur.get('party') or [])}.")
+            self.log("escalate_feedback", subgoal=sg["id"], round=rnd,
+                     trace=trace)
         self.log("escalate_end", subgoal=sg["id"], success=False)
         return False, sg.get("macro", [])
 
