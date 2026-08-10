@@ -151,20 +151,30 @@ class Executor:
                     self.log("step_skipped", subgoal=sg["id"], op=op,
                              when=when, mode=obs.get("mode") if obs else None)
                     continue
-                try:
-                    obs = self.b.send(op, **step)
-                except TimeoutError as e:
-                    self.log("step_timeout", subgoal=sg["id"], op=op,
-                             err=str(e))
-                    obs = self.b.obs()
-                    continue
-                r = (obs or {}).get("result") or {}
-                self.log("step", subgoal=sg["id"], op=op, params=step,
-                         ok=r.get("ok"), detail=r.get("detail"),
-                         map=(obs.get("map") or {}).get("id") if obs else None,
-                         mode=obs.get("mode") if obs else None)
-                if obs and obs.get("mode") == "battle":
-                    obs = self.handle_battle(sg, obs)
+                # Traversal steps (cross/walk_to) get cut short by wild
+                # battles in grass — fight the battle, then RE-RUN the step so
+                # the traversal resumes instead of burning a whole attempt.
+                traversal = op in ("cross", "walk_to")
+                for _ in range(12):
+                    try:
+                        obs = self.b.send(op, **step)
+                    except TimeoutError as e:
+                        self.log("step_timeout", subgoal=sg["id"], op=op,
+                                 err=str(e))
+                        obs = self.b.obs()
+                        break
+                    r = (obs or {}).get("result") or {}
+                    self.log("step", subgoal=sg["id"], op=op, params=step,
+                             ok=r.get("ok"), detail=r.get("detail"),
+                             map=(obs.get("map") or {}).get("id")
+                             if obs else None,
+                             mode=obs.get("mode") if obs else None)
+                    if obs and obs.get("mode") == "battle":
+                        obs = self.handle_battle(sg, obs)
+                        obs = self.settle()
+                        if traversal and not pred_holds(done, obs):
+                            continue     # battle interrupted travel: resume
+                    break
             if pred_holds(done, self.settle()):
                 self.log("subgoal_done", subgoal=sg["id"], attempt=attempt,
                          via="post-macro")
