@@ -1,0 +1,18 @@
+{
+  "goal": "distillation_demo_opening",
+  "comment": "MACRO-LESS plan to demonstrate SPD step 3: every subgoal has only a goal_text + done_when, no macro. Run 1 with --escalate hands each subgoal to the live model and DISTILLS the successful ops back here as macros; run 2 replays them deterministically (escalations -> 0). This file is mutated in place by distillation.",
+  "subgoals": [
+    {
+      "id": "leave_house",
+      "goal_text": "You start upstairs in your house. Go downstairs (use_warp the stairs) and out the front door (use_warp it) into Pallet Town.",
+      "done_when": {"map": "PALLET_TOWN", "mode": "overworld"},
+      "escalation_budget": 15
+    },
+    {
+      "id": "get_starter",
+      "goal_text": "From Pallet Town, cross north toward Route 1 to trigger Professor Oak, who walks you into his lab. There, interact with a starter Poke Ball (e.g. OAKSLAB_SQUIRTLE_POKE_BALL), answer YES (menu index 1), and decline the nickname (menu index 2).",
+      "done_when": {"party_nonempty": true},
+      "escalation_budget": 25
+    }
+  ]
+}

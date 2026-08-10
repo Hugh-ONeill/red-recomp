@@ -41,6 +41,19 @@ from pathlib import Path
 from bridge import Bridge, RUN
 import battle_policy
 import battle_oracle
+import brock_probe   # reuse the live model driver (chat/parse) for escalation
+
+
+# The model must never see executor instrumentation (event flags, the oracle
+# probe) — CLAIM_RULES: those are for the executor's control flow, not eyes.
+def model_view(obs: dict) -> dict:
+    o = dict(obs or {})
+    o.pop("flags", None)
+    if isinstance(o.get("battle"), dict):
+        b = dict(o["battle"])
+        b.pop("probe", None)
+        o["battle"] = b
+    return o
 
 
 # ---------------------------------------------------------------- predicates
@@ -128,9 +141,17 @@ BATTLE_POLICIES = {
 
 # ----------------------------------------------------------------- executor
 class Executor:
-    def __init__(self, bridge: Bridge, max_battle_turns: int = 40):
+    def __init__(self, bridge: Bridge, max_battle_turns: int = 40,
+                 can_escalate: bool = False, model: str = "",
+                 plan=None, plan_path=None, run_id: str = "run"):
         self.b = bridge
         self.max_battle_turns = max_battle_turns
+        self.can_escalate = can_escalate
+        self.model = model
+        self.plan = plan
+        self.plan_path = plan_path
+        self.run_id = run_id
+        self.escalations = 0
         self.logf = open(RUN / "executor_log.jsonl", "a")
         self.t0 = time.time()
 
@@ -157,6 +178,87 @@ class Executor:
                 return obs
             obs = self.b.send("wait", frames=6)
         return obs
+
+    ESCALATION_SYS = """You are playing Pokemon Red, working on ONE specific
+subgoal. Achieve it, then stop. Respond with EXACTLY ONE action as JSON:
+{"reasoning":"<short>","op":{"op":"<name>",...params}}
+Ops: walk_to{x,y} (within-map pathfind), cross{dir:north|south|east|west}
+(travel to the adjacent map), use_warp{x,y} (door/stairs from obs.map.warps),
+interact{name} (an obs.map.objects entry), menu{index} (1-based: 1=YES/first,
+2=NO/second), wait{}. Battles are handled for you. obs.map has id, warps,
+objects, connections. obs.recent_text is the prompt before a choice. Prefer
+walk_to/cross/use_warp/interact over blind stepping. Output only the JSON."""
+
+    def escalate(self, sg: dict) -> tuple[bool, list]:
+        """Hand the subgoal to the live model; record the ops that make
+        progress. On success those ops become the subgoal's distilled macro.
+        Battles are run by the battle policy, not the model, as everywhere."""
+        done = sg.get("done_when")
+        goal = sg.get("goal_text", sg["id"])
+        budget = sg.get("escalation_budget", 25)
+        model = self.model
+        msgs = [{"role": "system", "content": self.ESCALATION_SYS},
+                {"role": "user", "content": f"SUBGOAL: {goal}"}]
+        recorded, prev_key = [], None
+        self.log("escalate_start", subgoal=sg["id"], goal=goal)
+        for call in range(1, budget + 1):
+            obs = self.settle()
+            if obs and obs.get("mode") == "battle":
+                obs = self.handle_battle(sg, obs)
+                obs = self.settle()
+            if pred_holds(done, obs):
+                self.log("escalate_done", subgoal=sg["id"], calls=call - 1,
+                         ops=len(recorded))
+                return True, recorded
+            key = ((obs.get("map") or {}).get("id"),
+                   (obs.get("player") or {}).get("x"),
+                   (obs.get("player") or {}).get("y"), obs.get("mode"))
+            msgs.append({"role": "user",
+                         "content": json.dumps(model_view(obs),
+                                               separators=(",", ":"))})
+            try:
+                reply = brock_probe.chat(msgs, model)
+            except Exception as e:
+                self.log("escalate_chat_error", subgoal=sg["id"], err=str(e))
+                break
+            msgs.append({"role": "assistant", "content": reply})
+            op, why = brock_probe.parse(reply)
+            if not op or "op" not in op:
+                self.log("escalate_invalid", subgoal=sg["id"], call=call)
+                continue
+            name = op.pop("op")
+            self.log("escalate_op", subgoal=sg["id"], call=call, op=name,
+                     params=op, why=why)
+            try:
+                obs = self.b.send(name, **op)
+            except TimeoutError:
+                obs = self.b.obs()
+                continue
+            r = (obs or {}).get("result") or {}
+            # record an op as macro material only if it ran ok AND changed the
+            # position/map/mode — drops no-ops and wandering, keeping the macro
+            # close to the minimal successful path.
+            new_key = ((obs.get("map") or {}).get("id"),
+                       (obs.get("player") or {}).get("x"),
+                       (obs.get("player") or {}).get("y"), obs.get("mode"))
+            if r.get("ok") and new_key != key:
+                recorded.append({"op": name, **op})
+            if len(msgs) > 16:
+                msgs = msgs[:2] + msgs[-12:]
+        ok = pred_holds(done, self.settle())
+        self.log("escalate_end", subgoal=sg["id"], success=ok,
+                 ops=len(recorded))
+        return ok, recorded
+
+    def distill(self, sg: dict, ops: list):
+        """Write the escalation's successful op sequence back as the macro,
+        with provenance (the claim needs to show the model authored it)."""
+        sg["macro"] = ops
+        sg["macro_provenance"] = {"authored_by": self.model, "run": self.run_id,
+                                  "via": "escalation", "n_ops": len(ops)}
+        if self.plan_path:
+            self.plan_path.write_text(json.dumps(self.plan, indent=2))
+        self.log("distilled", subgoal=sg["id"], n_ops=len(ops))
 
     def run_subgoal(self, sg: dict) -> bool:
         done = sg.get("done_when")
@@ -218,16 +320,26 @@ class Executor:
         return False
 
     def run_plan(self, plan: dict) -> bool:
-        self.log("plan_start", goal=plan.get("goal"))
+        self.log("plan_start", goal=plan.get("goal"), escalate=self.can_escalate)
         for sg in plan["subgoals"]:
-            print(f"== subgoal: {sg['id']}")
-            if not self.run_subgoal(sg):
-                print(f"!! ESCALATE: subgoal {sg['id']} failed its predicate "
-                      f"after {sg.get('max_attempts', 3)} attempts")
+            has_macro = bool(sg.get("macro"))
+            print(f"== subgoal: {sg['id']}" + ("" if has_macro else " (no macro)"))
+            ok = self.run_subgoal(sg) if has_macro else False
+            if not ok and self.can_escalate:
+                print(f"   -> escalating {sg['id']} to the model")
+                self.escalations += 1
+                success, ops = self.escalate(sg)
+                if success:
+                    self.distill(sg, ops)
+                    ok = True
+                    print(f"   distilled {sg['id']} ({len(ops)} ops)")
+            if not ok:
+                print(f"!! FAILED: subgoal {sg['id']}")
                 self.log("plan_failed_at", subgoal=sg["id"])
                 return False
             print(f"   done: {sg['id']}")
-        self.log("plan_complete", goal=plan.get("goal"))
+        self.log("plan_complete", goal=plan.get("goal"),
+                 escalations=self.escalations)
         return True
 
 
@@ -248,6 +360,12 @@ def main():
     ap.add_argument("--score-battles", action="store_true",
                     help="probe the oracle each battle turn and log "
                          "policy-vs-oracle agreement (does not change play)")
+    ap.add_argument("--escalate", action="store_true",
+                    help="when a subgoal has no macro or its macro fails, hand "
+                         "it to the live model, then DISTILL the successful ops "
+                         "back into the plan file as the subgoal's macro")
+    ap.add_argument("--model", default="gemma4:26b-a4b-it-q4_K_M")
+    ap.add_argument("--run-id", default="run")
     args = ap.parse_args()
 
     global SCORE_BATTLES
@@ -256,7 +374,9 @@ def main():
     b = Bridge()
     if args.bootstrap:
         bootstrap(b)
-    ex = Executor(b, max_battle_turns=args.max_battle_turns)
+    ex = Executor(b, max_battle_turns=args.max_battle_turns,
+                  can_escalate=args.escalate, model=args.model,
+                  plan=plan, plan_path=args.plan, run_id=args.run_id)
     ok = ex.run_plan(plan)
     o = b.obs() or {}
     print(f"\nRESULT: {'PLAN COMPLETE' if ok else 'PLAN FAILED'} | "
