@@ -95,7 +95,19 @@
       "done_when": {
         "flag": "EVENT_BATTLED_RIVAL_IN_OAKS_LAB"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "hand-seeded",
+        "via": "fixed-lab-quirk",
+        "note": "rival battle triggers on EXIT (OaksLab door script), not on interacting the rival; battle auto-handled by policy"
+      }
     },
     {
       "id": "go_to_route_1",
