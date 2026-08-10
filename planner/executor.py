@@ -218,12 +218,13 @@ Reply with ONLY a JSON array of ops, e.g.
                 len((obs or {}).get("flags") or []))
 
     def _run_traced(self, sg, macro):
-        """Run a proposed macro step-by-step, returning (done, trace). Each
-        trace entry is a plain-English outcome — including 'ran but had NO
-        visible effect' — so escalation feedback tells the model WHY, not just
-        that it failed (an inert interact is the get_starter tell)."""
+        """Run a proposed macro step-by-step, returning (done, trace, clean).
+        `trace` is plain-English per-op outcomes for feedback (incl. 'ran but
+        had NO visible effect'); `clean` is the subset of ops that ran OK —
+        what gets DISTILLED, so failed junk ops (e.g. interact 'stairs') the
+        model happened to include don't poison the macro and break replay."""
         done = sg.get("done_when")
-        trace = []
+        trace, clean = [], []
         for step in macro:
             step = dict(step)
             step.pop("when", None)
@@ -235,7 +236,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 obs = self.handle_battle(sg, obs)
                 obs = self.settle()
             if pred_holds(done, obs):
-                return True, trace
+                return True, trace, clean
             before = self._snapshot(obs)
             traversal = op in ("cross", "walk_to")
             for _ in range(12):
@@ -267,9 +268,11 @@ Reply with ONLY a JSON array of ops, e.g.
                     chg.append("moved")
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
             trace.append(note)
+            if r.get("ok"):
+                clean.append({"op": op, **step})   # distill only ops that ran
             if pred_holds(done, self.settle()):
-                return True, trace
-        return pred_holds(done, self.settle()), trace
+                return True, trace, clean
+        return pred_holds(done, self.settle()), trace, clean
 
     def escalate(self, sg: dict) -> tuple[bool, list]:
         """SPD escalation: the model AUTHORS a candidate macro (its strength),
@@ -306,12 +309,12 @@ Reply with ONLY a JSON array of ops, e.g.
                 continue
             self.log("escalate_proposal", subgoal=sg["id"], round=rnd,
                      macro=macro)
-            ok, trace = self._run_traced(sg, macro)
+            ok, trace, clean = self._run_traced(sg, macro)
             if ok:
-                sg["macro"] = macro
+                # distill the CLEAN subset (ops that ran), not the raw proposal
                 self.log("escalate_success", subgoal=sg["id"], round=rnd,
-                         n_ops=len(macro))
-                return True, macro
+                         proposed=len(macro), distilled=len(clean))
+                return True, clean
             cur = self.settle() or {}
             feedback = ("Per-step results of your last macro:\n"
                         + "\n".join(f"  {i + 1}. {t}"

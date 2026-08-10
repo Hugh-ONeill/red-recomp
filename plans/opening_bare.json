@@ -9,10 +9,16 @@
       "escalation_budget": 15
     },
     {
-      "id": "get_starter",
-      "goal_text": "From Pallet Town, cross north toward Route 1 to trigger Professor Oak, who walks you into his lab. There, interact with a starter Poke Ball (e.g. OAKSLAB_SQUIRTLE_POKE_BALL), answer YES (menu index 1), and decline the nickname (menu index 2).",
+      "id": "trigger_oak",
+      "goal_text": "From Pallet Town, go NORTH toward Route 1 (cross north). Professor Oak stops you at the town edge and automatically walks you into his lab. Do NOT enter the lab building through its door directly — that will not start the starter event; only heading north triggers Oak.",
+      "done_when": {"map": "OAKS_LAB", "mode": "overworld"},
+      "escalation_rounds": 4
+    },
+    {
+      "id": "pick_starter",
+      "goal_text": "You are in Oak's lab and Oak has finished his intro. Interact with a starter Poke Ball (obs.map.objects lists them, e.g. OAKSLAB_SQUIRTLE_POKE_BALL), answer YES to take it (menu index 1), and decline the nickname (menu index 2).",
       "done_when": {"party_nonempty": true},
-      "escalation_budget": 25
+      "escalation_rounds": 4
     }
   ]
 }
