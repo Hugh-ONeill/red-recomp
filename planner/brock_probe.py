@@ -36,10 +36,13 @@ Ops:
   x,y of an entry from obs.map.warps (how you exit a building or take stairs).
 - {"op":"interact","name":"OBJECT_NAME"}  walk to an object from
   obs.map.objects and press A (take a Poke Ball, talk to an NPC).
-- {"op":"walk","dir":"up|down|left|right","steps":N}  step blindly. AVOID
-  this for travel — blind steps wander and can walk you back into a building's
-  door. Use walk_to instead. Only use walk for the final 1-2 steps across a
-  map-edge seam that walk_to won't target.
+- {"op":"cross","dir":"north|south|east|west"}  travel to the adjacent map in
+  that direction (finds the walkable gap in the edge and steps across). THIS
+  is how you move between towns/routes. obs.map.connections shows which
+  directions lead where. To head toward Route 1 from Pallet Town, cross north.
+- {"op":"walk","dir":"up|down|left|right","steps":N}  step blindly. AVOID for
+  travel (wanders, can re-enter a door). Use walk_to within a map and cross
+  between maps.
 - {"op":"menu","index":N}  choose in a menu/yes-no box. 1-BASED: index 1 =
   YES / first option, index 2 = NO / second option.
 - {"op":"battle_move","index":N}  in battle FIGHT with move slot N (1-based;
@@ -49,18 +52,18 @@ Ops:
   beat to start, e.g. right after Prof Oak stops you at the town edge).
 - {"op":"tap","btn":"a|b|..."}  single button, rarely needed.
 
-obs.mode is overworld/battle/ui. obs.map has id, warps, objects,
-width/height. obs.badges lists earned badges.
+obs.mode is overworld/battle/ui. obs.map has id, warps, objects, connections,
+width/height. obs.badges lists earned badges. When mode is ui (a menu/choice),
+obs.recent_text is the prompt you are answering — read it. For a "give a
+nickname?" prompt, answer NO with {"op":"menu","index":2} to skip it.
 
 GOAL PATH, in order:
 1. Leave your house: use_warp the stairs, then use_warp the front door.
-2. In PALLET_TOWN, go to the TOP edge of the map: use
-   {"op":"walk_to","x":<your current x>,"y":0} (y=0 is the north edge toward
-   Route 1). Prof Oak stops you there and automatically walks you into his
-   lab. If you are stopped and nothing else happens, send one {"op":"wait"}.
-   Do NOT walk into the lab building yourself, and do NOT use blind `walk` in
-   town (it can send you back into your house) — the north-edge trigger via
-   walk_to is what starts the starter-choice event.
+2. In PALLET_TOWN, head north toward Route 1 with {"op":"cross","dir":"north"}.
+   Prof Oak stops you at the edge and automatically walks you into his lab. If
+   you are stopped and nothing else happens, send one {"op":"wait"}. Do NOT
+   walk into the lab building yourself — crossing north is what starts the
+   starter-choice event.
 3. In OAKS_LAB, pick a starter by interacting with a Poke Ball, e.g.
    {"op":"interact","name":"OAKSLAB_SQUIRTLE_POKE_BALL"} (SQUIRTLE is a solid
    pick vs Brock's rock types via later moves; any starter is fine). A yes/no
@@ -68,9 +71,11 @@ GOAL PATH, in order:
 4. Do NOT interact with your RIVAL. The rival battle triggers BY ITSELF when
    you try to leave the lab after taking your starter — just head for the lab
    exit and it will start. In that battle use battle_move with a damaging move.
-5. After the rival, go NORTH: Route 1 -> Viridian City -> Route 2 -> Viridian
-   Forest -> Pewter City -> Pewter Gym; beat Brock for the BOULDERBADGE
-   (it will appear in obs.badges).
+5. After the rival, travel NORTH with repeated cross north through: Route 1 ->
+   Viridian City -> Route 2 -> Viridian Forest -> Pewter City. Use
+   obs.map.connections each map to confirm the direction. In Pewter, enter the
+   Gym (use_warp its door) and beat Brock for the BOULDERBADGE (it appears in
+   obs.badges).
 
 Read obs.result; if an op failed or nothing changed, do something DIFFERENT
 rather than repeating it. Output only the JSON object."""

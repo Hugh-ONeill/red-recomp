@@ -102,11 +102,19 @@ local function badges(G)
   return out
 end
 
+-- The last dialogue text auto-advance rode past. Auto-advance strips text
+-- before a choice box, which would leave the model answering a context-free
+-- yes/no; carry the prompt into the observation so the choice has meaning.
+local recent_text = nil
+
 local function observe(G, seq, result)
   local top = G.stack and G.stack:top()
   local o = { seq = seq, result = result, events = events, frame = U.frame() }
   events = {}
+  if recent_text then o.recent_text = recent_text end
   if G.overworld and top == G.overworld then
+    recent_text = nil          -- free roam: stale prompt no longer applies
+    o.recent_text = nil
     o.mode = "overworld"
     local p = G.overworld.player or {}
     o.player = { x = p.cellX, y = p.cellY, facing = p.facing,
@@ -138,6 +146,14 @@ local function observe(G, seq, result)
       o.map.warps = {}
       for i, w in ipairs(md.warps) do
         o.map.warps[i] = { x = w.x, y = w.y, dest = w.destMap }
+      end
+    end
+    -- Connections to adjacent maps (the routes/towns you reach by walking off
+    -- an edge). Player-visible: the path leads off-screen that way.
+    if md and md.connections then
+      o.map.connections = {}
+      for d, cn in pairs(md.connections) do
+        o.map.connections[d] = cn.map
       end
     end
     -- Interactable objects the player can see: G.overworld.npcs is the LIVE
@@ -273,6 +289,47 @@ local function bfs_dir(G, tx, ty)
   return nil, "no path"
 end
 
+-- Nearest reachable tile on a given map edge (the walkable gap in a fence is
+-- the only edge tile BFS can reach), for crossing to a connected map.
+local function bfs_to_edge(G, dir)
+  local Collision = require("src.world.Collision")
+  local ow = G.overworld
+  local p = ow.player
+  local W = (ow.map and ow.map.width or 0) * 2
+  local H = (ow.map and ow.map.height or 0) * 2
+  local on_edge = {
+    up = function(_, y) return y <= 0 end,
+    down = function(_, y) return H > 0 and y >= H - 1 end,
+    left = function(x, _) return x <= 0 end,
+    right = function(x, _) return W > 0 and x >= W - 1 end,
+  }
+  local hit = on_edge[dir]
+  if not hit then return nil end
+  if hit(p.cellX, p.cellY) then return p.cellX, p.cellY end
+  local key = function(x, y) return x .. "," .. y end
+  local seen = { [key(p.cellX, p.cellY)] = true }
+  local queue = { { x = p.cellX, y = p.cellY } }
+  local head = 1
+  while queue[head] do
+    local cur = queue[head]; head = head + 1
+    for _, d in pairs(DIRS) do
+      local nx, ny = cur.x + d[1], cur.y + d[2]
+      if not seen[key(nx, ny)] then
+        local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
+                                   { __index = p })
+        if Collision.canMove(ow.map, ow.entities, probe,
+            (d[1] == 0 and (d[2] < 0 and "up" or "down"))
+            or (d[1] < 0 and "left" or "right")) then
+          seen[key(nx, ny)] = true
+          if hit(nx, ny) then return nx, ny end
+          queue[#queue + 1] = { x = nx, y = ny }
+        end
+      end
+    end
+  end
+  return nil
+end
+
 local OPS = {}
 
 function OPS.new_game(G) U.newGame(G) return true end
@@ -372,6 +429,43 @@ function OPS.use_warp(G, c)
     U.wait(4)
   end
   return false, "stepped through but no warp fired"
+end
+
+-- Cross to the connected map in a direction (north/south/east/west). Finds
+-- the walkable gap in that edge (BFS), walks to it, and steps off the seam to
+-- trigger the connection. This is how you travel between routes/towns when
+-- there is no door warp. Decision-free: the model picks the direction.
+function OPS.cross(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  local dmap = { north = "up", south = "down", west = "left", east = "right" }
+  local dir = dmap[c.dir] or c.dir
+  if not DIRS[dir] then return false, "cross needs dir north/south/east/west" end
+  local ow = G.overworld
+  local startMap = ow.map and ow.map.id
+  local p = ow.player
+  local ex, ey = bfs_to_edge(G, dir)
+  if not ex then return false, "no reachable " .. tostring(c.dir) .. " edge" end
+  if p.cellX ~= ex or p.cellY ~= ey then
+    OPS.walk_to(G, { x = ex, y = ey, max_steps = c.max_steps or 200 })
+    if (ow.map and ow.map.id) ~= startMap then return true, "crossed (mid-walk)" end
+  end
+  -- step off the seam repeatedly until the map changes
+  for _ = 1, 8 do
+    if (ow.map and ow.map.id) ~= startMap then return true, "crossed" end
+    table.insert(G.input.pressQueue, dir)
+    G.input.state[dir] = true
+    for _ = 1, 20 do
+      coroutine.yield()
+      if (ow.map and ow.map.id) ~= startMap then
+        G.input.state[dir] = false; return true, "crossed"
+      end
+    end
+    G.input.state[dir] = false
+    U.wait(3)
+  end
+  return (ow.map and ow.map.id) ~= startMap, "cross attempted"
 end
 
 -- List-menu navigation: any stack state exposing a numeric cursor `index`.
@@ -614,6 +708,8 @@ local function advance_to_decision(G, maxn)
       local top = G.stack:top()
       local sid = top and tostring(top.screenId or "") or ""
       if top and top.pages and top.pageIndex then
+        local pg = top.pages[top.pageIndex]
+        if type(pg) == "table" then recent_text = table.concat(pg, " ") end
         U.tap(G, "a"); U.wait(2)                          -- plain text
       elseif top and (top.enemy or top.kind) then
         U.tap(G, "a"); U.wait(2)                          -- battle message text
