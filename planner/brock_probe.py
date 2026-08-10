@@ -99,7 +99,15 @@ def parse(text):
         d = json.loads(m.group(0))
     except json.JSONDecodeError:
         return None, None
-    return d.get("op"), d.get("reasoning")
+    op = d.get("op")
+    # accept the shorthand "op":"wait" (a bare op name, no params) as well as
+    # the nested "op":{"op":"wait",...}; also tolerate a flat top-level op
+    # like {"op":"walk_to","x":1,"y":2} with no wrapper.
+    if isinstance(op, str):
+        op = {"op": op}
+    elif op is None and isinstance(d.get("reasoning"), str) is False:
+        op = d  # whole object is the op (no reasoning wrapper)
+    return op, d.get("reasoning")
 
 
 def bootstrap(b):
