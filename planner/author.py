@@ -1,0 +1,177 @@
+#!/usr/bin/env python3
+"""SPD plan authoring: the model writes the subgoal DECOMPOSITION.
+
+This is the last hand-seeded piece of SPD. Given a goal, the local model
+authors an ordered list of subgoals (id + goal_text + done_when predicate).
+The executor then runs the plan with --escalate, and the model AUTHORS each
+subgoal's macro by playing (escalation), distilling it back — so the whole
+route becomes model-authored, decomposition and macros alike.
+
+The model gets the "API" (its intelligence is the decomposition itself):
+  - the predicate DSL it may use for done_when
+  - the map ids and milestone event-flags it may reference (it knows Red but
+    not the exact strings)
+  - the granularity rule learned in step 3: ONE map-transition or ONE
+    event/interaction per subgoal (the executor authors macros from the
+    current map's visible warps/objects, so coarse subgoals aren't authorable)
+
+Usage:
+  author.py --goal "Get the Boulder Badge from Brock" --out plans/brock.json
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from pathlib import Path
+
+import brock_probe   # reuse chat()
+
+# The vocabulary the decomposition may reference. Predicates come from the
+# executor's DSL; maps/flags are the executor's instrumentation, exposed here
+# so the model can name done_when conditions exactly.
+PREDICATES = {
+    "map": "current map id equals VALUE (e.g. {\"map\":\"PEWTER_CITY\"})",
+    "mode": "obs mode equals VALUE (usually \"overworld\")",
+    "party_nonempty": "true = have at least one Pokemon",
+    "party_alive": "true = at least one Pokemon with HP > 0",
+    "badge": "VALUE badge earned (e.g. {\"badge\":\"BOULDERBADGE\"})",
+    "flag": "a save event flag is set (e.g. {\"flag\":\"EVENT_GOT_POKEDEX\"})",
+    "no_battle": "true = not currently in a battle",
+}
+ROUTE_MAPS = ["REDS_HOUSE_2F", "REDS_HOUSE_1F", "PALLET_TOWN", "OAKS_LAB",
+              "ROUTE_1", "VIRIDIAN_CITY", "VIRIDIAN_MART", "ROUTE_2",
+              "VIRIDIAN_FOREST", "PEWTER_CITY", "PEWTER_GYM"]
+KEY_FLAGS = {
+    "EVENT_GOT_STARTER": "obtained a starter Pokemon",
+    "EVENT_BATTLED_RIVAL_IN_OAKS_LAB": "fought the rival in Oak's lab",
+    "EVENT_GOT_OAKS_PARCEL": "picked up Oak's Parcel at the Viridian mart",
+    "EVENT_GOT_POKEDEX": "delivered the parcel to Oak and got the Pokedex "
+                         "(this unlocks the north exit of Viridian City)",
+    "EVENT_BEAT_BROCK": "defeated Brock at Pewter Gym",
+}
+BADGES = ["BOULDERBADGE"]
+
+SYS = """You author a PLAN to accomplish a Pokemon Red goal: an ordered list
+of SUBGOALS. You write the decomposition and the success condition of each
+step; a separate system will later figure out the exact button/op sequence
+for each subgoal by playing. So you do NOT give coordinates or ops here — you
+give the milestones and how to know each is done.
+
+Hard rule on GRANULARITY: each subgoal must be ONE map transition, OR one
+event/interaction that happens within a single map. Do not bundle multiple
+map changes into one subgoal. (e.g. leaving the house is TWO subgoals: go
+downstairs, then out the front door. Getting the starter is TWO: trigger
+Oak's escort to the lab, then take a Poke Ball.)
+
+Each subgoal is an object:
+  {"id":"snake_case_name",
+   "goal_text":"one or two sentences telling the player exactly what to do",
+   "done_when":{<one predicate>}}
+
+Reply with ONLY a JSON object: {"goal":"...","subgoals":[ ... ]}."""
+
+
+def build_prompt(goal: str) -> str:
+    return (
+        f"GOAL: {goal}\n\n"
+        f"PREDICATES you may use in done_when (pick the ONE that best marks "
+        f"the subgoal complete):\n"
+        + "\n".join(f"  {k}: {v}" for k, v in PREDICATES.items())
+        + "\n\nMAP IDs on this route (use exact strings):\n  "
+        + ", ".join(ROUTE_MAPS)
+        + "\n\nKEY EVENT FLAGS (use exact strings; prefer a map/party/badge "
+        "predicate when one fits, but these mark events that are not just a "
+        "map change):\n"
+        + "\n".join(f"  {k}: {v}" for k, v in KEY_FLAGS.items())
+        + f"\n\nBADGES: {', '.join(BADGES)}\n\n"
+        "Author the ordered subgoal list now. Remember the granularity rule.")
+
+
+VALID_KEYS = set(PREDICATES)
+
+
+def validate(plan: dict) -> list:
+    """Return a list of problems (empty = ok)."""
+    probs = []
+    subs = plan.get("subgoals")
+    if not isinstance(subs, list) or not subs:
+        return ["no subgoals"]
+    seen = set()
+    for i, s in enumerate(subs):
+        tag = f"subgoal[{i}]"
+        if not isinstance(s, dict):
+            probs.append(f"{tag} not an object"); continue
+        sid = s.get("id")
+        if not sid:
+            probs.append(f"{tag} missing id")
+        elif sid in seen:
+            probs.append(f"{tag} duplicate id {sid}")
+        seen.add(sid)
+        if not s.get("goal_text"):
+            probs.append(f"{tag} missing goal_text")
+        dw = s.get("done_when")
+        if not isinstance(dw, dict) or not dw:
+            probs.append(f"{tag} ({sid}) missing/empty done_when")
+            continue
+        for k, v in dw.items():
+            if k not in VALID_KEYS:
+                probs.append(f"{tag} ({sid}) unknown predicate '{k}'")
+            elif k == "map" and v not in ROUTE_MAPS:
+                probs.append(f"{tag} ({sid}) map '{v}' not in the route list")
+            elif k == "flag" and v not in KEY_FLAGS:
+                probs.append(f"{tag} ({sid}) flag '{v}' not in the vocabulary")
+            elif k == "badge" and v not in BADGES:
+                probs.append(f"{tag} ({sid}) badge '{v}' unknown")
+    return probs
+
+
+def author(goal: str, model: str, rounds: int = 3) -> dict | None:
+    fb = ""
+    for rnd in range(1, rounds + 1):
+        user = build_prompt(goal) + (f"\n\nFIX THESE PROBLEMS from your last "
+                                     f"attempt:\n{fb}" if fb else "")
+        reply = brock_probe.chat(
+            [{"role": "system", "content": SYS},
+             {"role": "user", "content": user}], model)
+        m = re.search(r"\{.*\}", reply, re.S)
+        if not m:
+            fb = "your reply was not a JSON object"; continue
+        try:
+            plan = json.loads(m.group(0))
+        except json.JSONDecodeError as e:
+            fb = f"invalid JSON: {e}"; continue
+        probs = validate(plan)
+        if not probs:
+            # tag each subgoal so escalation/distillation runs it macro-less
+            for s in plan["subgoals"]:
+                s.setdefault("escalation_rounds", 4)
+            print(f"[author] valid plan in round {rnd}: "
+                  f"{len(plan['subgoals'])} subgoals")
+            return plan
+        fb = "\n".join(f"- {p}" for p in probs)
+        print(f"[author] round {rnd} invalid:\n{fb}")
+    return None
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--goal", required=True)
+    ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--model", default="gemma4:26b-a4b-it-q4_K_M")
+    args = ap.parse_args()
+    plan = author(args.goal, args.model)
+    if not plan:
+        sys.exit("author failed to produce a valid plan")
+    plan.setdefault("goal", args.goal)
+    plan["authored_by"] = args.model
+    args.out.write_text(json.dumps(plan, indent=2))
+    print(f"wrote {args.out}")
+    for s in plan["subgoals"]:
+        print(f"  {s['id']}: done_when={json.dumps(s['done_when'])}")
+
+
+if __name__ == "__main__":
+    main()
