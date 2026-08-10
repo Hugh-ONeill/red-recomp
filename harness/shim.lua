@@ -136,12 +136,14 @@ local function observe(G, seq, result)
       }
     end
     local map = G.overworld.map or {}
-    -- Warps and dimensions are player-visible (stairs, doors, mats, the
-    -- screen itself), so they belong in the eyes. Block dims are 2x2 cells.
-    o.map = { id = map.id, name = map.name,
-              width = map.width and map.width * 2,
-              height = map.height and map.height * 2 }
     local md = G.data and G.data.maps and G.data.maps[map.id]
+    -- Warps and dimensions are player-visible (stairs, doors, mats, the
+    -- screen itself), so they belong in the eyes. Dims come from static map
+    -- data (live map.width/height are nil for many maps); blocks are 2x2.
+    local wb = (md and md.width) or map.width
+    local hb = (md and md.height) or map.height
+    o.map = { id = map.id, name = map.name,
+              width = wb and wb * 2, height = hb and hb * 2 }
     if md and md.warps then
       o.map.warps = {}
       for i, w in ipairs(md.warps) do
@@ -299,12 +301,23 @@ end
 
 -- Nearest reachable tile on a given map edge (the walkable gap in a fence is
 -- the only edge tile BFS can reach), for crossing to a connected map.
+-- Map dimensions in CELLS. The live overworld map object's width/height are
+-- unreliable (nil for many maps -> broke cross south/east, which need them);
+-- the static map data is authoritative. Blocks are 2x2 cells.
+local function map_dims_cells(G)
+  local ow = G.overworld
+  local id = ow.map and ow.map.id
+  local md = id and G.data and G.data.maps and G.data.maps[id]
+  local wb = (md and md.width) or (ow.map and ow.map.width) or 0
+  local hb = (md and md.height) or (ow.map and ow.map.height) or 0
+  return wb * 2, hb * 2
+end
+
 local function bfs_to_edge(G, dir)
   local Collision = require("src.world.Collision")
   local ow = G.overworld
   local p = ow.player
-  local W = (ow.map and ow.map.width or 0) * 2
-  local H = (ow.map and ow.map.height or 0) * 2
+  local W, H = map_dims_cells(G)
   local on_edge = {
     up = function(_, y) return y <= 0 end,
     down = function(_, y) return H > 0 and y >= H - 1 end,
@@ -414,9 +427,10 @@ function OPS.use_warp(G, c)
   if p.cellX ~= c.x or p.cellY ~= c.y then
     return false, "couldn't reach the warp tile"
   end
-  -- step through: prefer whichever edge the tile sits on
-  local w = (ow.map and ow.map.width) or 99
-  local h = (ow.map and ow.map.height) or 99
+  -- step through: prefer whichever edge the tile sits on (cell dims)
+  local w, h = map_dims_cells(G)
+  if w == 0 then w = 99 end
+  if h == 0 then h = 99 end
   local order = {}
   if c.y >= h - 1 then order = {"down","left","right","up"}
   elseif c.y <= 0 then order = {"up","left","right","down"}
