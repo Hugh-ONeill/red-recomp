@@ -117,6 +117,16 @@ local function observe(G, seq, result)
     o.battle = scalars(top, 0)
     o.battle.player_mon = scalars(top.player, 1)
     o.battle.enemy_mon = scalars(top.enemy, 1)
+  elseif top and top.pages and top.pageIndex then
+    -- TextBox: pages are arrays of display-ready line strings. Emit only the
+    -- page currently on screen — the model reads at the same pace a player
+    -- does and advances with A, no lookahead.
+    o.mode = "dialog"
+    local page = top.pages[top.pageIndex] or {}
+    o.dialog = { text = table.concat(page, "\n"),
+                 page = top.pageIndex, pages = #top.pages,
+                 waiting = top.waiting and true or false,
+                 done = top.done and true or false }
   elseif top then
     o.mode = "ui"
     o.ui = scalars(top, 0)

@@ -72,6 +72,11 @@ def _pp(o: dict | None):
         p, m = o.get("player", {}), o.get("map", {})
         print(f"  map {m.get('id')} {m.get('name') or ''}  "
               f"pos ({p.get('x')},{p.get('y')}) facing {p.get('facing')}")
+    if o.get("mode") == "dialog":
+        d = o.get("dialog", {})
+        print(f"  dialog p{d.get('page')}/{d.get('pages')}"
+              f"{' [waiting]' if d.get('waiting') else ''}: "
+              + json.dumps(d.get("text", "")))
     if o.get("mode") == "battle":
         print("  battle:", json.dumps(o.get("battle"), indent=1)[:600])
     if o.get("mode") == "ui":
