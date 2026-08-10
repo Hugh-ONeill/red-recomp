@@ -77,6 +77,10 @@ Reply with ONLY a JSON object: {"goal":"...","subgoals":[ ... ]}."""
 def build_prompt(goal: str) -> str:
     return (
         f"GOAL: {goal}\n\n"
+        "STARTING STATE: a brand-new game — the player begins UPSTAIRS in "
+        "their own bedroom (map REDS_HOUSE_2F) with no Pokemon. Your FIRST "
+        "subgoals must get them out of the house (downstairs, then out the "
+        "front door) before anything else.\n\n"
         f"PREDICATES you may use in done_when (pick the ONE that best marks "
         f"the subgoal complete):\n"
         + "\n".join(f"  {k}: {v}" for k, v in PREDICATES.items())

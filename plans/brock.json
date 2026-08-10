@@ -1,0 +1,126 @@
+{
+  "goal": "Starting a new game, get the Boulder Badge by defeating Brock at the Pewter City Gym.",
+  "subgoals": [
+    {
+      "id": "move_downstairs",
+      "goal_text": "Walk downstairs from your bedroom to the first floor of your house.",
+      "done_when": {
+        "map": "REDS_HOUSE_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_house",
+      "goal_text": "Walk out of the front door of your house into Pallet Town.",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_oaks_lab",
+      "goal_text": "Enter Professor Oak's Laboratory in Pallet Town.",
+      "done_when": {
+        "map": "OAKS_LAB"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_starter",
+      "goal_text": "Interact with the Professor to receive your starter Pokemon.",
+      "done_when": {
+        "flag": "EVENT_GOT_STARTER"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "battle_rival_lab",
+      "goal_text": "Battle your rival inside Oak's Lab.",
+      "done_when": {
+        "flag": "EVENT_BATTLED_RIVAL_IN_OAKS_LAB"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_1",
+      "goal_text": "Walk north from Pallet Town into Route 1.",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_viridian_city",
+      "goal_text": "Walk north through Route 1 to reach Viridian City.",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_parcel_delivery",
+      "goal_text": "Go to the Viridian Mart and pick up the parcel for Professor Oak.",
+      "done_when": {
+        "flag": "EVENT_GOT_OAKS_PARCEL"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "return_to_oak",
+      "goal_text": "Return to Oak's Lab in Pallet Town to deliver the parcel.",
+      "done_when": {
+        "map": "OAKS_LAB"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_pokedex",
+      "goal_text": "Receive the Pokedex from Professor Oak after delivering the parcel.",
+      "done_when": {
+        "flag": "EVENT_GOT_POKEDEX"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_2",
+      "goal_text": "Walk north through Viridian City and Route 2 to reach the entrance of Viridian Forest.",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_viridian_forest",
+      "goal_text": "Enter Viridian Forest from Route 2.",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_pewter_city",
+      "goal_text": "Exit Viridian Forest to arrive in Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter City Gym.",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Defeat Brock in the gym battle to earn the Boulder Badge.",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:26b-a4b-it-q4_K_M"
+}
