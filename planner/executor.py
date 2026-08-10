@@ -334,10 +334,18 @@ Reply with ONLY a JSON array of ops, e.g.
                     restored = bool((rr.get("result") or {}).get("ok"))
                 if restored:
                     v_ok, _, v_clean = self._run_traced(sg, clean)
-                    if v_ok:
+                    # a 0-op "verified" while the first run needed ops means the
+                    # restore didn't actually reset the relevant state (some
+                    # gate/event state isn't in the checkpoint) — the verify is
+                    # meaningless, so keep the first run's clean ops.
+                    if v_ok and (v_clean or not clean):
                         self.log("escalate_verified", subgoal=sg["id"],
                                  round=rnd, ops=len(v_clean))
                         return True, v_clean
+                    if v_ok and not v_clean and clean:
+                        self.log("escalate_verify_noreset", subgoal=sg["id"],
+                                 round=rnd, ops=len(clean))
+                        return True, clean
                     self.log("escalate_unverified", subgoal=sg["id"], round=rnd)
                     feedback = (
                         "Your macro reached the goal ONCE but did NOT reproduce "
