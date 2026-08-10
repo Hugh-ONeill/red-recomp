@@ -218,6 +218,14 @@ local function observe(G, seq, result)
   o.party = party(G)
   o.badges = badges(G)
   o.money = G.save and G.save.money
+  -- Set event flags, for the EXECUTOR's done_when predicates (SPD tier 0).
+  -- Instrumentation, not model eyes: the model-facing obs builder must strip
+  -- this per CLAIM_RULES ("milestone/event flags are instrumentation").
+  o.flags = {}
+  for k, v in pairs((G.save and G.save.flags) or {}) do
+    if v and type(k) == "string" then o.flags[#o.flags + 1] = k end
+  end
+  table.sort(o.flags)
   local f = io.open(BRIDGE .. "/obs.json.tmp", "w")
   if f then
     f:write(jenc(o))
@@ -445,11 +453,29 @@ function OPS.cross(G, c)
   local ow = G.overworld
   local startMap = ow.map and ow.map.id
   local p = ow.player
-  local ex, ey = bfs_to_edge(G, dir)
+  -- NPC-robust: a wandering NPC can sit on the seam gap or block the only
+  -- corridor, making the edge transiently unreachable. Re-BFS across a few
+  -- rounds with settle time instead of failing out (the Viridian bounce came
+  -- from failing here and the model falling back to blind walk).
+  local ex, ey
+  for round = 1, 4 do
+    ex, ey = bfs_to_edge(G, dir)
+    if ex then break end
+    U.wait(40)
+    if G.stack:top() ~= ow then return false, "interrupted" end
+  end
   if not ex then return false, "no reachable " .. tostring(c.dir) .. " edge" end
   if p.cellX ~= ex or p.cellY ~= ey then
-    OPS.walk_to(G, { x = ex, y = ey, max_steps = c.max_steps or 200 })
-    if (ow.map and ow.map.id) ~= startMap then return true, "crossed (mid-walk)" end
+    for round = 1, 3 do
+      OPS.walk_to(G, { x = ex, y = ey, max_steps = c.max_steps or 200 })
+      if (ow.map and ow.map.id) ~= startMap then
+        return true, "crossed (mid-walk)"
+      end
+      if p.cellX == ex and p.cellY == ey then break end
+      U.wait(30)
+      local nx, ny = bfs_to_edge(G, dir)   -- NPC moved: retarget the gap
+      if nx then ex, ey = nx, ny end
+    end
   end
   -- step off the seam repeatedly until the map changes
   for _ = 1, 8 do

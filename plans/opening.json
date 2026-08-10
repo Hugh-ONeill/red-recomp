@@ -1,0 +1,69 @@
+{
+  "goal": "opening_to_viridian",
+  "comment": "HAND-SEEDED spine-validation plan (SPD step 1). Verified op-by-op manually 2026-08-10. Not record-run material: the record run requires a model-authored plan (CLAIM_RULES v1).",
+  "subgoals": [
+    {
+      "id": "leave_house",
+      "macro": [
+        {"op": "use_warp", "x": 7, "y": 1, "when": {"map": "REDS_HOUSE_2F"}},
+        {"op": "use_warp", "x": 2, "y": 7, "when": {"map": "REDS_HOUSE_1F"}}
+      ],
+      "done_when": {"map": "PALLET_TOWN", "mode": "overworld"}
+    },
+    {
+      "id": "get_starter",
+      "macro": [
+        {"op": "cross", "dir": "north", "when": {"map": "PALLET_TOWN"}},
+        {"op": "wait", "frames": 30},
+        {"op": "interact", "name": "OAKSLAB_SQUIRTLE_POKE_BALL", "when": {"map": "OAKS_LAB", "mode": "overworld"}},
+        {"op": "menu", "index": 1, "when": {"mode": "ui"}},
+        {"op": "menu", "index": 2, "when": {"mode": "ui"}}
+      ],
+      "done_when": {"party_nonempty": true},
+      "max_attempts": 4
+    },
+    {
+      "id": "win_rival",
+      "macro": [
+        {"op": "menu", "index": 2, "when": {"mode": "ui"}},
+        {"op": "use_warp", "x": 4, "y": 11, "when": {"map": "OAKS_LAB", "mode": "overworld"}}
+      ],
+      "battle_policy": "default",
+      "done_when": {"flag": "EVENT_BATTLED_RIVAL_IN_OAKS_LAB", "no_battle": true},
+      "max_attempts": 4
+    },
+    {
+      "id": "exit_lab",
+      "macro": [
+        {"op": "use_warp", "x": 4, "y": 11, "when": {"map": "OAKS_LAB", "mode": "overworld"}}
+      ],
+      "done_when": {"map": "PALLET_TOWN", "mode": "overworld"}
+    },
+    {
+      "id": "to_route1",
+      "macro": [
+        {"op": "cross", "dir": "north", "when": {"map": "PALLET_TOWN"}}
+      ],
+      "battle_policy": "default",
+      "done_when": {"map": "ROUTE_1", "mode": "overworld"}
+    },
+    {
+      "id": "to_viridian",
+      "macro": [
+        {"op": "cross", "dir": "north", "when": {"map": "ROUTE_1"}}
+      ],
+      "battle_policy": "default",
+      "done_when": {"map": "VIRIDIAN_CITY", "mode": "overworld"},
+      "max_attempts": 5
+    },
+    {
+      "id": "to_route2",
+      "macro": [
+        {"op": "cross", "dir": "north", "when": {"map": "VIRIDIAN_CITY"}}
+      ],
+      "battle_policy": "default",
+      "done_when": {"map": "ROUTE_2", "mode": "overworld"},
+      "max_attempts": 5
+    }
+  ]
+}
