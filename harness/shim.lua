@@ -313,6 +313,51 @@ function OPS.walk_to(G, c)
   return false, "step budget exhausted"
 end
 
+-- Take a warp/door/stairs. Walk onto the warp tile, then step THROUGH it
+-- (door mats and edge warps fire on the step off the tile, not on arrival),
+-- trying the map-edge direction first. Decision-free: the model picks which
+-- warp by x,y; the executor handles the walk-and-step-through. This is the
+-- door + map-transition primitive walk_to (in-map only) can't cover.
+function OPS.use_warp(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  local ow = G.overworld
+  local startMap = ow.map and ow.map.id
+  local p = ow.player
+  if not (c.x and c.y) then return false, "use_warp needs x,y" end
+  if p.cellX ~= c.x or p.cellY ~= c.y then
+    OPS.walk_to(G, { x = c.x, y = c.y, max_steps = c.max_steps or 120 })
+    if (ow.map and ow.map.id) ~= startMap then return true, "warped" end
+  end
+  if p.cellX ~= c.x or p.cellY ~= c.y then
+    return false, "couldn't reach the warp tile"
+  end
+  -- step through: prefer whichever edge the tile sits on
+  local w = (ow.map and ow.map.width) or 99
+  local h = (ow.map and ow.map.height) or 99
+  local order = {}
+  if c.y >= h - 1 then order = {"down","left","right","up"}
+  elseif c.y <= 0 then order = {"up","left","right","down"}
+  elseif c.x <= 0 then order = {"left","up","down","right"}
+  elseif c.x >= w - 1 then order = {"right","up","down","left"}
+  else order = {"down","up","left","right"} end
+  for _, dir in ipairs(order) do
+    table.insert(G.input.pressQueue, dir)
+    G.input.state[dir] = true
+    for _ = 1, 30 do
+      coroutine.yield()
+      if (ow.map and ow.map.id) ~= startMap then
+        G.input.state[dir] = false
+        return true, "warped"
+      end
+    end
+    G.input.state[dir] = false
+    U.wait(4)
+  end
+  return false, "stepped through but no warp fired"
+end
+
 -- List-menu navigation: any stack state exposing a numeric cursor `index`.
 -- Moves the cursor to c.index, then A (or just positions with c.press=false).
 function OPS.menu(G, c)

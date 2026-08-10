@@ -28,10 +28,16 @@ EXACTLY ONE action as JSON and nothing else:
 {"reasoning":"<one short sentence>","op":{"op":"<name>",...params}}
 
 Ops:
-- {"op":"walk_to","x":N,"y":N}  pathfind to a tile ON THE CURRENT MAP (also
-  takes a warp/door tile if you target it). Only works within the current map.
+- {"op":"walk_to","x":N,"y":N}  pathfind to a tile ON THE CURRENT MAP. Only
+  works within the current map; does NOT go through doors.
+- {"op":"use_warp","x":N,"y":N}  leave through a door/stairs/exit: pass the
+  x,y of an entry from obs.map.warps. THIS is how you leave a building or
+  take stairs. To exit your house or Oak's lab, use_warp the door tile.
+- {"op":"interact","name":"OBJECT_NAME"}  walk up to an object from
+  obs.map.objects and press A. Use this to take a starter Poke Ball (e.g.
+  name "OAKSLAB_SQUIRTLE_POKE_BALL") or talk to an NPC.
 - {"op":"walk","dir":"up|down|left|right","steps":N}  step blindly; use this
-  to walk off a map edge into the connecting route/town.
+  to walk off a map edge into a connecting route/town when there is no warp.
 - {"op":"mash_a","times":N}  advance dialogue/cutscenes (use ~10).
 - {"op":"tap","btn":"a|b|start|up|down|left|right"}  one button.
 - {"op":"menu","index":N}  move a list/yes-no cursor to index N (0-based) and
