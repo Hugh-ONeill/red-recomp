@@ -36,8 +36,10 @@ Ops:
   x,y of an entry from obs.map.warps (how you exit a building or take stairs).
 - {"op":"interact","name":"OBJECT_NAME"}  walk to an object from
   obs.map.objects and press A (take a Poke Ball, talk to an NPC).
-- {"op":"walk","dir":"up|down|left|right","steps":N}  step blindly; use to
-  cross a map edge into a connecting route/town when there is no warp.
+- {"op":"walk","dir":"up|down|left|right","steps":N}  step blindly. AVOID
+  this for travel — blind steps wander and can walk you back into a building's
+  door. Use walk_to instead. Only use walk for the final 1-2 steps across a
+  map-edge seam that walk_to won't target.
 - {"op":"menu","index":N}  choose in a menu/yes-no box. 1-BASED: index 1 =
   YES / first option, index 2 = NO / second option.
 - {"op":"battle_move","index":N}  in battle FIGHT with move slot N (1-based;
@@ -52,11 +54,13 @@ width/height. obs.badges lists earned badges.
 
 GOAL PATH, in order:
 1. Leave your house: use_warp the stairs, then use_warp the front door.
-2. In PALLET_TOWN, walk NORTH toward the town exit (the top edge, toward
-   Route 1). Prof Oak will stop you there and automatically take you into his
+2. In PALLET_TOWN, go to the TOP edge of the map: use
+   {"op":"walk_to","x":<your current x>,"y":0} (y=0 is the north edge toward
+   Route 1). Prof Oak stops you there and automatically walks you into his
    lab. If you are stopped and nothing else happens, send one {"op":"wait"}.
-   Do NOT walk into the lab building yourself — the north-edge trigger is what
-   starts the starter-choice event.
+   Do NOT walk into the lab building yourself, and do NOT use blind `walk` in
+   town (it can send you back into your house) — the north-edge trigger via
+   walk_to is what starts the starter-choice event.
 3. In OAKS_LAB, pick a starter by interacting with a Poke Ball, e.g.
    {"op":"interact","name":"OAKSLAB_SQUIRTLE_POKE_BALL"} (SQUIRTLE is a solid
    pick vs Brock's rock types via later moves; any starter is fine). A yes/no
