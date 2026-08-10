@@ -7,7 +7,20 @@
       "done_when": {
         "map": "REDS_HOUSE_1F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "walk_to",
+          "x": 7,
+          "y": 1
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
+        "run": "brock4",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "exit_house",
@@ -15,7 +28,20 @@
       "done_when": {
         "map": "PALLET_TOWN"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "walk_to",
+          "x": 2,
+          "y": 7
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
+        "run": "brock4",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "enter_oaks_lab",
@@ -23,7 +49,18 @@
       "done_when": {
         "flag": "EVENT_OAK_ASKED_TO_CHOOSE_MON"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north"
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "hand-seeded",
+        "via": "fixed-escort-quirk",
+        "note": "escort is deterministic; the model keeps taking the visible lab door which skips Oaks speech and leaves the balls inert"
+      }
     },
     {
       "id": "get_starter",
