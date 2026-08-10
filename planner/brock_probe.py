@@ -23,36 +23,37 @@ from bridge import Bridge, RUN
 
 OLLAMA = "http://127.0.0.1:11434/api/chat"
 
-SYSTEM = """You are playing Pokemon Red from the very beginning. Respond with
-EXACTLY ONE action as JSON and nothing else:
+SYSTEM = """You are playing Pokemon Red. The harness AUTO-ADVANCES all
+dialogue, cutscenes, and forced text — you are only ever asked to act at a
+real DECISION point (free overworld movement, a menu/choice, or a battle
+action). So you never need to mash through text. Respond with EXACTLY ONE
+action as JSON and nothing else:
 {"reasoning":"<one short sentence>","op":{"op":"<name>",...params}}
 
 Ops:
-- {"op":"walk_to","x":N,"y":N}  pathfind to a tile ON THE CURRENT MAP. Only
-  works within the current map; does NOT go through doors.
+- {"op":"walk_to","x":N,"y":N}  pathfind to a tile ON THE CURRENT MAP.
 - {"op":"use_warp","x":N,"y":N}  leave through a door/stairs/exit: pass the
-  x,y of an entry from obs.map.warps. THIS is how you leave a building or
-  take stairs. To exit your house or Oak's lab, use_warp the door tile.
-- {"op":"interact","name":"OBJECT_NAME"}  walk up to an object from
-  obs.map.objects and press A. Use this to take a starter Poke Ball (e.g.
-  name "OAKSLAB_SQUIRTLE_POKE_BALL") or talk to an NPC.
-- {"op":"walk","dir":"up|down|left|right","steps":N}  step blindly; use this
-  to walk off a map edge into a connecting route/town when there is no warp.
-- {"op":"mash_a","times":N}  advance dialogue/cutscenes (use ~10).
-- {"op":"tap","btn":"a|b|start|up|down|left|right"}  one button.
-- {"op":"menu","index":N}  move a list/yes-no cursor to index N (0-based) and
-  press A. YES is index 0.
-- {"op":"battle_move","index":N}  in battle: FIGHT with move slot N (1-based;
-  see obs.battle.me.moves for ids). Pick the strongest/effective move.
+  x,y of an entry from obs.map.warps (how you exit a building or take stairs).
+- {"op":"interact","name":"OBJECT_NAME"}  walk to an object from
+  obs.map.objects and press A (take a Poke Ball, talk to an NPC).
+- {"op":"walk","dir":"up|down|left|right","steps":N}  step blindly; use to
+  cross a map edge into a connecting route/town when there is no warp.
+- {"op":"menu","index":N}  choose in a menu/yes-no box. 1-BASED: index 1 =
+  YES / first option, index 2 = NO / second option.
+- {"op":"battle_move","index":N}  in battle FIGHT with move slot N (1-based;
+  see obs.battle.me.moves). Pick the strongest/super-effective move.
 - {"op":"battle_switch","slot":N} / {"op":"battle_run"}  in battle.
-- {"op":"wait","frames":N}
+- {"op":"wait"}  do nothing for a moment (use if a scripted event needs a
+  beat to start, e.g. right after Prof Oak stops you at the town edge).
+- {"op":"tap","btn":"a|b|..."}  single button, rarely needed.
 
-obs.mode is overworld/dialog/battle/ui. obs.map has id, warps (visible
-exits), width/height. obs.badges lists earned badges. GOAL PATH: leave your
-house (south), go north to Prof Oak's lab in Pallet Town, take a starter,
+obs.mode is overworld/battle/ui. obs.map has id, warps, objects,
+width/height. obs.badges lists earned badges. GOAL PATH: leave your house,
+go to Prof Oak's lab in Pallet Town, take a starter (interact its Poke Ball),
 beat your rival, then travel NORTH: Route 1 -> Viridian City -> Route 2 ->
-Viridian Forest -> Pewter City -> Pewter Gym, and beat Brock for the
-BOULDERBADGE. Read obs.result — if an op failed, try a different approach.
+Viridian Forest -> Pewter City -> Pewter Gym, beat Brock for the
+BOULDERBADGE. If Oak stops you at the north edge of town, send one wait and
+the escort finishes on its own. Read obs.result; if an op failed, adapt.
 Output only the JSON object."""
 
 

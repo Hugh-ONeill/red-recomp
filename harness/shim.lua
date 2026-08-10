@@ -111,6 +111,22 @@ local function observe(G, seq, result)
     local p = G.overworld.player or {}
     o.player = { x = p.cellX, y = p.cellY, facing = p.facing,
                  moving = p.moving and true or false }
+    if os.getenv("RED_DBG_BUSY") == "1" then
+      local function n(t) return type(t) == "table" and #t or -1 end
+      local nmov = 0
+      for _, npc in ipairs(G.overworld.npcs or {}) do
+        if npc.moving then nmov = nmov + 1 end
+      end
+      local r = G.overworld.runner
+      o.dbg = {
+        runner = r and r.isRunning and (r:isRunning() and 1 or 0) or -1,
+        scriptMoves = n(G.overworld.scriptMoves),
+        pending = n(G.overworld.pendingScripts),
+        parallel = n(G.overworld.parallelRunners),
+        queue = n(G.overworld.parallelQueue),
+        npcs_moving = nmov,
+      }
+    end
     local map = G.overworld.map or {}
     -- Warps and dimensions are player-visible (stairs, doors, mats, the
     -- screen itself), so they belong in the eyes. Block dims are 2x2 cells.
@@ -534,12 +550,91 @@ end
 
 function OPS.quit() return true, "quitting" end
 
+-- --------------------------------------------------- auto-advance dialogue
+-- The model should only be asked to act at genuine DECISION points. Between
+-- ops the harness rides out everything else: plain text boxes, battle
+-- message text, the nickname ceremony, and script-driven cutscenes (the Oak
+-- escort). This deletes the "stuck mashing dialogue" failure class and the
+-- escort, and slashes model calls.
+local function scripts_busy(G)
+  local ow = G.overworld
+  if not ow then return false end
+  local r = ow.runner
+  if r and r.isRunning and r:isRunning() then return true end
+  if ow.player and ow.player.moving then return true end
+  -- the same signals Checkpoint.scriptsBusy uses: a cutscene (e.g. the Oak
+  -- escort) drives the player via scriptMoves / parallel runners / pending
+  -- scripts, and any of these can be the only non-empty one between beats.
+  local function nonempty(t) return type(t) == "table" and next(t) ~= nil end
+  if nonempty(ow.scriptMoves) or nonempty(ow.pendingScripts)
+      or nonempty(ow.parallelRunners) or nonempty(ow.parallelQueue) then
+    return true
+  end
+  -- NOTE: deliberately NOT checking npc.moving — ambient NPCs wander during
+  -- normal free-roam, which would make free control never read as a decision.
+  return false
+end
+
+-- Info/ceremony screens that just need A to dismiss (not decisions).
+local CEREMONY = { DexEntryMenu = true }
+
+-- True when the game is waiting on a real choice the model must make.
+local function decision_reached(G)
+  local top = G.stack:top()
+  if not top then return false end                        -- between states
+  if G.overworld and top == G.overworld then
+    return not scripts_busy(G)                            -- free roam only
+  end
+  if top.enemy or top.kind then                           -- battle
+    return top.phase == "menu" or top.phase == "moveSelect"
+  end
+  if top.pages and top.pageIndex then return false end    -- plain text box
+  local sid = tostring(top.screenId or "")
+  if sid == "NamingScreen" or CEREMONY[sid] then return false end
+  if type(top.index) == "number" then return true end     -- yes/no, list menu
+  if sid ~= "" then return true end                       -- named screen (dex/PC/shop/move-learn)
+  return false                                            -- transition/fade/misc: wait it out
+end
+
+local function advance_to_decision(G, maxn)
+  local stable = 0
+  for _ = 1, maxn or 600 do
+    if decision_reached(G) then
+      -- confirm the decision state holds: a cutscene (e.g. the Oak escort
+      -- after "Hey! Wait!") reads idle for a stretch of frames before its
+      -- next beat schedules, so require a sustained idle window (~40 frames)
+      -- before handing control back. Genuine free control stays idle forever,
+      -- so this only adds negligible latency there; a resuming cutscene trips
+      -- scripts_busy within the window and we keep riding it.
+      stable = stable + 1
+      if stable >= 20 then return end
+      U.wait(2)
+    else
+      stable = 0
+      local top = G.stack:top()
+      local sid = top and tostring(top.screenId or "") or ""
+      if top and top.pages and top.pageIndex then
+        U.tap(G, "a"); U.wait(2)                          -- plain text
+      elseif top and (top.enemy or top.kind) then
+        U.tap(G, "a"); U.wait(2)                          -- battle message text
+      elseif sid == "NamingScreen" then
+        U.tap(G, "start"); U.wait(3); U.tap(G, "a"); U.wait(3)  -- default name
+      elseif CEREMONY[sid] then
+        U.tap(G, "a"); U.wait(3)                          -- info screen
+      else
+        U.wait(3)                                         -- cutscene / transition
+      end
+    end
+  end
+end
+
 -- ------------------------------------------------------------ bridge loop
 return function(G)
   U.wait(10)
   local seq = 0
   local result = { op = "boot", ok = true }
   while true do
+    advance_to_decision(G)          -- only ever observe at a decision point
     observe(G, seq, result)
     -- poll for the next command
     local cmd
