@@ -284,7 +284,15 @@ Reply with ONLY a JSON array of ops, e.g.
         rounds = sg.get("escalation_rounds", 4)
         feedback = "This is the first attempt."
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
+        # capture the subgoal's start so each round retries from a clean state
+        # (a failed proposal otherwise corrupts the state and later rounds
+        # compound the mess — the 2F<->1F house bounce).
+        cap = self.b.send("checkpoint_capture", token="esc")
+        can_reset = bool((cap.get("result") or {}).get("ok"))
+        self.log("escalate_checkpoint", subgoal=sg["id"], captured=can_reset)
         for rnd in range(1, rounds + 1):
+            if rnd > 1 and can_reset:
+                self.b.send("checkpoint_restore", token="esc")
             obs = model_view(self.settle())
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}\n"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"

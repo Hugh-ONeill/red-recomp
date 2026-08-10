@@ -741,6 +741,34 @@ function OPS.interact(G, c)
   return false, "no reachable tile adjacent to target"
 end
 
+-- Checkpoint capture/restore (in-memory), for escalation's clean retries:
+-- a failed macro proposal corrupts the state, so each escalation round
+-- restores the subgoal's start. CLAIM_RULES: checkpoints are for development/
+-- refinement, NEVER inside the record run. Blobs are keyed by token.
+local saved_checkpoints = {}
+function OPS.checkpoint_capture(G, c)
+  local ok, Checkpoint = pcall(require, "src.core.Checkpoint")
+  if not ok then return false, "no Checkpoint module" end
+  local insp = Checkpoint.inspect(G)
+  if not insp.canCapture then
+    return false, "cannot capture: " .. tostring(insp.reason)
+  end
+  local cok, ck = pcall(Checkpoint.capture, G)
+  if not cok or not ck then return false, "capture failed" end
+  saved_checkpoints[c.token or "default"] = ck
+  return true, "captured " .. (c.token or "default")
+end
+
+function OPS.checkpoint_restore(G, c)
+  local ok, Checkpoint = pcall(require, "src.core.Checkpoint")
+  if not ok then return false, "no Checkpoint module" end
+  local ck = saved_checkpoints[c.token or "default"]
+  if not ck then return false, "no checkpoint " .. (c.token or "default") end
+  local rok, err = pcall(Checkpoint.restore, G, ck)
+  if not rok then return false, "restore failed: " .. tostring(err) end
+  return true, "restored " .. (c.token or "default")
+end
+
 function OPS.screenshot(G, c)
   return U.shot(G, c.path or (BRIDGE .. "/shot.png"))
 end
