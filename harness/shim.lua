@@ -79,6 +79,7 @@ do
   end
 end
 
+
 local function party(G)
   local out = {}
   for i, mon in ipairs((G.save and G.save.party) or {}) do
@@ -126,8 +127,25 @@ local function observe(G, seq, result)
   elseif top and (top.enemy or top.kind) then
     o.mode = "battle"
     o.battle = scalars(top, 0)
-    o.battle.player_mon = scalars(top.player, 1)
-    o.battle.enemy_mon = scalars(top.enemy, 1)
+    local function side(s)
+      if not s then return nil end
+      local d = scalars(s, 0)
+      local mon = s.mon or {}
+      d.species = mon.species or (s.def and s.def.id)
+      d.level = mon.level
+      d.hp = s.shownHP or mon.hp
+      d.maxhp = (s.curStats and s.curStats.hp)
+      d.types = s.curTypes
+      d.status = s.shownStatus or mon.status   -- scalar "SLP"/"PSN"/... or nil
+      d.moves = {}
+      for i, mv in ipairs(s.curMoves or mon.moves or {}) do
+        d.moves[i] = { index = i, id = mv.id, pp = mv.pp }
+      end
+      return d
+    end
+    o.battle.me = side(top.player)
+    o.battle.foe = side(top.enemy)
+    o.battle.player_mon, o.battle.enemy_mon = nil, nil
   elseif top and top.pages and top.pageIndex then
     -- TextBox: pages are arrays of display-ready line strings. Emit only the
     -- page currently on screen — the model reads at the same pace a player
@@ -293,6 +311,102 @@ function OPS.menu(G, c)
   if c.press ~= false then
     U.tap(G, "a")
     U.wait(4)
+  end
+  return true
+end
+
+-- Battle executors. Grid is row-major 2x2: FIGHT=1, PKMN=2, ITEM=3, RUN=4.
+-- These are decision-free: the MODEL picks the move index / target slot
+-- (CLAIM_RULES_v1 — battle policy is the model's).
+local function battle_menu_to(G, battle, want)
+  for _ = 1, 6 do
+    if battle.menuIndex == want then return true end
+    local col, wcol = (battle.menuIndex - 1) % 2, (want - 1) % 2
+    U.tap(G, col ~= wcol and "left" or (battle.menuIndex > want and "up"
+                                        or "down"))
+    U.wait(2)
+  end
+  return battle.menuIndex == want
+end
+
+local function in_battle(G)
+  local b = G.stack:top()
+  return b and (b.enemy or b.kind) and b or nil
+end
+
+function OPS.battle_move(G, c)
+  local b = in_battle(G)
+  if not b then return false, "not in battle" end
+  local want = c.index or 1
+  -- advance any pending text until the action menu is up
+  for _ = 1, 40 do
+    if b.phase == "menu" then break end
+    U.tap(G, "a"); U.wait(3)
+  end
+  if b.phase ~= "menu" then return false, "menu never appeared" end
+  if not battle_menu_to(G, b, 1) then return false, "couldn't reach FIGHT" end
+  U.tap(G, "a"); U.wait(4)
+  if b.phase ~= "moveSelect" then
+    return false, "no moveSelect (disabled/struggle?)"
+  end
+  for _ = 1, 8 do
+    if b.moveIndex == want then break end
+    U.tap(G, b.moveIndex > want and "up" or "down"); U.wait(2)
+  end
+  if b.moveIndex ~= want then return false, "cursor missed move" end
+  U.tap(G, "a"); U.wait(3)
+  -- play out the turn's text back to the next decision or battle end
+  for _ = 1, 120 do
+    local nb = in_battle(G)
+    if not nb then return true, "battle ended" end
+    if nb.phase == "menu" or nb.phase == "moveSelect" then return true end
+    U.tap(G, "a"); U.wait(3)
+  end
+  return true, "turn resolved (timeout advancing text)"
+end
+
+function OPS.battle_run(G)
+  local b = in_battle(G)
+  if not b then return false, "not in battle" end
+  for _ = 1, 40 do
+    if b.phase == "menu" then break end
+    U.tap(G, "a"); U.wait(3)
+  end
+  if not battle_menu_to(G, b, 4) then return false, "couldn't reach RUN" end
+  U.tap(G, "a"); U.wait(3)
+  for _ = 1, 30 do
+    if not in_battle(G) then return true, "fled" end
+    U.tap(G, "a"); U.wait(3)
+  end
+  return true, "run attempted"
+end
+
+function OPS.battle_switch(G, c)
+  local b = in_battle(G)
+  if not b then return false, "not in battle" end
+  for _ = 1, 40 do
+    if b.phase == "menu" then break end
+    U.tap(G, "a"); U.wait(3)
+  end
+  if not battle_menu_to(G, b, 2) then return false, "couldn't reach PKMN" end
+  U.tap(G, "a"); U.wait(4)
+  local slot = c.slot or 1
+  local top = G.stack:top()
+  if top and type(top.index) == "number" then
+    for _ = 1, 12 do
+      if top.index == slot then break end
+      U.tap(G, top.index > slot and "up" or "down"); U.wait(2)
+    end
+    U.tap(G, "a"); U.wait(3)
+    U.tap(G, "a"); U.wait(3)   -- confirm SWITCH on the submenu
+  end
+  for _ = 1, 60 do
+    local nb = in_battle(G)
+    if nb and (nb.phase == "menu" or nb.phase == "moveSelect") then
+      return true
+    end
+    if not nb then return true, "battle ended" end
+    U.tap(G, "a"); U.wait(3)
   end
   return true
 end
