@@ -152,8 +152,20 @@ class Executor:
         self.plan_path = plan_path
         self.run_id = run_id
         self.escalations = 0
+        # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
+        # Pure memory of past observations (the obs already showed each map's
+        # connections while standing on it), re-served to the model so multi-
+        # leg routing uses seen geography instead of its shaky world prior
+        # (brock9: it kept hunting for Pallet WEST of Viridian, on ROUTE_22).
+        self.atlas: dict = {}
         self.logf = open(RUN / "executor_log.jsonl", "a")
         self.t0 = time.time()
+
+    def _note(self, obs):
+        m = (obs or {}).get("map") or {}
+        if m.get("id") and m.get("connections"):
+            self.atlas[m["id"]] = m["connections"]
+        return obs
 
     def log(self, kind, **kw):
         self.logf.write(json.dumps(
@@ -175,9 +187,9 @@ class Executor:
         obs = self.b.obs()
         for _ in range(12):
             if not obs or obs.get("mode") != "dialog":
-                return obs
+                return self._note(obs)
             obs = self.b.send("wait", frames=6)
-        return obs
+        return self._note(obs)
 
     MACRO_AUTHOR_SYS = """You AUTHOR a macro — an ordered list of ops — to
 achieve one Pokemon Red subgoal, then the executor RUNS it. You do NOT pilot
@@ -186,8 +198,12 @@ coordinates. Read:
   obs.map.warps      doors/stairs as {x,y,dest} — use_warp their x,y to exit
   obs.map.objects    interactables as {kind,name,x,y} — interact by name
   obs.map.connections adjacent maps by direction — cross that direction.
-    ROUTE: pick the direction whose DEST map leads toward the goal (check
-    each new map's connections again after crossing; do not guess a chain)
+    ROUTE: pick the direction whose DEST map leads toward the goal, using the
+    ATLAS of edges you have already seen. ONE LEG PER MACRO: your macro may
+    contain at most ONE map-changing op (cross, or use_warp through a door)
+    and it must be the LAST op — anything after it is DISCARDED, because you
+    cannot know coordinates on a map you are not standing in. You will be
+    re-prompted with a fresh observation after arriving.
 Ops: {"op":"walk_to","x":N,"y":N} (within-map), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
 door/stairs), {"op":"interact","name":"OBJECT_NAME"}, {"op":"menu","index":N}
@@ -319,9 +335,22 @@ Reply with ONLY a JSON array of ops, e.g.
         cap = self.b.send("checkpoint_capture", token="esc")
         can_reset = bool((cap.get("result") or {}).get("ok"))
         self.log("escalate_checkpoint", subgoal=sg["id"], captured=can_reset)
-        for rnd in range(1, rounds + 1):
-            obs = model_view(self.settle())
+        # A round that CHANGED something (map/party/flags) is progress and
+        # does not spend budget — multi-leg subgoals need one leg per round.
+        # The absolute cap bounds oscillation (A<->B crossings are each "a
+        # map change" yet go nowhere).
+        spent, rnd = 0, 0
+        while spent < rounds and rnd < rounds * 3:
+            rnd += 1
+            start = self.settle()
+            sig0 = self._snapshot(start)
+            obs = model_view(start)
+            atlas = "; ".join(
+                f"{m}: " + ", ".join(f"{d}->{t}" for d, t in c.items())
+                for m, c in self.atlas.items())
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}\n"
+                    f"ATLAS (map edges you have observed so far): "
+                    f"{atlas or 'nothing yet'}\n"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
                     f"CURRENT_OBSERVATION: "
                     f"{json.dumps(obs, separators=(',', ':'))}\n"
@@ -338,10 +367,19 @@ Reply with ONLY a JSON array of ops, e.g.
             macro = self._parse_macro(reply)
             if not macro:
                 self.log("escalate_bad_proposal", subgoal=sg["id"], round=rnd,
-                         reply=reply[:160])
+                         reply=reply[:600])
                 feedback = "Your last reply was not a JSON op array. Return " \
                            "ONLY a JSON array of op objects."
+                spent += 1
                 continue
+            # ONE LEG PER MACRO, enforced: ops after the first map-changing op
+            # target a map the model has never seen — always hallucinated.
+            cut = next((i for i, s in enumerate(macro)
+                        if s.get("op") in ("cross", "use_warp")), None)
+            if cut is not None and cut + 1 < len(macro):
+                self.log("escalate_truncated", subgoal=sg["id"], round=rnd,
+                         kept=cut + 1, dropped=len(macro) - cut - 1)
+                macro = macro[:cut + 1]
             self.log("escalate_proposal", subgoal=sg["id"], round=rnd,
                      macro=macro)
             ok, trace, clean = self._run_traced(sg, macro)
@@ -381,6 +419,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         "the current observation.")
                     self.b.send("checkpoint_restore", token="esc")
                     progress = []
+                    spent += 1
                     continue
                 # couldn't restore to verify (some states refuse it) — commit
                 # the accumulated clean ops best-effort rather than a bogus
@@ -398,7 +437,11 @@ Reply with ONLY a JSON array of ops, e.g.
                     progress = []
                 feedback = ("The game state was lost and reset to the subgoal "
                             "start; author the full sequence again.")
+                spent += 1
                 continue
+            sig1 = self._snapshot(cur)
+            if (sig1[0], sig1[4], sig1[5]) == (sig0[0], sig0[4], sig0[5]):
+                spent += 1   # round went nowhere (same map/party/flags)
             # accumulate targets that failed or did nothing, so the model is
             # told NOT to repeat them (it looped on the pokedex before).
             for t in trace:
@@ -436,7 +479,8 @@ Reply with ONLY a JSON array of ops, e.g.
                         + (f"\nThese targets did NOTHING — do NOT repeat them, "
                            f"pick a DIFFERENT one: {inert}" if inert else ""))
             self.log("escalate_feedback", subgoal=sg["id"], round=rnd,
-                     trace=trace, inert=inert, progress_ops=len(progress))
+                     spent=spent, trace=trace, inert=inert,
+                     progress_ops=len(progress))
         self.log("escalate_end", subgoal=sg["id"], success=False)
         return False, sg.get("macro", [])
 
