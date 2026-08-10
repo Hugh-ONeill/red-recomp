@@ -57,8 +57,75 @@
       "max_attempts": 5
     },
     {
+      "id": "get_parcel",
+      "macro": [
+        {"op": "use_warp", "x": 29, "y": 19, "when": {"map": "VIRIDIAN_CITY"}},
+        {"op": "interact", "name": "VIRIDIANMART_CLERK", "when": {"map": "VIRIDIAN_MART"}}
+      ],
+      "done_when": {"flag": "EVENT_GOT_OAKS_PARCEL"},
+      "max_attempts": 4
+    },
+    {
+      "id": "exit_mart",
+      "macro": [
+        {"op": "use_warp", "x": 3, "y": 7, "when": {"map": "VIRIDIAN_MART"}}
+      ],
+      "done_when": {"map": "VIRIDIAN_CITY", "mode": "overworld"}
+    },
+    {
+      "id": "back_to_route1",
+      "macro": [
+        {"op": "cross", "dir": "south", "when": {"map": "VIRIDIAN_CITY"}}
+      ],
+      "battle_policy": "default",
+      "done_when": {"map": "ROUTE_1", "mode": "overworld"}
+    },
+    {
+      "id": "back_to_pallet",
+      "macro": [
+        {"op": "cross", "dir": "south", "when": {"map": "ROUTE_1"}}
+      ],
+      "battle_policy": "default",
+      "done_when": {"map": "PALLET_TOWN", "mode": "overworld"},
+      "max_attempts": 5
+    },
+    {
+      "id": "deliver_parcel",
+      "macro": [
+        {"op": "use_warp", "x": 12, "y": 11, "when": {"map": "PALLET_TOWN"}},
+        {"op": "interact", "name": "OAKSLAB_OAK1", "when": {"map": "OAKS_LAB"}}
+      ],
+      "done_when": {"flag": "EVENT_GOT_POKEDEX"},
+      "max_attempts": 4
+    },
+    {
+      "id": "exit_lab_2",
+      "macro": [
+        {"op": "use_warp", "x": 4, "y": 11, "when": {"map": "OAKS_LAB", "mode": "overworld"}}
+      ],
+      "done_when": {"map": "PALLET_TOWN", "mode": "overworld"}
+    },
+    {
+      "id": "north_again_route1",
+      "macro": [
+        {"op": "cross", "dir": "north", "when": {"map": "PALLET_TOWN"}}
+      ],
+      "battle_policy": "default",
+      "done_when": {"map": "ROUTE_1", "mode": "overworld"}
+    },
+    {
+      "id": "north_again_viridian",
+      "macro": [
+        {"op": "cross", "dir": "north", "when": {"map": "ROUTE_1"}}
+      ],
+      "battle_policy": "default",
+      "done_when": {"map": "VIRIDIAN_CITY", "mode": "overworld"},
+      "max_attempts": 5
+    },
+    {
       "id": "to_route2",
       "macro": [
+        {"op": "interact", "name": "VIRIDIANCITY_OLD_MAN_SLEEPY", "when": {"map": "VIRIDIAN_CITY"}},
         {"op": "cross", "dir": "north", "when": {"map": "VIRIDIAN_CITY"}}
       ],
       "battle_policy": "default",

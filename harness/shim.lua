@@ -476,6 +476,10 @@ function OPS.cross(G, c)
       local nx, ny = bfs_to_edge(G, dir)   -- NPC moved: retarget the gap
       if nx then ex, ey = nx, ny end
     end
+    if p.cellX ~= ex or p.cellY ~= ey then
+      return false, ("couldn't reach %s edge gap (%d,%d), stuck at (%d,%d)")
+        :format(tostring(c.dir), ex, ey, p.cellX, p.cellY)
+    end
   end
   -- step off the seam repeatedly until the map changes
   for _ = 1, 8 do
@@ -491,7 +495,9 @@ function OPS.cross(G, c)
     G.input.state[dir] = false
     U.wait(3)
   end
-  return (ow.map and ow.map.id) ~= startMap, "cross attempted"
+  if (ow.map and ow.map.id) ~= startMap then return true, "crossed" end
+  return false, ("stepped %s at gap (%d,%d) but no map change")
+    :format(dir, p.cellX, p.cellY)
 end
 
 -- List-menu navigation: any stack state exposing a numeric cursor `index`.
