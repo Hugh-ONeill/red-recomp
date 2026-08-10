@@ -486,19 +486,51 @@ function OPS.cross(G, c)
   -- corridor, making the edge transiently unreachable. Re-BFS across a few
   -- rounds with settle time instead of failing out (the Viridian bounce came
   -- from failing here and the model falling back to blind walk).
+  -- Moving toward some edges TRIGGERS a cutscene that carries you across on
+  -- its own (Pallet north -> the Oak escort into the lab). If that fires,
+  -- ride it: press A through its text and wait for the map to change, rather
+  -- than reporting "stuck". Returns true when the escort delivers us.
+  local function ride_cutscene()
+    for _ = 1, 40 do
+      if (ow.map and ow.map.id) ~= startMap then return true end
+      local top = G.stack:top()
+      if top and top.pages and top.pageIndex then
+        U.tap(G, "a"); U.wait(3)          -- cutscene dialogue
+      elseif G.overworld and top == ow
+          and not (ow.runner and ow.runner.isRunning
+                   and ow.runner:isRunning())
+          and not (ow.player and ow.player.moving) then
+        return false                       -- free control, no cutscene running
+      else
+        U.wait(4)                          -- script moving us / transition
+      end
+    end
+    return (ow.map and ow.map.id) ~= startMap
+  end
+
   local ex, ey
   for round = 1, 4 do
     ex, ey = bfs_to_edge(G, dir)
     if ex then break end
     U.wait(40)
-    if G.stack:top() ~= ow then return false, "interrupted" end
+    if G.stack:top() ~= ow then
+      if ride_cutscene() then return true, "crossed (cutscene)" end
+    end
   end
-  if not ex then return false, "no reachable " .. tostring(c.dir) .. " edge" end
+  if not ex then
+    if ride_cutscene() then return true, "crossed (cutscene)" end
+    return false, "no reachable " .. tostring(c.dir) .. " edge"
+  end
   if p.cellX ~= ex or p.cellY ~= ey then
     for round = 1, 3 do
       OPS.walk_to(G, { x = ex, y = ey, max_steps = c.max_steps or 200 })
       if (ow.map and ow.map.id) ~= startMap then
         return true, "crossed (mid-walk)"
+      end
+      -- a cutscene may have interrupted the walk (Oak's "Hey! Wait!") — ride
+      -- it out before deciding we're stuck.
+      if G.stack:top() ~= ow or (ow.player and ow.player.moving) then
+        if ride_cutscene() then return true, "crossed (cutscene)" end
       end
       if p.cellX == ex and p.cellY == ey then break end
       U.wait(30)
@@ -506,6 +538,7 @@ function OPS.cross(G, c)
       if nx then ex, ey = nx, ny end
     end
     if p.cellX ~= ex or p.cellY ~= ey then
+      if ride_cutscene() then return true, "crossed (cutscene)" end
       return false, ("couldn't reach %s edge gap (%d,%d), stuck at (%d,%d)")
         :format(tostring(c.dir), ex, ey, p.cellX, p.cellY)
     end
