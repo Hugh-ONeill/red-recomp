@@ -268,8 +268,12 @@ Reply with ONLY a JSON array of ops, e.g.
                     chg.append("moved")
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
             trace.append(note)
-            if r.get("ok"):
-                clean.append({"op": op, **step})   # distill only ops that ran
+            # distill an op if it ran OK *or* changed the state — cross via the
+            # Oak escort reports ok=False ("cross attempted") yet the map
+            # changes, and menu ops have delayed effects; only genuinely-failed
+            # no-ops (interact 'stairs') are both not-ok and inert, so dropped.
+            if r.get("ok") or before != after:
+                clean.append({"op": op, **step})
             if pred_holds(done, self.settle()):
                 return True, trace, clean
         return pred_holds(done, self.settle()), trace, clean
