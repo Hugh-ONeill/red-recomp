@@ -3,10 +3,16 @@
   "comment": "MACRO-LESS plan to demonstrate SPD step 3: every subgoal has only a goal_text + done_when, no macro. Run 1 with --escalate hands each subgoal to the live model and DISTILLS the successful ops back here as macros; run 2 replays them deterministically (escalations -> 0). This file is mutated in place by distillation.",
   "subgoals": [
     {
-      "id": "leave_house",
-      "goal_text": "You start upstairs in your house. Go downstairs (use_warp the stairs) and out the front door (use_warp it) into Pallet Town.",
+      "id": "go_downstairs",
+      "goal_text": "You are upstairs (REDS_HOUSE_2F). Take the stairs down to the first floor: use_warp the stairs tile listed in obs.map.warps (its dest is REDS_HOUSE_1F).",
+      "done_when": {"map": "REDS_HOUSE_1F", "mode": "overworld"},
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_house",
+      "goal_text": "You are on the first floor (REDS_HOUSE_1F). Go out the front door into Pallet Town: use_warp the door tile in obs.map.warps whose dest is LAST_MAP (the exit).",
       "done_when": {"map": "PALLET_TOWN", "mode": "overworld"},
-      "escalation_budget": 15
+      "escalation_rounds": 4
     },
     {
       "id": "trigger_oak",
