@@ -45,6 +45,10 @@ ROUTE_MAPS = ["REDS_HOUSE_2F", "REDS_HOUSE_1F", "PALLET_TOWN", "OAKS_LAB",
               "ROUTE_1", "VIRIDIAN_CITY", "VIRIDIAN_MART", "ROUTE_2",
               "VIRIDIAN_FOREST", "PEWTER_CITY", "PEWTER_GYM"]
 KEY_FLAGS = {
+    "EVENT_OAK_ASKED_TO_CHOOSE_MON": "Oak finished his intro and the starter "
+        "Poke Balls are now active to choose from (use this to mark 'reached "
+        "the lab AND it's ready' — a plain {map:OAKS_LAB} fires too early, "
+        "before Oak's speech arms the balls)",
     "EVENT_GOT_STARTER": "obtained a starter Pokemon",
     "EVENT_BATTLED_RIVAL_IN_OAKS_LAB": "fought the rival in Oak's lab",
     "EVENT_GOT_OAKS_PARCEL": "picked up Oak's Parcel at the Viridian mart",

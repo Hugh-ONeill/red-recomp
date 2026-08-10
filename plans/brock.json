@@ -19,9 +19,9 @@
     },
     {
       "id": "enter_oaks_lab",
-      "goal_text": "Enter Professor Oak's Laboratory in Pallet Town.",
+      "goal_text": "From Pallet Town head NORTH (cross north) toward Route 1; Professor Oak stops you and escorts you into his lab, then gives his intro so the starter Poke Balls become active.",
       "done_when": {
-        "map": "OAKS_LAB"
+        "flag": "EVENT_OAK_ASKED_TO_CHOOSE_MON"
       },
       "escalation_rounds": 4
     },
