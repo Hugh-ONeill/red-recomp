@@ -185,7 +185,9 @@ live; you write the whole sequence up front, reading the observation for exact
 coordinates. Read:
   obs.map.warps      doors/stairs as {x,y,dest} — use_warp their x,y to exit
   obs.map.objects    interactables as {kind,name,x,y} — interact by name
-  obs.map.connections adjacent maps by direction — cross that direction
+  obs.map.connections adjacent maps by direction — cross that direction.
+    ROUTE: pick the direction whose DEST map leads toward the goal (check
+    each new map's connections again after crossing; do not guess a chain)
 Ops: {"op":"walk_to","x":N,"y":N} (within-map), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
 door/stairs), {"op":"interact","name":"OBJECT_NAME"}, {"op":"menu","index":N}
@@ -204,19 +206,24 @@ Reply with ONLY a JSON array of ops, e.g.
 
     @staticmethod
     def _parse_macro(text: str):
-        import re
-        m = re.search(r"\[.*\]", text, re.S)
-        if not m:
-            return None
-        try:
-            arr = json.loads(m.group(0))
-        except json.JSONDecodeError:
-            return None
-        out = []
-        for step in arr if isinstance(arr, list) else []:
-            if isinstance(step, dict) and "op" in step:
-                out.append(step)
-        return out or None
+        # raw_decode from each '[' parses the FIRST complete JSON array and
+        # ignores trailing prose — a greedy [.*] regex spanned to the last ']'
+        # in the reply, so a valid array followed by commentary failed to
+        # parse and burned 3 of return_to_oak's 4 rounds on re-prompts.
+        dec = json.JSONDecoder()
+        idx = text.find("[")
+        while idx != -1:
+            try:
+                arr, _ = dec.raw_decode(text, idx)
+            except json.JSONDecodeError:
+                idx = text.find("[", idx + 1)
+                continue
+            out = [step for step in (arr if isinstance(arr, list) else [])
+                   if isinstance(step, dict) and "op" in step]
+            if out:
+                return out
+            idx = text.find("[", idx + 1)
+        return None
 
     @staticmethod
     def _snapshot(obs):
@@ -401,6 +408,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         inert.append(tgt)
             objs = [f"{o.get('kind')}:{o.get('name')}({o.get('x')},{o.get('y')})"
                     for o in (cur.get("map") or {}).get("objects", [])]
+            conns = (cur.get("map") or {}).get("connections") or {}
             open_prompt = ""
             if cur.get("mode") == "ui" and cur.get("recent_text"):
                 open_prompt = (
@@ -420,6 +428,9 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"CONTINUES from here — author only the REMAINING "
                         f"steps, do not repeat ones that already took effect."
                         + open_prompt
+                        + (f"\nEdges from this map (cross that dir to reach): "
+                           + ", ".join(f"{d}->{m}" for d, m in conns.items())
+                           if conns else "")
                         + (f"\nObjects here you can interact: {objs}" if objs
                            else "")
                         + (f"\nThese targets did NOTHING — do NOT repeat them, "
