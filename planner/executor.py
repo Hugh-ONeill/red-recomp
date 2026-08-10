@@ -379,6 +379,14 @@ Reply with ONLY a JSON array of ops, e.g.
                         inert.append(tgt)
             objs = [f"{o.get('kind')}:{o.get('name')}({o.get('x')},{o.get('y')})"
                     for o in (cur.get("map") or {}).get("objects", [])]
+            open_prompt = ""
+            if cur.get("mode") == "ui" and cur.get("recent_text"):
+                open_prompt = (
+                    f"\nA CHOICE PROMPT is still OPEN and your macro did not "
+                    f"answer it (prompt: {cur.get('recent_text')!r}). Add a "
+                    f"menu op to answer it (1=YES/first, 2=NO/second) — e.g. "
+                    f"to accept, follow the interact with {{\"op\":\"menu\","
+                    f"\"index\":1}}.")
             feedback = ("Per-step results of your last macro:\n"
                         + "\n".join(f"  {i + 1}. {t}"
                                     for i, t in enumerate(trace))
@@ -386,6 +394,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"{(cur.get('map') or {}).get('id')}, mode="
                         f"{cur.get('mode')}, party size="
                         f"{len(cur.get('party') or [])}."
+                        + open_prompt
                         + (f"\nObjects here you can interact: {objs}" if objs
                            else "")
                         + (f"\nThese targets did NOTHING — do NOT repeat them, "
