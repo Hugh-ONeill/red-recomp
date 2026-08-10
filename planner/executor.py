@@ -110,12 +110,26 @@ class Executor:
         return BATTLE_POLICIES[name](self.b, obs, self.log,
                                      self.max_battle_turns)
 
+    def settle(self) -> dict:
+        """Resolve to a clean decision state before checking guards/predicates.
+        A step can leave the game mid-dialogue (e.g. the 'got the PARCEL!' box,
+        after which the event flag sets only once it closes), where map reads
+        None and map-keyed when-guards would wrongly skip. A `wait` triggers
+        the shim's auto-advance, which rides plain text to the next decision."""
+        obs = self.b.obs()
+        for _ in range(12):
+            if not obs or obs.get("mode") != "dialog":
+                return obs
+            obs = self.b.send("wait", frames=6)
+        return obs
+
     def run_subgoal(self, sg: dict) -> bool:
         done = sg.get("done_when")
         for attempt in range(1, sg.get("max_attempts", 3) + 1):
-            obs = self.b.obs()
+            obs = self.settle()
             if obs and obs.get("mode") == "battle":
                 obs = self.handle_battle(sg, obs)
+                obs = self.settle()
             if pred_holds(done, obs):
                 self.log("subgoal_done", subgoal=sg["id"], attempt=attempt,
                          via="pre-check")
@@ -125,16 +139,17 @@ class Executor:
                 step = dict(step)
                 when = step.pop("when", None)
                 op = step.pop("op")
-                obs = self.b.obs()
+                obs = self.settle()
                 if obs and obs.get("mode") == "battle":
                     obs = self.handle_battle(sg, obs)
+                    obs = self.settle()
                 if pred_holds(done, obs):
                     self.log("subgoal_done", subgoal=sg["id"],
                              attempt=attempt, via="mid-macro")
                     return True
                 if when and not pred_holds(when, obs):
                     self.log("step_skipped", subgoal=sg["id"], op=op,
-                             when=when)
+                             when=when, mode=obs.get("mode") if obs else None)
                     continue
                 try:
                     obs = self.b.send(op, **step)
@@ -150,7 +165,7 @@ class Executor:
                          mode=obs.get("mode") if obs else None)
                 if obs and obs.get("mode") == "battle":
                     obs = self.handle_battle(sg, obs)
-            if pred_holds(done, self.b.obs()):
+            if pred_holds(done, self.settle()):
                 self.log("subgoal_done", subgoal=sg["id"], attempt=attempt,
                          via="post-macro")
                 return True
