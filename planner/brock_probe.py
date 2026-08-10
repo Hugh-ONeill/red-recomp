@@ -48,13 +48,28 @@ Ops:
 - {"op":"tap","btn":"a|b|..."}  single button, rarely needed.
 
 obs.mode is overworld/battle/ui. obs.map has id, warps, objects,
-width/height. obs.badges lists earned badges. GOAL PATH: leave your house,
-go to Prof Oak's lab in Pallet Town, take a starter (interact its Poke Ball),
-beat your rival, then travel NORTH: Route 1 -> Viridian City -> Route 2 ->
-Viridian Forest -> Pewter City -> Pewter Gym, beat Brock for the
-BOULDERBADGE. If Oak stops you at the north edge of town, send one wait and
-the escort finishes on its own. Read obs.result; if an op failed, adapt.
-Output only the JSON object."""
+width/height. obs.badges lists earned badges.
+
+GOAL PATH, in order:
+1. Leave your house: use_warp the stairs, then use_warp the front door.
+2. In PALLET_TOWN, walk NORTH toward the town exit (the top edge, toward
+   Route 1). Prof Oak will stop you there and automatically take you into his
+   lab. If you are stopped and nothing else happens, send one {"op":"wait"}.
+   Do NOT walk into the lab building yourself — the north-edge trigger is what
+   starts the starter-choice event.
+3. In OAKS_LAB, pick a starter by interacting with a Poke Ball, e.g.
+   {"op":"interact","name":"OAKSLAB_SQUIRTLE_POKE_BALL"} (SQUIRTLE is a solid
+   pick vs Brock's rock types via later moves; any starter is fine). A yes/no
+   box appears — answer YES with {"op":"menu","index":1}.
+4. Do NOT interact with your RIVAL. The rival battle triggers BY ITSELF when
+   you try to leave the lab after taking your starter — just head for the lab
+   exit and it will start. In that battle use battle_move with a damaging move.
+5. After the rival, go NORTH: Route 1 -> Viridian City -> Route 2 -> Viridian
+   Forest -> Pewter City -> Pewter Gym; beat Brock for the BOULDERBADGE
+   (it will appear in obs.badges).
+
+Read obs.result; if an op failed or nothing changed, do something DIFFERENT
+rather than repeating it. Output only the JSON object."""
 
 
 def chat(msgs, model):
