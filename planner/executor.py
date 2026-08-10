@@ -328,8 +328,11 @@ Reply with ONLY a JSON array of ops, e.g.
                 # door mat can fire the warp once by luck and fail on replay;
                 # use_warp is reliable). Replay the clean ops from the start
                 # checkpoint; commit only if they reach done_when again.
+                restored = False
                 if can_reset:
-                    self.b.send("checkpoint_restore", token="esc")
+                    rr = self.b.send("checkpoint_restore", token="esc")
+                    restored = bool((rr.get("result") or {}).get("ok"))
+                if restored:
                     v_ok, _, v_clean = self._run_traced(sg, clean)
                     if v_ok:
                         self.log("escalate_verified", subgoal=sg["id"],
@@ -343,8 +346,12 @@ Reply with ONLY a JSON array of ops, e.g.
                         "(reliable), NOT walk_to onto the tile. Re-author.")
                     self.b.send("checkpoint_restore", token="esc")
                     continue
+                # couldn't restore to verify (some states refuse it) — commit
+                # the first run's clean ops best-effort rather than a bogus
+                # 0-op "verified" from an un-reset replay.
                 self.log("escalate_success", subgoal=sg["id"], round=rnd,
-                         proposed=len(macro), distilled=len(clean))
+                         proposed=len(macro), distilled=len(clean),
+                         verified=False)
                 return True, clean
             cur = self.settle() or {}
             feedback = ("Per-step results of your last macro:\n"
