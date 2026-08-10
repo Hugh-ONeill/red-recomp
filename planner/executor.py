@@ -39,6 +39,7 @@ import time
 from pathlib import Path
 
 from bridge import Bridge, RUN
+import battle_policy
 
 
 # ---------------------------------------------------------------- predicates
@@ -76,19 +77,36 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
 
 
 # ------------------------------------------------------------ battle policies
-def battle_default(bridge: Bridge, obs: dict, log, max_turns: int) -> dict:
-    """Placeholder: strongest-slot-1 spam. Spine validation only."""
+def _run_policy(spec, bridge, obs, log, max_turns):
+    """Drive a battle turn-by-turn with a battle_policy spec (rules as data)."""
     turns = 0
     while obs and obs.get("mode") == "battle" and turns < max_turns:
         turns += 1
-        obs = bridge.send("battle_move", index=1)
-        log("battle_turn", turn=turns,
-            result=(obs.get("result") or {}).get("detail"))
+        op = battle_policy.choose(obs, spec)
+        why = op.pop("_why", None)
+        name = op.pop("op")
+        log("battle_turn", turn=turns, op=name, params=op, why=why)
+        obs = bridge.send(name, **op)
     log("battle_done", turns=turns, mode=obs.get("mode") if obs else None)
     return obs
 
 
-BATTLE_POLICIES = {"default": battle_default}
+def battle_slot1(bridge, obs, log, max_turns):
+    """Baseline for comparison only: spam slot 1 (the old placeholder)."""
+    turns = 0
+    while obs and obs.get("mode") == "battle" and turns < max_turns:
+        turns += 1
+        obs = bridge.send("battle_move", index=1)
+    return obs
+
+
+BATTLE_POLICIES = {
+    "default": lambda b, o, lg, mt: _run_policy(
+        battle_policy.DEFAULT_SPEC, b, o, lg, mt),
+    "typed_v0": lambda b, o, lg, mt: _run_policy(
+        battle_policy.SPECS["typed_v0"], b, o, lg, mt),
+    "slot1": battle_slot1,
+}
 
 
 # ----------------------------------------------------------------- executor

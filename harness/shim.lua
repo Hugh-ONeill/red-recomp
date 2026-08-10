@@ -194,8 +194,20 @@ local function observe(G, seq, result)
       d.status = s.shownStatus or mon.status   -- scalar "SLP"/"PSN"/... or nil
       d.moves = {}
       for i, mv in ipairs(s.curMoves or mon.moves or {}) do
-        d.moves[i] = { index = i, id = mv.id, pp = mv.pp }
+        local def = G.data and G.data.moves and G.data.moves[mv.id] or {}
+        -- gen1: physical vs special is decided by the move's TYPE, not a
+        -- per-move flag. NORMAL/FIGHTING/FLYING/GROUND/ROCK/BUG/GHOST/POISON
+        -- are physical; the rest are special.
+        local PHYS = { NORMAL=1, FIGHTING=1, FLYING=1, GROUND=1, ROCK=1,
+                       BUG=1, GHOST=1, POISON=1 }
+        d.moves[i] = { index = i, id = mv.id, pp = mv.pp,
+                       type = def.type, power = def.power,
+                       accuracy = def.accuracy, effect = def.effect,
+                       category = def.type and (PHYS[def.type] and "physical"
+                                  or "special") }
       end
+      d.stats = s.curStats            -- effective in-battle stats
+      d.boosts = s.stages             -- stat stage modifiers
       return d
     end
     o.battle.me = side(top.player)
