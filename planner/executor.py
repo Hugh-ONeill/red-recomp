@@ -190,6 +190,13 @@ Ops: {"op":"walk_to","x":N,"y":N} (within-map), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
 door/stairs), {"op":"interact","name":"OBJECT_NAME"}, {"op":"menu","index":N}
 (1-based: 1=YES/first, 2=NO/second), {"op":"wait"}. Battles are auto-handled.
+
+GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
+and MAY BE IMPERFECT — if it names a target that isn't in obs.map.objects /
+obs.map.warps, or one the feedback says did nothing, IGNORE the hint and use
+what the observation actually shows. Only interact objects/warps that appear
+in the current observation. (E.g. receiving a Pokemon usually means
+interacting an item/Poke-Ball object, not an NPC.)
 Reply with ONLY a JSON array of ops, e.g.
 [{"op":"use_warp","x":7,"y":1},{"op":"use_warp","x":2,"y":7}]"""
 
@@ -287,6 +294,7 @@ Reply with ONLY a JSON array of ops, e.g.
         done = sg.get("done_when")
         rounds = sg.get("escalation_rounds", 4)
         feedback = "This is the first attempt."
+        inert = []          # targets that ran but did nothing / failed
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
         # capture the subgoal's start so each round retries from a clean state
         # (a failed proposal otherwise corrupts the state and later rounds
@@ -362,15 +370,28 @@ Reply with ONLY a JSON array of ops, e.g.
                          verified=False)
                 return True, clean
             cur = self.settle() or {}
+            # accumulate targets that failed or did nothing, so the model is
+            # told NOT to repeat them (it looped on the pokedex before).
+            for t in trace:
+                if ("FAILED" in t or "NO visible effect" in t) and ":" in t:
+                    tgt = t.split(":", 1)[0]
+                    if tgt not in inert:
+                        inert.append(tgt)
+            objs = [f"{o.get('kind')}:{o.get('name')}({o.get('x')},{o.get('y')})"
+                    for o in (cur.get("map") or {}).get("objects", [])]
             feedback = ("Per-step results of your last macro:\n"
                         + "\n".join(f"  {i + 1}. {t}"
                                     for i, t in enumerate(trace))
                         + f"\nAfter it, DONE_WHEN was NOT met. Now: map="
                         f"{(cur.get('map') or {}).get('id')}, mode="
                         f"{cur.get('mode')}, party size="
-                        f"{len(cur.get('party') or [])}.")
+                        f"{len(cur.get('party') or [])}."
+                        + (f"\nObjects here you can interact: {objs}" if objs
+                           else "")
+                        + (f"\nThese targets did NOTHING — do NOT repeat them, "
+                           f"pick a DIFFERENT one: {inert}" if inert else ""))
             self.log("escalate_feedback", subgoal=sg["id"], round=rnd,
-                     trace=trace)
+                     trace=trace, inert=inert)
         self.log("escalate_end", subgoal=sg["id"], success=False)
         return False, sg.get("macro", [])
 
