@@ -477,11 +477,27 @@ function OPS.cross(G, c)
     return false, "not in overworld"
   end
   local dmap = { north = "up", south = "down", west = "left", east = "right" }
+  local cmap = { up = "north", down = "south", left = "west", right = "east" }
   local dir = dmap[c.dir] or c.dir
   if not DIRS[dir] then return false, "cross needs dir north/south/east/west" end
   local ow = G.overworld
   local startMap = ow.map and ow.map.id
   local p = ow.player
+  -- A map with no connection that way (indoor maps have none at all) has no
+  -- edge to cross: fail fast with the real reason. "no reachable north edge"
+  -- reads like a pathing problem and sent the model chasing phantom paths
+  -- when a subgoal started inside OAKS_LAB (brock7 go_to_route_1).
+  local md = startMap and G.data and G.data.maps and G.data.maps[startMap]
+  if md and not (md.connections and md.connections[cmap[dir]]) then
+    local outs = {}
+    if md.connections then
+      for d in pairs(md.connections) do outs[#outs + 1] = d end
+    end
+    return false, ("%s has no %s edge — %s"):format(
+      tostring(startMap), cmap[dir],
+      #outs > 0 and ("its edges go " .. table.concat(outs, "/"))
+        or "it is indoors; exit through a door/stairs with use_warp")
+  end
   -- NPC-robust: a wandering NPC can sit on the seam gap or block the only
   -- corridor, making the edge transiently unreachable. Re-BFS across a few
   -- rounds with settle time instead of failing out (the Viridian bounce came
