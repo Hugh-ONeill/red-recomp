@@ -717,8 +717,14 @@ local function advance_to_decision(G, maxn)
         U.tap(G, "start"); U.wait(3); U.tap(G, "a"); U.wait(3)  -- default name
       elseif CEREMONY[sid] then
         U.tap(G, "a"); U.wait(3)                          -- info screen
+      elseif G.overworld and top == G.overworld then
+        U.wait(3)              -- script-busy overworld cutscene: just wait,
+                              -- never press A (could talk to an NPC on a
+                              -- brief control return mid-script)
       else
-        U.wait(3)                                         -- cutscene / transition
+        -- unknown non-overworld state: a transition (ignores A) or a
+        -- press-to-continue like the rival's post-battle exit (needs A).
+        U.tap(G, "a"); U.wait(3)
       end
     end
   end
