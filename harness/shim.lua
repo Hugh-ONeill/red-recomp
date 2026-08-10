@@ -106,6 +106,8 @@ end
 -- before a choice box, which would leave the model answering a context-free
 -- yes/no; carry the prompt into the observation so the choice has meaning.
 local recent_text = nil
+-- Oracle probe result (battle_probe), surfaced once in the next observation.
+local last_probe = nil
 
 local function observe(G, seq, result)
   local top = G.stack and G.stack:top()
@@ -213,6 +215,7 @@ local function observe(G, seq, result)
     o.battle.me = side(top.player)
     o.battle.foe = side(top.enemy)
     o.battle.player_mon, o.battle.enemy_mon = nil, nil
+    if last_probe then o.battle.probe = last_probe; last_probe = nil end
   elseif top and top.pages and top.pageIndex then
     -- TextBox: pages are arrays of display-ready line strings. Emit only the
     -- page currently on screen — the model reads at the same pace a player
@@ -597,6 +600,48 @@ function OPS.battle_move(G, c)
     U.tap(G, "a"); U.wait(3)
   end
   return true, "turn resolved (timeout advancing text)"
+end
+
+-- ORACLE PROBE: engine-truth damage per move vs the current foe, computed
+-- with roll stand-ins that consume NO game RNG (route.lua's midRng pattern).
+-- This is the oracle's ground truth (CLAIM_RULES: the referee may use engine
+-- oracles; the MODEL's observation must not — battle_probe is never in the
+-- model-facing obs path). Result is stashed for the next observation.
+function OPS.battle_probe(G)
+  local b = in_battle(G)
+  if not b then return false, "not in battle" end
+  if not (b.player and b.enemy and b.computeDamage) then
+    return false, "battle has no damage model here"
+  end
+  local mid = function(a, z) return math.floor((a + z) / 2) end
+  local lo = function(a, _) return a end
+  local hi = function(_, z) return z end
+  local function dmg(probe, rng)
+    local ok, d, info = pcall(function()
+      return b:computeDamage(b.player, b.enemy, probe, { rng = rng })
+    end)
+    if ok and type(d) == "number" then return d, info end
+    return nil, nil
+  end
+  local foe_hp = (b.enemy.shownHP)
+    or (b.enemy.mon and b.enemy.mon.hp)
+  local out = {}
+  for i, mv in ipairs(b.player.curMoves or {}) do
+    local def = b:moveDef(mv)
+    if def then
+      local probe = setmetatable({ id = mv.id }, { __index = def })
+      local dm, info = dmg(probe, mid)
+      out[#out + 1] = {
+        index = i, id = mv.id, pp = mv.pp,
+        dmg_mid = dm, dmg_min = dmg(probe, lo), dmg_max = dmg(probe, hi),
+        type_mult = info and info.typeMult,
+        ko_min = (dmg(probe, lo) or 0) >= (foe_hp or 1e9),   -- guaranteed
+        ko_mid = (dm or 0) >= (foe_hp or 1e9),
+      }
+    end
+  end
+  last_probe = { foe_hp = foe_hp, moves = out }
+  return true, "probed " .. #out .. " moves"
 end
 
 function OPS.battle_run(G)

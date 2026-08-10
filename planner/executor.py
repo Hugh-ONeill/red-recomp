@@ -40,6 +40,7 @@ from pathlib import Path
 
 from bridge import Bridge, RUN
 import battle_policy
+import battle_oracle
 
 
 # ---------------------------------------------------------------- predicates
@@ -77,14 +78,30 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
 
 
 # ------------------------------------------------------------ battle policies
+# set by main() when --score-battles is passed: score every battle turn
+# against the oracle without changing what the policy plays.
+SCORE_BATTLES = False
+
+
 def _run_policy(spec, bridge, obs, log, max_turns):
-    """Drive a battle turn-by-turn with a battle_policy spec (rules as data)."""
+    """Drive a battle turn-by-turn with a battle_policy spec (rules as data).
+    With SCORE_BATTLES, also probe the oracle each turn and log policy-vs-
+    oracle agreement — the measuring stick, which does not alter play."""
     turns = 0
     while obs and obs.get("mode") == "battle" and turns < max_turns:
         turns += 1
         op = battle_policy.choose(obs, spec)
         why = op.pop("_why", None)
         name = op.pop("op")
+        idx = op.get("index")
+        if SCORE_BATTLES and name == "battle_move":
+            probed = bridge.send("battle_probe")
+            probe = (probed.get("battle") or {}).get("probe")
+            if probe:
+                sc = battle_oracle.score_turn(idx, probe)
+                if sc.get("scoreable"):
+                    log("oracle_score", turn=turns, **sc)
+            obs = bridge.obs()   # refresh (probe left a battle obs)
         log("battle_turn", turn=turns, op=name, params=op, why=why)
         obs = bridge.send(name, **op)
     log("battle_done", turns=turns, mode=obs.get("mode") if obs else None)
@@ -228,8 +245,13 @@ def main():
     ap.add_argument("plan", type=Path)
     ap.add_argument("--bootstrap", action="store_true")
     ap.add_argument("--max-battle-turns", type=int, default=40)
+    ap.add_argument("--score-battles", action="store_true",
+                    help="probe the oracle each battle turn and log "
+                         "policy-vs-oracle agreement (does not change play)")
     args = ap.parse_args()
 
+    global SCORE_BATTLES
+    SCORE_BATTLES = args.score_battles
     plan = json.loads(args.plan.read_text())
     b = Bridge()
     if args.bootstrap:
