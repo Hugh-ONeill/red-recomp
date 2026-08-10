@@ -323,7 +323,26 @@ Reply with ONLY a JSON array of ops, e.g.
                      macro=macro)
             ok, trace, clean = self._run_traced(sg, macro)
             if ok:
-                # distill the CLEAN subset (ops that ran), not the raw proposal
+                # DISTILL-THEN-VERIFY: a macro is only trustworthy if it
+                # reproduces the subgoal from the clean start (walk_to onto a
+                # door mat can fire the warp once by luck and fail on replay;
+                # use_warp is reliable). Replay the clean ops from the start
+                # checkpoint; commit only if they reach done_when again.
+                if can_reset:
+                    self.b.send("checkpoint_restore", token="esc")
+                    v_ok, _, v_clean = self._run_traced(sg, clean)
+                    if v_ok:
+                        self.log("escalate_verified", subgoal=sg["id"],
+                                 round=rnd, ops=len(v_clean))
+                        return True, v_clean
+                    self.log("escalate_unverified", subgoal=sg["id"], round=rnd)
+                    feedback = (
+                        "Your macro reached the goal ONCE but did NOT reproduce "
+                        "it on a clean replay — some op relied on luck or "
+                        "approach. For doors/stairs/exits use use_warp{x,y} "
+                        "(reliable), NOT walk_to onto the tile. Re-author.")
+                    self.b.send("checkpoint_restore", token="esc")
+                    continue
                 self.log("escalate_success", subgoal=sg["id"], round=rnd,
                          proposed=len(macro), distilled=len(clean))
                 return True, clean
