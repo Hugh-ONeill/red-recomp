@@ -111,7 +111,18 @@ local function observe(G, seq, result)
     o.player = { x = p.cellX, y = p.cellY, facing = p.facing,
                  moving = p.moving and true or false }
     local map = G.overworld.map or {}
-    o.map = { id = map.id, name = map.name }
+    -- Warps and dimensions are player-visible (stairs, doors, mats, the
+    -- screen itself), so they belong in the eyes. Block dims are 2x2 cells.
+    o.map = { id = map.id, name = map.name,
+              width = map.width and map.width * 2,
+              height = map.height and map.height * 2 }
+    local md = G.data and G.data.maps and G.data.maps[map.id]
+    if md and md.warps then
+      o.map.warps = {}
+      for i, w in ipairs(md.warps) do
+        o.map.warps[i] = { x = w.x, y = w.y, dest = w.destMap }
+      end
+    end
   elseif top and (top.enemy or top.kind) then
     o.mode = "battle"
     o.battle = scalars(top, 0)
@@ -171,6 +182,42 @@ local function walk(G, dir, steps)
   return true
 end
 
+-- BFS next-step toward (tx,ty) on the current map, using the engine's own
+-- collision verdict (bounds/tile/entity — NPCs included live). Probe movers
+-- inherit the real player via metatable so elevation/bike state hold.
+-- Recomputed per step by walk_to: moving NPCs invalidate paths, so plans
+-- are disposable. Sight-lines are deliberately NOT avoided — dodging
+-- trainers is strategy, and strategy belongs to the model.
+local DIRS = { up = {0,-1}, down = {0,1}, left = {-1,0}, right = {1,0} }
+
+local function bfs_dir(G, tx, ty)
+  local Collision = require("src.world.Collision")
+  local ow = G.overworld
+  local p = ow.player
+  if p.cellX == tx and p.cellY == ty then return nil, "arrived" end
+  local key = function(x, y) return x .. "," .. y end
+  local seen = { [key(p.cellX, p.cellY)] = true }
+  local queue = { { x = p.cellX, y = p.cellY, first = nil } }
+  local head = 1
+  while queue[head] do
+    local cur = queue[head]; head = head + 1
+    for dir, d in pairs(DIRS) do
+      local nx, ny = cur.x + d[1], cur.y + d[2]
+      if not seen[key(nx, ny)] then
+        local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
+                                   { __index = p })
+        if Collision.canMove(ow.map, ow.entities, probe, dir) then
+          seen[key(nx, ny)] = true
+          local first = cur.first or dir
+          if nx == tx and ny == ty then return first end
+          queue[#queue + 1] = { x = nx, y = ny, first = first }
+        end
+      end
+    end
+  end
+  return nil, "no path"
+end
+
 local OPS = {}
 
 function OPS.new_game(G) U.newGame(G) return true end
@@ -192,6 +239,62 @@ function OPS.walk(G, c)
     return false, "not in overworld"
   end
   return walk(G, c.dir, c.steps or 1)
+end
+
+function OPS.walk_to(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  local ow = G.overworld
+  local startMap = ow.map and ow.map.id
+  local p = ow.player
+  for _ = 1, (c.max_steps or 200) do
+    if G.stack:top() ~= ow then
+      return true, "interrupted (battle or script)"
+    end
+    if (ow.map and ow.map.id) ~= startMap then
+      return true, "warped to " .. tostring(ow.map and ow.map.id)
+    end
+    if p.cellX == c.x and p.cellY == c.y then return true end
+    local dir, why = bfs_dir(G, c.x, c.y)
+    if not dir then
+      return why == "arrived", why
+    end
+    local moved
+    for attempt = 1, 3 do
+      moved = walk(G, dir, 1)
+      if moved then break end
+      U.wait(16)               -- transient NPC block: let them wander off
+    end
+    if not moved then
+      return false, ("blocked at (%d,%d) heading %s"):format(
+        p.cellX, p.cellY, dir)
+    end
+  end
+  return false, "step budget exhausted"
+end
+
+-- List-menu navigation: any stack state exposing a numeric cursor `index`.
+-- Moves the cursor to c.index, then A (or just positions with c.press=false).
+function OPS.menu(G, c)
+  local top = G.stack:top()
+  if not (top and type(top.index) == "number") then
+    return false, "no list menu on top"
+  end
+  local target = c.index or 1
+  for _ = 1, 24 do
+    if top.index == target then break end
+    U.tap(G, top.index > target and "up" or "down")
+    U.wait(2)
+  end
+  if top.index ~= target then
+    return false, "cursor did not reach " .. tostring(target)
+  end
+  if c.press ~= false then
+    U.tap(G, "a")
+    U.wait(4)
+  end
+  return true
 end
 
 function OPS.screenshot(G, c)
