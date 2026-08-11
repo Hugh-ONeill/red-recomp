@@ -691,6 +691,23 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"already provably failed {bad}x. Take a different "
                         f"exit.")
                     continue
+            if op == "interact":
+                here_r = self._where(obs)
+                tried = self._tried_objs.setdefault(here_r, set())
+                objs = [o for o in ((obs.get("map") or {}).get("objects")
+                                    or []) if o.get("reachable")]
+                names = {o.get("name") for o in objs}
+                spent = bool(names) and names.issubset(tried)
+                if spent and step.get("name") in tried:
+                    trace.append(
+                        f"interact({step.get('name')}): REFUSED — you have "
+                        f"already interacted with everything reachable in "
+                        f"this area ({len(tried)} things) and the condition "
+                        f"is still false. It is not in this room. LEAVE: "
+                        f"take an exit you have not used.")
+                    continue
+                if step.get("name"):
+                    tried.add(step["name"])
             # NO IMMEDIATE REVERSAL — the classic search prune, not game
             # knowledge: both directions of a ladder read as "untried" from
             # their own side, so the run oscillated B1F<->B2F until its
@@ -839,6 +856,7 @@ Reply with ONLY a JSON array of ops, e.g.
         self._dead_ops = {}
         self._dead_visits = 0
         self._stuck_in: dict = {}
+        self._tried_objs: dict = {}   # region -> {object names interacted}
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
         cap = self._send_safe("checkpoint_capture", token="esc") or {}
         can_reset = bool((cap.get("result") or {}).get("ok"))
@@ -1046,7 +1064,19 @@ Reply with ONLY a JSON array of ops, e.g.
             here_now = self._where(cur)
             self._stuck_in[here_now] = self._stuck_in.get(here_now, 0) + 1
             stuck_note = ""
-            if self._stuck_in.get(here_now, 0) >= 3:
+            spent_here = self._tried_objs.get(here_now, set())
+            here_objs = {o.get("name") for o in
+                         ((cur.get("map") or {}).get("objects") or [])
+                         if o.get("reachable")}
+            if here_objs and here_objs.issubset(spent_here):
+                stuck_note = (
+                    f"\nYou have now interacted with EVERYTHING reachable in "
+                    f"this area and DONE_WHEN is still false. The trigger is "
+                    f"NOT here. Leave through an exit you have not taken "
+                    f"yet — some events fire by TRAVELLING (walking out "
+                    f"along a road) rather than by entering a place or "
+                    f"talking to anyone.")
+            elif self._stuck_in.get(here_now, 0) >= 3:
                 stuck_note = (
                     f"\n{self._stuck_in[here_now]} rounds in this same area "
                     f"have not moved DONE_WHEN. Whatever sets it may not be "
