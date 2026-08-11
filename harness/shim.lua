@@ -435,6 +435,12 @@ function warp_reach(G)
   local key = function(x, y) return x .. "," .. y end
   local seen = { [key(p.cellX, p.cellY)] = true }
   local q, head = { { x = p.cellX, y = p.cellY } }, 1
+  -- TERRAIN ONLY: pass no entities. A wandering NPC standing in a corridor
+  -- changes what is reachable, which changed the region fingerprint from
+  -- one observation to the next — MT_MOON_B1F reported THREE regions for a
+  -- floor that has two, and the exploration memory keyed on a moving
+  -- target. Whether a Zubat is in the doorway is traffic, not geography.
+  local NOBODY = {}
   while q[head] do
     local cur = q[head]; head = head + 1
     for dn, d in pairs(DIRS) do
@@ -442,7 +448,7 @@ function warp_reach(G)
       if not seen[key(nx, ny)] then
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
                                    { __index = p })
-        if Collision.canMove(ow.map, ow.entities, probe, dn) then
+        if Collision.canMove(ow.map, NOBODY, probe, dn) then
           seen[key(nx, ny)] = true
           q[#q + 1] = { x = nx, y = ny }
         else
