@@ -1,5 +1,6 @@
 {
-  "goal": "From the foot of Mt Moon, cross the mountain and reach Cerulean City.",
+  "goal": "From the foot of Mt Moon, cross the mountain to Cerulean City.",
+  "note": "test plan for the east-exit fix; the fossil fight is already done in the save this resumes from, so it is omitted",
   "subgoals": [
     {
       "id": "enter_mt_moon",
@@ -14,122 +15,8 @@
         "via": "escalation",
         "n_ops": 2
       },
-      "macro": [
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "MT_MOON_POKECENTER"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 18,
-          "y": 5,
-          "when": {
-            "map": "ROUTE_4"
-          }
-        }
-      ]
-    },
-    {
-      "id": "descend_to_b1f",
-      "goal_text": "Navigate through the first floor of Mt Moon and descend to the basement (B1F).",
-      "done_when": {
-        "map": "MT_MOON_B1F"
-      },
-      "escalation_rounds": 4,
-      "macro": [
-        {
-          "op": "use_warp",
-          "x": 5,
-          "y": 5,
-          "when": {
-            "map": "MT_MOON_1F"
-          }
-        }
-      ],
-      "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "chain1",
-        "via": "escalation",
-        "n_ops": 1
-      }
-    },
-    {
-      "id": "descend_to_b2f",
-      "goal_text": "Navigate through the first basement and descend to the second basement (B2F).",
-      "done_when": {
-        "map": "MT_MOON_B2F"
-      },
-      "escalation_rounds": 4,
-      "macro": [
-        {
-          "op": "use_warp",
-          "x": 21,
-          "y": 17,
-          "when": {
-            "map": "MT_MOON_B1F"
-          }
-        }
-      ],
-      "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "chain1",
-        "via": "escalation",
-        "n_ops": 1
-      }
-    },
-    {
-      "id": "defeat_super_nerd",
-      "goal_text": "Find and defeat the Super Nerd guarding the fossils on B2F.",
-      "done_when": {
-        "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
-      },
-      "escalation_rounds": 4,
-      "macro": [
-        {
-          "op": "interact",
-          "name": "MTMOONB2F_SUPER_NERD",
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        },
-        {
-          "op": "interact",
-          "name": "MTMOONB2F_SUPER_NERD",
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        },
-        {
-          "op": "interact",
-          "name": "MTMOONB2F_SUPER_NERD",
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        },
-        {
-          "op": "interact",
-          "name": "MTMOONB2F_SUPER_NERD",
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        },
-        {
-          "op": "interact",
-          "name": "MTMOONB2F_SUPER_NERD",
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        }
-      ],
-      "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "chain1",
-        "via": "escalation",
-        "n_ops": 5
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted/corrected (Center geography, east-exit topology)"
       }
     },
     {
@@ -142,6 +29,9 @@
       "macro_provenance": {
         "authored_by": "hand-seeded-subgoal",
         "note": "2026-08-12 PROBE FINDING: ROUTE_4 is ONE map id but two disconnected halves \u2014 from the west (entrance) side the east seam is unreachable (reachable=158 cells, east-edge reachable=[]). Mt Moon's only east exit is B1F's LAST_MAP warp at (27,3); 1F's LAST_MAP warps (14/15,35) are the ENTRANCE. The old exit_mt_moon_east ended on {map:ROUTE_4} which BOTH halves satisfy \u2014 so it 'succeeded' on the wrong side and reach_cerulean_city could never cross east."
+      },
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted/corrected (Center geography, east-exit topology)"
       }
     }
   ]
