@@ -249,46 +249,15 @@
       "escalation_rounds": 6,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock31",
+        "run": "brock38",
         "via": "escalation",
-        "n_ops": 5,
-        "note": "party-depth layer: POKE_BALLs added for the Route 22 backup catch"
+        "n_ops": 1
       },
       "macro": [
         {
-          "op": "use_warp",
-          "x": 4,
-          "y": 11,
-          "when": {
-            "map": "OAKS_LAB"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "north",
-          "when": {
-            "map": "PALLET_TOWN"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "north",
-          "when": {
-            "map": "ROUTE_1"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 29,
-          "y": 19,
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
           "op": "buy",
-          "item": "ANTIDOTE",
-          "count": 3,
+          "item": "POKE_BALL",
+          "count": 4,
           "when": {
             "map": "VIRIDIAN_MART"
           }
@@ -349,23 +318,8 @@
       "escalation_rounds": 6,
       "no_verify": true,
       "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "party depth 2026-08-12: a backup mon turns a lead faint into a switch instead of a blackout (money-halving); macro left for escalation (journey + grind; the catch policy throws the balls)"
-      }
-    },
-    {
-      "id": "train_to_l10",
-      "goal_text": "Train your Pokemon to level 8 in tall grass near Viridian City (Route 1 south or Route 22 west) \u2014 a short session; you will heal and continue after.",
-      "done_when": {
-        "lead_level": 8
-      },
-      "battle_policy": "default",
-      "max_attempts": 12,
-      "escalation_rounds": 8,
-      "no_verify": true,
-      "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock36",
+        "run": "brock38",
         "via": "escalation",
         "n_ops": 3
       },
@@ -380,7 +334,7 @@
         },
         {
           "op": "cross",
-          "dir": "south",
+          "dir": "west",
           "when": {
             "map": "VIRIDIAN_CITY"
           }
@@ -388,7 +342,32 @@
         {
           "op": "grind",
           "when": {
-            "map": "ROUTE_1"
+            "map": "ROUTE_22"
+          }
+        }
+      ]
+    },
+    {
+      "id": "train_to_l10",
+      "goal_text": "Train your Pokemon to level 8 in tall grass near Viridian City (Route 1 south or Route 22 west) \u2014 a short session; you will heal and continue after.",
+      "done_when": {
+        "lead_level": 8
+      },
+      "battle_policy": "default",
+      "max_attempts": 12,
+      "escalation_rounds": 8,
+      "no_verify": true,
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock38",
+        "via": "escalation",
+        "n_ops": 1
+      },
+      "macro": [
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_22"
           }
         }
       ]
@@ -402,16 +381,16 @@
       "escalation_rounds": 5,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock36",
+        "run": "brock38",
         "via": "escalation",
         "n_ops": 4
       },
       "macro": [
         {
           "op": "cross",
-          "dir": "north",
+          "dir": "east",
           "when": {
-            "map": "ROUTE_1"
+            "map": "ROUTE_22"
           }
         },
         {
@@ -553,18 +532,23 @@
       "escalation_rounds": 4,
       "macro": [
         {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_22"
+          }
         },
         {
           "op": "cross",
-          "dir": "north"
+          "dir": "north",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
         }
       ],
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock24",
+        "run": "brock38",
         "via": "escalation",
         "n_ops": 2
       },
@@ -655,13 +639,13 @@
       "goal_text": "Buy POTIONs at the Pewter City Mart before the gym (ask for 5; the shop sells what you can afford \u2014 2 or more is enough).",
       "done_when": {
         "has_item": {
-          "POTION": 2
+          "POTION": 1
         }
       },
       "escalation_rounds": 6,
       "macro_provenance": {
         "authored_by": "hand-seeded-subgoal",
-        "note": "Pewter is the first mart that sells POTION; stock up before Brock; target >=2: blackout money-halving is a real risk and the gym eval won badges on 2-3 potions"
+        "note": "Pewter is the first mart that sells POTION; stock up before Brock; target >=2: blackout money-halving is a real risk and the gym eval won badges on 2-3 potions; target >=1 (brock38: party depth + antidotes carry Brock; any potion beats none and authoring-era wallets run thin)"
       }
     },
     {
