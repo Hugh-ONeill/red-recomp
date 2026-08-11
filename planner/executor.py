@@ -270,6 +270,8 @@ class Executor:
         # redo rounds ping-ponging one warp). This is memory, not reward
         # shaping: it says where you HAVE been, the model still chooses.
         self.explored: dict = {}
+        self.dead_ends: dict = {}   # subgoal id -> {region: failures}
+        self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
         # Pure memory of past observations (the obs already showed each map's
         # connections while standing on it), re-served to the model so multi-
@@ -290,6 +292,42 @@ class Executor:
                                "dest": w.get("dest")} for w in m["warps"]]
         return obs
 
+    MEMORY = RUN / "explored.json"
+
+    def _load_memory(self):
+        """Carry the map across runs. Each attempt used to rediscover the
+        same mountain from scratch: it explores outward from the entrance,
+        exhausts the exits reachable from there, and never gets far enough
+        to find the far-side door. Knowledge that survives the process is
+        what turns N attempts into progress instead of N repetitions."""
+        try:
+            data = json.loads(self.MEMORY.read_text())
+            self.explored = data.get("explored", {})
+            self.dead_ends = data.get("dead_ends", {})
+            edges = sum(len(v) for v in self.explored.values())
+            if edges:
+                print(f"[memory] {len(self.explored)} areas, {edges} known "
+                      f"exits from previous runs")
+        except (OSError, ValueError):
+            self.explored, self.dead_ends = {}, {}
+
+    def _save_memory(self):
+        try:
+            self.MEMORY.write_text(json.dumps(
+                {"explored": self.explored, "dead_ends": self.dead_ends},
+                indent=1))
+        except OSError:
+            pass
+
+    def note_dead_end(self, sg_id: str, region: str):
+        """This area could not achieve that subgoal — remember it."""
+        if not region or "None" in region:
+            return
+        d = self.dead_ends.setdefault(sg_id, {})
+        d[region] = d.get(region, 0) + 1
+        self.log("dead_end", subgoal=sg_id, region=region, times=d[region])
+        self._save_memory()
+
     @staticmethod
     def _where(obs) -> str:
         m = (obs or {}).get("map") or {}
@@ -300,8 +338,8 @@ class Executor:
         src, dst = self._where(before_obs), self._where(after_obs)
         if src == dst or "None" in src:
             return
-        key = (step.get("x"), step.get("y")) if step.get("x") is not None \
-            else step.get("dir")
+        key = (f"{step.get('x')},{step.get('y')}"
+               if step.get("x") is not None else step.get("dir"))
         if key is None:
             return
         node = self.explored.setdefault(src, {})
@@ -309,6 +347,7 @@ class Executor:
         e["n"] += 1
         e["to"] = dst
         self.log("explored", frm=src, via=str(key), to=dst, times=e["n"])
+        self._save_memory()
 
     def exploration_text(self, obs) -> str:
         """Untried vs already-taken exits from where we stand."""
@@ -319,15 +358,23 @@ class Executor:
         for w in warps:
             if not w.get("reachable"):
                 continue
-            k = (w.get("x"), w.get("y"))
+            k = f"{w.get('x')},{w.get('y')}"
             if k in taken:
-                tried.append(f"({k[0]},{k[1]}) -> {taken[k]['to']} "
+                tried.append(f"({k}) -> {taken[k]['to']} "
                              f"[taken {taken[k]['n']}x]")
             else:
-                untried.append(f"({k[0]},{k[1]})->{w.get('dest')}")
+                untried.append(f"({k})->{w.get('dest')}")
+        warned = ""
+        for sg_id, regions in self.dead_ends.items():
+            if here in regions:
+                warned = (f"\nNOTE: earlier attempts failed to achieve "
+                          f"'{sg_id}' from this exact area "
+                          f"({regions[here]}x). Whatever you need is NOT "
+                          f"reachable from here — leave first.")
+                break
         if not (untried or tried):
-            return ""
-        out = "\nEXITS FROM HERE — "
+            return warned
+        out = warned + "\nEXITS FROM HERE — "
         out += ("UNTRIED (prefer these, they are the only way to find "
                 f"anything new): {', '.join(untried)}. " if untried
                 else "none untried. ")
@@ -911,6 +958,8 @@ Reply with ONLY a JSON array of ops, e.g.
                      spent=spent, trace=trace, inert=inert,
                      progress_ops=len(progress))
         self.log("escalate_end", subgoal=sg["id"], success=False)
+        self.note_dead_end(sg["id"],
+                           self._where(self.settle()))
         return False, sg.get("macro", [])
 
     def distill(self, sg: dict, ops: list):
