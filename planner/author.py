@@ -330,6 +330,39 @@ def build_review(goal: str, plan: dict, start: str | None) -> str:
     )
 
 
+def merge_plans(orig: dict, revised: dict) -> tuple:
+    """Let a revision ADD and UPDATE subgoals, never DELETE one.
+
+    An audit run against thin evidence talks itself out of conditions that
+    are load-bearing: one dropped defeat_mt_moon_nerd — the only condition
+    in the mountain leg that RETREATING cannot satisfy — leaving a chain of
+    map hops that all mark themselves done by walking back out. Deleting is
+    the one edit with no safe failure mode, so it is not allowed; a subgoal
+    the revision considers wrong can still be re-pointed by updating its
+    done_when.
+    """
+    rev_ids = {x["id"] for x in revised["subgoals"]}
+    out = list(revised["subgoals"])
+    restored = []
+    for i, sg in enumerate(orig["subgoals"]):
+        if sg["id"] in rev_ids:
+            continue
+        restored.append(sg["id"])
+        pos = len(out)
+        if i > 0:                       # keep it behind the step it followed
+            prev = orig["subgoals"][i - 1]["id"]
+            for j, t in enumerate(out):
+                if t["id"] == prev:
+                    pos = j + 1
+                    break
+        else:
+            pos = 0
+        out.insert(pos, sg)
+    merged = dict(revised)
+    merged["subgoals"] = out
+    return merged, restored
+
+
 def review(goal: str, plan: dict, model: str, start: str | None = None,
            rounds: int = 2, observed: Path | None = None) -> dict:
     """Second model pass over its own plan. Returns the revision only if it
@@ -353,6 +386,15 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
         if probs:
             print(f"[review] round {rnd} produced an invalid plan, keeping "
                   f"the previous one: {probs[0]}")
+            continue
+        revised, restored = merge_plans(plan, revised)
+        if restored:
+            print(f"[review] refused to DELETE {len(restored)} subgoal(s), "
+                  f"put back: {', '.join(restored)}")
+        probs = validate(revised)
+        if probs:
+            print(f"[review] merged plan invalid, keeping the previous one: "
+                  f"{probs[0]}")
             continue
         for s in revised["subgoals"]:
             s.setdefault("escalation_rounds", 4)
