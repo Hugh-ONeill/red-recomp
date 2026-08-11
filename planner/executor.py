@@ -687,6 +687,23 @@ Reply with ONLY a JSON array of ops, e.g.
                          f"progress lost")
             if r.get("ok") and before[0] != after[0]:
                 self.note_transition(pre_obs, step, obs)
+                # RECOGNISE A DEAD END ON ARRIVAL. The exit-level warning
+                # only covers exits already taken FROM here, so an untried
+                # ladder that happens to drop into a known-bad room walked
+                # in unchallenged (user watched it happen). Landing is the
+                # other moment we can check — and it also teaches the edge,
+                # so next time the exit itself carries the warning.
+                land = self._where(obs)
+                bad = (self.dead_ends.get(sg["id"], {}) or {}).get(land, 0)
+                if bad:
+                    trace.append(
+                        f"ARRIVED IN A KNOWN DEAD END: {land} — this goal has "
+                        f"already failed here {bad}x. Nothing here achieves "
+                        f"it. Leave by a different exit than the one you "
+                        f"came in by.")
+                    self.log("arrived_dead_end", subgoal=sg["id"],
+                             region=land, times=bad)
+                    break
             trace.append(note)
             self.status(last=note, obs=obs, doing=f"{op} {json.dumps(step)}")
             # distill an op if it ran OK *or* changed the state — cross via the
