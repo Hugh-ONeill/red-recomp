@@ -942,13 +942,15 @@ Reply with ONLY a JSON array of ops, e.g.
                 return True, progress
             cur = self.settle() or {}
             unreachable = [t for t in trace
-                           if "no reachable tile adjacent" in t]
+                           if "no reachable tile adjacent" in t
+                           or "cannot be walked to from" in t]
             if unreachable and cur:
                 here = self._where(cur)
                 self.note_dead_end(sg["id"], here)
                 objs = [o for o in ((cur.get("map") or {}).get("objects")
                                     or []) if not o.get("reachable")]
-                if objs:
+                seam = any("cannot be walked to from" in t for t in trace)
+                if objs or seam:
                     self.log("target_unreachable", subgoal=sg["id"],
                              region=here,
                              objects=[o.get("name") for o in objs][:5])
