@@ -18,7 +18,9 @@ SPEC DSL v1 (all keys optional; unknown keys are validation errors):
              max_uses: int      per battle (default 1)
              first_turns: int   only in the battle's first N turns (def. 2)
              min_hp_frac: float only while own hp/max >= this (default 0.5)
-             vs: "trainer"|"wild"|"any" (default "trainer") } ]
+             vs: "trainer"|"wild"|"any" (default "trainer")
+             only_if_best_physical: bool  only when our best damage move is
+                physical (e.g. TAIL_WHIP helps TACKLE, not BUBBLE) } ]
   flee_wild: { when_traversal: bool   flee wilds during traversal subgoals
                hp_below: float|null } flee ANY wild when own hp frac below
 
@@ -76,6 +78,10 @@ def validate_spec(spec) -> list:
                     continue
                 if r.get("vs") not in (None, "trainer", "wild", "any"):
                     probs.append(f"setup[{i}].vs must be trainer/wild/any")
+                if "only_if_best_physical" in r and not isinstance(
+                        r["only_if_best_physical"], bool):
+                    probs.append(f"setup[{i}].only_if_best_physical must "
+                                 "be true/false")
                 for fk, lo, hi in (("max_uses", 1, 6), ("first_turns", 1, 8)):
                     if fk in r and not (isinstance(r[fk], int)
                                         and lo <= r[fk] <= hi):
@@ -182,6 +188,14 @@ def choose(obs: dict, spec: dict | None = None,
              if (m.get("pp") or 0) > 0]
     if not moves:
         return {"op": "battle_move", "index": 1}   # Struggle / no PP
+    scored = [score_move(m, me, foe, spec) for m in moves]
+    damaging = [s for s in scored if (s["power"] or 0) > 0]
+    by_index = {m.get("index"): m for m in moves}
+    best_dmg = max(damaging, key=lambda s: s["score"]) if damaging else None
+    best_is_physical = bool(
+        best_dmg
+        and (by_index.get(best_dmg["index"]) or {}).get("category")
+        != "special")
     # deliberate setup-move rules come before damage ranking
     kind = b.get("kind") or "wild"
     used = ctx.setdefault("used", {})
@@ -199,11 +213,11 @@ def choose(obs: dict, spec: dict | None = None,
         vs = rule.get("vs", "trainer")
         if vs != "any" and vs != kind:
             continue
+        if rule.get("only_if_best_physical") and not best_is_physical:
+            continue
         used[mid] = used.get(mid, 0) + 1
         return {"op": "battle_move", "index": mv["index"],
                 "_why": f"setup {mid} (use {used[mid]})"}
-    scored = [score_move(m, me, foe, spec) for m in moves]
-    damaging = [s for s in scored if (s["power"] or 0) > 0]
     pool = damaging or scored     # only status moves left -> use them
     if spec.get("avoid_status_moves", True) and damaging:
         pool = damaging

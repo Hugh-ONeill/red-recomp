@@ -46,10 +46,13 @@ DSL_DOC = """SPEC DSL (JSON object; every key optional; no other keys):
   avoid_status_moves: true/false — never pick 0-power moves by score
   setup: list of deliberate status-move rules, each:
       {"move": "TAIL_WHIP", "max_uses": 1-6, "first_turns": 1-8,
-       "min_hp_frac": 0.0-1.0, "vs": "trainer"|"wild"|"any"}
+       "min_hp_frac": 0.0-1.0, "vs": "trainer"|"wild"|"any",
+       "only_if_best_physical": true/false}
     (use the move up to max_uses times, only in the battle's first
      first_turns turns, only while own hp fraction >= min_hp_frac,
-     only against that battle kind)
+     only against that battle kind; only_if_best_physical limits the rule
+     to fights where our best damage move is PHYSICAL — a Defense-drop
+     like TAIL_WHIP does nothing for a special move like BUBBLE)
   flee_wild: {"when_traversal": true/false, "hp_below": null or 0.0-1.0}
     (when_traversal: flee wild battles while traveling to save HP;
      hp_below: also flee ANY wild when own hp fraction is below this.
@@ -170,7 +173,8 @@ class Gym:
         ex_mod.set_active_spec(spec)
         res = {"rival_wins": 0, "rival_trials": 0,
                "pewter": 0, "badge": 0, "gauntlet_trials": 0,
-               "blackouts": 0, "agree": 0, "scored": 0, "dmg_gap": 0.0}
+               "blackouts": 0, "agree": 0, "scored": 0, "dmg_gap": 0.0,
+               "rival_detail": [], "gauntlet_detail": []}
         if self.rival_ok:
             for _ in range(k_rival):
                 self.b.send("checkpoint_restore", token="eval_rival",
@@ -179,24 +183,38 @@ class Gym:
                 try:
                     self.ex.run_subgoal(self.sgs["battle_rival_lab"])
                 except TimeoutError:
+                    res["rival_detail"].append("timeout")
                     continue
                 lead = self._lead(self.ex.settle())
-                if (lead.get("level") or 0) >= 6:
-                    res["rival_wins"] += 1
+                won = (lead.get("level") or 0) >= 6
+                res["rival_wins"] += 1 if won else 0
+                res["rival_detail"].append(
+                    f"{'W' if won else 'L'} (ended {lead.get('hp')}/"
+                    f"{lead.get('max_hp')} hp)")
         for _ in range(k_gauntlet):
             self.b.send("checkpoint_restore", token="eval_gate", reseed=True)
             res["gauntlet_trials"] += 1
             start = LOG.stat().st_size
+            stopped = None
             try:
                 if self.ex.run_subgoal(self.sgs["reach_pewter_city"]):
                     res["pewter"] += 1
                     if self.ex.run_subgoal(self.sgs["enter_pewter_gym"]):
-                        self.ex.run_subgoal(self.sgs["defeat_brock"])
+                        if not self.ex.run_subgoal(self.sgs["defeat_brock"]):
+                            stopped = "the BROCK fight"
+                    else:
+                        stopped = "entering the gym"
+                else:
+                    stopped = "the forest crossing"
             except TimeoutError:
-                pass
+                stopped = "a timeout"
             obs = self.ex.settle()
-            if "BOULDERBADGE" in ((obs or {}).get("badges") or []):
-                res["badge"] += 1
+            lead = self._lead(obs)
+            badge = "BOULDERBADGE" in ((obs or {}).get("badges") or [])
+            res["badge"] += 1 if badge else 0
+            res["gauntlet_detail"].append(
+                ("BADGE" if badge else f"FAILED at {stopped}")
+                + f" (lead ended {lead.get('hp')}/{lead.get('max_hp')} hp)")
             for d in self._log_delta(start):
                 if d.get("kind") == "blackout":
                     res["blackouts"] += 1
@@ -211,11 +229,16 @@ def feedback_text(name: str, r: dict) -> str:
     ag = f"{r['agree']}/{r['scored']}" if r["scored"] else "n/a"
     rv = (f"{r['rival_wins']}/{r['rival_trials']}" if r["rival_trials"]
           else "not evaluable")
-    return (f"{name}: rival wins {rv}; gauntlet: reached Pewter "
-            f"{r['pewter']}/{r['gauntlet_trials']}, Boulder Badge "
-            f"{r['badge']}/{r['gauntlet_trials']}, blackouts "
-            f"{r['blackouts']}; oracle agreement {ag}, damage left on "
-            f"the table {r['dmg_gap']:.0f}")
+    out = (f"{name}: rival wins {rv}; gauntlet: reached Pewter "
+           f"{r['pewter']}/{r['gauntlet_trials']}, Boulder Badge "
+           f"{r['badge']}/{r['gauntlet_trials']}, blackouts "
+           f"{r['blackouts']}; oracle agreement {ag}, damage left on "
+           f"the table {r['dmg_gap']:.0f}")
+    if r.get("rival_detail"):
+        out += "\n  rival trials: " + "; ".join(r["rival_detail"])
+    for i, g in enumerate(r.get("gauntlet_detail") or []):
+        out += f"\n  gauntlet trial {i+1}: {g}"
+    return out
 
 
 def rank_key(r: dict):
