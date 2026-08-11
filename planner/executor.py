@@ -431,12 +431,20 @@ class Executor:
         """Untried vs already-taken exits from where we stand."""
         here = self._where(obs)
         taken = self.explored.get(here, {})
-        warps = ((obs or {}).get("map") or {}).get("warps") or []
+        m = (obs or {}).get("map") or {}
+        # candidates are DOORS *and* MAP EDGES. Listing only warps meant a
+        # town's road out never appeared as untried, so the run kept
+        # re-entering the same building instead of walking north (pure4).
+        warps = [{"key": f"{w.get('x')},{w.get('y')}", "dest": w.get("dest"),
+                  "reachable": w.get("reachable")}
+                 for w in (m.get("warps") or [])]
+        warps += [{"key": d, "dest": t, "reachable": True}
+                  for d, t in (m.get("connections") or {}).items()]
         untried, tried = [], []
         for w in warps:
             if not w.get("reachable"):
                 continue
-            k = f"{w.get('x')},{w.get('y')}"
+            k = w["key"]
             if k in taken:
                 dest = taken[k]["to"]
                 bad = self.dead_for(target, dest)
@@ -446,7 +454,9 @@ class Executor:
                        f"failed there {bad}x — do NOT go back" if bad else "")
                     + "]")
             else:
-                untried.append(f"({k})->{w.get('dest')}")
+                untried.append(
+                    (f"walk {k} out of here -> {w.get('dest')}"
+                     if not k[0].isdigit() else f"({k})->{w.get('dest')}"))
         been = self.visits.get(here, 0)
         warned = ""
         if been >= 2:
