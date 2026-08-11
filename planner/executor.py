@@ -941,15 +941,25 @@ Reply with ONLY a JSON array of ops, e.g.
                          verified=False)
                 return True, progress
             cur = self.settle() or {}
+            # three shapes of PROOF that this area cannot serve this goal:
+            #   object present but no adjacent tile reachable
+            #   map edge exists but its seam cannot be walked to
+            #   warp exists but its tile cannot be reached
+            # the third is the characteristic failure INSIDE a dungeon and
+            # was missing, so cave rooms never got marked and the run kept
+            # reconsidering them (user: "they're not getting labelled")
             unreachable = [t for t in trace
                            if "no reachable tile adjacent" in t
-                           or "cannot be walked to from" in t]
+                           or "cannot be walked to from" in t
+                           or "couldn't reach the warp tile" in t]
             if unreachable and cur:
                 here = self._where(cur)
                 self.note_dead_end(sg["id"], here)
                 objs = [o for o in ((cur.get("map") or {}).get("objects")
                                     or []) if not o.get("reachable")]
-                seam = any("cannot be walked to from" in t for t in trace)
+                seam = any("cannot be walked to from" in t
+                           or "couldn't reach the warp tile" in t
+                           for t in trace)
                 if objs or seam:
                     self.log("target_unreachable", subgoal=sg["id"],
                              region=here,
