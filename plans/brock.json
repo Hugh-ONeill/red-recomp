@@ -287,9 +287,55 @@
       "escalation_rounds": 6,
       "no_verify": true,
       "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "survivability guard after brock22: L8 lone starter faints crossing the forest even fleeing wilds; macro left for escalation to author (grind op)"
-      }
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock24",
+        "via": "escalation",
+        "n_ops": 11
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7
+        },
+        {
+          "op": "cross",
+          "dir": "south"
+        },
+        {
+          "op": "grind"
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7
+        },
+        {
+          "op": "cross",
+          "dir": "south"
+        },
+        {
+          "op": "grind"
+        },
+        {
+          "op": "grind"
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7
+        },
+        {
+          "op": "cross",
+          "dir": "west"
+        },
+        {
+          "op": "grind"
+        },
+        {
+          "op": "grind"
+        }
+      ]
     },
     {
       "id": "heal_before_forest",
@@ -299,9 +345,30 @@
       },
       "escalation_rounds": 5,
       "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "second heal stop: the grind chips HP; macro left for escalation"
-      }
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock24",
+        "via": "escalation",
+        "n_ops": 4
+      },
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east"
+        },
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 25
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANPOKECENTER_NURSE"
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ]
     },
     {
       "id": "go_to_route_2",
@@ -313,16 +380,8 @@
       "macro": [
         {
           "op": "use_warp",
-          "x": 4,
-          "y": 11
-        },
-        {
-          "op": "cross",
-          "dir": "north"
-        },
-        {
-          "op": "cross",
-          "dir": "north"
+          "x": 3,
+          "y": 7
         },
         {
           "op": "cross",
@@ -331,9 +390,9 @@
       ],
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock20",
+        "run": "brock24",
         "via": "escalation",
-        "n_ops": 4
+        "n_ops": 2
       },
       "battle_policy": "traversal"
     },
@@ -383,7 +442,39 @@
         "map": "PEWTER_CITY"
       },
       "escalation_rounds": 4,
-      "battle_policy": "traversal"
+      "battle_policy": "traversal",
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7
+        },
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 0
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 0
+        },
+        {
+          "op": "cross",
+          "dir": "north"
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock24",
+        "via": "escalation",
+        "n_ops": 5
+      }
     },
     {
       "id": "enter_pewter_gym",
@@ -391,7 +482,20 @@
       "done_when": {
         "map": "PEWTER_GYM"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 16,
+          "y": 17
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock24",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "defeat_brock",
@@ -399,7 +503,23 @@
       "done_when": {
         "badge": "BOULDERBADGE"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_BROCK"
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_BROCK"
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock24",
+        "via": "escalation",
+        "n_ops": 2
+      }
     }
   ],
   "authored_by": "gemma4:26b-a4b-it-q4_K_M"
