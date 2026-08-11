@@ -511,7 +511,24 @@ class Executor:
                           f"({regions[here]}x). Whatever you need is NOT "
                           f"reachable from here — leave first.")
                 break
+        # Ways never taken ELSEWHERE. exploration_text only ever described
+        # the room you stand in, so a run deep in Mt Moon B2F could not know
+        # three ladders on 1F had never been opened — pure17 ended with its
+        # frontier unexhausted and the super nerd's region never entered.
+        elsewhere = []
+        for region, exits in self.frontier.items():
+            if region == here:
+                continue
+            done_x = set((self.explored.get(region) or {}).keys())
+            left = [e for e in exits if e not in done_x]
+            if left:
+                elsewhere.append(f"{region} ({', '.join(sorted(left))})")
         if not (untried or tried):
+            if elsewhere:
+                return (warned + "\nNothing here is new, but these places "
+                        "you have already been still have ways you have "
+                        "NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
+                        + ". Go back to one and take it.")
             return warned
         out = warned + "\nEXITS FROM HERE — "
         out += ("UNTRIED (prefer these, they are the only way to find "
@@ -520,6 +537,10 @@ class Executor:
         if tried:
             out += (f"Already taken from here: {'; '.join(tried)} — retaking "
                     "one returns you where it says, which you have seen.")
+        if elsewhere:
+            out += ("\nPlaces you have already been that still have ways "
+                    "you have NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
+                    + ".")
         return out
 
     def _atlas_text(self) -> str:
