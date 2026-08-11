@@ -582,7 +582,44 @@ end
 
 local OPS = {}
 
-function OPS.new_game(G) U.newGame(G) return true end
+-- NEW GAME, explicitly. U.newGame taps A on the title menu assuming NEW
+-- GAME is the first row — true only when no save exists, and its own
+-- comment says so. With a save present that A picks CONTINUE, so a
+-- "fresh" run silently resumed (pure1 began in Cerulean with a L24
+-- Wartortle, trying to walk downstairs in Red's house). Select the row by
+-- NAME instead.
+function OPS.new_game(G)
+  U.wait(5)
+  U.tap(G, "start"); U.wait(10)       -- skip the intro movie
+  U.tap(G, "a");     U.wait(8)        -- title -> menu
+  local menu = G.stack:top()
+  if menu and menu.items and menu.index then
+    local row
+    for i, it in ipairs(menu.items) do
+      local label = tostring(it.label or ""):upper()
+      if label:find("NEW") then row = i break end
+    end
+    if row then
+      for _ = 1, 8 do
+        local t = G.stack:top()
+        if not (t and t.index) or t.index == row then break end
+        U.tap(G, t.index > row and "up" or "down"); U.wait(3)
+      end
+    end
+  end
+  U.tap(G, "a"); U.wait(10)
+  for _ = 1, 400 do                    -- Oak speech + naming (defaults)
+    U.tap(G, "a"); U.wait(2)
+    if G.overworld and G.stack:top() == G.overworld then break end
+  end
+  U.wait(10)
+  local id = G.overworld and G.overworld.map and G.overworld.map.id
+  if id ~= "REDS_HOUSE_2F" then
+    return false, "new game did not start (on " .. tostring(id)
+      .. ") — did it CONTINUE instead?"
+  end
+  return true, "new game"
+end
 
 function OPS.tap(G, c)
   U.tap(G, c.btn or "a")
