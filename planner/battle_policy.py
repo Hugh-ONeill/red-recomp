@@ -333,10 +333,21 @@ def choose(obs: dict, spec: dict | None = None,
     b = obs.get("battle") or {}
     me, foe = b.get("me") or {}, b.get("foe") or {}
     kind = b.get("kind") or "wild"
+    # DISABLE makes a slot unselectable. Choosing it anyway is not a wasted
+    # turn — the game refuses the input, so the turn never resolves and the
+    # disable counter never ticks down: a permanent deadlock. pure26 sat in
+    # one trainer battle re-picking a disabled SCRATCH against a 9 HP foe,
+    # no EXP, HP frozen, for thousands of logged "turns". Play anything
+    # legal (even GROWL) and Disable expires on its own.
+    dis = me.get("disabledSlot") or 0
     moves = [m for m in (me.get("moves") or [])
-             if (m.get("pp") or 0) > 0]
+             if (m.get("pp") or 0) > 0 and m.get("index") != dis]
     if not moves:
-        return {"op": "battle_move", "index": 1}   # Struggle / no PP
+        # nothing legal left: Struggle, but never by re-picking the
+        # disabled slot, which would deadlock again
+        alt = next((m.get("index") for m in (me.get("moves") or [])
+                    if m.get("index") != dis), 1)
+        return {"op": "battle_move", "index": alt}
     # in-battle item rules come first: spending the turn to heal beats
     # fainting (the model's rule decides the threshold and budget)
     bag = obs.get("bag") or {}
