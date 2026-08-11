@@ -613,6 +613,19 @@ Reply with ONLY a JSON array of ops, e.g.
                 continue
             sig = (op, step.get("name") or step.get("dir")
                    or (step.get("x"), step.get("y")))
+            if op == "use_warp":
+                known = (self.explored.get(self._where(obs), {}) or {}).get(
+                    f"{step.get('x')},{step.get('y')}")
+                bad = (self.dead_ends.get(sg["id"], {}) or {}).get(
+                    (known or {}).get("to", ""), 0)
+                if bad and self._dead_visits < 2:
+                    self._dead_visits += 1
+                    trace.append(
+                        f"use_warp({step.get('x')},{step.get('y')}): REFUSED "
+                        f"— it leads to {known['to']}, where this goal has "
+                        f"already provably failed {bad}x. Take a different "
+                        f"exit.")
+                    continue
             # NO IMMEDIATE REVERSAL — the classic search prune, not game
             # knowledge: both directions of a ladder read as "untried" from
             # their own side, so the run oscillated B1F<->B2F until its
@@ -685,7 +698,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 note += (f" — your party FAINTED mid-op (blackout): you "
                          f"respawned at {blackout}, party healed, position "
                          f"progress lost")
-            if r.get("ok") and before[0] != after[0]:
+            if r.get("ok") and before[0] != after[0] and not blackout:
                 self.note_transition(pre_obs, step, obs)
                 # RECOGNISE A DEAD END ON ARRIVAL. The exit-level warning
                 # only covers exits already taken FROM here, so an untried
@@ -758,6 +771,7 @@ Reply with ONLY a JSON array of ops, e.g.
         backward = []       # ops that moved us to an already-visited map
         progress = []       # clean ops accumulated across rounds
         self._dead_ops = {}
+        self._dead_visits = 0
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
         cap = self._send_safe("checkpoint_capture", token="esc") or {}
         can_reset = bool((cap.get("result") or {}).get("ok"))
