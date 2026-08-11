@@ -85,8 +85,8 @@
       "macro": [
         {
           "op": "use_warp",
-          "x": 21,
-          "y": 17,
+          "x": 17,
+          "y": 11,
           "when": {
             "map": "MT_MOON_B1F"
           }
@@ -97,7 +97,7 @@
       },
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "mem11",
+        "run": "fossil2",
         "via": "escalation",
         "n_ops": 1
       }
@@ -206,6 +206,25 @@
       "escalation_rounds": 6,
       "subgoal_provenance": {
         "authored_by": "hand-inserted TEST SCAFFOLD \u2014 verified in the recomp's own script (data/scripts/story2.lua mtMoonFossil: taking a fossil runs walk_npc, moving the nerd out of the corridor). The model's decompositions omitted it; the record run needs the AUTHOR to include it, not this insertion."
+      },
+      "macro": [
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_DOME_FOSSIL",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "fossil2",
+        "via": "escalation",
+        "n_ops": 2
       }
     },
     {
@@ -218,10 +237,64 @@
       "macro": [
         {
           "op": "use_warp",
-          "x": 21,
-          "y": 17,
+          "x": 5,
+          "y": 5,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 14,
+          "y": 35,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 27,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_HP_UP",
           "when": {
             "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_ROCKET2",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 15,
+          "y": 27,
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 25,
+          "y": 15,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 14,
+          "y": 35,
+          "when": {
+            "map": "MT_MOON_1F"
           }
         },
         {
@@ -252,9 +325,9 @@
       },
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "mem10",
+        "run": "fossil5",
         "via": "escalation",
-        "n_ops": 4
+        "n_ops": 11
       }
     },
     {
@@ -263,7 +336,25 @@
       "done_when": {
         "map": "CERULEAN_CITY"
       },
-      "escalation_rounds": 10
+      "escalation_rounds": 10,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_4"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "trans1",
+        "via": "escalation",
+        "n_ops": 1
+      }
     }
   ]
 }
