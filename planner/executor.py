@@ -283,6 +283,7 @@ class Executor:
         self._entered_map: dict = {}   # "target|map" -> entries for target
         self._revisit_refusals: dict = {}   # target -> refusals spent
         self._battle_maps: set = set()      # "target|map" where a fight ran
+        self._blackouts: dict = {}          # target -> party wipes
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -853,6 +854,9 @@ Reply with ONLY a JSON array of ops, e.g.
                     # rounds unknowingly ran from Pallet)
                     if post_map and pre_map and post_map != pre_map:
                         blackout = post_map
+                        if self._cur_target:
+                            self._blackouts[self._cur_target] = \
+                                self._blackouts.get(self._cur_target, 0) + 1
                         self.log("blackout", subgoal=sg["id"], op=op,
                                  respawn=post_map)
                         break
@@ -1196,6 +1200,21 @@ Reply with ONLY a JSON array of ops, e.g.
                     f"yet — some events fire by TRAVELLING (walking out "
                     f"along a road) rather than by entering a place or "
                     f"talking to anyone.")
+            elif self._blackouts.get(self._target_key(sg), 0) >= 2:
+                # Being LOST and being TOO WEAK fail the same way from the
+                # executor's side (condition still false), but the remedies
+                # are opposite: one says leave, the other says come back
+                # stronger. Naming which one this is lets the model author
+                # the fix instead of re-entering the same fight unchanged.
+                stuck_note = (
+                    f"\nYour party has been WIPED OUT "
+                    f"{self._blackouts[self._target_key(sg)]}x pursuing this "
+                    f"goal. You are not lost — you are TOO WEAK to win this "
+                    f"fight as you are. Do not walk back in unchanged. Get "
+                    f"stronger first: grind levels, add another Pokemon to "
+                    f"the party so one faint does not end the fight, buy and "
+                    f"use healing items, or all three. Note that each "
+                    f"blackout also costs you half your money.")
             elif self._stuck_in.get(here_now, 0) >= 3:
                 stuck_note = (
                     f"\n{self._stuck_in[here_now]} rounds in this same area "
