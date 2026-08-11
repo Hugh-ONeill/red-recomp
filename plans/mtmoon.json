@@ -325,52 +325,16 @@
       }
     },
     {
-      "id": "exit_mt_moon_east",
-      "goal_text": "After the fossil fight, find your way up and out of Mt Moon to the eastern stretch of Route 4.",
-      "done_when": {
-        "map": "ROUTE_4"
-      },
-      "escalation_rounds": 8,
-      "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "chain1",
-        "via": "escalation",
-        "n_ops": 3
-      },
-      "macro": [
-        {
-          "op": "use_warp",
-          "x": 21,
-          "y": 17,
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 5,
-          "y": 5,
-          "when": {
-            "map": "MT_MOON_B1F"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 14,
-          "y": 35,
-          "when": {
-            "map": "MT_MOON_1F"
-          }
-        }
-      ]
-    },
-    {
-      "id": "reach_cerulean_city",
-      "goal_text": "Travel through Route 4 until you reach Cerulean City.",
+      "id": "exit_mt_moon_east_to_cerulean",
+      "goal_text": "Leave Mt Moon by its EAST exit and reach Cerulean City. The east exit is on B1F (not B2F): go back up from B2F, cross B1F to its far-east ladder/opening, which puts you on the EASTERN half of Route 4 \u2014 then head east to Cerulean. (Route 4's western half, where you entered, is walled off from Cerulean; you cannot get there overland.)",
       "done_when": {
         "map": "CERULEAN_CITY"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 10,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "2026-08-12 PROBE FINDING: ROUTE_4 is ONE map id but two disconnected halves \u2014 from the west (entrance) side the east seam is unreachable (reachable=158 cells, east-edge reachable=[]). Mt Moon's only east exit is B1F's LAST_MAP warp at (27,3); 1F's LAST_MAP warps (14/15,35) are the ENTRANCE. The old exit_mt_moon_east ended on {map:ROUTE_4} which BOTH halves satisfy \u2014 so it 'succeeded' on the wrong side and reach_cerulean_city could never cross east."
+      }
     }
   ],
   "authored_by": "gemma4:31b-it-q4_K_M"
