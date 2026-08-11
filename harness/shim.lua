@@ -435,37 +435,70 @@ function OPS.use_warp(G, c)
   local startMap = ow.map and ow.map.id
   local p = ow.player
   if not (c.x and c.y) then return false, "use_warp needs x,y" end
-  if p.cellX ~= c.x or p.cellY ~= c.y then
-    OPS.walk_to(G, { x = c.x, y = c.y, max_steps = c.max_steps or 120 })
-    if (ow.map and ow.map.id) ~= startMap then return true, "warped" end
+
+  local function attempt(x, y)
+    if p.cellX ~= x or p.cellY ~= y then
+      OPS.walk_to(G, { x = x, y = y, max_steps = c.max_steps or 120 })
+      if (ow.map and ow.map.id) ~= startMap then return true end
+    end
+    if p.cellX ~= x or p.cellY ~= y then return false, "unreachable" end
+    -- step through: prefer whichever edge the tile sits on (cell dims)
+    local w, h = map_dims_cells(G)
+    if w == 0 then w = 99 end
+    if h == 0 then h = 99 end
+    local order = {}
+    if y >= h - 1 then order = {"down","left","right","up"}
+    elseif y <= 0 then order = {"up","left","right","down"}
+    elseif x <= 0 then order = {"left","up","down","right"}
+    elseif x >= w - 1 then order = {"right","up","down","left"}
+    else order = {"down","up","left","right"} end
+    for _, dir in ipairs(order) do
+      table.insert(G.input.pressQueue, dir)
+      G.input.state[dir] = true
+      for _ = 1, 30 do
+        coroutine.yield()
+        if (ow.map and ow.map.id) ~= startMap then
+          G.input.state[dir] = false
+          return true
+        end
+      end
+      G.input.state[dir] = false
+      U.wait(4)
+    end
+    return false, "no fire"
   end
-  if p.cellX ~= c.x or p.cellY ~= c.y then
-    return false, "couldn't reach the warp tile"
-  end
-  -- step through: prefer whichever edge the tile sits on (cell dims)
-  local w, h = map_dims_cells(G)
-  if w == 0 then w = 99 end
-  if h == 0 then h = 99 end
-  local order = {}
-  if c.y >= h - 1 then order = {"down","left","right","up"}
-  elseif c.y <= 0 then order = {"up","left","right","down"}
-  elseif c.x <= 0 then order = {"left","up","down","right"}
-  elseif c.x >= w - 1 then order = {"right","up","down","left"}
-  else order = {"down","up","left","right"} end
-  for _, dir in ipairs(order) do
-    table.insert(G.input.pressQueue, dir)
-    G.input.state[dir] = true
-    for _ = 1, 30 do
-      coroutine.yield()
-      if (ow.map and ow.map.id) ~= startMap then
-        G.input.state[dir] = false
-        return true, "warped"
+
+  -- Doorway warps come in 2-tile pairs and one side can be walled off
+  -- (VIRIDIAN_FOREST_SOUTH_GATE: (4,0) is unreachable, only (5,0) enters
+  -- the forest — the in-tree route uses 5,0). The model picks the DOOR;
+  -- which tile of the pair is walkable is mechanics, so on failure retry
+  -- the adjacent twin with the same destination.
+  local tiles = { { x = c.x, y = c.y } }
+  local md = startMap and G.data and G.data.maps and G.data.maps[startMap]
+  if md and md.warps then
+    local dest
+    for _, w in ipairs(md.warps) do
+      if w.x == c.x and w.y == c.y then dest = w.destMap break end
+    end
+    if dest then
+      for _, w in ipairs(md.warps) do
+        if w.destMap == dest
+           and math.abs(w.x - c.x) + math.abs(w.y - c.y) == 1 then
+          tiles[#tiles + 1] = { x = w.x, y = w.y }
+        end
       end
     end
-    G.input.state[dir] = false
-    U.wait(4)
   end
-  return false, "stepped through but no warp fired"
+  local reached_any = false
+  for _, t in ipairs(tiles) do
+    local ok, w = attempt(t.x, t.y)
+    if ok or (ow.map and ow.map.id) ~= startMap then return true, "warped" end
+    reached_any = reached_any or (w == "no fire")
+  end
+  if reached_any then
+    return false, "stepped through but no warp fired"
+  end
+  return false, "couldn't reach the warp tile"
 end
 
 -- Cross to the connected map in a direction (north/south/east/west). Finds
