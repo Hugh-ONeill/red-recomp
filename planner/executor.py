@@ -265,6 +265,11 @@ class Executor:
         self.escalations = 0
         self._dead_ops: dict = {}   # (op,target) -> consecutive failures
         self._st: dict = {}         # live status (run/status.txt)
+        # exploration memory: {"MAP|region": {(x,y): {"n": k, "to": "MAP|reg"}}}
+        # Without it the run re-takes the same ladder forever (thin8 spent 12
+        # redo rounds ping-ponging one warp). This is memory, not reward
+        # shaping: it says where you HAVE been, the model still chooses.
+        self.explored: dict = {}
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
         # Pure memory of past observations (the obs already showed each map's
         # connections while standing on it), re-served to the model so multi-
@@ -284,6 +289,52 @@ class Executor:
                 e["warps"] = [{"x": w.get("x"), "y": w.get("y"),
                                "dest": w.get("dest")} for w in m["warps"]]
         return obs
+
+    @staticmethod
+    def _where(obs) -> str:
+        m = (obs or {}).get("map") or {}
+        return f"{m.get('id')}|{m.get('region')}"
+
+    def note_transition(self, before_obs, step, after_obs):
+        """Record: from this area, that exit led there."""
+        src, dst = self._where(before_obs), self._where(after_obs)
+        if src == dst or "None" in src:
+            return
+        key = (step.get("x"), step.get("y")) if step.get("x") is not None \
+            else step.get("dir")
+        if key is None:
+            return
+        node = self.explored.setdefault(src, {})
+        e = node.setdefault(key, {"n": 0, "to": dst})
+        e["n"] += 1
+        e["to"] = dst
+        self.log("explored", frm=src, via=str(key), to=dst, times=e["n"])
+
+    def exploration_text(self, obs) -> str:
+        """Untried vs already-taken exits from where we stand."""
+        here = self._where(obs)
+        taken = self.explored.get(here, {})
+        warps = ((obs or {}).get("map") or {}).get("warps") or []
+        untried, tried = [], []
+        for w in warps:
+            if not w.get("reachable"):
+                continue
+            k = (w.get("x"), w.get("y"))
+            if k in taken:
+                tried.append(f"({k[0]},{k[1]}) -> {taken[k]['to']} "
+                             f"[taken {taken[k]['n']}x]")
+            else:
+                untried.append(f"({k[0]},{k[1]})->{w.get('dest')}")
+        if not (untried or tried):
+            return ""
+        out = "\nEXITS FROM HERE — "
+        out += ("UNTRIED (prefer these, they are the only way to find "
+                f"anything new): {', '.join(untried)}. " if untried
+                else "none untried. ")
+        if tried:
+            out += (f"Already taken from here: {'; '.join(tried)} — retaking "
+                    "one returns you where it says, which you have seen.")
+        return out
 
     def _atlas_text(self) -> str:
         parts = []
@@ -495,6 +546,7 @@ Reply with ONLY a JSON array of ops, e.g.
                              "failed 3 times in this subgoal; it cannot work "
                              "from here, do something different")
                 continue
+            pre_obs = obs
             before = self._snapshot(obs)
             traversal = op in ("cross", "walk_to", "use_warp", "grind")
             blackout = None
@@ -545,6 +597,8 @@ Reply with ONLY a JSON array of ops, e.g.
                 note += (f" — your party FAINTED mid-op (blackout): you "
                          f"respawned at {blackout}, party healed, position "
                          f"progress lost")
+            if r.get("ok") and before[0] != after[0]:
+                self.note_transition(pre_obs, step, obs)
             trace.append(note)
             self.status(last=note, obs=obs, doing=f"{op} {json.dumps(step)}")
             # distill an op if it ran OK *or* changed the state — cross via the
@@ -828,6 +882,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"steps, do not repeat ones that already took effect."
                         + loop_note
                         + open_prompt
+                        + self.exploration_text(cur)
                         + (("\nWarps you can currently WALK TO from here: "
                             + ", ".join(
                                 f"({w.get('x')},{w.get('y')})->{w.get('dest')}"
