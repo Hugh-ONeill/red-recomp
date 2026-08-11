@@ -378,7 +378,11 @@ class Executor:
                 return 0      # one live route out is enough
         return 1              # every way out leads somewhere hopeless
 
+    SPATIAL = ("map:", "flag:", "item:")
+
     def note_dead_end(self, sg_id: str, region: str):
+        if not sg_id.startswith(self.SPATIAL):
+            return          # healing/levelling are not facts about geography
         """This area could not achieve that subgoal — remember it."""
         if not region or "None" in region:
             return
@@ -409,7 +413,7 @@ class Executor:
     def note_transition(self, before_obs, step, after_obs):
         """Record: from this area, that exit led there."""
         src, dst = self._where(before_obs), self._where(after_obs)
-        if src == dst or "None" in src:
+        if src == dst or "None" in src or "None" in dst:
             return
         key = (f"{step.get('x')},{step.get('y')}"
                if step.get("x") is not None else step.get("dir"))
@@ -1040,7 +1044,9 @@ Reply with ONLY a JSON array of ops, e.g.
             # the third is the characteristic failure INSIDE a dungeon and
             # was missing, so cave rooms never got marked and the run kept
             # reconsidering them (user: "they're not getting labelled")
-            unreachable = [t for t in trace
+            in_control = (cur.get("mode") == "overworld"
+                          and not (cur.get("player") or {}).get("moving"))
+            unreachable = [] if not in_control else [t for t in trace
                            if "no reachable tile adjacent" in t
                            or "cannot be walked to from" in t
                            or "couldn't reach the warp tile" in t]
