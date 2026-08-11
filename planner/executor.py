@@ -431,7 +431,7 @@ Reply with ONLY a JSON array of ops, e.g.
                      for m in (obs or {}).get("party") or [])),
                 len((obs or {}).get("flags") or []))
 
-    def _run_traced(self, sg, macro):
+    def _run_traced(self, sg, macro, ignore_done=False):
         """Run a proposed macro step-by-step, returning (done, trace, clean).
         `trace` is plain-English per-op outcomes for feedback (incl. 'ran but
         had NO visible effect'); `clean` is the subset of ops that ran OK —
@@ -449,7 +449,7 @@ Reply with ONLY a JSON array of ops, e.g.
             if obs and obs.get("mode") == "battle":
                 obs = self.handle_battle(sg, obs)
                 obs = self.settle()
-            if pred_holds(done, obs):
+            if not ignore_done and pred_holds(done, obs):
                 return True, trace, clean
             if when and not pred_holds(when, obs):
                 # honor when-guards on replay (verify runs the same guarded
@@ -528,11 +528,17 @@ Reply with ONLY a JSON array of ops, e.g.
                 if before[0]:
                     rec["when"] = {"map": before[0]}
                 clean.append(rec)
-            if pred_holds(done, self.settle()):
+            if not ignore_done and pred_holds(done, self.settle()):
                 return True, trace, clean
         return pred_holds(done, self.settle()), trace, clean
 
-    def escalate(self, sg: dict) -> tuple[bool, list]:
+    @staticmethod
+    def _pos(obs):
+        p = (obs or {}).get("player") or {}
+        return (p.get("x"), p.get("y"))
+
+    def escalate(self, sg: dict, redo: bool = False,
+                 blocked_by: str = "") -> tuple[bool, list]:
         """SPD escalation: the model AUTHORS a candidate macro (its strength),
         the executor RUNS it with a per-step trace, and on success distills.
         On failure the DIAGNOSTIC trace (which ops did nothing / where it
@@ -564,6 +570,7 @@ Reply with ONLY a JSON array of ops, e.g.
         # The absolute cap bounds oscillation (A<->B crossings are each "a
         # map change" yet go nowhere).
         spent, rnd = 0, 0
+        redo_from = self._pos(self.settle()) if redo else None
         pardon = False        # one free revisit after a blackout (recovery)
         visits: dict = {}     # round-end maps: re-entering one = circling
         while spent < rounds and rnd < rounds * 3:
@@ -574,7 +581,18 @@ Reply with ONLY a JSON array of ops, e.g.
                 visits[sig0[0]] = 1
             obs = model_view(start)
             atlas = self._atlas_text()
-            user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}\n"
+            redo_note = ""
+            if redo:
+                redo_note = (
+                    "\n\nREDO: you ALREADY satisfy DONE_WHEN — but you are in "
+                    "the WRONG PLACE. The next objective (" + blocked_by +
+                    ") turned out to be impossible from here, which means this "
+                    "map has more than one area that satisfies DONE_WHEN and "
+                    "you reached the wrong one. Get to a DIFFERENT place that "
+                    "also satisfies it — typically by going back the way you "
+                    "came and taking another route. Standing still is failure.")
+            user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
+                    f"{redo_note}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
                     f"{atlas or 'nothing yet'}\n"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
@@ -620,7 +638,21 @@ Reply with ONLY a JSON array of ops, e.g.
                     macro = keep + [macro[-1]]
             self.log("escalate_proposal", subgoal=sg["id"], round=rnd,
                      macro=macro)
-            ok, trace, clean = self._run_traced(sg, macro)
+            ok, trace, clean = self._run_traced(sg, macro,
+                                                ignore_done=redo)
+            if ok and redo:
+                # "somewhere else that also satisfies it": a couple of tiles
+                # is the same place. A real relocation crosses the map (the
+                # east half of Route 4 is ~70 cells from the west half).
+                now = self._pos(self.settle())
+                far = (redo_from[0] is not None and now[0] is not None
+                       and abs(now[0] - redo_from[0])
+                           + abs(now[1] - redo_from[1]) >= 12)
+                if not far:
+                    ok = False
+                    trace.append("(you are still in the SAME area — DONE_WHEN "
+                                 "holds but nothing has changed; you must "
+                                 "physically relocate)")
             if stripped:
                 trace.insert(0, f"(note: {stripped} leading walk_to op(s) "
                              "dropped — cross/use_warp path-find on their "
@@ -858,29 +890,61 @@ Reply with ONLY a JSON array of ops, e.g.
         self.log("subgoal_failed", subgoal=sg["id"])
         return False
 
+    def _attempt(self, sg) -> bool:
+        """Replay the macro; escalate if that fails."""
+        try:
+            ok = self.run_subgoal(sg) if sg.get("macro") else False
+        except TimeoutError as e:
+            self.log("subgoal_timeout", subgoal=sg["id"], err=str(e))
+            ok = False
+        if not ok and self.can_escalate:
+            print(f"   -> escalating {sg['id']} to the model")
+            self.escalations += 1
+            try:
+                success, ops = self.escalate(sg)
+            except TimeoutError as e:
+                self.log("escalate_timeout", subgoal=sg["id"], err=str(e))
+                success, ops = False, []
+            if success:
+                self.distill(sg, ops)
+                ok = True
+                print(f"   distilled {sg['id']} ({len(ops)} ops)")
+        return ok
+
     def run_plan(self, plan: dict) -> bool:
         self.log("plan_start", goal=plan.get("goal"), escalate=self.can_escalate)
         fails = 0
-        for sg in plan["subgoals"]:
+        backtracks = 0
+        subgoals = plan["subgoals"]
+        for idx, sg in enumerate(subgoals):
             has_macro = bool(sg.get("macro"))
             print(f"== subgoal: {sg['id']}" + ("" if has_macro else " (no macro)"))
-            try:
-                ok = self.run_subgoal(sg) if has_macro else False
-            except TimeoutError as e:
-                self.log("subgoal_timeout", subgoal=sg["id"], err=str(e))
-                ok = False
-            if not ok and self.can_escalate:
-                print(f"   -> escalating {sg['id']} to the model")
-                self.escalations += 1
+            ok = self._attempt(sg)
+            # BACKTRACK: a subgoal that cannot be done may not be the broken
+            # one. A done_when like {map:X} is satisfied ANYWHERE on X, so the
+            # PREVIOUS subgoal can "succeed" in a place this one is impossible
+            # from (Route 4's two halves). Re-open it in REDO mode — same
+            # done_when, but it must relocate — then try this one again.
+            # Harness logic, not route knowledge: it fixes the whole class.
+            if (not ok and self.can_escalate and idx > 0
+                    and backtracks < 2 and not sg.get("optional")):
+                prev = subgoals[idx - 1]
+                backtracks += 1
+                print(f"   <- backtracking: redoing {prev['id']} "
+                      f"(it may have finished in the wrong place)")
+                self.log("backtrack", failed=sg["id"], redoing=prev["id"])
                 try:
-                    success, ops = self.escalate(sg)
+                    moved, ops = self.escalate(
+                        prev, redo=True,
+                        blocked_by=sg.get("goal_text", sg["id"])[:120])
                 except TimeoutError as e:
-                    self.log("escalate_timeout", subgoal=sg["id"], err=str(e))
-                    success, ops = False, []
-                if success:
-                    self.distill(sg, ops)
-                    ok = True
-                    print(f"   distilled {sg['id']} ({len(ops)} ops)")
+                    self.log("escalate_timeout", subgoal=prev["id"],
+                             err=str(e))
+                    moved = False
+                if moved:
+                    self.log("backtrack_relocated", subgoal=prev["id"])
+                    print(f"   -> relocated; retrying {sg['id']}")
+                    ok = self._attempt(sg)
             # A plan is not dead because ONE subgoal is: a side objective
             # (the fossil fight), an unaffordable shop, or a step the world
             # already satisfied differently should not end the run. Carry on
