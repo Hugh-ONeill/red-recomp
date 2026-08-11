@@ -247,8 +247,20 @@ local function observe(G, seq, result)
         end
         if bx then o.map.region = bx .. "," .. by end
       end
+      -- LAST_MAP is gen1's "back outdoors where you came from" and it is
+      -- what every route GATE uses for its outward doors. Left raw, the
+      -- model saw "(4,0)->LAST_MAP" (meaningless) beside
+      -- "(4,7)->VIRIDIAN_FOREST" (familiar) and kept walking back into the
+      -- forest. Resolve it the way the engine does — the player knows
+      -- perfectly well which town is behind them.
+      local lastOut = (G.overworld and G.overworld.lastOutdoor
+                       and G.overworld.lastOutdoor.id)
+                      or (G.save and G.save.lastOutdoor
+                          and G.save.lastOutdoor.id)
       for i, w in ipairs(md.warps) do
-        o.map.warps[i] = { x = w.x, y = w.y, dest = w.destMap,
+        local dest = w.destMap
+        if dest == "LAST_MAP" and lastOut then dest = lastOut end
+        o.map.warps[i] = { x = w.x, y = w.y, dest = dest,
                            reachable = reach[w.x .. "," .. w.y] and true
                                        or false }
       end
