@@ -58,6 +58,7 @@ def main():
     print(f"[boot] {'continued from save' if save.exists() else 'new game'}: "
           f"{(b.obs() or {}).get('map', {}).get('id')}")
 
+    last_saved = None
     for plan_path in (REPO / "plans/brock.json", REPO / "plans/mtmoon.json"):
         plan = json.loads(plan_path.read_text())
         print(f"== {plan_path.name}")
@@ -75,12 +76,18 @@ def main():
                 if ok:
                     sg["macro"] = ops
             print(f"   {sg['id']}: {'ok' if ok else 'FAILED'}")
-            if ok:
-                # RATCHET: save after every success so the next probe
-                # resumes here instead of replaying the route
+            here = ((ex.settle() or {}).get("map") or {}).get("id")
+            if ok and here != last_saved:
+                # RATCHET: save on each new MAP (not each subgoal — the save
+                # menu can linger, and saving constantly multiplied that)
                 r = (ex._send_safe("save_game") or {}).get("result") or {}
-                if not r.get("ok"):
-                    print(f"      (save: {r.get('detail')})")
+                last_saved = here
+                for _ in range(3):        # make sure the field is back
+                    o = ex.settle() or {}
+                    if o.get("mode") == "overworld":
+                        break
+                    ex._send_safe("tap", btn="b")
+                print(f"      [saved on {here}] {r.get('detail')}")
         else:
             continue
         break

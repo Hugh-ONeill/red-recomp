@@ -1582,7 +1582,14 @@ function OPS.save_game(G)
     if t == G.overworld or (t and t.screenId == "StartMenu") then break end
     U.wait(4)
   end
-  ui_back_out(G)                                  -- close the StartMenu
+  -- close the StartMenu for real: a single back-out pass sometimes left it
+  -- up, and the ratchet probe then failed every following subgoal with
+  -- "not in overworld" (saving after each subgoal multiplied the leak)
+  for _ = 1, 6 do
+    if ui_top(G) == G.overworld then break end
+    ui_back_out(G)
+    U.tap(G, "b"); U.wait(8)
+  end
   if not written then
     return false, ("save file never changed (top=%s)"):format(
       tostring((ui_top(G) or {}).screenId or "overworld"))
