@@ -8,6 +8,10 @@ export RED_BRIDGE_DIR="${RED_BRIDGE_DIR:-$HOME/Developer/red-recomp/run}"
 mkdir -p "$RED_BRIDGE_DIR"
 rm -f "$RED_BRIDGE_DIR"/obs.json "$RED_BRIDGE_DIR"/cmd.lua
 cd "$HOME/Developer/gen1recomp"
+# Headless runs still open an audio device — the repeated bump/interact
+# sounds are an accidental but genuinely useful progress channel (a loop
+# SOUNDS like a loop). RED_MUTE=1 silences it for unattended runs.
+[ "${RED_MUTE:-0}" = "1" ] && export SDL_AUDIODRIVER=dummy
 COMMON=(POKEPORT_DRIVER="$HOME/Developer/red-recomp/harness/shim.lua" POKEPORT_SPEED="$SPEED")
 if [ "$HEADED" = 1 ]; then
   exec env "${COMMON[@]}" love .
