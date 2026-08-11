@@ -876,6 +876,19 @@ Reply with ONLY a JSON array of ops, e.g.
             if not r.get("ok"):
                 self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
                 note += f": FAILED — {r.get('detail')}"
+                # Some failures are DEFINITIVE about this place, not about
+                # the attempt: a shop that does not stock the item will
+                # never stock it. Without recording that, shopping_for_potions
+                # burned ~15 rounds re-entering the Viridian mart, which does
+                # not sell POTION at all, and reached Brock with no heals.
+                det = str(r.get("detail") or "")
+                if "is not sold here" in det and self._cur_target:
+                    self.note_dead_end(self._cur_target, self._where(obs))
+                    trace.append(
+                        f"PROVEN: this shop does not stock it and never "
+                        f"will. Either buy what IS on this shelf if it "
+                        f"serves the goal, or leave and find another shop — "
+                        f"do not try this counter again.")
             elif before == after:
                 note += ": ran but had NO visible effect (nothing changed)"
             else:
