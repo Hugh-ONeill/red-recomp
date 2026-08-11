@@ -271,6 +271,7 @@ class Executor:
         # shaping: it says where you HAVE been, the model still chooses.
         self.explored: dict = {}
         self.dead_ends: dict = {}   # subgoal id -> {region: failures}
+        self.visits: dict = {}      # region -> times arrived
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
         # Pure memory of past observations (the obs already showed each map's
@@ -304,17 +305,19 @@ class Executor:
             data = json.loads(self.MEMORY.read_text())
             self.explored = data.get("explored", {})
             self.dead_ends = data.get("dead_ends", {})
+            self.visits = data.get("visits", {})
             edges = sum(len(v) for v in self.explored.values())
             if edges:
                 print(f"[memory] {len(self.explored)} areas, {edges} known "
                       f"exits from previous runs")
         except (OSError, ValueError):
-            self.explored, self.dead_ends = {}, {}
+            self.explored, self.dead_ends, self.visits = {}, {}, {}
 
     def _save_memory(self):
         try:
             self.MEMORY.write_text(json.dumps(
-                {"explored": self.explored, "dead_ends": self.dead_ends},
+                {"explored": self.explored, "dead_ends": self.dead_ends,
+                 "visits": self.visits},
                 indent=1))
         except OSError:
             pass
@@ -342,6 +345,7 @@ class Executor:
                if step.get("x") is not None else step.get("dir"))
         if key is None:
             return
+        self.visits[dst] = self.visits.get(dst, 0) + 1
         node = self.explored.setdefault(src, {})
         e = node.setdefault(key, {"n": 0, "to": dst})
         e["n"] += 1
@@ -364,7 +368,14 @@ class Executor:
                              f"[taken {taken[k]['n']}x]")
             else:
                 untried.append(f"({k})->{w.get('dest')}")
+        been = self.visits.get(here, 0)
         warned = ""
+        if been >= 2:
+            warned = (f"\nYOU HAVE BEEN IN THIS EXACT AREA {been} TIMES "
+                      f"ALREADY ({here}). Arriving here again is not "
+                      f"progress — if the last thing you did brought you "
+                      f"back here, undo that choice and take a different "
+                      f"exit.")
         for sg_id, regions in self.dead_ends.items():
             if here in regions:
                 warned = (f"\nNOTE: earlier attempts failed to achieve "
