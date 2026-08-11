@@ -52,8 +52,12 @@ PREDICATES = {
                   "them)",
 }
 ROUTE_MAPS = ["REDS_HOUSE_2F", "REDS_HOUSE_1F", "PALLET_TOWN", "OAKS_LAB",
-              "ROUTE_1", "VIRIDIAN_CITY", "VIRIDIAN_MART", "ROUTE_2",
-              "VIRIDIAN_FOREST", "PEWTER_CITY", "PEWTER_GYM"]
+              "ROUTE_1", "VIRIDIAN_CITY", "VIRIDIAN_MART",
+              "VIRIDIAN_POKECENTER", "ROUTE_22", "ROUTE_2",
+              "VIRIDIAN_FOREST", "PEWTER_CITY", "PEWTER_MART",
+              "PEWTER_POKECENTER", "PEWTER_GYM",
+              "ROUTE_3", "MT_MOON_POKECENTER", "ROUTE_4",
+              "MT_MOON_1F", "MT_MOON_B1F", "MT_MOON_B2F", "CERULEAN_CITY"]
 KEY_FLAGS = {
     "EVENT_OAK_ASKED_TO_CHOOSE_MON": "Oak finished his intro and the starter "
         "Poke Balls are now active to choose from (use this to mark 'reached "
@@ -65,6 +69,8 @@ KEY_FLAGS = {
     "EVENT_GOT_POKEDEX": "delivered the parcel to Oak and got the Pokedex "
                          "(this unlocks the north exit of Viridian City)",
     "EVENT_BEAT_BROCK": "defeated Brock at Pewter Gym",
+    "EVENT_BEAT_MT_MOON_3_SUPER_NERD": "beat the Super Nerd guarding the "
+        "fossils on Mt Moon's bottom floor (B2F) — the fossil pick follows",
 }
 BADGES = ["BOULDERBADGE"]
 
@@ -100,13 +106,17 @@ Each subgoal is an object:
 Reply with ONLY a JSON object: {"goal":"...","subgoals":[ ... ]}."""
 
 
-def build_prompt(goal: str) -> str:
+NEW_GAME_START = (
+    "a brand-new game — the player begins UPSTAIRS in their own bedroom "
+    "(map REDS_HOUSE_2F) with no Pokemon. Your FIRST subgoals must get "
+    "them out of the house (downstairs, then out the front door) before "
+    "anything else.")
+
+
+def build_prompt(goal: str, start: str | None = None) -> str:
     return (
         f"GOAL: {goal}\n\n"
-        "STARTING STATE: a brand-new game — the player begins UPSTAIRS in "
-        "their own bedroom (map REDS_HOUSE_2F) with no Pokemon. Your FIRST "
-        "subgoals must get them out of the house (downstairs, then out the "
-        "front door) before anything else.\n\n"
+        f"STARTING STATE: {start or NEW_GAME_START}\n\n"
         f"PREDICATES you may use in done_when (pick the ONE that best marks "
         f"the subgoal complete):\n"
         + "\n".join(f"  {k}: {v}" for k, v in PREDICATES.items())
@@ -158,10 +168,11 @@ def validate(plan: dict) -> list:
     return probs
 
 
-def author(goal: str, model: str, rounds: int = 3) -> dict | None:
+def author(goal: str, model: str, rounds: int = 3,
+           start: str | None = None) -> dict | None:
     fb = ""
     for rnd in range(1, rounds + 1):
-        user = build_prompt(goal) + (f"\n\nFIX THESE PROBLEMS from your last "
+        user = build_prompt(goal, start) + (f"\n\nFIX THESE PROBLEMS from your last "
                                      f"attempt:\n{fb}" if fb else "")
         reply = brock_probe.chat(
             [{"role": "system", "content": SYS},
@@ -191,8 +202,10 @@ def main():
     ap.add_argument("--goal", required=True)
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--model", default="gemma4:26b-a4b-it-q4_K_M")
+    ap.add_argument("--start", default=None,
+                    help="starting-state description (default: new game)")
     args = ap.parse_args()
-    plan = author(args.goal, args.model)
+    plan = author(args.goal, args.model, start=args.start)
     if not plan:
         sys.exit("author failed to produce a valid plan")
     plan.setdefault("goal", args.goal)
