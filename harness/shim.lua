@@ -1407,6 +1407,77 @@ function OPS.pick_party(G, c)
   return true, "sent out slot " .. slot
 end
 
+-- DEV DIAGNOSTIC (never in a decision path; not part of the model's eyes):
+-- report this map's pathing reality — reachable-set size, which edge cells
+-- are walkable/reachable, and which cells offer a ledge hop. Exists to
+-- debug traversal failures like Route 4's east seam.
+function OPS.map_probe(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  local Collision = require("src.world.Collision")
+  local ow, p, map = G.overworld, G.overworld.player, G.overworld.map
+  local W, H = map_dims_cells(G)
+  local key = function(x, y) return x .. "," .. y end
+  local seen = { [key(p.cellX, p.cellY)] = true }
+  local queue = { { x = p.cellX, y = p.cellY } }
+  local head, hops = 1, {}
+  while queue[head] do
+    local cur = queue[head]; head = head + 1
+    for dname, d in pairs(DIRS) do
+      local nx, ny = cur.x + d[1], cur.y + d[2]
+      local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
+                                 { __index = p })
+      if Collision.canMove(map, ow.entities, probe, dname) then
+        if not seen[key(nx, ny)] then
+          seen[key(nx, ny)] = true
+          queue[#queue + 1] = { x = nx, y = ny }
+        end
+      else
+        local lx, ly = ledge_landing(G, map, cur.x, cur.y, dname)
+        if lx then
+          if #hops < 12 then
+            hops[#hops + 1] = ("(%d,%d)%s->(%d,%d)"):format(
+              cur.x, cur.y, dname, lx, ly)
+          end
+          if not seen[key(lx, ly)] then
+            seen[key(lx, ly)] = true
+            queue[#queue + 1] = { x = lx, y = ly }
+          end
+        end
+      end
+    end
+  end
+  local n = 0
+  for _ in pairs(seen) do n = n + 1 end
+  -- edge cells on the requested side: walkable? reachable?
+  local side = c.dir or "east"
+  local walk, reach = {}, {}
+  for i = 0, (side == "east" or side == "west") and H - 1 or W - 1 do
+    local x, y
+    if side == "east" then x, y = W - 1, i
+    elseif side == "west" then x, y = 0, i
+    elseif side == "north" then x, y = i, 0
+    else x, y = i, H - 1 end
+    if map:isWalkableCell(x, y) then
+      walk[#walk + 1] = x .. "," .. y
+      if seen[key(x, y)] then reach[#reach + 1] = x .. "," .. y end
+    end
+  end
+  -- tile ids around the player, to compare against the ledge rows
+  local tiles = {}
+  for dname, d in pairs(DIRS) do
+    tiles[dname] = map:cellTile(p.cellX + d[1], p.cellY + d[2])
+  end
+  return true, ("dims=%dx%d pos=(%d,%d) standing_tile=%s reachable=%d | "
+    .. "%s-edge walkable=[%s] reachable=[%s] | front_tiles up=%s down=%s "
+    .. "left=%s right=%s | ledge_hops=%d [%s]"):format(
+    W, H, p.cellX, p.cellY, tostring(map:cellTile(p.cellX, p.cellY)), n,
+    side, table.concat(walk, " "), table.concat(reach, " "),
+    tostring(tiles.up), tostring(tiles.down), tostring(tiles.left),
+    tostring(tiles.right), #hops, table.concat(hops, " "))
+end
+
 -- Save the game via the START menu (a PLAYER action — this is the claim-
 -- clean persistence, unlike dev checkpoints): START -> SAVE -> YES ->
 -- ride the save text. The title's CONTINUE loads it next boot.
