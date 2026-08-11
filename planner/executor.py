@@ -277,6 +277,7 @@ class Executor:
         self.visits: dict = {}      # region -> times arrived
         self._arrived = None        # (region, (x,y)) — the door we came in by
         self._reversals = 0
+        self._dead_visits = 0
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
         # Pure memory of past observations (the obs already showed each map's
