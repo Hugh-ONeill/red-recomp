@@ -757,8 +757,11 @@ Ops: {"op":"walk_to","x":N,"y":N} (within-map), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
 door/stairs), {"op":"interact","name":"OBJECT_NAME"}, {"op":"menu","index":N}
 (1-based: 1=YES/first, 2=NO/second), {"op":"grind"} (pace this map's wild
-grass; each battle is fought and the op repeats until the subgoal's level
-target is met — use when the goal is to TRAIN/level up),
+grass; each battle is fought and the op repeats until the subgoal's
+DONE_WHEN is met, whatever it is — levels, or party size. Wild Pokemon
+appear by WALKING in tall grass, never by standing still, so this is the
+op for TRAINING *and* for finding something to CATCH; {"op":"wait"} will
+never produce an encounter),
 {"op":"buy","item":"POTION","count":N} (own N total of the item, buying
 the difference from THIS map's mart clerk — it talks to the clerk ITSELF,
 no interact needed first; obs.money is your budget),
