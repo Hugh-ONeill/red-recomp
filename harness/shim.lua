@@ -86,8 +86,18 @@ local OP_FRAME_BUDGET = 120000   -- ~33 game-minutes; no legit op comes close
 
 -- ---------------------------------------------------------------- json out
 local function jesc(s)
-  s = s:gsub("[\\\"\n\r\t]", { ["\\"] = "\\\\", ['"'] = '\\"',
-    ["\n"] = "\\n", ["\r"] = "\\r", ["\t"] = "\\t" })
+  -- escape EVERY control byte, not just the common five: gen1 text decodes
+  -- its line-advance code to 0x0b, and one bug-catcher endBattleText with a
+  -- raw \v made every obs.json invalid JSON from that battle on — the
+  -- Python side read None forever and the whole run wedged (brock19/20/21)
+  s = s:gsub('[%c\\"]', function(ch)
+    if ch == "\\" then return "\\\\"
+    elseif ch == '"' then return '\\"'
+    elseif ch == "\n" then return "\\n"
+    elseif ch == "\r" then return "\\r"
+    elseif ch == "\t" then return "\\t"
+    else return string.format("\\u%04x", ch:byte()) end
+  end)
   return '"' .. s .. '"'
 end
 
