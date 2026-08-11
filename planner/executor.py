@@ -743,8 +743,9 @@ Reply with ONLY a JSON array of ops, e.g.
         p = (obs or {}).get("player") or {}
         return (p.get("x"), p.get("y"))
 
-    def escalate(self, sg: dict, redo: bool = False,
-                 blocked_by: str = "", avoid_region: str = "") -> tuple[bool, list]:
+    def escalate(self, sg: dict, redo: bool = False, blocked_by: str = "",
+                 avoid_region: str = "",
+                 blocked_id: str = "") -> tuple[bool, list]:
         """SPD escalation: the model AUTHORS a candidate macro (its strength),
         the executor RUNS it with a per-step trace, and on success distills.
         On failure the DIAGNOSTIC trace (which ops did nothing / where it
@@ -863,6 +864,16 @@ Reply with ONLY a JSON array of ops, e.g.
                 # east half of Route 4 is ~70 cells from the west half).
                 cur_obs = self.settle() or {}
                 region = (cur_obs.get("map") or {}).get("region")
+                land = self._where(cur_obs)
+                failed_here = (self.dead_ends.get(blocked_id, {})
+                               or {}).get(land, 0)
+                if failed_here:
+                    ok = False
+                    trace.append(
+                        f"(you satisfied the condition again in {land}, but "
+                        f"the objective that sent you back here has already "
+                        f"failed from there {failed_here}x — that is the "
+                        f"same wrong place. Somewhere ELSE satisfies this.)")
                 # the test is REGION, not distance: thin7 went back into the
                 # cave and out the SAME door — tiles away, same dead end
                 if avoid_region and region == avoid_region:
@@ -1178,6 +1189,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 try:
                     moved, ops = self.escalate(
                         prev, redo=True, avoid_region=stuck_region,
+                        blocked_id=sg["id"],
                         blocked_by=sg.get("goal_text", sg["id"])[:120])
                 except TimeoutError as e:
                     self.log("escalate_timeout", subgoal=prev["id"],
@@ -1198,6 +1210,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         try:
                             moved2, _ = self.escalate(
                                 prev, redo=True, avoid_region=stuck_region,
+                                blocked_id=sg["id"],
                                 blocked_by=sg.get("goal_text", sg["id"])[:120])
                         except TimeoutError:
                             moved2 = False
