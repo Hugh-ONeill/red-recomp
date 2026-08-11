@@ -803,11 +803,27 @@ function OPS.interact(G, c)
   -- stand on an orthogonally adjacent walkable tile, then face the target.
   -- Counter NPCs (Center nurse, mart clerk) have NO walkable adjacent tile:
   -- gen1 talks ACROSS the counter, so the distance-2 spots facing the
-  -- target are valid stands too (adjacent ones stay preferred).
+  -- target are valid stands too (adjacent ones stay preferred) — but ONLY
+  -- when no other object sits on the tile between, or the press talks to
+  -- THAT instead (a distance-2 stand at the Squirtle ball pressed A into
+  -- the Charmander ball and picked the wrong starter).
+  local function occupied(x, y)
+    for _, npc in ipairs(ow.npcs or {}) do
+      if npc.cellX == x and npc.cellY == y then return true end
+    end
+    return false
+  end
   local adj = { {tx, ty + 1, "up"}, {tx, ty - 1, "down"},
-                {tx - 1, ty, "right"}, {tx + 1, ty, "left"},
-                {tx, ty + 2, "up"}, {tx, ty - 2, "down"},
-                {tx - 2, ty, "right"}, {tx + 2, ty, "left"} }
+                {tx - 1, ty, "right"}, {tx + 1, ty, "left"} }
+  local over = { {tx, ty + 2, "up", tx, ty + 1},
+                 {tx, ty - 2, "down", tx, ty - 1},
+                 {tx - 2, ty, "right", tx - 1, ty},
+                 {tx + 2, ty, "left", tx + 1, ty} }
+  for _, o in ipairs(over) do
+    if not occupied(o[4], o[5]) then
+      adj[#adj + 1] = { o[1], o[2], o[3] }
+    end
+  end
   local p = ow.player
   local function press_from_adjacent()
     for _, a in ipairs(adj) do
