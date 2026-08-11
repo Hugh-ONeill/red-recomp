@@ -1647,13 +1647,17 @@ Reply with ONLY a JSON array of ops, e.g.
             if (not ok and self.can_escalate and idx > 0
                     and backtracks < 2 and not sg.get("optional")):
                 at = self.settle() or {}
-                for j in range(idx - 1, -1, -1):
-                    if not pred_holds(subgoals[j].get("done_when") or {}, at):
-                        prev = subgoals[j]
-                        break
-                if prev is None:
+                cand = subgoals[idx - 1]
+                if pred_holds(cand.get("done_when") or {}, at):
+                    # Nothing to relocate: it already finished where it says
+                    # it should be. Scanning FURTHER back was worse — from
+                    # Pallet it picked go_downstairs and sent the run back
+                    # inside the house. Backtracking only ever means "the
+                    # step before this one landed in the wrong place".
                     self.log("backtrack_skipped", failed=sg["id"],
-                             reason="every earlier subgoal already holds")
+                             candidate=cand["id"], reason="already holds")
+                else:
+                    prev = cand
             if prev is not None:
                 stuck_region = ((self.settle() or {}).get("map")
                                 or {}).get("region", "")
