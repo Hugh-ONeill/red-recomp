@@ -74,8 +74,11 @@ give the milestones and how to know each is done.
 ATTRITION: battles chip your party's HP and there is no auto-healing —
 insert a Pokemon Center heal stop (done_when {"party_healthy": true}) before
 long wild-encounter stretches like Viridian Forest. If upcoming trainers
-outlevel your party, add a TRAINING subgoal first on a grassy route
-(done_when {"lead_level": N}) — grinding, then healing, then the dungeon.
+outlevel your party, add TRAINING subgoals on a grassy route
+(done_when {"lead_level": N}) — and STAGE long grinds: a few levels per
+subgoal with a Pokemon Center heal stop between stages. Fainting sends
+you home and HALVES YOUR MONEY, so wipes during long unhealed grinds
+bankrupt later shopping.
 Marts sell healing items (a POTION heals 20 HP, ~300 money; you start with
 3000): add a SHOPPING subgoal (done_when {"has_item": {...}}) before a
 trainer gauntlet with no Center inside it.

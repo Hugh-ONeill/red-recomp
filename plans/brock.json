@@ -334,149 +334,46 @@
       ]
     },
     {
-      "id": "train_to_l12",
-      "goal_text": "Train your Pokemon to level 12 by battling wild Pokemon in tall grass: from Viridian City, go to a grassy route next to town (Route 1 to the south or Route 22 to the west) and grind there.",
+      "id": "train_to_l10",
+      "goal_text": "Train your Pokemon to level 10 in tall grass near Viridian City (Route 1 south or Route 22 west), then stop \u2014 you will heal before training further.",
       "done_when": {
-        "lead_level": 12
+        "lead_level": 10
       },
       "battle_policy": "default",
       "max_attempts": 12,
-      "escalation_rounds": 6,
+      "escalation_rounds": 8,
       "no_verify": true,
       "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock31",
-        "via": "escalation",
-        "n_ops": 18
+        "authored_by": "hand-seeded-subgoal",
+        "note": "STAGED grinding (brock32): gen1 blackouts HALVE money, so the monolithic grind's tolerated wipes bankrupted the Pewter potion buy (3000->250). Short legs from full HP make wipes rare instead of cheap"
+      }
+    },
+    {
+      "id": "heal_mid_grind",
+      "goal_text": "Heal your party at the Viridian City Pokemon Center before continuing training: go to the Center and talk to the nurse, answering YES.",
+      "done_when": {
+        "party_healthy": true
       },
-      "macro": [
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "south",
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_1"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "south",
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_1"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "west",
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_22"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "west",
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_22"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "north",
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_2"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "north",
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_2"
-          }
-        }
-      ]
+      "escalation_rounds": 5,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "mid-grind heal stop (staged grinding)"
+      }
+    },
+    {
+      "id": "train_to_l13",
+      "goal_text": "Continue training to level 13 in tall grass near Viridian City (Route 1 south or Route 22 west).",
+      "done_when": {
+        "lead_level": 13
+      },
+      "battle_policy": "default",
+      "max_attempts": 12,
+      "escalation_rounds": 8,
+      "no_verify": true,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "grind stage 2 of 2 (staged grinding)"
+      }
     },
     {
       "id": "heal_before_forest",
