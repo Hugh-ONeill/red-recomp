@@ -375,6 +375,33 @@ end
 -- trainers is strategy, and strategy belongs to the model.
 local DIRS = { up = {0,-1}, down = {0,1}, left = {-1,0}, right = {1,0} }
 
+-- One-way ledge hop landing from (x,y) pressing dirname, or nil. Ledges
+-- are walls to canMove (the engine hops via checkLedgeHop BEFORE tryMove),
+-- so a ledge-blind BFS called Route 4's descent to Cerulean unreachable
+-- (chain1). Same static rows the engine consults; landing must be a
+-- walkable in-bounds cell.
+local function ledge_landing(G, map, x, y, dirname)
+  local d = DIRS[dirname]
+  local fx, fy = x + d[1], y + d[2]
+  if not map.inBounds or not map:inBounds(fx, fy) then return nil end
+  local tileset = map.def and map.def.tileset
+  local standing = map:cellTile(x, y)
+  local front = map:cellTile(fx, fy)
+  for _, ledge in ipairs((G.data and G.data.field
+                          and G.data.field.ledges) or {}) do
+    if (ledge.tileset or "OVERWORLD") == tileset
+       and ledge.facing == dirname and ledge.input == dirname
+       and ledge.standingTile == standing and ledge.ledgeTile == front then
+      local lx, ly = fx + d[1], fy + d[2]
+      if map:inBounds(lx, ly) and map:isWalkableCell(lx, ly) then
+        return lx, ly
+      end
+      return nil
+    end
+  end
+  return nil
+end
+
 local function bfs_dir(G, tx, ty)
   local Collision = require("src.world.Collision")
   local ow = G.overworld
@@ -396,6 +423,14 @@ local function bfs_dir(G, tx, ty)
           local first = cur.first or dir
           if nx == tx and ny == ty then return first end
           queue[#queue + 1] = { x = nx, y = ny, first = first }
+        else
+          local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dir)
+          if lx and not seen[key(lx, ly)] then
+            seen[key(lx, ly)] = true
+            local first = cur.first or dir
+            if lx == tx and ly == ty then return first end
+            queue[#queue + 1] = { x = lx, y = ly, first = first }
+          end
         end
       end
     end
@@ -442,12 +477,19 @@ local function bfs_to_edge(G, dir)
       if not seen[key(nx, ny)] then
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
                                    { __index = p })
-        if Collision.canMove(ow.map, ow.entities, probe,
-            (d[1] == 0 and (d[2] < 0 and "up" or "down"))
-            or (d[1] < 0 and "left" or "right")) then
+        local dname = (d[1] == 0 and (d[2] < 0 and "up" or "down"))
+                      or (d[1] < 0 and "left" or "right")
+        if Collision.canMove(ow.map, ow.entities, probe, dname) then
           seen[key(nx, ny)] = true
           if hit(nx, ny) then return nx, ny end
           queue[#queue + 1] = { x = nx, y = ny }
+        else
+          local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dname)
+          if lx and not seen[key(lx, ly)] then
+            seen[key(lx, ly)] = true
+            if hit(lx, ly) then return lx, ly end
+            queue[#queue + 1] = { x = lx, y = ly }
+          end
         end
       end
     end
@@ -1385,12 +1427,16 @@ function OPS.save_game(G)
     ui_back_out(G); return false, "no SAVE row"
   end
   U.tap(G, "a"); U.wait(10)
-  -- the info panel + "Would you like to SAVE the game?" choice
+  -- the info panel + "Would you like to SAVE the game?" prompt — the
+  -- confirm may surface as a bare choice OR a menu-shaped option box
   for _ = 1, 30 do
-    if ui_is_choice(G) then break end
+    if ui_is_choice(G) or ui_is_menu(G) then break end
     U.tap(G, "a"); U.wait(4)
   end
-  if not ui_is_choice(G) then ui_back_out(G) return false, "no confirm" end
+  if not (ui_is_choice(G) or ui_is_menu(G)) then
+    ui_back_out(G)
+    return false, "no confirm"
+  end
   ui_cursor_to(G, "index", 1)                    -- YES
   U.tap(G, "a"); U.wait(10)
   for _ = 1, 120 do                              -- "SAVING... SAVED!"
