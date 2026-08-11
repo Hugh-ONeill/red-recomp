@@ -1338,8 +1338,15 @@ Reply with ONLY a JSON array of ops, e.g.
             # called B2F hopeless with a reachable fossil untouched, so the
             # corridor stayed shut and the super nerd was never found.
             # Same law the transitive pruner obeys — geometry can change.
+            # A dead end is a claim that this place can NEVER serve the
+            # goal, so it must rest on something permanent. Being short of
+            # money is not: PEWTER_MART got item:POTION marked dead while
+            # the shop stocks Potions perfectly well and the wallet later
+            # held 1423. Same for any other retryable shortfall.
+            retryable = any(("cannot afford" in t or "couldn't reach the clerk" in t
+                             or "no shop clerk" in t) for t in trace)
             live = []
-            if cur:
+            if cur and not retryable:
                 _tried = self._tried_objs.get(self._where(cur), set())
                 live = [o.get("name") for o in
                         ((cur.get("map") or {}).get("objects") or [])
