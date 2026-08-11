@@ -362,7 +362,7 @@ class Executor:
         self.log("explored", frm=src, via=str(key), to=dst, times=e["n"])
         self._save_memory()
 
-    def exploration_text(self, obs) -> str:
+    def exploration_text(self, obs, sg_id: str = "") -> str:
         """Untried vs already-taken exits from where we stand."""
         here = self._where(obs)
         taken = self.explored.get(here, {})
@@ -373,8 +373,13 @@ class Executor:
                 continue
             k = f"{w.get('x')},{w.get('y')}"
             if k in taken:
-                tried.append(f"({k}) -> {taken[k]['to']} "
-                             f"[taken {taken[k]['n']}x]")
+                dest = taken[k]["to"]
+                bad = (self.dead_ends.get(sg_id, {}) or {}).get(dest, 0)
+                tried.append(
+                    f"({k}) -> {dest} [taken {taken[k]['n']}x"
+                    + (f"; that area is a KNOWN DEAD END for this goal, "
+                       f"failed there {bad}x — do NOT go back" if bad else "")
+                    + "]")
             else:
                 untried.append(f"({k})->{w.get('dest')}")
         been = self.visits.get(here, 0)
@@ -766,8 +771,9 @@ Reply with ONLY a JSON array of ops, e.g.
                     "you reached the wrong one. Get to a DIFFERENT place that "
                     "also satisfies it — typically by going back the way you "
                     "came and taking another route. Standing still is failure.")
+            memory = self.exploration_text(start, sg["id"])
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
-                    f"{redo_note}\n"
+                    f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
                     f"{atlas or 'nothing yet'}\n"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
@@ -982,7 +988,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"steps, do not repeat ones that already took effect."
                         + loop_note
                         + open_prompt
-                        + self.exploration_text(cur)
+                        + self.exploration_text(cur, sg["id"])
                         + (("\nWarps you can currently WALK TO from here: "
                             + ", ".join(
                                 f"({w.get('x')},{w.get('y')})->{w.get('dest')}"
