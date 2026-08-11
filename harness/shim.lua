@@ -267,11 +267,14 @@ local function observe(G, seq, result)
     -- interact with balls, NPCs, and signs instead of mashing blindly.
     o.map.objects = {}
     local objreach = warp_reach(G) or {}
+    -- literal offsets, NOT the DIRS table: DIRS is declared further down
+    -- the file, so inside observe() it is nil (the same scoping trap that
+    -- killed the driver when warp reachability was first added)
     local function adjacent_reachable(x, y)
-      for _, d in pairs(DIRS) do
-        if objreach[(x + d[1]) .. "," .. (y + d[2])] then return true end
-      end
-      return false
+      return (objreach[(x - 1) .. "," .. y]
+              or objreach[(x + 1) .. "," .. y]
+              or objreach[x .. "," .. (y - 1)]
+              or objreach[x .. "," .. (y + 1)]) and true or false
     end
     for _, npc in ipairs(G.overworld.npcs or {}) do
       local d = npc.def or {}
