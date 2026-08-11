@@ -1519,6 +1519,8 @@ Reply with ONLY a JSON array of ops, e.g.
                         + (f"\nThese ops moved you BACKWARD to already-"
                            f"visited maps — never use them again this "
                            f"subgoal: {backward}" if backward else ""))
+            self.log("escalate_note", subgoal=sg["id"], round=rnd,
+                     stuck=stuck_note[:400], loop=loop_note[:200])
             self.log("escalate_feedback", subgoal=sg["id"], round=rnd,
                      spent=spent, trace=trace, inert=inert,
                      progress_ops=len(progress))
