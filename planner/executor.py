@@ -231,17 +231,31 @@ class Executor:
         return BATTLE_POLICIES[name](self.b, obs, self.log,
                                      self.max_battle_turns)
 
+    def _send_safe(self, op, **kw):
+        """Bridge send that degrades a timeout to None instead of raising —
+        for recovery paths (settle, checkpoints) where an uncaught
+        TimeoutError killed brock19's whole run."""
+        try:
+            return self.b.send(op, **kw)
+        except TimeoutError as e:
+            self.log("send_timeout", op=op, err=str(e))
+            return None
+
     def settle(self) -> dict:
         """Resolve to a clean decision state before checking guards/predicates.
         A step can leave the game mid-dialogue (e.g. the 'got the PARCEL!' box,
         after which the event flag sets only once it closes), where map reads
         None and map-keyed when-guards would wrongly skip. A `wait` triggers
         the shim's auto-advance, which rides plain text to the next decision."""
-        obs = self.b.obs()
+        try:
+            obs = self.b.obs()
+        except TimeoutError as e:
+            self.log("send_timeout", op="obs", err=str(e))
+            return None
         for _ in range(12):
             if not obs or obs.get("mode") != "dialog":
                 return self._note(obs)
-            obs = self.b.send("wait", frames=6)
+            obs = self._send_safe("wait", frames=6)
         return self._note(obs)
 
     MACRO_AUTHOR_SYS = """You AUTHOR a macro — an ordered list of ops — to
@@ -406,7 +420,7 @@ Reply with ONLY a JSON array of ops, e.g.
         backward = []       # ops that moved us to an already-visited map
         progress = []       # clean ops accumulated across rounds
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
-        cap = self.b.send("checkpoint_capture", token="esc")
+        cap = self._send_safe("checkpoint_capture", token="esc") or {}
         can_reset = bool((cap.get("result") or {}).get("ok"))
         self.log("escalate_checkpoint", subgoal=sg["id"], captured=can_reset)
         # A round that CHANGED something (map/party/flags) is progress and
@@ -484,7 +498,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # checkpoint; commit only if they reach done_when again.
                 restored = False
                 if can_reset:
-                    rr = self.b.send("checkpoint_restore", token="esc")
+                    rr = self._send_safe("checkpoint_restore", token="esc") or {}
                     restored = bool((rr.get("result") or {}).get("ok"))
                 if restored:
                     v_ok, _, v_clean = self._run_traced(sg, progress)
@@ -508,7 +522,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         "(reliable), NOT walk_to onto the tile. You are back "
                         "at the SUBGOAL START; author the FULL sequence from "
                         "the current observation.")
-                    self.b.send("checkpoint_restore", token="esc")
+                    self._send_safe("checkpoint_restore", token="esc")
                     progress = []
                     spent += 1
                     continue
@@ -524,7 +538,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # bridge hiccup lost the state: fall back to the subgoal start
                 self.log("escalate_state_lost", subgoal=sg["id"], round=rnd)
                 if can_reset:
-                    self.b.send("checkpoint_restore", token="esc")
+                    self._send_safe("checkpoint_restore", token="esc")
                     progress = []
                 feedback = ("The game state was lost and reset to the subgoal "
                             "start; author the full sequence again.")
@@ -674,11 +688,19 @@ Reply with ONLY a JSON array of ops, e.g.
         for sg in plan["subgoals"]:
             has_macro = bool(sg.get("macro"))
             print(f"== subgoal: {sg['id']}" + ("" if has_macro else " (no macro)"))
-            ok = self.run_subgoal(sg) if has_macro else False
+            try:
+                ok = self.run_subgoal(sg) if has_macro else False
+            except TimeoutError as e:
+                self.log("subgoal_timeout", subgoal=sg["id"], err=str(e))
+                ok = False
             if not ok and self.can_escalate:
                 print(f"   -> escalating {sg['id']} to the model")
                 self.escalations += 1
-                success, ops = self.escalate(sg)
+                try:
+                    success, ops = self.escalate(sg)
+                except TimeoutError as e:
+                    self.log("escalate_timeout", subgoal=sg["id"], err=str(e))
+                    success, ops = False, []
                 if success:
                     self.distill(sg, ops)
                     ok = True

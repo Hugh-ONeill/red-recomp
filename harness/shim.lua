@@ -18,6 +18,52 @@ local BRIDGE = os.getenv("RED_BRIDGE_DIR")
   or ((os.getenv("HOME") or ".") .. "/Developer/red-recomp/run")
 os.execute('mkdir -p "' .. BRIDGE .. '" 2>/dev/null')
 
+-- ------------------------------------------------------------ op watchdog
+-- Every bridge-side activity must be FRAME-BOUNDED: brock19 wedged >120s
+-- inside one op mid-forest and the whole stack died on an uncaught bridge
+-- timeout. While a budget is armed, yields on the DRIVER coroutine are
+-- counted (this covers the shim AND U.wait/U.tap, which yield the global);
+-- exceeding the budget raises, and wd_run converts that into an op failure
+-- naming the phase and position. Game-side coroutines (script runners)
+-- fail the running() identity check and are never affected.
+local RAW_YIELD = coroutine.yield
+local UNPACK = table.unpack or unpack
+local wd = { co = nil, budget = nil, frames = 0, label = "?" }
+coroutine.yield = function(...)
+  if wd.budget and coroutine.running() == wd.co then
+    wd.frames = wd.frames + 1
+    if wd.frames > wd.budget then
+      wd.budget = nil
+      error("WATCHDOG: " .. wd.label .. " exceeded "
+            .. wd.frames .. " frames", 0)
+    end
+  end
+  return RAW_YIELD(...)
+end
+local function wd_run(G, label, budget, fn, ...)
+  wd.co = coroutine.running()
+  wd.label = label
+  wd.budget = budget
+  wd.frames = 0
+  local res = { pcall(fn, ...) }
+  wd.budget = nil
+  if res[1] then return UNPACK(res, 2) end
+  -- an op aborted mid-yield may have skipped its key-release lines: a
+  -- direction left held would corrupt every later op
+  if G and G.input and G.input.state then
+    for k in pairs(G.input.state) do G.input.state[k] = false end
+  end
+  local where = ""
+  local ow = G and G.overworld
+  if ow and ow.map then
+    local p = ow.player or {}
+    where = (" at %s (%s,%s)"):format(tostring(ow.map.id),
+      tostring(p.cellX), tostring(p.cellY))
+  end
+  return false, tostring(res[2]) .. where
+end
+local OP_FRAME_BUDGET = 120000   -- ~33 game-minutes; no legit op comes close
+
 -- ---------------------------------------------------------------- json out
 local function jesc(s)
   s = s:gsub("[\\\"\n\r\t]", { ["\\"] = "\\\\", ['"'] = '\\"',
@@ -983,7 +1029,9 @@ return function(G)
   local seq = 0
   local result = { op = "boot", ok = true }
   while true do
-    advance_to_decision(G)          -- only ever observe at a decision point
+    -- only ever observe at a decision point; watchdog-bounded so a state
+    -- the advancer can't clear stalls one cycle, not the whole bridge
+    wd_run(G, "advance_to_decision", OP_FRAME_BUDGET, advance_to_decision, G)
     observe(G, seq, result)
     -- poll for the next command
     local cmd
@@ -1004,7 +1052,7 @@ return function(G)
     seq = cmd.seq
     local op = OPS[cmd.op]
     if op then
-      local ok, detail = op(G, cmd)
+      local ok, detail = wd_run(G, cmd.op, OP_FRAME_BUDGET, op, G, cmd)
       result = { op = cmd.op, ok = ok and true or false,
                  detail = detail and tostring(detail) or nil }
     else
