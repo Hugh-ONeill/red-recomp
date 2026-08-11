@@ -855,9 +855,15 @@ Reply with ONLY a JSON array of ops, e.g.
         return True
 
 
-def bootstrap(b: Bridge):
-    print("[bootstrap] new_game (decision-free ceremony skip)")
-    b.send("new_game")
+def bootstrap(b: Bridge, cont: bool = False):
+    """New game, or CONTINUE from the on-disk save (mash A: with a save
+    present the title's first option is CONTINUE, and A confirms the info
+    box — the player's own resume path)."""
+    if cont:
+        print("[bootstrap] continue from save")
+    else:
+        print("[bootstrap] new_game (decision-free ceremony skip)")
+        b.send("new_game")
     for _ in range(8):
         if b.send("mash_a", times=30)["mode"] == "overworld":
             return
@@ -866,8 +872,14 @@ def bootstrap(b: Bridge):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("plan", type=Path)
+    ap.add_argument("plans", type=Path, nargs="+")
     ap.add_argument("--bootstrap", action="store_true")
+    ap.add_argument("--continue", dest="cont", action="store_true",
+                    help="bootstrap resumes the on-disk save (title "
+                         "CONTINUE) instead of starting a new game")
+    ap.add_argument("--save-after-each", action="store_true",
+                    help="in-game SAVE after each completed plan (player-"
+                         "action persistence for chained legs)")
     ap.add_argument("--max-battle-turns", type=int, default=40)
     ap.add_argument("--score-battles", action="store_true",
                     help="probe the oracle each battle turn and log "
@@ -889,16 +901,25 @@ def main():
 
     global SCORE_BATTLES
     SCORE_BATTLES = args.score_battles
-    plan = json.loads(args.plan.read_text())
     b = Bridge()
     if args.bootstrap:
-        bootstrap(b)
+        bootstrap(b, cont=args.cont)
     ex = Executor(b, max_battle_turns=args.max_battle_turns,
                   can_escalate=args.escalate, model=args.model,
-                  plan=plan, plan_path=args.plan, run_id=args.run_id)
-    ok = ex.run_plan(plan)
+                  run_id=args.run_id)
+    ok = True
+    for plan_path in args.plans:
+        plan = json.loads(plan_path.read_text())
+        ex.plan, ex.plan_path = plan, plan_path
+        print(f"\n===== PLAN: {plan_path.name} =====")
+        ok = ex.run_plan(plan)
+        if not ok:
+            break
+        if args.save_after_each:
+            r = (ex._send_safe("save_game") or {}).get("result") or {}
+            print(f"[save] {r.get('detail') or 'save failed'}")
     o = b.obs() or {}
-    print(f"\nRESULT: {'PLAN COMPLETE' if ok else 'PLAN FAILED'} | "
+    print(f"\nRESULT: {'ALL PLANS COMPLETE' if ok else 'PLAN FAILED'} | "
           f"map={(o.get('map') or {}).get('id')} "
           f"party={[(m.get('species'), m.get('level')) for m in o.get('party') or []]} "
           f"badges={o.get('badges')}")

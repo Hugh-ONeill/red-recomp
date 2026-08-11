@@ -29,11 +29,45 @@
     },
     {
       "id": "traverse_route_3",
-      "goal_text": "Travel through Route 3 to reach the entrance of Mt Moon.",
+      "goal_text": "Travel east through Route 3's trainer gauntlet until the path becomes Route 4, at the foot of Mt Moon.",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4,
+      "macro_provenance": {
+        "note": "hand-adjusted 2026-08-12: the Mt Moon Center sits at the WEST foot (pre-entrance), not the east exit"
+      }
+    },
+    {
+      "id": "enter_mt_moon_center",
+      "goal_text": "Enter the Pokemon Center at the foot of Mt Moon (on Route 4, just before the cave entrance).",
+      "done_when": {
+        "map": "MT_MOON_POKECENTER"
+      },
+      "escalation_rounds": 4,
+      "macro_provenance": {
+        "note": "hand-adjusted 2026-08-12: the Mt Moon Center sits at the WEST foot (pre-entrance), not the east exit"
+      }
+    },
+    {
+      "id": "heal_at_mt_moon",
+      "goal_text": "Heal your party at the Mt Moon Pokemon Center before entering the cave: talk to the nurse, YES.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_mt_moon",
+      "goal_text": "Leave the Center and enter Mt Moon (the cave entrance on Route 4).",
       "done_when": {
         "map": "MT_MOON_1F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 6,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "hand-adjusted 2026-08-12: the Mt Moon Center sits at the WEST foot (pre-entrance), not the east exit"
+      }
     },
     {
       "id": "descend_to_b1f",
@@ -60,28 +94,15 @@
       "escalation_rounds": 4
     },
     {
-      "id": "exit_mt_moon",
-      "goal_text": "Find the exit of Mt Moon and move to the Pokemon Center area.",
-      "done_when": {
-        "map": "MT_MOON_POKECENTER"
-      },
-      "escalation_rounds": 4
-    },
-    {
-      "id": "heal_at_mt_moon",
-      "goal_text": "Heal the party at the Mt Moon Pokemon Center before the final stretch.",
-      "done_when": {
-        "party_healthy": true
-      },
-      "escalation_rounds": 4
-    },
-    {
-      "id": "enter_route_4",
-      "goal_text": "Leave the Mt Moon center area and enter Route 4.",
+      "id": "exit_mt_moon_east",
+      "goal_text": "After the fossil fight, find your way up and out of Mt Moon to the eastern stretch of Route 4.",
       "done_when": {
         "map": "ROUTE_4"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 8,
+      "macro_provenance": {
+        "note": "hand-adjusted 2026-08-12: the Mt Moon Center sits at the WEST foot (pre-entrance), not the east exit"
+      }
     },
     {
       "id": "reach_cerulean_city",

@@ -1365,6 +1365,43 @@ function OPS.pick_party(G, c)
   return true, "sent out slot " .. slot
 end
 
+-- Save the game via the START menu (a PLAYER action — this is the claim-
+-- clean persistence, unlike dev checkpoints): START -> SAVE -> YES ->
+-- ride the save text. The title's CONTINUE loads it next boot.
+function OPS.save_game(G)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  U.tap(G, "start"); U.wait(8)
+  local menu = ui_top(G)
+  if not (menu and menu.screenId == "StartMenu") then
+    ui_back_out(G); return false, "start menu never opened"
+  end
+  local row
+  for i, it in ipairs(menu.items or {}) do
+    if it.label == "SAVE" then row = i break end
+  end
+  if not row or not ui_cursor_to(G, "index", row) then
+    ui_back_out(G); return false, "no SAVE row"
+  end
+  U.tap(G, "a"); U.wait(10)
+  -- the info panel + "Would you like to SAVE the game?" choice
+  for _ = 1, 30 do
+    if ui_is_choice(G) then break end
+    U.tap(G, "a"); U.wait(4)
+  end
+  if not ui_is_choice(G) then ui_back_out(G) return false, "no confirm" end
+  ui_cursor_to(G, "index", 1)                    -- YES
+  U.tap(G, "a"); U.wait(10)
+  for _ = 1, 120 do                              -- "SAVING... SAVED!"
+    local t = ui_top(G)
+    if t == G.overworld then break end
+    U.tap(G, "a"); U.wait(4)
+  end
+  ui_back_out(G)
+  return true, "saved"
+end
+
 -- Checkpoint capture/restore (in-memory), for escalation's clean retries:
 -- a failed macro proposal corrupts the state, so each escalation round
 -- restores the subgoal's start. CLAIM_RULES: checkpoints are for development/
