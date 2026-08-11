@@ -185,6 +185,7 @@ end
 -- The last dialogue text auto-advance rode past. Auto-advance strips text
 -- before a choice box, which would leave the model answering a context-free
 -- yes/no; carry the prompt into the observation so the choice has meaning.
+local warp_reach            -- assigned after DIRS/ledge_landing
 local recent_text = nil
 -- Oracle probe result (battle_probe), surfaced once in the next observation.
 local last_probe = nil
@@ -228,40 +229,7 @@ local function observe(G, seq, result)
               width = wb and wb * 2, height = hb and hb * 2 }
     if md and md.warps then
       o.map.warps = {}
-      -- reachable: can we currently WALK to that tile? On partitioned maps
-      -- (Mt Moon B1F's two sections) the right warp can be visible-but-
-      -- unreachable, and without this the model re-proposes it forever.
-      local reach = {}
-      do
-        local okc, Collision = pcall(require, "src.world.Collision")
-        local ow2, p2 = G.overworld, G.overworld.player
-        if okc and ow2 and p2 then
-          local key = function(x, y) return x .. "," .. y end
-          local seen = { [key(p2.cellX, p2.cellY)] = true }
-          local q, head = { { x = p2.cellX, y = p2.cellY } }, 1
-          while q[head] do
-            local cur = q[head]; head = head + 1
-            for dn, d in pairs(DIRS) do
-              local nx, ny = cur.x + d[1], cur.y + d[2]
-              if not seen[key(nx, ny)] then
-                local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
-                                           { __index = p2 })
-                if Collision.canMove(ow2.map, ow2.entities, probe, dn) then
-                  seen[key(nx, ny)] = true
-                  q[#q + 1] = { x = nx, y = ny }
-                else
-                  local lx, ly = ledge_landing(G, ow2.map, cur.x, cur.y, dn)
-                  if lx and not seen[key(lx, ly)] then
-                    seen[key(lx, ly)] = true
-                    q[#q + 1] = { x = lx, y = ly }
-                  end
-                end
-              end
-            end
-          end
-          reach = seen
-        end
-      end
+      local reach = warp_reach(G) or {}
       for i, w in ipairs(md.warps) do
         o.map.warps[i] = { x = w.x, y = w.y, dest = w.destMap,
                            reachable = reach[w.x .. "," .. w.y] and true
@@ -436,6 +404,41 @@ local function ledge_landing(G, map, x, y, dirname)
     end
   end
   return nil
+end
+
+-- Which cells can we currently WALK to (ledge hops included)? Used to mark
+-- warps reachable/unreachable in the observation: on partitioned maps (Mt
+-- Moon B1F) the right warp can be visible but walled off, and without this
+-- the model re-proposes it forever. Defined here because it needs DIRS and
+-- ledge_landing; observe() calls it through a forward-declared local.
+function warp_reach(G)
+  local okc, Collision = pcall(require, "src.world.Collision")
+  local ow, p = G.overworld, G.overworld and G.overworld.player
+  if not (okc and ow and p and ow.map) then return nil end
+  local key = function(x, y) return x .. "," .. y end
+  local seen = { [key(p.cellX, p.cellY)] = true }
+  local q, head = { { x = p.cellX, y = p.cellY } }, 1
+  while q[head] do
+    local cur = q[head]; head = head + 1
+    for dn, d in pairs(DIRS) do
+      local nx, ny = cur.x + d[1], cur.y + d[2]
+      if not seen[key(nx, ny)] then
+        local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
+                                   { __index = p })
+        if Collision.canMove(ow.map, ow.entities, probe, dn) then
+          seen[key(nx, ny)] = true
+          q[#q + 1] = { x = nx, y = ny }
+        else
+          local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dn)
+          if lx and not seen[key(lx, ly)] then
+            seen[key(lx, ly)] = true
+            q[#q + 1] = { x = lx, y = ly }
+          end
+        end
+      end
+    end
+  end
+  return seen
 end
 
 local function bfs_dir(G, tx, ty)

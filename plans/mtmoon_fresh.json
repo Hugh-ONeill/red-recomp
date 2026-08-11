@@ -1,0 +1,104 @@
+{
+  "goal": "Travel from Pewter City through Mt Moon to reach Cerulean City.",
+  "subgoals": [
+    {
+      "id": "heal_at_pewter",
+      "goal_text": "Visit the Pewter City Pokemon Center to ensure the party is fully healed before heading to Route 3.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "buy_potions",
+      "goal_text": "Purchase Potions at the Pewter City Mart to sustain the party through Mt Moon.",
+      "done_when": {
+        "has_item": {
+          "POTION": 5
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_pewter_to_route3",
+      "goal_text": "Leave Pewter City and enter Route 3.",
+      "done_when": {
+        "map": "ROUTE_3"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "traverse_route3",
+      "goal_text": "Travel east across Route 3 to reach the entrance of Mt Moon.",
+      "done_when": {
+        "map": "MT_MOON_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "explore_mt_moon_1f",
+      "goal_text": "Navigate through the first floor of Mt Moon to find the stairs leading down.",
+      "done_when": {
+        "map": "MT_MOON_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "explore_mt_moon_b1f",
+      "goal_text": "Navigate through the basement 1st floor of Mt Moon to reach the next level down.",
+      "done_when": {
+        "map": "MT_MOON_B2F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "explore_mt_moon_b2f",
+      "goal_text": "Navigate through the basement 2nd floor of Mt Moon to find the exit leading toward Cerulean City.",
+      "done_when": {
+        "map": "MT_MOON_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "return_to_b1f",
+      "goal_text": "Move back up to the B1F level to find the path toward the exit.",
+      "done_when": {
+        "map": "MT_MOON_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_mt_moon_center",
+      "goal_text": "Locate and enter the Pokemon Center inside Mt Moon to heal up.",
+      "done_when": {
+        "map": "MT_MOON_POKECENTER"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_mt_moon",
+      "goal_text": "Heal the party at the Mt Moon Pokemon Center.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_mt_moon_to_route4",
+      "goal_text": "Exit Mt Moon and enter Route 4.",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "traverse_route4",
+      "goal_text": "Travel west across Route 4 to reach the entrance of Cerulean City.",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}
