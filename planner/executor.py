@@ -355,8 +355,13 @@ class Executor:
         here = self._where(obs)
         if "None" in here:
             return
+        # only what is REACHABLE from here. Object lists are map-wide, so
+        # B2F|23,21 "sees" the fossils that actually sit in B2F|20,5 behind
+        # a wall — recording mere visibility would aim a rewrite at the
+        # wrong part of the map, which is the exact mistake this data is
+        # meant to prevent.
         names = sorted({o.get("name") for o in (m.get("objects") or [])
-                        if o.get("name")})
+                        if o.get("name") and o.get("reachable")})
         if not names:
             return
         was = set(self.sightings.get(here) or [])
