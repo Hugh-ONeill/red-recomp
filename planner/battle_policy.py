@@ -25,6 +25,13 @@ SPEC DSL v1 (all keys optional; unknown keys are validation errors):
                 physical (e.g. TAIL_WHIP helps TACKLE, not BUBBLE) } ]
   flee_wild: { when_traversal: bool   flee wilds during traversal subgoals
                hp_below: float|null } flee ANY wild when own hp frac below
+  battle_items: [ { item: str          use a healing item IN battle (costs
+                    hp_below: float    the turn) when own hp frac < this
+                    max_uses: int } ]  per battle (default 2)
+  field_heal: { item: str, hp_below: float } | null
+                             after a battle ends, if own hp frac < this and
+                             the item is in the bag, use it in the field
+                             (no turn cost) before travel resumes
 
 choose(obs, spec, ctx) -> op dict for the executor. ctx carries per-battle
 state the executor owns: {"turn": n, "used": {move: count},
@@ -48,6 +55,8 @@ DEFAULT_SPEC = {
     "avoid_status_moves": True,
     "setup": [],
     "flee_wild": {"when_traversal": True, "hp_below": None},
+    "battle_items": [],
+    "field_heal": None,
 }
 
 _SPEC_KEYS = set(DEFAULT_SPEC) | {"name", "provenance"}   # provenance = metadata
@@ -93,6 +102,30 @@ def validate_spec(spec) -> list:
                         isinstance(r["min_hp_frac"], (int, float))
                         and 0.0 <= r["min_hp_frac"] <= 1.0):
                     probs.append(f"setup[{i}].min_hp_frac must be in [0,1]")
+    if "battle_items" in spec:
+        if not isinstance(spec["battle_items"], list):
+            probs.append("battle_items must be a list")
+        else:
+            for i, r in enumerate(spec["battle_items"]):
+                if not isinstance(r, dict) or not r.get("item"):
+                    probs.append(f"battle_items[{i}] needs an item name")
+                    continue
+                hb = r.get("hp_below")
+                if hb is not None and not (isinstance(hb, (int, float))
+                                           and 0.0 <= hb <= 1.0):
+                    probs.append(f"battle_items[{i}].hp_below in [0,1]")
+                if "max_uses" in r and not (isinstance(r["max_uses"], int)
+                                            and 1 <= r["max_uses"] <= 6):
+                    probs.append(f"battle_items[{i}].max_uses int in [1,6]")
+    if "field_heal" in spec and spec["field_heal"] is not None:
+        fh = spec["field_heal"]
+        if not isinstance(fh, dict) or not fh.get("item"):
+            probs.append("field_heal must be null or {item, hp_below}")
+        else:
+            hb = fh.get("hp_below")
+            if hb is not None and not (isinstance(hb, (int, float))
+                                       and 0.0 <= hb <= 1.0):
+                probs.append("field_heal.hp_below in [0,1]")
     if "flee_wild" in spec:
         fw = spec["flee_wild"]
         if not isinstance(fw, dict):
@@ -167,6 +200,25 @@ def score_move(mv: dict, me: dict, foe: dict, spec: dict,
     }
 
 
+def should_field_heal(obs: dict, spec: dict | None = None) -> str | None:
+    """After a battle: spec-rule field heal (no turn cost). Returns the
+    item to use, or None."""
+    spec = spec or DEFAULT_SPEC
+    fh = spec.get("field_heal")
+    if not fh:
+        return None
+    if (obs or {}).get("mode") != "overworld":
+        return None
+    lead = ((obs or {}).get("party") or [{}])[0]
+    if (lead.get("hp") or 0) <= 0:
+        return None
+    if _hp_frac(lead) >= fh.get("hp_below", 0.5):
+        return None
+    item = fh.get("item")
+    bag = (obs or {}).get("bag") or {}
+    return item if bag and bag.get(item, 0) > 0 else None
+
+
 def should_flee(obs: dict, spec: dict | None = None,
                 ctx: dict | None = None) -> bool:
     """Spec-driven wild-flee decision. Trainers can never be fled."""
@@ -195,6 +247,21 @@ def choose(obs: dict, spec: dict | None = None,
              if (m.get("pp") or 0) > 0]
     if not moves:
         return {"op": "battle_move", "index": 1}   # Struggle / no PP
+    # in-battle item rules come first: spending the turn to heal beats
+    # fainting (the model's rule decides the threshold and budget)
+    bag = obs.get("bag") or {}
+    items_used = ctx.setdefault("items_used", {})
+    for rule in spec.get("battle_items") or []:
+        item = rule.get("item")
+        if not item or not bag or bag.get(item, 0) < 1:
+            continue
+        if items_used.get(item, 0) >= rule.get("max_uses", 2):
+            continue
+        if _hp_frac(me) >= rule.get("hp_below", 0.3):
+            continue
+        items_used[item] = items_used.get(item, 0) + 1
+        return {"op": "battle_item", "item": item,
+                "_why": f"heal with {item}"}
     scored = [score_move(m, me, foe, spec, ctx.get("journal")) for m in moves]
     damaging = [s for s in scored if (s["power"] or 0) > 0]
     by_index = {m.get("index"): m for m in moves}

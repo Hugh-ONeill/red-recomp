@@ -235,6 +235,20 @@
       }
     },
     {
+      "id": "buy_potions",
+      "goal_text": "Buy 5 POTIONs at the Viridian City Mart (the shop building in Viridian City): go there and buy from the clerk. You have about 3000 money; a POTION costs 300.",
+      "done_when": {
+        "has_item": {
+          "POTION": 4
+        }
+      },
+      "escalation_rounds": 6,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "items layer 2026-08-11: no in-forest healing exists and the model policy's flee trade arrives chipped (brock30); macro left for escalation to author with the buy op"
+      }
+    },
+    {
       "id": "heal_at_viridian_center",
       "goal_text": "Travel to Viridian City and heal your party at the Pokemon Center: enter the Center building and talk to the nurse at the counter, answering YES to heal.",
       "done_when": {
@@ -278,34 +292,34 @@
     },
     {
       "id": "train_to_l12",
-      "goal_text": "Train your Pokemon to level 13 by battling wild Pokemon in tall grass: from Viridian City, go to a grassy route next to town (Route 1 to the south or Route 22 to the west) and grind there.",
+      "goal_text": "Train your Pokemon to level 12 by battling wild Pokemon in tall grass: from Viridian City, go to a grassy route next to town (Route 1 to the south or Route 22 to the west) and grind there.",
       "done_when": {
-        "lead_level": 13
+        "lead_level": 12
       },
       "battle_policy": "default",
       "max_attempts": 12,
-      "escalation_rounds": 8,
+      "escalation_rounds": 6,
       "no_verify": true,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock29",
+        "run": "brock30",
         "via": "escalation",
-        "n_ops": 13
+        "n_ops": 9
       },
       "macro": [
         {
           "op": "use_warp",
-          "x": 3,
-          "y": 7,
+          "x": 4,
+          "y": 11,
           "when": {
-            "map": "VIRIDIAN_POKECENTER"
+            "map": "OAKS_LAB"
           }
         },
         {
           "op": "cross",
-          "dir": "south",
+          "dir": "north",
           "when": {
-            "map": "VIRIDIAN_CITY"
+            "map": "PALLET_TOWN"
           }
         },
         {
@@ -315,18 +329,10 @@
           }
         },
         {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
           "op": "cross",
-          "dir": "south",
+          "dir": "north",
           "when": {
-            "map": "VIRIDIAN_CITY"
+            "map": "PALLET_TOWN"
           }
         },
         {
@@ -336,51 +342,29 @@
           }
         },
         {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
+          "op": "cross",
+          "dir": "north",
           "when": {
-            "map": "VIRIDIAN_POKECENTER"
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
           }
         },
         {
           "op": "cross",
-          "dir": "west",
+          "dir": "north",
           "when": {
-            "map": "VIRIDIAN_CITY"
+            "map": "PALLET_TOWN"
           }
         },
         {
           "op": "grind",
           "when": {
-            "map": "ROUTE_22"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "west",
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_22"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_22"
+            "map": "ROUTE_1"
           }
         }
       ]
@@ -394,16 +378,24 @@
       "escalation_rounds": 5,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock29",
+        "run": "brock28",
         "via": "escalation",
-        "n_ops": 4
+        "n_ops": 5
       },
       "macro": [
         {
-          "op": "cross",
-          "dir": "east",
+          "op": "use_warp",
+          "x": 4,
+          "y": 13,
           "when": {
-            "map": "ROUTE_22"
+            "map": "PEWTER_GYM"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
           }
         },
         {
@@ -563,25 +555,17 @@
       "escalation_rounds": 4,
       "macro": [
         {
-          "op": "use_warp",
-          "x": 1,
-          "y": 0,
-          "when": {
-            "map": "VIRIDIAN_FOREST"
-          }
+          "op": "interact",
+          "name": "PEWTERGYM_BROCK"
         },
         {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
+          "op": "interact",
+          "name": "PEWTERGYM_BROCK"
         }
       ],
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock29",
+        "run": "brock24",
         "via": "escalation",
         "n_ops": 2
       }

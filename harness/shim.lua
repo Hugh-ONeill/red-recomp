@@ -314,6 +314,15 @@ local function observe(G, seq, result)
   end
   o.party = party(G)
   o.badges = badges(G)
+  -- bag: player-visible (the START menu ITEM screen); badges live in the
+  -- same inventory table but are not bag items
+  o.bag = {}
+  for k, v in pairs((G.save and G.save.inventory) or {}) do
+    if type(k) == "string" and not k:match("BADGE$")
+       and (tonumber(v) or 0) > 0 then
+      o.bag[k] = v
+    end
+  end
   o.money = G.save and G.save.money
   -- Set event flags, for the EXECUTOR's done_when predicates (SPD tier 0).
   -- Instrumentation, not model eyes: the model-facing obs builder must strip
@@ -698,6 +707,200 @@ function OPS.cross(G, c)
     :format(dir, p.cellX, p.cellY)
 end
 
+-- ------------------------------------------------------------ shop/bag UI
+-- Menu-driving helpers for the shop and bag flows, ported from the in-tree
+-- route driver (tests/drivers/route.lua): same stack-shape predicates
+-- (list rows carry .value, menus .onSelect, quantity boxes .qty, bare
+-- choices .index with no .items), and its traps — B is the ONLY safe key
+-- to close a shop (A on the buy list is a purchase), and success is
+-- verified against the BAG, not the menu flow.
+local function ui_top(G) return G.stack:top() end
+local function ui_rows(G) local t = ui_top(G) return t and t.items end
+local function ui_is_menu(G)
+  local r = ui_rows(G)
+  return r ~= nil and r[1] ~= nil and r[1].onSelect ~= nil
+end
+local function ui_is_list(G)
+  local r = ui_rows(G)
+  return r ~= nil and r[1] ~= nil and r[1].value ~= nil
+end
+local function ui_is_qty(G)
+  local t = ui_top(G) return t ~= nil and t.qty ~= nil
+end
+local function ui_is_choice(G)
+  local t = ui_top(G) return t ~= nil and t.index ~= nil and t.items == nil
+end
+local function ui_press_until(G, pred, btn, tries)
+  for _ = 1, tries or 60 do
+    if pred(G) then return true end
+    U.tap(G, btn); U.wait(4)
+  end
+  return pred(G)
+end
+local function ui_cursor_to(G, field, want, tries)
+  for _ = 1, tries or 40 do
+    local t = ui_top(G)
+    if not t or t[field] == want then return t ~= nil end
+    U.tap(G, t[field] > want and "up" or "down"); U.wait(3)
+  end
+  local t = ui_top(G)
+  return t ~= nil and t[field] == want
+end
+local function ui_qty_to(G, want)
+  for _ = 1, 120 do
+    local t = ui_top(G)
+    if not t or not t.qty then return false end
+    if t.qty == want then return true end
+    U.tap(G, t.qty < want and "up" or "down"); U.wait(3)
+  end
+  return false
+end
+local function ui_close_shop(G)
+  for _ = 1, 40 do
+    if not (ui_is_list(G) or ui_is_qty(G) or ui_is_choice(G)
+            or ui_is_menu(G)) then
+      return true
+    end
+    U.tap(G, "b"); U.wait(6)
+  end
+  return false
+end
+local function ui_back_out(G)
+  for _ = 1, 40 do
+    local t = ui_top(G)
+    if t == G.overworld or (t and (t.enemy or t.kind)) then return true end
+    U.tap(G, "b"); U.wait(6)
+  end
+  return false
+end
+local function bag_count(G, id)
+  return ((G.save and G.save.inventory) or {})[id] or 0
+end
+
+-- Buy c.count of c.item from this mart's clerk. Decision-free: the model
+-- picks WHAT and HOW MANY; the menu driving is mechanics.
+function OPS.buy(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  if not (c.item and c.count) then return false, "buy needs item, count" end
+  local ow = G.overworld
+  local clerk
+  for _, npc in ipairs(ow.npcs or {}) do
+    local nm = ((npc.def or {}).name or ""):upper()
+    if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
+  end
+  if not clerk then return false, "no shop clerk on this map" end
+  if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
+    return false, "couldn't reach the clerk"
+  end
+  if not ui_press_until(G, ui_is_menu, "a", 60) then
+    ui_back_out(G)
+    return false, "shop menu never opened"
+  end
+  ui_cursor_to(G, "index", 1)                     -- BUY
+  U.tap(G, "a"); U.wait(10)
+  if not ui_press_until(G, ui_is_list, "a", 30) then
+    ui_close_shop(G); ui_back_out(G)
+    return false, "buy list never opened"
+  end
+  local idx
+  for i, row in ipairs(ui_rows(G)) do
+    if row.value == c.item then idx = i break end
+  end
+  if not idx then
+    ui_close_shop(G); ui_back_out(G)
+    return false, c.item .. " is not sold here"
+  end
+  if not ui_cursor_to(G, "index", idx) then
+    ui_close_shop(G); ui_back_out(G)
+    return false, "cursor stuck on the buy list"
+  end
+  U.tap(G, "a"); U.wait(6)
+  if not ui_is_qty(G) then
+    ui_close_shop(G); ui_back_out(G)
+    return false, "no quantity box opened"
+  end
+  local want = math.min(c.count, ui_top(G).max or c.count)
+  if not ui_qty_to(G, want) then
+    ui_close_shop(G); ui_back_out(G)
+    return false, "couldn't set the quantity"
+  end
+  U.tap(G, "a"); U.wait(6)
+  if ui_is_choice(G) then                          -- "That'll be X. OK?"
+    ui_cursor_to(G, "index", 1)
+    U.tap(G, "a"); U.wait(10)
+  end
+  ui_press_until(G, ui_is_list, "a", 20)           -- clear purchase text
+  local have = bag_count(G, c.item)
+  ui_close_shop(G)
+  ui_back_out(G)
+  if have < 1 then
+    return false, "purchase did not reach the bag (no room or no money?)"
+  end
+  return true, ("bought: %s x%d in bag, %d money left"):format(
+    c.item, have, (G.save and G.save.money) or 0)
+end
+
+-- Use a bag item in the field (START -> ITEM -> item -> USE -> party
+-- slot). Healing items target c.slot (default the lead).
+function OPS.use_item(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  if not c.item then return false, "use_item needs item" end
+  if bag_count(G, c.item) < 1 then
+    return false, "no " .. c.item .. " in the bag"
+  end
+  U.tap(G, "start"); U.wait(8)
+  local menu = ui_top(G)
+  if not (menu and menu.screenId == "StartMenu") then
+    ui_back_out(G); return false, "start menu never opened"
+  end
+  local itemRow
+  for i, it in ipairs(menu.items or {}) do
+    if it.label == "ITEM" then itemRow = i break end
+  end
+  if not itemRow or not ui_cursor_to(G, "index", itemRow) then
+    ui_back_out(G); return false, "no ITEM row"
+  end
+  U.tap(G, "a"); U.wait(10)
+  local bag = ui_top(G)
+  if not (bag and bag.screenId == "BagMenu") then
+    ui_back_out(G); return false, "bag never opened"
+  end
+  local bagRow
+  for i, r in ipairs(bag.items or {}) do
+    if r.value == c.item then bagRow = i break end
+  end
+  if not bagRow or not ui_cursor_to(G, "index", bagRow) then
+    ui_back_out(G); return false, c.item .. " not in the bag list"
+  end
+  U.tap(G, "a"); U.wait(8)
+  if ui_is_menu(G) or ui_is_choice(G) then         -- USE/TOSS -> USE
+    ui_cursor_to(G, "index", 1)
+    U.tap(G, "a"); U.wait(8)
+  end
+  local pm
+  for _ = 1, 20 do                                 -- ride to the party picker
+    pm = ui_top(G)
+    if pm and pm.screenId == "PartyMenu" then break end
+    U.tap(G, "a"); U.wait(6)
+  end
+  pm = ui_top(G)
+  if pm and pm.screenId == "PartyMenu" then
+    ui_cursor_to(G, "index", c.slot or 1)
+    U.tap(G, "a"); U.wait(10)
+  end
+  for _ = 1, 15 do                                 -- "recovered HP!" text
+    local t = ui_top(G)
+    if not (t and t.pages) then break end
+    U.tap(G, "a"); U.wait(6)
+  end
+  ui_back_out(G)
+  return true, "used " .. c.item
+end
+
 -- Level-grind primitive: stand in this map's wild grass and pace until an
 -- encounter interrupts (or the step budget runs out). The EXECUTOR fights
 -- each battle with the subgoal's policy and re-sends this op — the same
@@ -1010,6 +1213,47 @@ function OPS.interact(G, c)
     if press_from_adjacent() then return true end
   end
   return false, "no reachable tile adjacent to target"
+end
+
+-- Use a bag item DURING battle (action grid slot 3 -> bag list -> item ->
+-- party target). Costs the turn; that is the caller's trade to make.
+function OPS.battle_item(G, c)
+  local b = in_battle(G)
+  if not b then return false, "not in battle" end
+  if not c.item then return false, "battle_item needs item" end
+  if bag_count(G, c.item) < 1 then
+    return false, "no " .. c.item .. " in the bag"
+  end
+  for _ = 1, 40 do                                 -- reach the action menu
+    if b.phase == "menu" then break end
+    U.tap(G, "a"); U.wait(3)
+  end
+  if b.phase ~= "menu" then return false, "no battle action menu" end
+  if not battle_menu_to(G, b, 3) then return false, "couldn't reach ITEM" end
+  U.tap(G, "a"); U.wait(6)
+  if not ui_press_until(G, ui_is_list, "a", 40) then
+    ui_back_out(G); return false, "battle bag never opened"
+  end
+  local idx
+  for i, row in ipairs(ui_rows(G) or {}) do
+    if row.value == c.item then idx = i break end
+  end
+  if not idx or not ui_cursor_to(G, "index", idx) then
+    ui_back_out(G); return false, c.item .. " not in the battle bag"
+  end
+  U.tap(G, "a"); U.wait(10)
+  local pm = ui_top(G)                             -- party target picker
+  if pm and pm.onSwitch ~= nil and pm.index ~= nil then
+    ui_cursor_to(G, "index", c.slot or 1)
+    U.tap(G, "a"); U.wait(12)
+  end
+  for _ = 1, 150 do        -- drain the heal text until battle takes input
+    local t = G.stack:top()
+    if not (t and (t.enemy or t.kind)) then break end
+    if t.phase == "menu" or t.phase == "moveSelect" then break end
+    U.tap(G, "a"); U.wait(4)
+  end
+  return true, "used " .. c.item .. " in battle"
 end
 
 -- Checkpoint capture/restore (in-memory), for escalation's clean retries:

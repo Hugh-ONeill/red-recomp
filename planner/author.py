@@ -44,6 +44,9 @@ PREDICATES = {
                      "(use for Pokemon Center heal stops)",
     "lead_level": "lead Pokemon is at least level N (e.g. {\"lead_level\":12} "
                   "— use for training subgoals on a grassy route)",
+    "has_item": "bag holds at least N of each listed item (e.g. "
+                "{\"has_item\":{\"POTION\":4}} — use for shopping subgoals "
+                "at a mart)",
 }
 ROUTE_MAPS = ["REDS_HOUSE_2F", "REDS_HOUSE_1F", "PALLET_TOWN", "OAKS_LAB",
               "ROUTE_1", "VIRIDIAN_CITY", "VIRIDIAN_MART", "ROUTE_2",
@@ -73,6 +76,9 @@ insert a Pokemon Center heal stop (done_when {"party_healthy": true}) before
 long wild-encounter stretches like Viridian Forest. If upcoming trainers
 outlevel your party, add a TRAINING subgoal first on a grassy route
 (done_when {"lead_level": N}) — grinding, then healing, then the dungeon.
+Marts sell healing items (a POTION heals 20 HP, ~300 money; you start with
+3000): add a SHOPPING subgoal (done_when {"has_item": {...}}) before a
+trainer gauntlet with no Center inside it.
 
 Hard rule on GRANULARITY: each subgoal must be ONE map transition, OR one
 event/interaction that happens within a single map. Do not bundle multiple

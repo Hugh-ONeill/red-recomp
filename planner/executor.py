@@ -89,6 +89,11 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             lead = (obs.get("party") or [{}])[0]
             if (lead.get("level") or 0) < want:
                 return False
+        elif key == "has_item":
+            bag = obs.get("bag") or {}
+            for item, n in (want or {}).items():
+                if not bag or bag.get(item, 0) < n:
+                    return False
         elif key == "badge":
             if want not in (obs.get("badges") or []):
                 return False
@@ -270,8 +275,15 @@ class Executor:
     def handle_battle(self, subgoal: dict, obs: dict) -> dict:
         name = subgoal.get("battle_policy", "default")
         self.log("battle_start", subgoal=subgoal["id"], policy=name)
-        return BATTLE_POLICIES[name](self.b, obs, self.log,
-                                     self.max_battle_turns)
+        obs = BATTLE_POLICIES[name](self.b, obs, self.log,
+                                    self.max_battle_turns)
+        # spec-rule field heal after the battle (no turn cost): the model's
+        # rule decides when a potion beats walking on at low HP
+        item = battle_policy.should_field_heal(obs, ACTIVE_SPEC)
+        if item:
+            self.log("field_heal", subgoal=subgoal["id"], item=item)
+            obs = self._send_safe("use_item", item=item) or obs
+        return obs
 
     def _send_safe(self, op, **kw):
         """Bridge send that degrades a timeout to None instead of raising —
@@ -322,8 +334,10 @@ south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
 door/stairs), {"op":"interact","name":"OBJECT_NAME"}, {"op":"menu","index":N}
 (1-based: 1=YES/first, 2=NO/second), {"op":"grind"} (pace this map's wild
 grass; each battle is fought and the op repeats until the subgoal's level
-target is met — use when the goal is to TRAIN/level up), {"op":"wait"}.
-Battles are auto-handled.
+target is met — use when the goal is to TRAIN/level up),
+{"op":"buy","item":"POTION","count":N} (buy from THIS map's mart clerk;
+obs.money is your budget), {"op":"use_item","item":"POTION"} (use a bag
+item on your lead in the field), {"op":"wait"}. Battles are auto-handled.
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
 and MAY BE IMPERFECT — if it names a target that isn't in obs.map.objects /

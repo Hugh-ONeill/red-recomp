@@ -56,7 +56,15 @@ DSL_DOC = """SPEC DSL (JSON object; every key optional; no other keys):
   flee_wild: {"when_traversal": true/false, "hp_below": null or 0.0-1.0}
     (when_traversal: flee wild battles while traveling to save HP;
      hp_below: also flee ANY wild when own hp fraction is below this.
-     Trainers can never be fled. Fleeing can fail; after 3 fails we fight.)"""
+     Trainers can never be fled. Fleeing can fail; after 3 fails we fight.)
+  battle_items: list of in-battle heal rules, each:
+      {"item": "POTION", "hp_below": 0.0-1.0, "max_uses": 1-6}
+    (use the item — costing the turn — when own hp fraction is below
+     hp_below; at most max_uses per battle; only if the bag has it)
+  field_heal: null or {"item": "POTION", "hp_below": 0.0-1.0}
+    (after a battle ends while traveling: if own hp fraction is below
+     hp_below and the item is in the bag, use it in the FIELD — no turn
+     cost — before walking on)"""
 
 CONTEXT = """THE RUN this policy plays (one Squirtle, no items, no switches):
   - Rival fight at L5: foe Bulbasaur L5 (Tackle/Growl). Our moves: TACKLE
@@ -66,7 +74,11 @@ CONTEXT = """THE RUN this policy plays (one Squirtle, no items, no switches):
     grind battles are 'fight' intent — fleeing them starves XP.
   - Viridian Forest traversal: wild Weedle/Kakuna/Caterpie/Metapod L3-6
     plus unavoidable Bug Catcher trainers (Weedle/Caterpie/Kakuna L6-9).
-    Poison Sting can poison; there is no healing mid-forest.
+    Poison Sting can poison; there is NO Pokemon Center mid-forest — but
+    the plan buys ~5 POTIONs (20 HP each) before entering. A run that
+    enters a trainer's sight at low HP with unspent potions is the #1
+    recorded death (a potion between fights costs nothing; in a fight it
+    costs the turn).
   - Pewter Gym: trainer (Diglett/Sandshrew L11) then BROCK: Geodude L12,
     Onix L14 (Rock/Ground — weak to water). Our kit by then: TACKLE,
     TAIL_WHIP, BUBBLE (water 20bp special), maybe WITHDRAW.
