@@ -76,6 +76,10 @@ def main():
 
     obs = ex.settle() or {}
     here = (obs.get("map") or {}).get("id")
+    # SAVE where we ended up, so the next probe boots with --continue and
+    # skips the whole replay (the probe's real cost)
+    r = (b.send("save_game") or {}).get("result") or {}
+    print(f"\n[save on {here}] {r.get('detail')}")
     print(f"\n== probing from {here} at {obs.get('player')}")
     for side in ("east", "south"):
         r = (b.send("map_probe", dir=side) or {}).get("result") or {}

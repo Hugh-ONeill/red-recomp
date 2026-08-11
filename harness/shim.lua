@@ -1518,24 +1518,38 @@ function OPS.save_game(G)
     ui_back_out(G); return false, "no SAVE row"
   end
   U.tap(G, "a"); U.wait(10)
-  -- the info panel + "Would you like to SAVE the game?" prompt — the
-  -- confirm may surface as a bare choice OR a menu-shaped option box
-  for _ = 1, 30 do
-    if ui_is_choice(G) or ui_is_menu(G) then break end
-    U.tap(G, "a"); U.wait(4)
-  end
-  if not (ui_is_choice(G) or ui_is_menu(G)) then
-    ui_back_out(G)
-    return false, "no confirm"
-  end
-  ui_cursor_to(G, "index", 1)                    -- YES
-  U.tap(G, "a"); U.wait(10)
-  for _ = 1, 120 do                              -- "SAVING... SAVED!"
+  -- Ride the player/badges/dex/time panel to its confirm. The panel is a
+  -- multi-page TextBox and the YES/NO ChoiceBox only pushes once the last
+  -- page finishes TYPING, which outlasted the old 30x4-frame budget (the
+  -- "no confirm" failures). Never break on the StartMenu itself — it is
+  -- menu-shaped too, and answering it would select POKeDEX instead.
+  local confirmed = false
+  for _ = 1, 200 do
     local t = ui_top(G)
+    if t and t.index ~= nil and t.items == nil then confirmed = true break end
     if t == G.overworld then break end
     U.tap(G, "a"); U.wait(4)
   end
-  ui_back_out(G)
+  if not confirmed then
+    local t = ui_top(G)
+    ui_back_out(G)
+    return false, ("no save confirm (top=%s, has_items=%s)"):format(
+      tostring(t and (t.screenId or "?")), tostring(t and t.items ~= nil))
+  end
+  ui_cursor_to(G, "index", 1)                    -- YES
+  U.tap(G, "a"); U.wait(10)
+  -- "Now saving..." (auto, 120-frame hold, writes on its onDone) then
+  -- "<NAME> saved the game!" (auto, sound + 30 frames). Both pop THEMSELVES
+  -- and take no button (StartMenu.lua:70-85 / issue #765) — pressing A here
+  -- would fall through onto the overworld and talk to whatever is in front.
+  for _ = 1, 400 do
+    if ui_top(G) == G.overworld then break end
+    U.wait(4)
+  end
+  if ui_top(G) ~= G.overworld then
+    ui_back_out(G)
+    return false, "save text never cleared"
+  end
   return true, "saved"
 end
 
