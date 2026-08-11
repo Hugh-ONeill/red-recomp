@@ -683,11 +683,31 @@
       },
       "escalation_rounds": 3,
       "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "Pewter is the first mart that sells POTION; stock up before Brock; target >=2: blackout money-halving is a real risk and the gym eval won badges on 2-3 potions; target >=1 (brock38: party depth + antidotes carry Brock; any potion beats none and authoring-era wallets run thin)"
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "chain1",
+        "via": "escalation",
+        "n_ops": 2
       },
       "optional": true,
-      "max_attempts": 2
+      "max_attempts": 2,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 17,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "buy",
+          "item": "POTION",
+          "count": 5,
+          "when": {
+            "map": "PEWTER_MART"
+          }
+        }
+      ]
     },
     {
       "id": "enter_pewter_gym",
