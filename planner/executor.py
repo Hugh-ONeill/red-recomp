@@ -76,6 +76,15 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             alive = any((m.get("hp") or 0) > 0 for m in obs.get("party") or [])
             if alive != want:
                 return False
+        elif key == "party_healthy":
+            mons = obs.get("party") or []
+            healthy = bool(mons) and all(
+                (m.get("hp") or 0) > 0
+                and (not m.get("max_hp") or m["hp"] == m["max_hp"])
+                and m.get("status") in (None, "", "0", "NONE", "OK")
+                for m in mons)
+            if healthy != want:
+                return False
         elif key == "badge":
             if want not in (obs.get("badges") or []):
                 return False
@@ -297,6 +306,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 return True, trace, clean
             before = self._snapshot(obs)
             traversal = op in ("cross", "walk_to", "use_warp")
+            blackout = None
             for _ in range(12):
                 try:
                     obs = self.b.send(op, **step)
@@ -304,8 +314,19 @@ Reply with ONLY a JSON array of ops, e.g.
                     obs = self.b.obs()
                     break
                 if obs and obs.get("mode") == "battle":
+                    pre_map = (obs.get("map") or {}).get("id") or before[0]
                     obs = self.handle_battle(sg, obs)
                     obs = self.settle()
+                    post_map = ((obs or {}).get("map") or {}).get("id")
+                    # a won battle never changes the map; a party wipe blacks
+                    # out and respawns at home/last Center — silently warping
+                    # the trajectory (brock15 died in the forest and the next
+                    # rounds unknowingly ran from Pallet)
+                    if post_map and pre_map and post_map != pre_map:
+                        blackout = post_map
+                        self.log("blackout", subgoal=sg["id"], op=op,
+                                 respawn=post_map)
+                        break
                     if traversal and not pred_holds(done, obs):
                         continue
                 break
@@ -325,6 +346,10 @@ Reply with ONLY a JSON array of ops, e.g.
                 if (before[1], before[2]) != (after[1], after[2]):
                     chg.append("moved")
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
+            if blackout:
+                note += (f" — your party FAINTED mid-op (blackout): you "
+                         f"respawned at {blackout}, party healed, position "
+                         f"progress lost")
             trace.append(note)
             # distill an op if it ran OK *or* changed the state — cross via the
             # Oak escort reports ok=False ("cross attempted") yet the map

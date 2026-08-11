@@ -84,6 +84,10 @@ local function party(G)
   local out = {}
   for i, mon in ipairs((G.save and G.save.party) or {}) do
     local m = scalars(mon, 1)
+    -- max HP lives in the nested stats table the scalar pass drops; the
+    -- HUD shows hp/max and status, so they are player-visible eyes
+    m.max_hp = mon.stats and mon.stats.hp
+    if mon.status ~= nil then m.status = tostring(mon.status) end
     m.moves = {}
     for j, mv in ipairs(mon.moves or {}) do
       m.moves[j] = type(mv) == "table" and scalars(mv, 0) or tostring(mv)

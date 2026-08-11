@@ -31,14 +31,14 @@
       "escalation_rounds": 4,
       "macro": [
         {
-          "op": "walk_to",
+          "op": "use_warp",
           "x": 2,
           "y": 7
         }
       ],
       "macro_provenance": {
         "authored_by": "gemma4:26b-a4b-it-q4_K_M",
-        "run": "brock4",
+        "run": "brock10",
         "via": "escalation",
         "n_ops": 1
       }
@@ -115,7 +115,29 @@
       "done_when": {
         "map": "ROUTE_1"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "walk_to",
+          "x": 4,
+          "y": 11
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11
+        },
+        {
+          "op": "cross",
+          "dir": "north"
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
+        "run": "brock8",
+        "via": "escalation",
+        "n_ops": 3
+      }
     },
     {
       "id": "go_to_viridian_city",
@@ -123,7 +145,19 @@
       "done_when": {
         "map": "VIRIDIAN_CITY"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north"
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
+        "run": "brock8",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "get_parcel_delivery",
@@ -131,7 +165,20 @@
       "done_when": {
         "flag": "EVENT_GOT_OAKS_PARCEL"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "walk_to",
+          "x": 29,
+          "y": 19
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
+        "run": "brock8",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "return_to_oak",
@@ -139,7 +186,33 @@
       "done_when": {
         "map": "OAKS_LAB"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7
+        },
+        {
+          "op": "cross",
+          "dir": "south"
+        },
+        {
+          "op": "cross",
+          "dir": "south"
+        },
+        {
+          "op": "walk_to",
+          "x": 12,
+          "y": 11
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
+        "run": "brock10",
+        "via": "escalation",
+        "n_ops": 4
+      }
     },
     {
       "id": "get_pokedex",
@@ -147,7 +220,31 @@
       "done_when": {
         "flag": "EVENT_GOT_POKEDEX"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_OAK1"
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
+        "run": "brock10",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "heal_at_viridian_center",
+      "goal_text": "Travel to Viridian City and heal your party at the Pokemon Center: enter the Center building and talk to the nurse at the counter, answering YES to heal.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 5,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "attrition guard added after brock15 blacked out in Viridian Forest (no heal stop existed in the authored plan); macro left for escalation to author"
+      }
     },
     {
       "id": "go_to_route_2",
@@ -155,7 +252,32 @@
       "done_when": {
         "map": "ROUTE_2"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11
+        },
+        {
+          "op": "cross",
+          "dir": "north"
+        },
+        {
+          "op": "cross",
+          "dir": "north"
+        },
+        {
+          "op": "cross",
+          "dir": "north"
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
+        "run": "brock11",
+        "via": "escalation",
+        "n_ops": 4
+      }
     },
     {
       "id": "enter_viridian_forest",
@@ -163,7 +285,25 @@
       "done_when": {
         "map": "VIRIDIAN_FOREST"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 43
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 0
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
+        "run": "brock12",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
       "id": "reach_pewter_city",

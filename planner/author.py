@@ -40,6 +40,8 @@ PREDICATES = {
     "badge": "VALUE badge earned (e.g. {\"badge\":\"BOULDERBADGE\"})",
     "flag": "a save event flag is set (e.g. {\"flag\":\"EVENT_GOT_POKEDEX\"})",
     "no_battle": "true = not currently in a battle",
+    "party_healthy": "true = every party Pokemon at full HP with no status "
+                     "(use for Pokemon Center heal stops)",
 }
 ROUTE_MAPS = ["REDS_HOUSE_2F", "REDS_HOUSE_1F", "PALLET_TOWN", "OAKS_LAB",
               "ROUTE_1", "VIRIDIAN_CITY", "VIRIDIAN_MART", "ROUTE_2",
@@ -63,6 +65,10 @@ of SUBGOALS. You write the decomposition and the success condition of each
 step; a separate system will later figure out the exact button/op sequence
 for each subgoal by playing. So you do NOT give coordinates or ops here — you
 give the milestones and how to know each is done.
+
+ATTRITION: battles chip your party's HP and there is no auto-healing —
+insert a Pokemon Center heal stop (done_when {"party_healthy": true}) before
+long wild-encounter stretches like Viridian Forest.
 
 Hard rule on GRANULARITY: each subgoal must be ONE map transition, OR one
 event/interaction that happens within a single map. Do not bundle multiple
