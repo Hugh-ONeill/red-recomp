@@ -742,6 +742,20 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"steps, do not repeat ones that already took effect."
                         + loop_note
                         + open_prompt
+                        + (("\nWarps you can currently WALK TO from here: "
+                            + ", ".join(
+                                f"({w.get('x')},{w.get('y')})->{w.get('dest')}"
+                                for w in ((cur.get("map") or {}).get("warps")
+                                          or []) if w.get("reachable"))
+                            + ". Warps NOT reachable from here: "
+                            + (", ".join(
+                                f"({w.get('x')},{w.get('y')})->{w.get('dest')}"
+                                for w in ((cur.get("map") or {}).get("warps")
+                                          or []) if not w.get("reachable"))
+                               or "none")
+                            + ". If the way onward is blocked, LEAVE through a "
+                              "reachable warp and come back another way.")
+                           if (cur.get("map") or {}).get("warps") else "")
                         + (f"\nEdges from this map (cross that dir to reach): "
                            + ", ".join(f"{d}->{m}" for d, m in conns.items())
                            if conns else "")
