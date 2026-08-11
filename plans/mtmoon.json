@@ -357,6 +357,19 @@
       "optional": true
     },
     {
+      "id": "take_fossil",
+      "goal_text": "Take one of the two fossils on B2F (interact with MTMOONB2F_DOME_FOSSIL or MTMOONB2F_HELIX_FOSSIL and answer YES). The Super Nerd stands in the corridor until you do \u2014 taking one makes him walk aside to claim the other, which opens the way onward.",
+      "done_when": {
+        "has_item": {
+          "DOME_FOSSIL": 1
+        }
+      },
+      "escalation_rounds": 6,
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted TEST SCAFFOLD \u2014 verified in the recomp's own script (data/scripts/story2.lua mtMoonFossil: taking a fossil runs walk_npc, moving the nerd out of the corridor). The model's decompositions omitted it; the record run needs the AUTHOR to include it, not this insertion."
+      }
+    },
+    {
       "id": "return_to_b1f_east",
       "goal_text": "From B2F, cross to a DIFFERENT ladder than the one you came down (the one at B1F (17,11) leads back to where you started) and go up \u2014 you want B1F's EASTERN section, near (27,3).",
       "done_when": {
