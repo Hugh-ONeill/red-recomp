@@ -338,6 +338,20 @@ class Executor:
         self._save_memory()
 
     @staticmethod
+    def _target_key(sg) -> str:
+        """What this subgoal is actually trying to reach/achieve."""
+        dw = sg.get("done_when") or {}
+        for k in ("map", "flag", "badge"):
+            if dw.get(k):
+                return f"{k}:{dw[k]}"
+        if dw.get("has_item"):
+            return "item:" + ",".join(sorted(dw["has_item"]))
+        for k in ("party_size", "lead_level", "party_healthy"):
+            if k in dw:
+                return f"{k}:{dw[k]}"
+        return "subgoal:" + sg.get("id", "?")
+
+    @staticmethod
     def _where(obs) -> str:
         m = (obs or {}).get("map") or {}
         return f"{m.get('id')}|{m.get('region')}"
@@ -363,7 +377,7 @@ class Executor:
         self.log("explored", frm=src, via=str(key), to=dst, times=e["n"])
         self._save_memory()
 
-    def exploration_text(self, obs, sg_id: str = "") -> str:
+    def exploration_text(self, obs, target: str = "") -> str:
         """Untried vs already-taken exits from where we stand."""
         here = self._where(obs)
         taken = self.explored.get(here, {})
@@ -375,7 +389,7 @@ class Executor:
             k = f"{w.get('x')},{w.get('y')}"
             if k in taken:
                 dest = taken[k]["to"]
-                bad = (self.dead_ends.get(sg_id, {}) or {}).get(dest, 0)
+                bad = (self.dead_ends.get(target, {}) or {}).get(dest, 0)
                 tried.append(
                     f"({k}) -> {dest} [taken {taken[k]['n']}x"
                     + (f"; that area is a KNOWN DEAD END for this goal, "
@@ -391,10 +405,10 @@ class Executor:
                       f"progress — if the last thing you did brought you "
                       f"back here, undo that choice and take a different "
                       f"exit.")
-        for sg_id, regions in self.dead_ends.items():
+        for tgt, regions in self.dead_ends.items():
             if here in regions:
-                warned = (f"\nNOTE: earlier attempts failed to achieve "
-                          f"'{sg_id}' from this exact area "
+                warned = (f"\nNOTE: earlier attempts failed to reach "
+                          f"'{tgt}' from this exact area "
                           f"({regions[here]}x). Whatever you need is NOT "
                           f"reachable from here — leave first.")
                 break
@@ -617,8 +631,8 @@ Reply with ONLY a JSON array of ops, e.g.
             if op == "use_warp":
                 known = (self.explored.get(self._where(obs), {}) or {}).get(
                     f"{step.get('x')},{step.get('y')}")
-                bad = (self.dead_ends.get(sg["id"], {}) or {}).get(
-                    (known or {}).get("to", ""), 0)
+                bad = (self.dead_ends.get(self._target_key(sg), {})
+                       or {}).get((known or {}).get("to", ""), 0)
                 if bad and self._dead_visits < 2:
                     self._dead_visits += 1
                     trace.append(
@@ -708,7 +722,8 @@ Reply with ONLY a JSON array of ops, e.g.
                 # other moment we can check — and it also teaches the edge,
                 # so next time the exit itself carries the warning.
                 land = self._where(obs)
-                bad = (self.dead_ends.get(sg["id"], {}) or {}).get(land, 0)
+                bad = (self.dead_ends.get(self._target_key(sg), {})
+                       or {}).get(land, 0)
                 if bad:
                     trace.append(
                         f"ARRIVED IN A KNOWN DEAD END: {land} — this goal has "
@@ -745,7 +760,7 @@ Reply with ONLY a JSON array of ops, e.g.
 
     def escalate(self, sg: dict, redo: bool = False, blocked_by: str = "",
                  avoid_region: str = "",
-                 blocked_id: str = "") -> tuple[bool, list]:
+                 blocked_target: str = "") -> tuple[bool, list]:
         """SPD escalation: the model AUTHORS a candidate macro (its strength),
         the executor RUNS it with a per-step trace, and on success distills.
         On failure the DIAGNOSTIC trace (which ops did nothing / where it
@@ -804,7 +819,7 @@ Reply with ONLY a JSON array of ops, e.g.
                     "you reached the wrong one. Get to a DIFFERENT place that "
                     "also satisfies it — typically by going back the way you "
                     "came and taking another route. Standing still is failure.")
-            memory = self.exploration_text(start, sg["id"])
+            memory = self.exploration_text(start, self._target_key(sg))
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
                     f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
@@ -865,7 +880,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 cur_obs = self.settle() or {}
                 region = (cur_obs.get("map") or {}).get("region")
                 land = self._where(cur_obs)
-                failed_here = (self.dead_ends.get(blocked_id, {})
+                failed_here = (self.dead_ends.get(blocked_target, {})
                                or {}).get(land, 0)
                 if failed_here:
                     ok = False
@@ -954,7 +969,7 @@ Reply with ONLY a JSON array of ops, e.g.
                            or "couldn't reach the warp tile" in t]
             if unreachable and cur:
                 here = self._where(cur)
-                self.note_dead_end(sg["id"], here)
+                self.note_dead_end(self._target_key(sg), here)
                 objs = [o for o in ((cur.get("map") or {}).get("objects")
                                     or []) if not o.get("reachable")]
                 seam = any("cannot be walked to from" in t
@@ -962,7 +977,7 @@ Reply with ONLY a JSON array of ops, e.g.
                            for t in trace)
                 if objs or seam:
                     self.log("target_unreachable", subgoal=sg["id"],
-                             region=here,
+                             target=self._target_key(sg), region=here,
                              objects=[o.get("name") for o in objs][:5])
                     # nothing here can achieve it: stop burning rounds
                     print(f"   (target unreachable from {here} — "
@@ -1043,7 +1058,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"steps, do not repeat ones that already took effect."
                         + loop_note
                         + open_prompt
-                        + self.exploration_text(cur, sg["id"])
+                        + self.exploration_text(cur, self._target_key(sg))
                         + (("\nWarps you can currently WALK TO from here: "
                             + ", ".join(
                                 f"({w.get('x')},{w.get('y')})->{w.get('dest')}"
@@ -1201,7 +1216,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 try:
                     moved, ops = self.escalate(
                         prev, redo=True, avoid_region=stuck_region,
-                        blocked_id=sg["id"],
+                        blocked_target=self._target_key(sg),
                         blocked_by=sg.get("goal_text", sg["id"])[:120])
                 except TimeoutError as e:
                     self.log("escalate_timeout", subgoal=prev["id"],
@@ -1222,7 +1237,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         try:
                             moved2, _ = self.escalate(
                                 prev, redo=True, avoid_region=stuck_region,
-                                blocked_id=sg["id"],
+                                blocked_target=self._target_key(sg),
                                 blocked_by=sg.get("goal_text", sg["id"])[:120])
                         except TimeoutError:
                             moved2 = False

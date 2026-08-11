@@ -30,7 +30,7 @@ for area in lonely:
     print(f"{area}   (arrived {visits[area]}x, no exits taken from here yet)")
 
 if dead:
-    print("\ndead ends (subgoal could not be achieved from that area):")
+    print("\ndead ends (target could not be reached from that area):")
     for sg, regions in dead.items():
         for area, n in regions.items():
             print(f"    {sg} x{n} from {area}")
