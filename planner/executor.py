@@ -264,6 +264,7 @@ class Executor:
         self.run_id = run_id
         self.escalations = 0
         self._dead_ops: dict = {}   # (op,target) -> consecutive failures
+        self._st: dict = {}         # live status (run/status.txt)
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
         # Pure memory of past observations (the obs already showed each map's
         # connections while standing on it), re-served to the model so multi-
@@ -301,6 +302,36 @@ class Executor:
             parts.append(f"{mid}: " + "; ".join(bits))
         return " | ".join(parts)
 
+    def status(self, **kw):
+        """Keep run/status.txt current: what is it TRYING to do right now.
+        Watching the window shows behaviour; this shows intent. Pair them:
+          watch -n1 cat ~/Developer/red-recomp/run/status.txt
+        """
+        self._st.update({k: v for k, v in kw.items() if v is not None})
+        st = self._st
+        obs = st.get("obs") or {}
+        pl = obs.get("player") or {}
+        party = ", ".join(
+            f"{m.get('species')} L{m.get('level')} {m.get('hp')}/"
+            f"{m.get('max_hp')}" for m in (obs.get("party") or []))
+        lines = [
+            f"PLAN     {st.get('plan','?')}",
+            f"SUBGOAL  {st.get('subgoal','?')}  [{st.get('phase','')}]",
+            f"GOAL     {(st.get('goal_text') or '')[:150]}",
+            f"DONE_WHEN{json.dumps(st.get('done_when') or {})}",
+            f"DOING    {st.get('doing','')}",
+            f"LAST     {(st.get('last') or '')[:150]}",
+            f"WHERE    {(obs.get('map') or {}).get('id')} "
+            f"({pl.get('x')},{pl.get('y')}) mode={obs.get('mode')}",
+            f"PARTY    {party}",
+            f"MONEY    {obs.get('money')}   BAG {json.dumps(obs.get('bag') or {})}",
+            f"t+{round(time.time() - self.t0)}s",
+        ]
+        try:
+            (RUN / "status.txt").write_text("\n".join(lines) + "\n")
+        except OSError:
+            pass
+
     def log(self, kind, **kw):
         self.logf.write(json.dumps(
             {"dt": round(time.time() - self.t0, 1), "kind": kind, **kw}) + "\n")
@@ -314,6 +345,7 @@ class Executor:
         # their fight/catch intent explicitly.
         name = subgoal.get("battle_policy", "traversal")
         self.log("battle_start", subgoal=subgoal["id"], policy=name)
+        self.status(doing=f"BATTLE ({name} policy)", obs=obs)
         obs = BATTLE_POLICIES[name](self.b, obs, self.log,
                                     self.max_battle_turns)
         # spec-rule field cure/heal after the battle (no turn cost) for the
@@ -514,6 +546,7 @@ Reply with ONLY a JSON array of ops, e.g.
                          f"respawned at {blackout}, party healed, position "
                          f"progress lost")
             trace.append(note)
+            self.status(last=note, obs=obs, doing=f"{op} {json.dumps(step)}")
             # distill an op if it ran OK *or* changed the state — cross via the
             # Oak escort reports ok=False ("cross attempted") yet the map
             # changes, and menu ops have delayed effects; only genuinely-failed
@@ -643,6 +676,10 @@ Reply with ONLY a JSON array of ops, e.g.
                     macro = keep + [macro[-1]]
             self.log("escalate_proposal", subgoal=sg["id"], round=rnd,
                      macro=macro)
+            self.status(subgoal=sg["id"], goal_text=goal, done_when=done,
+                        obs=self.settle(),
+                        phase=("REDO " if redo else "") + f"escalation {rnd}",
+                        doing=json.dumps(macro)[:150])
             ok, trace, clean = self._run_traced(sg, macro,
                                                 ignore_done=redo)
             if ok and redo:
@@ -848,6 +885,9 @@ Reply with ONLY a JSON array of ops, e.g.
                          via="pre-check")
                 return True
             self.log("subgoal_attempt", subgoal=sg["id"], attempt=attempt)
+            self.status(subgoal=sg["id"], goal_text=sg.get("goal_text"),
+                        done_when=sg.get("done_when"), obs=obs,
+                        phase=f"replay attempt {attempt}", doing="macro")
             for step in sg.get("macro", []):
                 step = dict(step)
                 when = step.pop("when", None)
