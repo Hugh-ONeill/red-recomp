@@ -275,6 +275,8 @@ class Executor:
         self.explored: dict = {}
         self.dead_ends: dict = {}   # subgoal id -> {region: failures}
         self.visits: dict = {}      # region -> times arrived
+        self._arrived = None        # (region, (x,y)) — the door we came in by
+        self._reversals = 0
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
         # Pure memory of past observations (the obs already showed each map's
@@ -349,6 +351,10 @@ class Executor:
         if key is None:
             return
         self.visits[dst] = self.visits.get(dst, 0) + 1
+        ap = (after_obs or {}).get("player") or {}
+        if ap.get("x") is not None:
+            self._arrived = (dst, (ap["x"], ap["y"]))
+            self._reversals = 0
         node = self.explored.setdefault(src, {})
         e = node.setdefault(key, {"n": 0, "to": dst})
         e["n"] += 1
@@ -602,6 +608,22 @@ Reply with ONLY a JSON array of ops, e.g.
                 continue
             sig = (op, step.get("name") or step.get("dir")
                    or (step.get("x"), step.get("y")))
+            # NO IMMEDIATE REVERSAL — the classic search prune, not game
+            # knowledge: both directions of a ladder read as "untried" from
+            # their own side, so the run oscillated B1F<->B2F until its
+            # rounds ran out. Yields after 2 refusals so a true dead end can
+            # still be backed out of.
+            if (op == "use_warp" and self._arrived
+                    and self._where(obs) == self._arrived[0]
+                    and (step.get("x"), step.get("y")) == self._arrived[1]
+                    and self._reversals < 2):
+                self._reversals += 1
+                trace.append(
+                    f"use_warp({step.get('x')},{step.get('y')}): REFUSED — "
+                    "that is the door you just came in through; taking it "
+                    "returns you where you were a moment ago. Use a "
+                    "different exit.")
+                continue
             if self._dead_ops.get(sig, 0) >= 3:
                 trace.append(f"{op}: REFUSED — this exact action has already "
                              "failed 3 times in this subgoal; it cannot work "
