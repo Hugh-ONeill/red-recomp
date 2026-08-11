@@ -1542,12 +1542,18 @@ function OPS.save_game(G)
   -- "<NAME> saved the game!" (auto, sound + 30 frames). Both pop THEMSELVES
   -- and take no button (StartMenu.lua:70-85 / issue #765) — pressing A here
   -- would fall through onto the overworld and talk to whatever is in front.
+  -- ...and when they pop, the START MENU is still underneath (SAVE was
+  -- selected from it), so waiting for the overworld alone never resolved
+  -- and reported failure on a save that had already been WRITTEN (proved
+  -- by a CONTINUE landing on the saved tile). Wait for either, then close.
   for _ = 1, 400 do
-    if ui_top(G) == G.overworld then break end
+    local t = ui_top(G)
+    if t == G.overworld then break end
+    if t and t.screenId == "StartMenu" then break end
     U.wait(4)
   end
+  ui_back_out(G)
   if ui_top(G) ~= G.overworld then
-    ui_back_out(G)
     return false, "save text never cleared"
   end
   return true, "saved"
