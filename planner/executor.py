@@ -109,14 +109,35 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
 SCORE_BATTLES = False
 
 
-def _run_policy(spec, bridge, obs, log, max_turns):
+# the spec every named policy resolves through; --policy-spec swaps in a
+# model-authored artifact so the whole run's battle decisions come from it
+ACTIVE_SPEC = battle_policy.DEFAULT_SPEC
+
+
+def set_active_spec(spec):
+    global ACTIVE_SPEC
+    ACTIVE_SPEC = spec
+
+
+def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
     """Drive a battle turn-by-turn with a battle_policy spec (rules as data).
-    With SCORE_BATTLES, also probe the oracle each turn and log policy-vs-
-    oracle agreement — the measuring stick, which does not alter play."""
+    The spec also owns the wild-flee decision (should_flee); trainers can
+    never be fled, and if fleeing fails 3 times we fight it out. With
+    SCORE_BATTLES, probe the oracle each turn and log policy-vs-oracle
+    agreement — the measuring stick, which does not alter play."""
     turns = 0
+    flees = 0
+    ctx = {"turn": 0, "used": {}, "intent": intent}
     while obs and obs.get("mode") == "battle" and turns < max_turns:
         turns += 1
-        op = battle_policy.choose(obs, spec)
+        ctx["turn"] = turns
+        if (flees < 3 and battle_policy.should_flee(obs, spec, ctx)):
+            flees += 1
+            log("battle_turn", turn=turns, op="battle_run", params={},
+                why=f"flee wild ({intent})")
+            obs = bridge.send("battle_run")
+            continue
+        op = battle_policy.choose(obs, spec, ctx)
         why = op.pop("_why", None)
         name = op.pop("op")
         idx = op.get("index")
@@ -143,34 +164,14 @@ def battle_slot1(bridge, obs, log, max_turns):
     return obs
 
 
-def battle_traversal(bridge, obs, log, max_turns):
-    """Speedrun-correct traversal default: FLEE wild battles to save HP for
-    the unavoidable trainer fights (a lone low-level starter that fights
-    every forest encounter wipes — brock15/18). Trainers block escape and
-    get the default policy; if fleeing keeps failing, fight it out."""
-    turns = 0
-    while obs and obs.get("mode") == "battle" and turns < max_turns:
-        if (obs.get("battle") or {}).get("kind") != "wild":
-            return _run_policy(battle_policy.DEFAULT_SPEC, bridge, obs, log,
-                               max_turns - turns)
-        turns += 1
-        log("battle_turn", turn=turns, op="battle_run", params={},
-            why="flee wild (traversal)")
-        obs = bridge.send("battle_run")
-        if turns >= 3 and obs and obs.get("mode") == "battle":
-            return _run_policy(battle_policy.DEFAULT_SPEC, bridge, obs, log,
-                               max_turns - turns)
-    log("battle_done", turns=turns, mode=obs.get("mode") if obs else None)
-    return obs
-
-
 BATTLE_POLICIES = {
     "default": lambda b, o, lg, mt: _run_policy(
-        battle_policy.DEFAULT_SPEC, b, o, lg, mt),
+        ACTIVE_SPEC, b, o, lg, mt, intent="fight"),
     "typed_v0": lambda b, o, lg, mt: _run_policy(
-        battle_policy.SPECS["typed_v0"], b, o, lg, mt),
+        battle_policy.SPECS["typed_v0"], b, o, lg, mt, intent="fight"),
     "slot1": battle_slot1,
-    "traversal": battle_traversal,
+    "traversal": lambda b, o, lg, mt: _run_policy(
+        ACTIVE_SPEC, b, o, lg, mt, intent="traversal"),
 }
 
 
@@ -778,7 +779,14 @@ def main():
                          "back into the plan file as the subgoal's macro")
     ap.add_argument("--model", default="gemma4:26b-a4b-it-q4_K_M")
     ap.add_argument("--run-id", default="run")
+    ap.add_argument("--policy-spec", type=Path, default=None,
+                    help="model-authored battle-policy spec (JSON); replaces "
+                         "the hand-seeded default in every battle decision")
     args = ap.parse_args()
+    if args.policy_spec:
+        set_active_spec(battle_policy.load_spec(args.policy_spec))
+        print(f"[policy] active spec: {ACTIVE_SPEC.get('name')} "
+              f"({args.policy_spec})")
 
     global SCORE_BATTLES
     SCORE_BATTLES = args.score_battles

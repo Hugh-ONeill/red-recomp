@@ -1,0 +1,292 @@
+#!/usr/bin/env python3
+"""Model-authored battle policy: the model writes the SPEC, the game
+referees it.
+
+CLAIM_RULES: the battle-policy artifact must be authored by the local open
+model. This driver runs that authoring loop:
+  1. the model writes a spec in the battle_policy DSL (its Pokemon
+     knowledge -> deterministic rules; knowledge-in-decisions-out),
+  2. each candidate is evaluated LIVE on the run's decisive fights via
+     RESEEDED checkpoint trials (the L5 rival fight; the forest gauntlet
+     through Pewter Gym to Brock),
+  3. results (win rates, blackouts, oracle agreement/damage-gap) feed back
+     for revision. The oracle referees; it never plays.
+The best spec is saved with provenance for executor.py --policy-spec.
+
+Owns its own game process (fresh_run pattern). Usage:
+  policy_author.py --rounds 4 --out plans/policy_model_v1.json
+"""
+
+from __future__ import annotations
+
+import argparse
+import atexit
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import battle_policy
+import brock_probe
+import executor as ex_mod
+from bridge import Bridge, RUN
+
+REPO = Path(__file__).resolve().parent.parent
+LOG = RUN / "executor_log.jsonl"
+
+DSL_DOC = """SPEC DSL (JSON object; every key optional; no other keys):
+  name: short string naming your policy
+  stab: number 1.0-2.0 — weight for same-type (STAB) moves in scoring
+  accuracy_weight: true/false — weight move scores by accuracy
+  prefer_ko: true/false — pick a move estimated to KO over raw score
+  ko_margin: number >= 1.0 — only trust a KO if est. damage >= foe hp*this
+  avoid_status_moves: true/false — never pick 0-power moves by score
+  setup: list of deliberate status-move rules, each:
+      {"move": "TAIL_WHIP", "max_uses": 1-6, "first_turns": 1-8,
+       "min_hp_frac": 0.0-1.0, "vs": "trainer"|"wild"|"any"}
+    (use the move up to max_uses times, only in the battle's first
+     first_turns turns, only while own hp fraction >= min_hp_frac,
+     only against that battle kind)
+  flee_wild: {"when_traversal": true/false, "hp_below": null or 0.0-1.0}
+    (when_traversal: flee wild battles while traveling to save HP;
+     hp_below: also flee ANY wild when own hp fraction is below this.
+     Trainers can never be fled. Fleeing can fail; after 3 fails we fight.)"""
+
+CONTEXT = """THE RUN this policy plays (one Squirtle, no items, no switches):
+  - Rival fight at L5: foe Bulbasaur L5 (Tackle/Growl). Our moves: TACKLE
+    (normal 35bp), TAIL_WHIP (status, lowers foe Defense). Roughly a coin
+    flip under plain Tackle-spam; this fight is worth thinking about.
+  - Wild grinding on Routes 1/22 to L12 (Pidgey/Rattata/Nidoran L2-5):
+    grind battles are 'fight' intent — fleeing them starves XP.
+  - Viridian Forest traversal: wild Weedle/Kakuna/Caterpie/Metapod L3-6
+    plus unavoidable Bug Catcher trainers (Weedle/Caterpie/Kakuna L6-9).
+    Poison Sting can poison; there is no healing mid-forest.
+  - Pewter Gym: trainer (Diglett/Sandshrew L11) then BROCK: Geodude L12,
+    Onix L14 (Rock/Ground — weak to water). Our kit by then: TACKLE,
+    TAIL_WHIP, BUBBLE (water 20bp special), maybe WITHDRAW.
+Physical damage uses Attack vs Defense; special (BUBBLE) uses Special vs
+Special. TAIL_WHIP lowers foe DEFENSE (helps TACKLE, not BUBBLE)."""
+
+SYS = ("You AUTHOR a Pokemon Red battle policy as a JSON SPEC in the DSL "
+       "below. A deterministic interpreter executes your rules; you are "
+       "writing the decision rules, not playing turns. Use your knowledge "
+       "of gen-1 mechanics. Reply with ONLY the JSON spec object.\n\n"
+       + DSL_DOC + "\n\n" + CONTEXT)
+
+
+def _parse_spec(text: str):
+    dec = json.JSONDecoder()
+    idx = text.find("{")
+    while idx != -1:
+        try:
+            val, _ = dec.raw_decode(text, idx)
+        except json.JSONDecodeError:
+            idx = text.find("{", idx + 1)
+            continue
+        if isinstance(val, dict):
+            return val
+        idx = text.find("{", idx + 1)
+    return None
+
+
+# ------------------------------------------------------------- eval harness
+class Gym:
+    """Boots the game, replays the plan to capture eval checkpoints, then
+    scores candidate specs with reseeded restore trials."""
+
+    def __init__(self, plan_path: Path, run_id: str):
+        self.plan = json.loads(plan_path.read_text())
+        self.sgs = {s["id"]: s for s in self.plan["subgoals"]}
+        self.run_id = run_id
+        self.game = None
+        self.rival_ok = False
+
+    def boot(self):
+        if (RUN / "obs.json").exists():
+            (RUN / "obs.json").unlink()
+        self.game = subprocess.Popen(
+            [str(REPO / "run.sh"), "200"], cwd=REPO,
+            start_new_session=True)
+        atexit.register(self.shutdown)
+        for _ in range(60):
+            if (RUN / "obs.json").exists():
+                break
+            time.sleep(1)
+        else:
+            raise RuntimeError("game did not come up")
+        self.b = Bridge()
+        ex_mod.SCORE_BATTLES = True
+        self.ex = ex_mod.Executor(self.b, plan=self.plan,
+                                  run_id=self.run_id)
+        ex_mod.bootstrap(self.b)
+
+    def shutdown(self):
+        if self.game and self.game.poll() is None:
+            try:
+                os.killpg(self.game.pid, signal.SIGTERM)
+            except Exception:
+                pass
+
+    def prepare(self):
+        """Replay the plan, capturing eval checkpoints at the two decisive
+        fights. Stops before reach_pewter_city."""
+        for sg in self.plan["subgoals"]:
+            if sg["id"] == "battle_rival_lab":
+                self.b.send("checkpoint_capture", token="eval_rival")
+            if sg["id"] == "reach_pewter_city":
+                self.b.send("checkpoint_capture", token="eval_gate")
+                break
+            ok = self.ex.run_subgoal(sg)
+            if not ok:
+                raise RuntimeError(f"setup failed at {sg['id']}")
+        # verify the rival fight re-arms after a reseeded restore: some
+        # event state may not be in the checkpoint
+        self.b.send("checkpoint_restore", token="eval_rival", reseed=True)
+        obs = self.ex.settle()
+        flags = obs.get("flags") or []
+        self.rival_ok = "EVENT_BATTLED_RIVAL_IN_OAKS_LAB" not in flags
+        # leave the game parked on the gate checkpoint between candidates
+        self.b.send("checkpoint_restore", token="eval_gate", reseed=True)
+
+    def _log_delta(self, start: int):
+        out = []
+        with open(LOG) as f:
+            f.seek(start)
+            for line in f:
+                try:
+                    out.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+        return out
+
+    def _lead(self, obs):
+        return ((obs or {}).get("party") or [{}])[0]
+
+    def eval_spec(self, spec: dict, k_rival: int = 6,
+                  k_gauntlet: int = 3) -> dict:
+        ex_mod.set_active_spec(spec)
+        res = {"rival_wins": 0, "rival_trials": 0,
+               "pewter": 0, "badge": 0, "gauntlet_trials": 0,
+               "blackouts": 0, "agree": 0, "scored": 0, "dmg_gap": 0.0}
+        if self.rival_ok:
+            for _ in range(k_rival):
+                self.b.send("checkpoint_restore", token="eval_rival",
+                            reseed=True)
+                res["rival_trials"] += 1
+                try:
+                    self.ex.run_subgoal(self.sgs["battle_rival_lab"])
+                except TimeoutError:
+                    continue
+                lead = self._lead(self.ex.settle())
+                if (lead.get("level") or 0) >= 6:
+                    res["rival_wins"] += 1
+        for _ in range(k_gauntlet):
+            self.b.send("checkpoint_restore", token="eval_gate", reseed=True)
+            res["gauntlet_trials"] += 1
+            start = LOG.stat().st_size
+            try:
+                if self.ex.run_subgoal(self.sgs["reach_pewter_city"]):
+                    res["pewter"] += 1
+                    if self.ex.run_subgoal(self.sgs["enter_pewter_gym"]):
+                        self.ex.run_subgoal(self.sgs["defeat_brock"])
+            except TimeoutError:
+                pass
+            obs = self.ex.settle()
+            if "BOULDERBADGE" in ((obs or {}).get("badges") or []):
+                res["badge"] += 1
+            for d in self._log_delta(start):
+                if d.get("kind") == "blackout":
+                    res["blackouts"] += 1
+                elif d.get("kind") == "oracle_score":
+                    res["scored"] += 1
+                    res["agree"] += 1 if d.get("agree") else 0
+                    res["dmg_gap"] += d.get("dmg_gap") or 0.0
+        return res
+
+
+def feedback_text(name: str, r: dict) -> str:
+    ag = f"{r['agree']}/{r['scored']}" if r["scored"] else "n/a"
+    rv = (f"{r['rival_wins']}/{r['rival_trials']}" if r["rival_trials"]
+          else "not evaluable")
+    return (f"{name}: rival wins {rv}; gauntlet: reached Pewter "
+            f"{r['pewter']}/{r['gauntlet_trials']}, Boulder Badge "
+            f"{r['badge']}/{r['gauntlet_trials']}, blackouts "
+            f"{r['blackouts']}; oracle agreement {ag}, damage left on "
+            f"the table {r['dmg_gap']:.0f}")
+
+
+def rank_key(r: dict):
+    return (r["badge"], r["pewter"],
+            r["rival_wins"] / max(1, r["rival_trials"]),
+            -r["blackouts"], -r["dmg_gap"])
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--rounds", type=int, default=4)
+    ap.add_argument("--out", type=Path,
+                    default=REPO / "plans/policy_model_v1.json")
+    ap.add_argument("--plan", type=Path, default=REPO / "plans/brock.json")
+    ap.add_argument("--model", default="gemma4:31b-it-q4_K_M")
+    ap.add_argument("--run-id", default="policyauthor")
+    args = ap.parse_args()
+
+    gym = Gym(args.plan, args.run_id)
+    print("[gym] booting + replaying to the eval checkpoints...")
+    gym.boot()
+    gym.prepare()
+    print(f"[gym] ready (rival fight re-armable: {gym.rival_ok})")
+
+    candidates = []   # (spec, results)
+    feedback = "This is your first attempt."
+    for rnd in range(1, args.rounds + 1):
+        user = (f"Author battle-policy spec candidate #{rnd}.\n"
+                f"FEEDBACK ON PREVIOUS CANDIDATES:\n{feedback}\n"
+                "Author the spec now (JSON only).")
+        reply = brock_probe.chat(
+            [{"role": "system", "content": SYS},
+             {"role": "user", "content": user}], args.model)
+        spec = _parse_spec(reply)
+        probs = battle_policy.validate_spec(spec) if spec else ["no JSON"]
+        if probs:
+            print(f"[round {rnd}] invalid spec: {probs}")
+            feedback += f"\ncandidate #{rnd}: INVALID ({probs}) — fix these."
+            continue
+        spec.setdefault("name", f"model_r{rnd}")
+        print(f"[round {rnd}] evaluating {spec['name']}: "
+              f"{json.dumps(spec, separators=(',', ':'))[:200]}")
+        r = gym.eval_spec(spec)
+        candidates.append((spec, r))
+        fb = feedback_text(f"candidate #{rnd} ({spec['name']})", r)
+        print(f"[round {rnd}] {fb}")
+        feedback = "\n".join(
+            feedback_text(f"candidate #{i+1} ({s['name']})", rr)
+            for i, (s, rr) in enumerate(candidates)) + (
+            "\nImprove on the best so far; change what the results "
+            "suggest is losing fights.")
+
+    if not candidates:
+        sys.exit("no valid candidates authored")
+    # baseline for reference (not a candidate): the hand-seeded spec
+    print("[baseline] evaluating hand-seeded typed_v0 for reference...")
+    base = gym.eval_spec(battle_policy.DEFAULT_SPEC)
+    print("[baseline] " + feedback_text("typed_v0", base))
+
+    best_spec, best_r = max(candidates, key=lambda c: rank_key(c[1]))
+    artifact = dict(best_spec)
+    artifact["provenance"] = {
+        "authored_by": args.model, "run": args.run_id,
+        "via": "policy_author", "rounds": len(candidates),
+        "eval": best_r, "baseline_typed_v0": base,
+    }
+    args.out.write_text(json.dumps(artifact, indent=2))
+    print(f"\nBEST: {best_spec['name']} -> {args.out}")
+    print(feedback_text(best_spec["name"], best_r))
+    gym.shutdown()
+
+
+if __name__ == "__main__":
+    main()

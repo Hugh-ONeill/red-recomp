@@ -44,7 +44,12 @@ class Bridge:
         self.seq += 1
         fields = [f"seq={self.seq}", f"op={op!r}"]
         for k, v in kw.items():
-            fields.append(f"{k}={v!r}" if isinstance(v, str) else f"{k}={v}")
+            if isinstance(v, bool):
+                fields.append(f"{k}={str(v).lower()}")   # Lua booleans
+            elif isinstance(v, str):
+                fields.append(f"{k}={v!r}")
+            else:
+                fields.append(f"{k}={v}")
         body = "return {" + ", ".join(fields) + "}"
         tmp = self.run / "cmd.lua.tmp"
         tmp.write_text(body)

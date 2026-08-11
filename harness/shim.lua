@@ -1030,6 +1030,7 @@ function OPS.checkpoint_capture(G, c)
   return true, "captured " .. (c.token or "default")
 end
 
+local reseed_counter = 0
 function OPS.checkpoint_restore(G, c)
   local ok, Checkpoint = pcall(require, "src.core.Checkpoint")
   if not ok then return false, "no Checkpoint module" end
@@ -1037,7 +1038,18 @@ function OPS.checkpoint_restore(G, c)
   if not ck then return false, "no checkpoint " .. (c.token or "default") end
   local rok, err = pcall(Checkpoint.restore, G, ck)
   if not rok then return false, "restore failed: " .. tostring(err) end
+  -- reseed=true: Checkpoint.restore puts back the CAPTURED rng state, so a
+  -- replay would repeat the same luck. CLAIM_RULES forbids luck foresight
+  -- on refinement replays, and policy-eval trials need fresh rolls — so
+  -- re-randomize after restoring.
+  if c.reseed then
+    reseed_counter = reseed_counter + 1
+    pcall(function()
+      love.math.setRandomSeed(os.time() * 1000 + reseed_counter)
+    end)
+  end
   return true, "restored " .. (c.token or "default")
+      .. (c.reseed and " (rng reseeded)" or "")
 end
 
 function OPS.screenshot(G, c)
