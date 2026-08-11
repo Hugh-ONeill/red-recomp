@@ -800,16 +800,23 @@ function OPS.interact(G, c)
     if not tx then return false, "object '" .. c.name .. "' not visible" end
   end
   if not tx then return false, "interact needs x,y or name" end
-  -- stand on an orthogonally adjacent walkable tile, then face the target
+  -- stand on an orthogonally adjacent walkable tile, then face the target.
+  -- Counter NPCs (Center nurse, mart clerk) have NO walkable adjacent tile:
+  -- gen1 talks ACROSS the counter, so the distance-2 spots facing the
+  -- target are valid stands too (adjacent ones stay preferred).
   local adj = { {tx, ty + 1, "up"}, {tx, ty - 1, "down"},
-                {tx - 1, ty, "right"}, {tx + 1, ty, "left"} }
+                {tx - 1, ty, "right"}, {tx + 1, ty, "left"},
+                {tx, ty + 2, "up"}, {tx, ty - 2, "down"},
+                {tx - 2, ty, "right"}, {tx + 2, ty, "left"} }
   local p = ow.player
   local function press_from_adjacent()
     for _, a in ipairs(adj) do
       if p.cellX == a[1] and p.cellY == a[2] then
         if p.facing ~= a[3] then U.tap(G, a[3]); U.wait(3) end
-        U.tap(G, "a"); U.wait(4)
-        return true
+        U.tap(G, "a"); U.wait(8)
+        -- verify something opened: a distance-2 press with no counter
+        -- between hits empty air and must not count as an interaction
+        return G.stack:top() ~= ow
       end
     end
     return false
