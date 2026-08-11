@@ -344,9 +344,73 @@
       "escalation_rounds": 8,
       "no_verify": true,
       "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "STAGED grinding (brock32): gen1 blackouts HALVE money, so the monolithic grind's tolerated wipes bankrupted the Pewter potion buy (3000->250). Short legs from full HP make wipes rare instead of cheap"
-      }
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock33",
+        "via": "escalation",
+        "n_ops": 9
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        }
+      ]
     },
     {
       "id": "heal_mid_grind",
@@ -356,9 +420,39 @@
       },
       "escalation_rounds": 5,
       "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "mid-grind heal stop (staged grinding)"
-      }
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock33",
+        "via": "escalation",
+        "n_ops": 4
+      },
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 25,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANPOKECENTER_NURSE",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ]
     },
     {
       "id": "train_to_l13",
@@ -371,9 +465,61 @@
       "escalation_rounds": 8,
       "no_verify": true,
       "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "grind stage 2 of 2 (staged grinding)"
-      }
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock33",
+        "via": "escalation",
+        "n_ops": 7
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        }
+      ]
     },
     {
       "id": "heal_before_forest",
@@ -384,16 +530,16 @@
       "escalation_rounds": 5,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock31",
+        "run": "brock33",
         "via": "escalation",
         "n_ops": 4
       },
       "macro": [
         {
           "op": "cross",
-          "dir": "south",
+          "dir": "east",
           "when": {
-            "map": "ROUTE_2"
+            "map": "ROUTE_22"
           }
         },
         {
