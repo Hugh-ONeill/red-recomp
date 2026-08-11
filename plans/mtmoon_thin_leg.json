@@ -1,0 +1,46 @@
+{
+  "goal": "Cross Mt Moon to Cerulean City (THIN model-authored plan).",
+  "note": "subgoals copied VERBATIM from the model's own decomposition mtmoon_fresh2.json \u2014 a subset for testing, nothing added. This plan LACKS the B2F return leg (4/5 samples did); the test is whether escalation + the warp `reachable` flag discovers the transit at RUNTIME.",
+  "subgoals": [
+    {
+      "id": "descend_to_b1f",
+      "goal_text": "Navigate through the first floor of Mt Moon and descend to the basement (B1F).",
+      "done_when": {
+        "map": "MT_MOON_B1F"
+      },
+      "escalation_rounds": 10
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Navigate through B1F and descend further to the lowest level (B2F).",
+      "done_when": {
+        "map": "MT_MOON_B2F"
+      },
+      "escalation_rounds": 10
+    },
+    {
+      "id": "defeat_super_nerd",
+      "goal_text": "Locate and defeat the Super Nerd guarding the fossils on B2F.",
+      "done_when": {
+        "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
+      },
+      "escalation_rounds": 10
+    },
+    {
+      "id": "exit_mt_moon",
+      "goal_text": "Find the exit of Mt Moon and emerge onto Route 4.",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 10
+    },
+    {
+      "id": "reach_cerulean",
+      "goal_text": "Travel across Route 4 to enter Cerulean City.",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 10
+    }
+  ]
+}
