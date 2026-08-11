@@ -466,6 +466,12 @@ class Executor:
         out.sort(key=lambda p: p[0])
         return [t for _, t in out]
 
+    def _logged_exploration(self, obs, sg) -> str:
+        txt = self.exploration_text(obs, self._target_key(sg))
+        self.log("escalate_context", subgoal=sg["id"],
+                 target=self._target_key(sg), memory=txt[:1200])
+        return txt
+
     def exploration_text(self, obs, target: str = "") -> str:
         """Untried vs already-taken exits from where we stand."""
         here = self._where(obs)
@@ -1046,6 +1052,13 @@ Reply with ONLY a JSON array of ops, e.g.
                     "also satisfies it — typically by going back the way you "
                     "came and taking another route. Standing still is failure.")
             memory = self.exploration_text(start, self._target_key(sg))
+            # Log what the model was actually TOLD. Most of this session's
+            # bugs were "the signal never reached the model" (dead ends only
+            # in failure feedback, the too-weak note shadowed by an elif,
+            # LAST_MAP unresolved), and each took a whole run to find because
+            # the prompt was never recorded anywhere.
+            self.log("escalate_context", subgoal=sg["id"],
+                     target=self._target_key(sg), memory=memory[:1200])
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
                     f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
@@ -1395,7 +1408,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"steps, do not repeat ones that already took effect."
                         + loop_note + stuck_note
                         + open_prompt
-                        + self.exploration_text(cur, self._target_key(sg))
+                        + self._logged_exploration(cur, sg)
                         + (("\nWarps you can currently WALK TO from here: "
                             + ", ".join(
                                 f"({w.get('x')},{w.get('y')})->{w.get('dest')}"
