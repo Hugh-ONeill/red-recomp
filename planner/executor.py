@@ -687,7 +687,18 @@ class Executor:
         # the wallet (brock37 died shopping at L8 with 93 money). Trainers
         # are fought under either policy; grind/catch subgoals declare
         # their fight/catch intent explicitly.
-        name = subgoal.get("battle_policy", "traversal")
+        # INFER the intent from what the subgoal is actually for. The catch
+        # logic (weaken to the throw threshold, then throw) only runs under
+        # intent="catch", and author.py never emits a battle_policy field —
+        # so catch_backup ran the TRAVERSAL policy, which fights and flees
+        # but never throws a ball. It KO'd every wild it met and the goal
+        # could not be satisfied at all.
+        name = subgoal.get("battle_policy")
+        if not name:
+            dw = subgoal.get("done_when") or {}
+            name = ("catch" if "party_size" in dw
+                    else "fight" if "lead_level" in dw
+                    else "traversal")
         self.log("battle_start", subgoal=subgoal["id"], policy=name)
         self.status(doing=f"BATTLE ({name} policy)", obs=obs)
         obs = BATTLE_POLICIES[name](self.b, obs, self.log,
