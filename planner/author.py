@@ -278,6 +278,10 @@ def observed_text(path: Path) -> str:
     for region in sorted(exp):
         for key, e in sorted((exp[region] or {}).items()):
             lines.append(f"  {region}  --{key}-->  {e.get('to')}")
+    seen = []
+    for region, names in sorted((d.get("sightings") or {}).items()):
+        if names:
+            seen.append(f"  {region}: {', '.join(names[:8])}")
     dead = []
     for tgt, regions in (d.get("dead_ends") or {}).items():
         for region, n in regions.items():
@@ -287,6 +291,11 @@ def observed_text(path: Path) -> str:
            "area, so the SAME map id appearing with DIFFERENT regions is a "
            "map split into parts that cannot walk to each other):\n"
            + "\n".join(lines))
+    if seen:
+        out += ("\n\nWHAT WAS SEEN IN EACH AREA (so you can aim a subgoal "
+                "at the RIGHT part of a map — the same map id can have "
+                "several unconnected parts, and only one of them holds the "
+                "thing you need):\n" + "\n".join(seen))
     if dead:
         out += "\n\nPROVEN UNREACHABLE:\n" + "\n".join(dead)
     return out

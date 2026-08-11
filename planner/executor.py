@@ -276,6 +276,7 @@ class Executor:
         self.dead_ends: dict = {}   # subgoal id -> {region: failures}
         self.visits: dict = {}      # region -> times arrived
         self.frontier: dict = {}    # region -> every exit visible from it
+        self.sightings: dict = {}   # region -> named objects seen there
         self._arrived = None        # (region, (x,y)) — the door we came in by
         self._came_from = None      # the region we were in a moment ago
         self._reversals = 0
@@ -298,6 +299,7 @@ class Executor:
 
     def _note(self, obs):
         self.note_frontier(obs)
+        self.note_sightings(obs)
         m = (obs or {}).get("map") or {}
         if m.get("id") and (m.get("connections") or m.get("warps")):
             e = self.atlas.setdefault(m["id"], {})
@@ -322,22 +324,45 @@ class Executor:
             self.dead_ends = data.get("dead_ends", {})
             self.visits = data.get("visits", {})
             self.frontier = data.get("frontier", {})
+            self.sightings = data.get("sightings", {})
             edges = sum(len(v) for v in self.explored.values())
             if edges:
                 print(f"[memory] {len(self.explored)} areas, {edges} known "
                       f"exits from previous runs")
         except (OSError, ValueError):
             self.explored, self.dead_ends = {}, {}
-            self.visits, self.frontier = {}, {}
+            self.visits, self.frontier, self.sightings = {}, {}, {}
 
     def _save_memory(self):
         try:
             self.MEMORY.write_text(json.dumps(
                 {"explored": self.explored, "dead_ends": self.dead_ends,
-                 "visits": self.visits, "frontier": self.frontier},
+                 "visits": self.visits, "frontier": self.frontier,
+                 "sightings": self.sightings},
                 indent=1))
         except OSError:
             pass
+
+    def note_sightings(self, obs):
+        """Which named things were SEEN in this region.
+
+        The graph knows the ladder from 1F(5,5) leads to B1F|4,4 and on to
+        B2F|20,5, but nothing said B2F|20,5 is where the super nerd and both
+        fossils are — so a plan could not aim at it and the descent landed
+        wherever chance took it. Sightings are the model's own observations,
+        so re-authoring may use them."""
+        m = (obs or {}).get("map") or {}
+        here = self._where(obs)
+        if "None" in here:
+            return
+        names = sorted({o.get("name") for o in (m.get("objects") or [])
+                        if o.get("name")})
+        if not names:
+            return
+        was = set(self.sightings.get(here) or [])
+        if not set(names).issubset(was):
+            self.sightings[here] = sorted(was | set(names))
+            self._save_memory()
 
     def note_frontier(self, obs):
         """Every exit visible from where we stand — the inventory that makes
