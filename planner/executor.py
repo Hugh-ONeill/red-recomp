@@ -339,7 +339,7 @@ Reply with ONLY a JSON array of ops, e.g.
         trace, clean = [], []
         for step in macro:
             step = dict(step)
-            step.pop("when", None)
+            when = step.pop("when", None)
             op = step.pop("op", None)
             if not op:
                 continue
@@ -349,6 +349,11 @@ Reply with ONLY a JSON array of ops, e.g.
                 obs = self.settle()
             if pred_holds(done, obs):
                 return True, trace, clean
+            if when and not pred_holds(when, obs):
+                # honor when-guards on replay (verify runs the same guarded
+                # macro run_subgoal will): a misplaced op skips, not misfires
+                trace.append(f"{op}: skipped (when-guard)")
+                continue
             before = self._snapshot(obs)
             traversal = op in ("cross", "walk_to", "use_warp", "grind")
             blackout = None
@@ -401,7 +406,15 @@ Reply with ONLY a JSON array of ops, e.g.
             # changes, and menu ops have delayed effects; only genuinely-failed
             # no-ops (interact 'stairs') are both not-ok and inert, so dropped.
             if r.get("ok") or before != after:
-                clean.append({"op": op, **step})
+                # stamp the map this op actually ran from: on replay a
+                # diverged trajectory (different blackout timing, a
+                # pre-check-skipped subgoal) SKIPS misplaced ops instead of
+                # misfiring them — replay1/2 both died to position-blind
+                # replays of the grind journey
+                rec = {"op": op, **step}
+                if before[0]:
+                    rec["when"] = {"map": before[0]}
+                clean.append(rec)
             if pred_holds(done, self.settle()):
                 return True, trace, clean
         return pred_holds(done, self.settle()), trace, clean

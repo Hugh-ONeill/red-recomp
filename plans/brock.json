@@ -93,7 +93,8 @@
       "id": "battle_rival_lab",
       "goal_text": "Battle your rival inside Oak's Lab.",
       "done_when": {
-        "flag": "EVENT_BATTLED_RIVAL_IN_OAKS_LAB"
+        "flag": "EVENT_BATTLED_RIVAL_IN_OAKS_LAB",
+        "lead_level": 6
       },
       "escalation_rounds": 4,
       "macro": [
@@ -106,7 +107,7 @@
       "macro_provenance": {
         "authored_by": "hand-seeded",
         "via": "fixed-lab-quirk",
-        "note": "rival battle triggers on EXIT (OaksLab door script), not on interacting the rival; battle auto-handled by policy"
+        "note": "rival battle triggers on EXIT (OaksLab door script), not on interacting the rival; battle auto-handled by policy; done_when includes lead_level 6 so a LOST fight fails fast instead of silently derailing the run (replay1)"
       }
     },
     {
@@ -290,52 +291,9 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "brock24",
         "via": "escalation",
-        "n_ops": 11
-      },
-      "macro": [
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7
-        },
-        {
-          "op": "cross",
-          "dir": "south"
-        },
-        {
-          "op": "grind"
-        },
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7
-        },
-        {
-          "op": "cross",
-          "dir": "south"
-        },
-        {
-          "op": "grind"
-        },
-        {
-          "op": "grind"
-        },
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7
-        },
-        {
-          "op": "cross",
-          "dir": "west"
-        },
-        {
-          "op": "grind"
-        },
-        {
-          "op": "grind"
-        }
-      ]
+        "n_ops": 11,
+        "note": "macro cleared 2026-08-11 for re-distill with when-guards (position-blind replay broke replay1/2)"
+      }
     },
     {
       "id": "heal_before_forest",
@@ -348,27 +306,9 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "brock24",
         "via": "escalation",
-        "n_ops": 4
-      },
-      "macro": [
-        {
-          "op": "cross",
-          "dir": "east"
-        },
-        {
-          "op": "use_warp",
-          "x": 23,
-          "y": 25
-        },
-        {
-          "op": "interact",
-          "name": "VIRIDIANPOKECENTER_NURSE"
-        },
-        {
-          "op": "menu",
-          "index": 1
-        }
-      ]
+        "n_ops": 4,
+        "note": "macro cleared 2026-08-11 for re-distill with when-guards (position-blind replay broke replay1/2)"
+      }
     },
     {
       "id": "go_to_route_2",
