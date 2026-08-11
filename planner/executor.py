@@ -948,6 +948,7 @@ Reply with ONLY a JSON array of ops, e.g.
         progress = []       # clean ops accumulated across rounds
         self._dead_ops = {}
         self._dead_visits = 0
+        free_rounds = 0
         self._cur_target = self._target_key(sg)
         self._stuck_in: dict = {}
         self._tried_objs: dict = {}   # region -> {object names interacted}
@@ -1195,7 +1196,18 @@ Reply with ONLY a JSON array of ops, e.g.
                     f"taking an UNTRIED map edge or door.")
             loop_note = ""
             had_blackout = any("blackout" in t for t in trace)
-            if (sig1[0], sig1[4], sig1[5]) == (sig0[0], sig0[4], sig0[5]):
+            # A round in which EVERY op was refused executed nothing: the
+            # model has been told "no" but has not yet had a turn to act on
+            # it. Charging those rounds meant enter_oaks_lab burned 3 of its
+            # 5 rounds on refusals and ran out before it reached the road
+            # north, having only searched two buildings. Capped so a model
+            # that proposes nothing but refused ops still terminates.
+            refused_only = bool(trace) and all("REFUSED" in t for t in trace)
+            if refused_only and free_rounds < 3:
+                free_rounds += 1
+                self.log("free_round", subgoal=sg["id"], round=rnd,
+                         spent_free=free_rounds)
+            elif (sig1[0], sig1[4], sig1[5]) == (sig0[0], sig0[4], sig0[5]):
                 spent += 1   # round went nowhere (same map/party/flags)
             elif had_blackout or pardon:
                 # a blackout's map-jump wasn't chosen, and the NEXT round's
