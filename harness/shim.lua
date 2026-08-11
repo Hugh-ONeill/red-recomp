@@ -29,8 +29,28 @@ os.execute('mkdir -p "' .. BRIDGE .. '" 2>/dev/null')
 local RAW_YIELD = coroutine.yield
 local UNPACK = table.unpack or unpack
 local wd = { co = nil, budget = nil, frames = 0, label = "?" }
+-- HEARTBEAT: brock19/20 wedged with the frame watchdog SILENT — either the
+-- wall frame-rate collapsed (yields still flow, slowly) or something spins
+-- without yielding; the watchdog counts yields so it is blind to both.
+-- Every driver yield ticks a counter; every 2048 ticks the wall time +
+-- count + current op land in run/heartbeat. Sampling that file twice gives
+-- the effective yield rate (healthy 200X ~ 12k/s); a frozen file means
+-- yield starvation. Hook-free on purpose: debug.sethook would disable the
+-- JIT and cause the very slowdown being hunted.
+local hb = { yields = 0 }
 coroutine.yield = function(...)
-  if wd.budget and coroutine.running() == wd.co then
+  local co = coroutine.running()
+  if wd.co and co == wd.co then
+    hb.yields = hb.yields + 1
+    if hb.yields % 2048 == 0 then
+      local f = io.open(BRIDGE .. "/heartbeat", "w")
+      if f then
+        f:write(os.time() .. " " .. hb.yields .. " " .. tostring(wd.label))
+        f:close()
+      end
+    end
+  end
+  if wd.budget and co == wd.co then
     wd.frames = wd.frames + 1
     if wd.frames > wd.budget then
       wd.budget = nil
