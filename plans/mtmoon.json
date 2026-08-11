@@ -1,0 +1,96 @@
+{
+  "goal": "Travel from Pewter City through Mt Moon to reach Cerulean City.",
+  "subgoals": [
+    {
+      "id": "heal_at_pewter",
+      "goal_text": "Visit the Pewter City Pokemon Center to ensure the party is fully healed before heading out.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "buy_potions",
+      "goal_text": "Go to the Pewter Mart and buy Potions to sustain the party through Mt Moon.",
+      "done_when": {
+        "has_item": {
+          "POTION": 3
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_pewter_to_route_3",
+      "goal_text": "Leave Pewter City and enter Route 3.",
+      "done_when": {
+        "map": "ROUTE_3"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "traverse_route_3",
+      "goal_text": "Travel through Route 3 to reach the entrance of Mt Moon.",
+      "done_when": {
+        "map": "MT_MOON_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b1f",
+      "goal_text": "Navigate through the first floor of Mt Moon and descend to the basement (B1F).",
+      "done_when": {
+        "map": "MT_MOON_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Navigate through the first basement and descend to the second basement (B2F).",
+      "done_when": {
+        "map": "MT_MOON_B2F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_super_nerd",
+      "goal_text": "Find and defeat the Super Nerd guarding the fossils on B2F.",
+      "done_when": {
+        "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_mt_moon",
+      "goal_text": "Find the exit of Mt Moon and move to the Pokemon Center area.",
+      "done_when": {
+        "map": "MT_MOON_POKECENTER"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_mt_moon",
+      "goal_text": "Heal the party at the Mt Moon Pokemon Center before the final stretch.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_route_4",
+      "goal_text": "Leave the Mt Moon center area and enter Route 4.",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_cerulean_city",
+      "goal_text": "Travel through Route 4 until you reach Cerulean City.",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}
