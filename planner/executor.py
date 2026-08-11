@@ -296,7 +296,7 @@ Reply with ONLY a JSON array of ops, e.g.
             if pred_holds(done, obs):
                 return True, trace, clean
             before = self._snapshot(obs)
-            traversal = op in ("cross", "walk_to")
+            traversal = op in ("cross", "walk_to", "use_warp")
             for _ in range(12):
                 try:
                     obs = self.b.send(op, **step)
@@ -594,7 +594,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # Traversal steps (cross/walk_to) get cut short by wild
                 # battles in grass — fight the battle, then RE-RUN the step so
                 # the traversal resumes instead of burning a whole attempt.
-                traversal = op in ("cross", "walk_to")
+                traversal = op in ("cross", "walk_to", "use_warp")
                 for _ in range(12):
                     try:
                         obs = self.b.send(op, **step)
