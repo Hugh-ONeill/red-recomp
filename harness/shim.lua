@@ -1536,6 +1536,27 @@ function OPS.save_game(G)
     return false, ("no save confirm (top=%s, has_items=%s)"):format(
       tostring(t and (t.screenId or "?")), tostring(t and t.items ~= nil))
   end
+  -- Ground truth for "did it save" is the SAVE FILE, not the UI stack: the
+  -- write happens on the "Now saving..." box's onDone, and every stack-shape
+  -- heuristic I tried reported failure on saves that had demonstrably been
+  -- written (a CONTINUE landed on the saved tile; slot1.lua's mtime moved).
+  local function save_stamp()
+    local best = 0
+    for _, dir in ipairs({ "saves/red", "saves" }) do
+      local ok, items = pcall(love.filesystem.getDirectoryItems, dir)
+      if ok and items then
+        for _, f in ipairs(items) do
+          local iok, info = pcall(love.filesystem.getInfo, dir .. "/" .. f)
+          if iok and info and info.type == "file" and info.modtime then
+            if info.modtime > best then best = info.modtime end
+          end
+        end
+      end
+    end
+    return best
+  end
+  local stamp0 = save_stamp()
+
   ui_cursor_to(G, "index", 1)                    -- YES
   U.tap(G, "a"); U.wait(10)
   -- "Now saving..." (auto, 120-frame hold, writes on its onDone) then
@@ -1546,17 +1567,20 @@ function OPS.save_game(G)
   -- selected from it), so waiting for the overworld alone never resolved
   -- and reported failure on a save that had already been WRITTEN (proved
   -- by a CONTINUE landing on the saved tile). Wait for either, then close.
+  local written = false
   for _ = 1, 400 do
+    if save_stamp() > stamp0 then written = true break end
     local t = ui_top(G)
     if t == G.overworld then break end
-    if t and t.screenId == "StartMenu" then break end
     U.wait(4)
   end
-  ui_back_out(G)
-  if ui_top(G) ~= G.overworld then
-    return false, "save text never cleared"
+  ui_back_out(G)                                  -- close the StartMenu
+  if not written then
+    return false, ("save file never changed (top=%s)"):format(
+      tostring((ui_top(G) or {}).screenId or "overworld"))
   end
-  return true, "saved"
+  return true, ("saved (file written%s)"):format(
+    ui_top(G) == G.overworld and "" or ", menu still open")
 end
 
 -- Checkpoint capture/restore (in-memory), for escalation's clean retries:
