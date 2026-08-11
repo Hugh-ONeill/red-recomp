@@ -547,6 +547,41 @@ local function map_dims_cells(G)
   return wb * 2, hb * 2
 end
 
+-- Which cells on an edge are a REAL crossing. A gen1 connection covers only
+-- part of an edge, and stepping off it reads the NEIGHBOUR strip's tile:
+-- land on a solid tile and you bump exactly like a wall. A seam-blind BFS
+-- returned the first reachable edge cell, so Viridian's south walk marched
+-- to (3,17) and pressed down 8x into a wall ("stepped down at gap but no
+-- map change"). Mirrors OverworldState:connectionLanding, clamp included.
+local COMPASS = { up = "north", down = "south", left = "west", right = "east" }
+local function landing_ok(G, dir, x, y)
+  local ow = G.overworld
+  local md = ow and ow.map and ow.map.def
+  local conn = md and md.connections and md.connections[COMPASS[dir]]
+  if not conn then return false end
+  local dest = G.data and G.data.maps and G.data.maps[conn.map]
+  if not dest then return false end
+  local ts = G.data.tilesets and G.data.tilesets[dest.tileset]
+  if not ts then return false end
+  local destW, destH = dest.width * 2, dest.height * 2
+  local off = (conn.offset or 0) * 2
+  local lx, ly
+  if dir == "up" then lx, ly = x - off, destH - 1
+  elseif dir == "down" then lx, ly = x - off, 0
+  elseif dir == "left" then lx, ly = destW - 1, y - off
+  else lx, ly = 0, y - off end
+  lx = math.max(0, math.min(destW - 1, lx))
+  ly = math.max(0, math.min(destH - 1, ly))
+  local okp, res = pcall(function()
+    local Map = require("src.world.Map")
+    return Map.defPassable(dest, ts, lx, ly,
+                           ow.player and ow.player.surfing)
+  end)
+  -- never let a probe failure make a real seam look shut
+  if not okp then return true end
+  return res and true or false
+end
+
 local function bfs_to_edge(G, dir)
   local Collision = require("src.world.Collision")
   local ow = G.overworld
@@ -560,7 +595,9 @@ local function bfs_to_edge(G, dir)
   }
   local hit = on_edge[dir]
   if not hit then return nil end
-  if hit(p.cellX, p.cellY) then return p.cellX, p.cellY end
+  if hit(p.cellX, p.cellY) and landing_ok(G, dir, p.cellX, p.cellY) then
+    return p.cellX, p.cellY
+  end
   local key = function(x, y) return x .. "," .. y end
   local seen = { [key(p.cellX, p.cellY)] = true }
   local queue = { { x = p.cellX, y = p.cellY } }
@@ -576,7 +613,9 @@ local function bfs_to_edge(G, dir)
                       or (d[1] < 0 and "left" or "right")
         if Collision.canMove(ow.map, ow.entities, probe, dname) then
           seen[key(nx, ny)] = true
-          if hit(nx, ny) then return nx, ny end
+          if hit(nx, ny) and landing_ok(G, dir, nx, ny) then
+            return nx, ny
+          end
           queue[#queue + 1] = { x = nx, y = ny }
         else
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dname)
