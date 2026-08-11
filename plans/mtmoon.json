@@ -376,18 +376,30 @@
       }
     },
     {
-      "id": "exit_mt_moon_east_to_cerulean",
-      "goal_text": "Leave Mt Moon by its EAST exit and reach Cerulean City. The east exit is the warp at (27,3) on B1F \u2014 but B1F is SPLIT: the part you enter from 1F does not connect to it. Route DOWN to B2F, cross B2F, and come back UP to B1F's eastern section, then take that warp. It puts you on the EASTERN half of Route 4 (the western half where you entered is walled off from Cerulean); head east from there.",
+      "id": "exit_to_route4_east",
+      "goal_text": "Take B1F's eastern exit warp at (27,3) to leave the mountain. It puts you on the EASTERN half of Route 4.",
+      "done_when": {
+        "map": "ROUTE_4",
+        "player_at": {
+          "x": 80,
+          "y": 10,
+          "radius": 22
+        }
+      },
+      "escalation_rounds": 8,
+      "subgoal_provenance": {
+        "authored_by": "hand-split (TEST SCAFFOLD \u2014 the record run must have the model author this structure itself; see the fresh-authoring check)"
+      }
+    },
+    {
+      "id": "cross_to_cerulean",
+      "goal_text": "From the eastern half of Route 4, head east to Cerulean City.",
       "done_when": {
         "map": "CERULEAN_CITY"
       },
-      "escalation_rounds": 10,
-      "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "mtleg2: the model proposed the RIGHT warp (27,3) but BFS could not reach it \u2014 B1F is partitioned, the B2F detour is mandatory"
-      },
+      "escalation_rounds": 8,
       "subgoal_provenance": {
-        "authored_by": "hand-inserted/corrected (Center geography, east-exit topology)"
+        "authored_by": "hand-split (TEST SCAFFOLD \u2014 the record run must have the model author this structure itself; see the fresh-authoring check)"
       }
     }
   ],
