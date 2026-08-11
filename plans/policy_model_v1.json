@@ -1,5 +1,5 @@
 {
-  "name": "Squirtle_EarlyGame_Optimized",
+  "name": "Kanto_Starter_Elite",
   "stab": 1.5,
   "accuracy_weight": true,
   "prefer_ko": true,
@@ -19,57 +19,78 @@
     "when_traversal": true,
     "hp_below": 0.2
   },
+  "battle_items": [
+    {
+      "item": "POTION",
+      "hp_below": 0.3,
+      "max_uses": 3
+    }
+  ],
+  "field_heal": {
+    "item": "POTION",
+    "hp_below": 0.5
+  },
+  "field_cure": [
+    {
+      "status": "PSN",
+      "item": "ANTIDOTE"
+    },
+    {
+      "status": "PAR",
+      "item": "PARLYZ_HEAL"
+    }
+  ],
   "provenance": {
     "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "policyauthor3",
+    "run": "itemauthor6",
     "via": "policy_author",
     "rounds": 4,
     "eval": {
-      "rival_wins": 4,
+      "rival_wins": 6,
       "rival_trials": 6,
       "pewter": 3,
       "badge": 3,
       "gauntlet_trials": 3,
       "blackouts": 0,
-      "agree": 40,
-      "scored": 57,
-      "dmg_gap": 85.0,
+      "agree": 54,
+      "scored": 75,
+      "dmg_gap": 102.0,
       "rival_detail": [
-        "L (ended 20/20 hp)",
-        "L (ended 20/20 hp)",
-        "W (ended 22/22 hp)",
-        "W (ended 22/22 hp)",
-        "W (ended 22/22 hp)",
-        "W (ended 22/22 hp)"
+        "W (ended 21/21 hp)",
+        "W (ended 21/21 hp)",
+        "W (ended 21/21 hp)",
+        "W (ended 21/21 hp)",
+        "W (ended 21/21 hp)",
+        "W (ended 21/21 hp)"
       ],
       "gauntlet_detail": [
-        "BADGE (lead ended 19/42 hp)",
-        "BADGE (lead ended 24/42 hp)",
-        "BADGE (lead ended 16/42 hp)"
+        "BADGE (lead ended 10/40 hp)",
+        "BADGE (lead ended 19/40 hp)",
+        "BADGE (lead ended 9/40 hp)"
       ]
     },
     "baseline_typed_v0": {
-      "rival_wins": 6,
+      "rival_wins": 4,
       "rival_trials": 6,
       "pewter": 2,
       "badge": 1,
       "gauntlet_trials": 3,
       "blackouts": 0,
-      "agree": 27,
-      "scored": 44,
-      "dmg_gap": 46.0,
+      "agree": 32,
+      "scored": 45,
+      "dmg_gap": 47.0,
       "rival_detail": [
-        "W (ended 22/22 hp)",
-        "W (ended 22/22 hp)",
-        "W (ended 22/22 hp)",
-        "W (ended 22/22 hp)",
-        "W (ended 22/22 hp)",
-        "W (ended 22/22 hp)"
+        "L (ended 19/19 hp)",
+        "W (ended 21/21 hp)",
+        "L (ended 19/19 hp)",
+        "W (ended 21/21 hp)",
+        "W (ended 21/21 hp)",
+        "W (ended 21/21 hp)"
       ],
       "gauntlet_detail": [
-        "BADGE (lead ended 31/42 hp)",
-        "FAILED at the BROCK fight (lead ended 38/38 hp)",
-        "FAILED at the forest crossing (lead ended 36/36 hp)"
+        "FAILED at the forest crossing (lead ended 33/33 hp)",
+        "BADGE (lead ended 11/39 hp)",
+        "FAILED at entering the gym (lead ended 33/33 hp)"
       ]
     }
   }
