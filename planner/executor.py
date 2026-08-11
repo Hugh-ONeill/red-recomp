@@ -284,6 +284,7 @@ class Executor:
         self._revisit_refusals: dict = {}   # target -> refusals spent
         self._battle_maps: set = set()      # "target|map" where a fight ran
         self._blackouts: dict = {}          # target -> party wipes
+        self._faint_at = None               # region we were in when wiped
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -486,6 +487,47 @@ class Executor:
                 seen.add(nxt)
                 q.append((nxt, hop))
         return None
+
+    def _return_from_blackout(self, obs, sg):
+        """Walk back to where the party fainted, over ground already walked.
+
+        A gen1 blackout teleports you to a Center that can be several maps
+        away — one wipe inside Mt Moon dumped the run at the VIRIDIAN centre,
+        and it then spent 18 escalations shuffling around Route 2 trying to
+        get back. The journey is pure navigation over the learned graph, so
+        the harness drives it; the subgoal's rounds are for the part that
+        needs judgment.
+        """
+        want = self._faint_at
+        if not want:
+            return None
+        here = self._where(obs)
+        if here == want:
+            self._faint_at = None
+            return None
+        path = self._route(here, want)
+        if not path:
+            self._faint_at = None       # no walked route back: let the model
+            return None                 # find its own way
+        for key, nxt in path:
+            if "," in key:
+                x, y = key.split(",")
+                self.b.send("use_warp", x=int(x), y=int(y))
+            else:
+                self.b.send("cross", dir=key)
+            o = self.settle()
+            if o and o.get("mode") == "battle":
+                o = self.handle_battle(sg, o)
+                o = self.settle()
+            if self._where(o) != nxt:
+                self.log("blackout_return_lost", subgoal=sg.get("id"),
+                         wanted=nxt, got=self._where(o))
+                self._faint_at = None
+                return None
+        self._faint_at = None
+        self.log("blackout_return", subgoal=sg.get("id"), to=want,
+                 hops=len(path))
+        return want
 
     def _route_to_frontier(self, obs, sg):
         """Walk back to the NEAREST region that still has exits never taken.
@@ -1020,6 +1062,7 @@ Reply with ONLY a JSON array of ops, e.g.
                     # rounds unknowingly ran from Pallet)
                     if post_map and pre_map and post_map != pre_map:
                         blackout = post_map
+                        self._faint_at = before[0] and self._where(pre_obs)
                         if self._cur_target:
                             self._blackouts[self._cur_target] = \
                                 self._blackouts.get(self._cur_target, 0) + 1
@@ -1423,6 +1466,16 @@ Reply with ONLY a JSON array of ops, e.g.
                 continue
             if cur.get("mode") == "ui":
                 cur = self._leave_ui(cur, sg) or cur
+            if self._faint_at and cur.get("mode") == "overworld":
+                back = self._return_from_blackout(cur, sg)
+                if back:
+                    cur = self.settle() or cur
+                    stuck_note += (f"\nYour party fainted and you were sent "
+                                   f"back to a Pokemon Center. You have been "
+                                   f"walked back to {back}, where you were. "
+                                   f"You are HEALED — but whatever beat you "
+                                   f"is still there, so do not simply repeat "
+                                   f"what you just did.")
             sig1 = self._snapshot(cur)
             here_now = self._where(cur)
             self._stuck_in[here_now] = self._stuck_in.get(here_now, 0) + 1
