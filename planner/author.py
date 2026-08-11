@@ -48,9 +48,8 @@ PREDICATES = {
                 "{\"has_item\":{\"POTION\":4}} — use for shopping subgoals "
                 "at a mart)",
     "player_at": "standing within radius R of a tile, e.g. "
-                 "{\"player_at\":{\"x\":27,\"y\":3,\"radius\":8}} — use when "
-                 "one map id covers disconnected areas (Route 4's two halves, "
-                 "Mt Moon B1F's two sections) and 'which map' is ambiguous",
+                 "{\"player_at\":{\"x\":27,\"y\":3,\"radius\":4}}. Combine it "
+                 "with map when a map predicate alone cannot say WHERE",
     "party_size": "party has at least N Pokemon (e.g. {\"party_size\":2} — "
                   "use for catch subgoals; set battle_policy \"catch\" on "
                   "them)",
@@ -101,6 +100,16 @@ A LONE Pokemon that faints means a blackout (money halved): CATCH A BACKUP
 early (a shopping stop for Poke Balls, then a catch subgoal with
 {"party_size": 2} on a grassy route) so a lead faint becomes a switch
 instead.
+
+AMBIGUOUS MAPS: a {"map": X} done_when is satisfied ANYWHERE on that map,
+and some maps are split into disconnected areas you cannot walk between
+(caves with separate wings, routes divided by a mountain or a ledge). So
+whenever a subgoal RETURNS to a map an earlier subgoal already reached —
+you will see the same map id twice in your list — {"map": X} cannot tell
+the two arrivals apart and the second subgoal is already "done" the moment
+it starts. In that case add "player_at" alongside it to pin down WHICH part
+of the map (a small radius; proximity across a wall does not count as
+arrival). Prefer a landmark you can name: the far ladder, the east exit.
 
 Hard rule on GRANULARITY: each subgoal must be ONE map transition, OR one
 event/interaction that happens within a single map. Do not bundle multiple
