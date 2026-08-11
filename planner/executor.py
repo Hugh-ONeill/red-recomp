@@ -85,6 +85,10 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
                 for m in mons)
             if healthy != want:
                 return False
+        elif key == "lead_level":
+            lead = (obs.get("party") or [{}])[0]
+            if (lead.get("level") or 0) < want:
+                return False
         elif key == "badge":
             if want not in (obs.get("badges") or []):
                 return False
@@ -278,7 +282,10 @@ coordinates. Read:
 Ops: {"op":"walk_to","x":N,"y":N} (within-map), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
 door/stairs), {"op":"interact","name":"OBJECT_NAME"}, {"op":"menu","index":N}
-(1-based: 1=YES/first, 2=NO/second), {"op":"wait"}. Battles are auto-handled.
+(1-based: 1=YES/first, 2=NO/second), {"op":"grind"} (pace this map's wild
+grass; each battle is fought and the op repeats until the subgoal's level
+target is met — use when the goal is to TRAIN/level up), {"op":"wait"}.
+Battles are auto-handled.
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
 and MAY BE IMPERFECT — if it names a target that isn't in obs.map.objects /
@@ -317,7 +324,9 @@ Reply with ONLY a JSON array of ops, e.g.
         p = (obs or {}).get("player") or {}
         return ((obs or {}).get("map", {}).get("id") if obs else None,
                 p.get("x"), p.get("y"), (obs or {}).get("mode"),
-                len((obs or {}).get("party") or []),
+                (len((obs or {}).get("party") or []),
+                 sum(m.get("level") or 0
+                     for m in (obs or {}).get("party") or [])),
                 len((obs or {}).get("flags") or []))
 
     def _run_traced(self, sg, macro):
@@ -341,7 +350,7 @@ Reply with ONLY a JSON array of ops, e.g.
             if pred_holds(done, obs):
                 return True, trace, clean
             before = self._snapshot(obs)
-            traversal = op in ("cross", "walk_to", "use_warp")
+            traversal = op in ("cross", "walk_to", "use_warp", "grind")
             blackout = None
             for _ in range(12):
                 try:
@@ -489,6 +498,14 @@ Reply with ONLY a JSON array of ops, e.g.
                              "dropped — cross/use_warp path-find on their "
                              "own; never use door tiles as waypoints)")
             progress.extend(clean)
+            if ok and sg.get("no_verify"):
+                # grind-style subgoals are non-deterministic repetition: a
+                # verify replay would need the whole grind again under fresh
+                # RNG, and done_when IS the verification. Commit directly.
+                self.log("escalate_success", subgoal=sg["id"], round=rnd,
+                         proposed=len(macro), distilled=len(progress),
+                         verified=False)
+                return True, progress
             if ok:
                 # DISTILL-THEN-VERIFY: a macro is only trustworthy if it
                 # reproduces the subgoal from the clean start (walk_to onto a
@@ -655,7 +672,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # Traversal steps (cross/walk_to) get cut short by wild
                 # battles in grass — fight the battle, then RE-RUN the step so
                 # the traversal resumes instead of burning a whole attempt.
-                traversal = op in ("cross", "walk_to", "use_warp")
+                traversal = op in ("cross", "walk_to", "use_warp", "grind")
                 for _ in range(12):
                     try:
                         obs = self.b.send(op, **step)

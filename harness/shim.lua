@@ -698,6 +698,85 @@ function OPS.cross(G, c)
     :format(dir, p.cellX, p.cellY)
 end
 
+-- Level-grind primitive: stand in this map's wild grass and pace until an
+-- encounter interrupts (or the step budget runs out). The EXECUTOR fights
+-- each battle with the subgoal's policy and re-sends this op — the same
+-- battle-retry machinery as traversal — until the plan's done_when (a
+-- level gate) holds. Decision-free: the model decides WHERE (which map)
+-- and the plan decides UNTIL; walking into grass is mechanics.
+function OPS.grind(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  local Collision = require("src.world.Collision")
+  local ow = G.overworld
+  local p = ow.player
+  local map = ow.map
+  if not (map and map.isGrassCell) then return false, "no map" end
+  local function dirname_of(d)
+    return (d[1] == 0 and (d[2] < 0 and "up" or "down"))
+      or (d[1] < 0 and "left" or "right")
+  end
+  -- stand in grass: BFS to the nearest reachable grass cell if not on one
+  if not map:isGrassCell(p.cellX, p.cellY) then
+    local key = function(x, y) return x .. "," .. y end
+    local seen = { [key(p.cellX, p.cellY)] = true }
+    local queue = { { x = p.cellX, y = p.cellY } }
+    local head, gx, gy = 1, nil, nil
+    while queue[head] and not gx do
+      local cur = queue[head]; head = head + 1
+      for _, d in pairs(DIRS) do
+        local nx, ny = cur.x + d[1], cur.y + d[2]
+        if not seen[key(nx, ny)] then
+          local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
+                                     { __index = p })
+          if Collision.canMove(map, ow.entities, probe, dirname_of(d)) then
+            seen[key(nx, ny)] = true
+            if map:isGrassCell(nx, ny) then gx, gy = nx, ny break end
+            queue[#queue + 1] = { x = nx, y = ny }
+          end
+        end
+      end
+    end
+    if not gx then return false, "no reachable grass on this map" end
+    OPS.walk_to(G, { x = gx, y = gy, max_steps = c.max_steps or 200 })
+    if G.stack:top() ~= ow then return true, "battle en route to grass" end
+    if not map:isGrassCell(p.cellX, p.cellY) then
+      return false, "couldn't reach the grass"
+    end
+  end
+  -- pace: step between adjacent grass cells (each step rolls the wild RNG)
+  local BACK = { left = "right", right = "left", up = "down", down = "up" }
+  for _ = 1, (c.steps or 80) do
+    if G.stack:top() ~= ow then return true, "encounter" end
+    local moved = false
+    for _, dn in ipairs({ "left", "right", "up", "down" }) do
+      local d = DIRS[dn]
+      if map:isGrassCell(p.cellX + d[1], p.cellY + d[2])
+         and Collision.canMove(map, ow.entities, p, dn) then
+        walk(G, dn, 1)
+        moved = true
+        break
+      end
+    end
+    if not moved then
+      -- isolated grass cell: step off and back on (re-entry rolls the RNG)
+      for _, dn in ipairs({ "left", "right", "up", "down" }) do
+        if Collision.canMove(map, ow.entities, p, dn) then
+          walk(G, dn, 1)
+          if G.stack:top() ~= ow then return true, "encounter" end
+          walk(G, BACK[dn], 1)
+          moved = true
+          break
+        end
+      end
+      if not moved then return false, "boxed in on the grass" end
+    end
+  end
+  if G.stack:top() ~= ow then return true, "encounter" end
+  return true, "paced without an encounter (re-send to keep grinding)"
+end
+
 -- List-menu navigation: any stack state exposing a numeric cursor `index`.
 -- Moves the cursor to c.index, then A (or just positions with c.press=false).
 function OPS.menu(G, c)

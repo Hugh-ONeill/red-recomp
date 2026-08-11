@@ -235,6 +235,21 @@
       }
     },
     {
+      "id": "train_to_l12",
+      "goal_text": "Train your Pokemon to level 12 by battling wild Pokemon in the tall grass: head north from Pallet Town onto Route 1 and grind in the grass there.",
+      "done_when": {
+        "lead_level": 12
+      },
+      "battle_policy": "default",
+      "max_attempts": 12,
+      "escalation_rounds": 6,
+      "no_verify": true,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "survivability guard after brock22: L8 lone starter faints crossing the forest even fleeing wilds; macro left for escalation to author (grind op)"
+      }
+    },
+    {
       "id": "heal_at_viridian_center",
       "goal_text": "Travel to Viridian City and heal your party at the Pokemon Center: enter the Center building and talk to the nurse at the counter, answering YES to heal.",
       "done_when": {

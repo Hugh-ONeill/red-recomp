@@ -42,6 +42,8 @@ PREDICATES = {
     "no_battle": "true = not currently in a battle",
     "party_healthy": "true = every party Pokemon at full HP with no status "
                      "(use for Pokemon Center heal stops)",
+    "lead_level": "lead Pokemon is at least level N (e.g. {\"lead_level\":12} "
+                  "— use for training subgoals on a grassy route)",
 }
 ROUTE_MAPS = ["REDS_HOUSE_2F", "REDS_HOUSE_1F", "PALLET_TOWN", "OAKS_LAB",
               "ROUTE_1", "VIRIDIAN_CITY", "VIRIDIAN_MART", "ROUTE_2",
@@ -68,7 +70,9 @@ give the milestones and how to know each is done.
 
 ATTRITION: battles chip your party's HP and there is no auto-healing —
 insert a Pokemon Center heal stop (done_when {"party_healthy": true}) before
-long wild-encounter stretches like Viridian Forest.
+long wild-encounter stretches like Viridian Forest. If upcoming trainers
+outlevel your party, add a TRAINING subgoal first on a grassy route
+(done_when {"lead_level": N}) — grinding, then healing, then the dungeon.
 
 Hard rule on GRANULARITY: each subgoal must be ONE map transition, OR one
 event/interaction that happens within a single map. Do not bundle multiple
