@@ -437,6 +437,7 @@ Reply with ONLY a JSON array of ops, e.g.
         # The absolute cap bounds oscillation (A<->B crossings are each "a
         # map change" yet go nowhere).
         spent, rnd = 0, 0
+        pardon = False        # one free revisit after a blackout (recovery)
         visits: dict = {}     # round-end maps: re-entering one = circling
         while spent < rounds and rnd < rounds * 3:
             rnd += 1
@@ -563,9 +564,18 @@ Reply with ONLY a JSON array of ops, e.g.
                 continue
             sig1 = self._snapshot(cur)
             loop_note = ""
+            had_blackout = any("blackout" in t for t in trace)
             if (sig1[0], sig1[4], sig1[5]) == (sig0[0], sig0[4], sig0[5]):
                 spent += 1   # round went nowhere (same map/party/flags)
-            elif sig1[0]:
+            elif had_blackout or pardon:
+                # a blackout's map-jump wasn't chosen, and the NEXT round's
+                # walk back to where the party fainted isn't circling either
+                pardon = had_blackout
+            elif sig1[0] and sig1[0] != sig0[0]:
+                # revisit penalty only on an actual TRANSITION to a seen map:
+                # staying put while making progress (grinding levels on one
+                # map) is not circling (brock23 spent its whole budget on
+                # level-up rounds counted as "revisits")
                 visits[sig1[0]] = visits.get(sig1[0], 0) + 1
                 if visits[sig1[0]] >= 2:
                     spent += 1   # back on a map already visited: circling

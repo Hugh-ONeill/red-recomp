@@ -235,21 +235,6 @@
       }
     },
     {
-      "id": "train_to_l12",
-      "goal_text": "Train your Pokemon to level 12 by battling wild Pokemon in the tall grass: head north from Pallet Town onto Route 1 and grind in the grass there.",
-      "done_when": {
-        "lead_level": 12
-      },
-      "battle_policy": "default",
-      "max_attempts": 12,
-      "escalation_rounds": 6,
-      "no_verify": true,
-      "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "survivability guard after brock22: L8 lone starter faints crossing the forest even fleeing wilds; macro left for escalation to author (grind op)"
-      }
-    },
-    {
       "id": "heal_at_viridian_center",
       "goal_text": "Travel to Viridian City and heal your party at the Pokemon Center: enter the Center building and talk to the nurse at the counter, answering YES to heal.",
       "done_when": {
@@ -290,6 +275,33 @@
           "index": 1
         }
       ]
+    },
+    {
+      "id": "train_to_l12",
+      "goal_text": "Train your Pokemon to level 12 by battling wild Pokemon in tall grass: from Viridian City, go to a grassy route next to town (Route 1 to the south or Route 22 to the west) and grind there.",
+      "done_when": {
+        "lead_level": 12
+      },
+      "battle_policy": "default",
+      "max_attempts": 12,
+      "escalation_rounds": 6,
+      "no_verify": true,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "survivability guard after brock22: L8 lone starter faints crossing the forest even fleeing wilds; macro left for escalation to author (grind op)"
+      }
+    },
+    {
+      "id": "heal_before_forest",
+      "goal_text": "Heal your party at the Viridian City Pokemon Center again before entering Viridian Forest: go to the Center and talk to the nurse, answering YES.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 5,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "second heal stop: the grind chips HP; macro left for escalation"
+      }
     },
     {
       "id": "go_to_route_2",
