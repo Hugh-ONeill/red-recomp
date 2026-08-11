@@ -286,8 +286,16 @@
       "macro": [
         {
           "op": "use_warp",
-          "x": 3,
-          "y": 7
+          "x": 4,
+          "y": 11
+        },
+        {
+          "op": "cross",
+          "dir": "north"
+        },
+        {
+          "op": "cross",
+          "dir": "north"
         },
         {
           "op": "cross",
@@ -296,9 +304,9 @@
       ],
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock18",
+        "run": "brock20",
         "via": "escalation",
-        "n_ops": 2
+        "n_ops": 4
       },
       "battle_policy": "traversal"
     },
@@ -311,6 +319,18 @@
       "escalation_rounds": 4,
       "macro": [
         {
+          "op": "cross",
+          "dir": "north"
+        },
+        {
+          "op": "cross",
+          "dir": "north"
+        },
+        {
+          "op": "cross",
+          "dir": "north"
+        },
+        {
           "op": "use_warp",
           "x": 3,
           "y": 43
@@ -322,10 +342,10 @@
         }
       ],
       "macro_provenance": {
-        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
-        "run": "brock12",
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock21",
         "via": "escalation",
-        "n_ops": 2
+        "n_ops": 5
       },
       "battle_policy": "traversal"
     },
