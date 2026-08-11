@@ -122,7 +122,8 @@ PY
   rewritten="plans/${base}.v${attempt}.json"
   python planner/author.py --goal "$goal" --start "$start" \
       --out "$rewritten" --model "$MODEL" \
-      --observed run/explored.json 2>&1 | tee -a "$LOG"
+      --observed run/explored.json \
+      --journal run/executor_log.jsonl 2>&1 | tee -a "$LOG"
   if [ ! -s "$rewritten" ]; then
     echo "!! re-author produced nothing; keeping plans/$failed_plan" \
         | tee -a "$LOG"

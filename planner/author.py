@@ -292,6 +292,62 @@ def observed_text(path: Path) -> str:
     return out
 
 
+def journal_text(path: Path, limit: int = 60) -> str:
+    """A chronological account of what HAPPENED, not just where it went.
+
+    Connectivity says which doors exist; it cannot say the run reached the
+    gym with 83 money and a 300-Potion to buy, or that it wiped twice and
+    halved its wallet each time. Those are plan-ordering mistakes — buy
+    before you spend, train before you fight — and the model can only fix
+    what it is shown. Assembled from the executor log, so nothing extra has
+    to be written during play.
+    """
+    try:
+        recs = []
+        for line in Path(path).read_text().splitlines():
+            line = line.strip()
+            if line:
+                try:
+                    recs.append(json.loads(line))
+                except json.JSONDecodeError:
+                    pass
+        # NOT segmented to the last plan_start: each campaign attempt
+        # restarts the executor, and the mistake worth fixing (spent the
+        # wallet on balls, then could not buy a Potion) usually happened an
+        # attempt or two earlier. The tail of the whole log is the story.
+        seg = recs
+    except Exception:
+        return ""
+    events = []
+    for r in seg:
+        k = r.get("kind")
+        if k == "subgoal_done" or k == "escalate_success":
+            events.append(f"  OK      {r.get('subgoal')}")
+        elif k == "subgoal_failed":
+            events.append(f"  FAILED  {r.get('subgoal')}")
+        elif k == "blackout":
+            events.append(f"  WIPED   during {r.get('subgoal')} — sent to "
+                          f"{r.get('respawn')}, and a blackout costs you "
+                          f"HALF YOUR MONEY")
+        elif k == "rerouted":
+            events.append(f"  walked back to {r.get('to')} looking for a way on")
+        for t in (r.get("trace") or []):
+            if "cannot afford" in t:
+                events.append(f"  MONEY   {t.split('FAILED — ')[-1][:90]}")
+            elif "is not sold here" in t:
+                events.append(f"  SHOP    {t.split('FAILED — ')[-1][:90]}")
+            elif "party FAINTED" in t:
+                pass
+    if not events:
+        return ""
+    # keep the tail: the end of the run is where it went wrong
+    shown = events[-limit:]
+    return ("\n\nWHAT HAPPENED ON THE LAST RUN, in order (this is the "
+            "causal story — if it ran out of money, or wiped, or failed the "
+            "same step repeatedly, fix the PLAN's ordering and amounts so "
+            "that cannot happen again):\n" + "\n".join(shown))
+
+
 def build_review(goal: str, plan: dict, start: str | None) -> str:
     """Ask the model to audit its own plan for conditions that cannot work.
 
@@ -364,12 +420,14 @@ def merge_plans(orig: dict, revised: dict) -> tuple:
 
 
 def review(goal: str, plan: dict, model: str, start: str | None = None,
-           rounds: int = 2, observed: Path | None = None) -> dict:
+           rounds: int = 2, observed: Path | None = None,
+           journal: Path | None = None) -> dict:
     """Second model pass over its own plan. Returns the revision only if it
     still validates; a broken revision is discarded in favour of the
     original, so review can improve a plan but never corrupt it."""
-    base = build_prompt(goal, start) + (observed_text(observed)
-                                        if observed else "")
+    base = (build_prompt(goal, start)
+            + (observed_text(observed) if observed else "")
+            + (journal_text(journal) if journal else ""))
     for rnd in range(1, rounds + 1):
         reply = brock_probe.chat(
             [{"role": "system", "content": REVIEW_SYS},
@@ -429,13 +487,16 @@ def main():
     ap.add_argument("--observed", type=Path, default=None,
                     help="explored.json from earlier runs: real connectivity "
                          "evidence for the audit pass")
+    ap.add_argument("--journal", type=Path, default=None,
+                    help="executor_log.jsonl: what actually happened last "
+                         "run (money, wipes, failed steps) for the audit")
     args = ap.parse_args()
     plan = author(args.goal, args.model, start=args.start)
     if not plan:
         sys.exit("author failed to produce a valid plan")
     if not args.no_review:
         plan = review(args.goal, plan, args.model, start=args.start,
-                      observed=args.observed)
+                      observed=args.observed, journal=args.journal)
     plan.setdefault("goal", args.goal)
     plan["authored_by"] = args.model
     args.out.write_text(json.dumps(plan, indent=2))
