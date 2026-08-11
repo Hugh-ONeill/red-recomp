@@ -230,6 +230,15 @@ class Gym:
             try:
                 if self.ex.run_subgoal(self.sgs["reach_pewter_city"]):
                     res["pewter"] += 1
+                    shop = self.sgs.get("buy_pewter_potions")
+                    if shop:
+                        ok2 = self.ex.run_subgoal(shop)
+                        if not ok2 and self.model:
+                            # author the Pewter shopping trip once (in-
+                            # memory); later trials replay the macro
+                            succ, ops = self.ex.escalate(shop)
+                            if succ:
+                                shop["macro"] = ops
                     if self.ex.run_subgoal(self.sgs["enter_pewter_gym"]):
                         if not self.ex.run_subgoal(self.sgs["defeat_brock"]):
                             stopped = "the BROCK fight"
