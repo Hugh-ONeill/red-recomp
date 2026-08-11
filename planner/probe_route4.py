@@ -25,7 +25,11 @@ import executor as ex_mod
 from bridge import Bridge, RUN
 
 REPO = Path(__file__).resolve().parent.parent
-SKIP = {"reach_cerulean_city"}
+# shops/catch are irrelevant to a PATHING probe, and the
+# probe's own escalation wander bankrupts the wallet (money 75
+# at the Viridian mart, probe 2) — skip them and just travel
+SKIP = {"reach_cerulean_city", "buy_status_heals", "catch_backup",
+        "buy_potions", "buy_pewter_potions"}
 
 
 def main():
