@@ -47,6 +47,10 @@ PREDICATES = {
     "has_item": "bag holds at least N of each listed item (e.g. "
                 "{\"has_item\":{\"POTION\":4}} — use for shopping subgoals "
                 "at a mart)",
+    "player_at": "standing within radius R of a tile, e.g. "
+                 "{\"player_at\":{\"x\":27,\"y\":3,\"radius\":8}} — use when "
+                 "one map id covers disconnected areas (Route 4's two halves, "
+                 "Mt Moon B1F's two sections) and 'which map' is ambiguous",
     "party_size": "party has at least N Pokemon (e.g. {\"party_size\":2} — "
                   "use for catch subgoals; set battle_policy \"catch\" on "
                   "them)",

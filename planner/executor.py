@@ -94,6 +94,17 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             for item, n in (want or {}).items():
                 if not bag or bag.get(item, 0) < n:
                     return False
+        elif key == "player_at":
+            # {"x":N,"y":N,"radius":R} — where you are standing is
+            # player-visible, and a map id alone cannot distinguish
+            # disconnected regions that share one id
+            pl = obs.get("player") or {}
+            if pl.get("x") is None or pl.get("y") is None:
+                return False
+            r = (want or {}).get("radius", 4)
+            if (abs(pl["x"] - want["x"]) > r
+                    or abs(pl["y"] - want["y"]) > r):
+                return False
         elif key == "party_size":
             if len(obs.get("party") or []) < want:
                 return False

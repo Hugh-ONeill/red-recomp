@@ -147,6 +147,25 @@
       "optional": true
     },
     {
+      "id": "return_to_b1f_east",
+      "goal_text": "From B2F, cross to a DIFFERENT ladder than the one you came down (the one at B1F (17,11) leads back to where you started) and go up \u2014 you want B1F's EASTERN section, near (27,3).",
+      "done_when": {
+        "map": "MT_MOON_B1F",
+        "player_at": {
+          "x": 27,
+          "y": 3,
+          "radius": 10
+        }
+      },
+      "escalation_rounds": 10,
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted (B1F partition finding)"
+      },
+      "macro_provenance": {
+        "note": "mtleg3: the run returned up the SAME ladder to (17,11); map-id predicates cannot distinguish B1F's two sections, hence player_at"
+      }
+    },
+    {
       "id": "exit_mt_moon_east_to_cerulean",
       "goal_text": "Leave Mt Moon by its EAST exit and reach Cerulean City. The east exit is the warp at (27,3) on B1F \u2014 but B1F is SPLIT: the part you enter from 1F does not connect to it. Route DOWN to B2F, cross B2F, and come back UP to B1F's eastern section, then take that warp. It puts you on the EASTERN half of Route 4 (the western half where you entered is walled off from Cerulean); head east from there.",
       "done_when": {
