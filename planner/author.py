@@ -250,6 +250,95 @@ def author(goal: str, model: str, rounds: int = 3,
     return None
 
 
+REVIEW_SYS = (
+    "You are reviewing a Pokemon Red subgoal plan you just wrote, looking "
+    "for subgoals that CANNOT do their job. Reply with the corrected plan "
+    "as a JSON object in the same schema, and nothing else."
+)
+
+
+def build_review(goal: str, plan: dict, start: str | None) -> str:
+    """Ask the model to audit its own plan for conditions that cannot work.
+
+    Every check here came from a condition that actually failed a run, and
+    each is about the CONDITION, not the route — the model supplies the game
+    knowledge, this only tells it what kinds of mistake to look for.
+    """
+    return (
+        f"GOAL: {goal}\n"
+        f"START: {start or 'a brand new game'}\n\n"
+        f"THE PLAN YOU WROTE:\n{json.dumps(plan, indent=1)}\n\n"
+        "Audit every subgoal against these failure modes and fix the ones "
+        "that are broken:\n"
+        "1. SATISFIED BY GOING BACKWARDS. A done_when that is already true "
+        "next to where the subgoal starts, or that becomes true by walking "
+        "back the way you came, marks itself done without progress. This is "
+        "the worst one: a {map:X} goal where X is the map you ENTERED from "
+        "is satisfied by simply stepping back outside, so a whole dungeon "
+        "gets skipped and every later subgoal fails. If a subgoal means "
+        "'come out the FAR side', its condition must be something only true "
+        "on the far side — an event flag for something in there, an item you "
+        "can only pick up inside, or player_at coordinates on the far side.\n"
+        "2. IMPOSSIBLE WHERE IT IS PLACED. A has_item goal at a shop that "
+        "does not stock that item, or a flag that fires somewhere the "
+        "subgoal never goes, can never be satisfied no matter how well it "
+        "is played.\n"
+        "3. MORE THAN ONE LEG. One map transition or one interaction per "
+        "subgoal. A subgoal needing two warps, or a walk AND a warp, cannot "
+        "be authored as a single macro — split it.\n"
+        "4. A GAP. Two consecutive subgoals with something unstated in "
+        "between (a gate, a door, a required event) that nothing achieves.\n"
+        "5. NAMES. Only the map ids, flags, items and predicates from the "
+        "vocabulary above, spelled exactly.\n\n"
+        "Keep what is right — do not rewrite the plan for style. Return the "
+        "full corrected plan."
+    )
+
+
+def review(goal: str, plan: dict, model: str, start: str | None = None,
+           rounds: int = 2) -> dict:
+    """Second model pass over its own plan. Returns the revision only if it
+    still validates; a broken revision is discarded in favour of the
+    original, so review can improve a plan but never corrupt it."""
+    base = build_prompt(goal, start)
+    for rnd in range(1, rounds + 1):
+        reply = brock_probe.chat(
+            [{"role": "system", "content": REVIEW_SYS},
+             {"role": "user", "content": base + "\n\n" +
+              build_review(goal, plan, start)}], model)
+        m = re.search(r"\{.*\}", reply, re.S)
+        if not m:
+            continue
+        try:
+            revised = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            continue
+        probs = validate(revised)
+        if probs:
+            print(f"[review] round {rnd} produced an invalid plan, keeping "
+                  f"the previous one: {probs[0]}")
+            continue
+        for s in revised["subgoals"]:
+            s.setdefault("escalation_rounds", 4)
+        before = [x["id"] for x in plan["subgoals"]]
+        after = [x["id"] for x in revised["subgoals"]]
+        print(f"[review] round {rnd}: {len(before)} -> {len(after)} subgoals")
+        for sid in after:
+            if sid not in before:
+                print(f"[review]   + {sid}")
+        for sid in before:
+            if sid not in after:
+                print(f"[review]   - {sid}")
+        for a in revised["subgoals"]:
+            b = next((x for x in plan["subgoals"] if x["id"] == a["id"]), None)
+            if b and b.get("done_when") != a.get("done_when"):
+                print(f"[review]   ~ {a['id']}: "
+                      f"{json.dumps(b.get('done_when'))} -> "
+                      f"{json.dumps(a.get('done_when'))}")
+        return revised
+    return plan
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--goal", required=True)
@@ -257,10 +346,14 @@ def main():
     ap.add_argument("--model", default="gemma4:26b-a4b-it-q4_K_M")
     ap.add_argument("--start", default=None,
                     help="starting-state description (default: new game)")
+    ap.add_argument("--no-review", action="store_true",
+                    help="skip the model's self-audit pass")
     args = ap.parse_args()
     plan = author(args.goal, args.model, start=args.start)
     if not plan:
         sys.exit("author failed to produce a valid plan")
+    if not args.no_review:
+        plan = review(args.goal, plan, args.model, start=args.start)
     plan.setdefault("goal", args.goal)
     plan["authored_by"] = args.model
     args.out.write_text(json.dumps(plan, indent=2))
