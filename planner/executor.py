@@ -263,6 +263,7 @@ class Executor:
         self.plan_path = plan_path
         self.run_id = run_id
         self.escalations = 0
+        self._dead_ops: dict = {}   # (op,target) -> consecutive failures
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
         # Pure memory of past observations (the obs already showed each map's
         # connections while standing on it), re-served to the model so multi-
@@ -455,6 +456,13 @@ Reply with ONLY a JSON array of ops, e.g.
                 # macro run_subgoal will): a misplaced op skips, not misfires
                 trace.append(f"{op}: skipped (when-guard)")
                 continue
+            sig = (op, step.get("name") or step.get("dir")
+                   or (step.get("x"), step.get("y")))
+            if self._dead_ops.get(sig, 0) >= 3:
+                trace.append(f"{op}: REFUSED — this exact action has already "
+                             "failed 3 times in this subgoal; it cannot work "
+                             "from here, do something different")
+                continue
             before = self._snapshot(obs)
             traversal = op in ("cross", "walk_to", "use_warp", "grind")
             blackout = None
@@ -485,6 +493,7 @@ Reply with ONLY a JSON array of ops, e.g.
             after = self._snapshot(obs)
             note = f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
             if not r.get("ok"):
+                self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
                 note += f": FAILED — {r.get('detail')}"
             elif before == after:
                 note += ": ran but had NO visible effect (nothing changed)"
@@ -545,6 +554,7 @@ Reply with ONLY a JSON array of ops, e.g.
         inert = []          # targets that ran but did nothing / failed
         backward = []       # ops that moved us to an already-visited map
         progress = []       # clean ops accumulated across rounds
+        self._dead_ops = {}
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
         cap = self._send_safe("checkpoint_capture", token="esc") or {}
         can_reset = bool((cap.get("result") or {}).get("ok"))
