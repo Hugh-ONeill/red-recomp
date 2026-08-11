@@ -44,7 +44,10 @@ def main():
     b = Bridge()
     ex_mod.set_active_spec(
         ex_mod.battle_policy.load_spec(REPO / "plans/policy_model_v1.json"))
-    ex = ex_mod.Executor(b, run_id="probe4")
+    # a DIAGNOSTIC wants to reach Route 4 reliably, not measure replay:
+    # give it escalation (pure replay stalled on Route 3, chain-probe 1)
+    ex = ex_mod.Executor(b, run_id="probe4", can_escalate=True,
+                         model="gemma4:31b-it-q4_K_M")
     ex_mod.bootstrap(b)
 
     for plan_path in (REPO / "plans/brock.json", REPO / "plans/mtmoon.json"):
@@ -53,11 +56,18 @@ def main():
         for sg in plan["subgoals"]:
             if sg["id"] in SKIP:
                 continue
+            ex.plan, ex.plan_path = plan, None
             ok = ex.run_subgoal(sg) if sg.get("macro") else False
+            if not ok:
+                ok, ops = ex.escalate(sg)
+                if ok:
+                    sg["macro"] = ops
             print(f"   {sg['id']}: {'ok' if ok else 'FAILED'}")
             if not ok and sg["id"] not in ("buy_pewter_potions",):
                 obs = ex.settle() or {}
-                print(f"   stopped on {(obs.get('map') or {}).get('id')}")
+                print(f"   stopped: map={(obs.get('map') or {}).get('id')} "
+                      f"mode={obs.get('mode')} "
+                      f"text={(obs.get('recent_text') or '')[:60]!r}")
                 break
 
     obs = ex.settle() or {}
