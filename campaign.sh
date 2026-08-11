@@ -69,6 +69,41 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   [ -n "$failed_plan" ] || { echo "no failed plan identified" >&2; exit 1; }
   echo "--- rewriting plans/$failed_plan from evidence ---" | tee -a "$LOG"
 
+  # Is this leg's OBJECTIVE already met? A plan can fail on a subgoal it
+  # cannot satisfy (buy 5 Potions on an empty wallet) long after its real
+  # aim is achieved. Re-authoring "Get the Boulder Badge" while wearing the
+  # Boulder Badge burned two of three attempts on a solved problem — drop
+  # the leg and get on with the route instead.
+  if python - "plans/$failed_plan" run/obs.json <<'PY'
+import json, sys
+plan = json.load(open(sys.argv[1]))
+obs = json.load(open(sys.argv[2]))
+last = (plan.get("subgoals") or [{}])[-1].get("done_when") or {}
+ok = False
+if "badge" in last:
+    ok = last["badge"] in (obs.get("badges") or [])
+elif "map" in last:
+    ok = last["map"] == (obs.get("map") or {}).get("id")
+elif "flag" in last:
+    ok = bool((obs.get("flags") or {}).get(last["flag"]))
+sys.exit(0 if ok else 1)
+PY
+  then
+    echo "--- $failed_plan's objective is already met; moving on ---" \
+        | tee -a "$LOG"
+    keep=(); seen=0
+    for p in "${PLANS[@]}"; do
+      [ "$(basename "$p")" = "$failed_plan" ] && { seen=1; continue; }
+      [ $seen = 1 ] && keep+=("$p")
+    done
+    if [ ${#keep[@]} -eq 0 ]; then
+      echo "=== nothing left to run ===" | tee -a "$LOG"; exit 0
+    fi
+    PLANS=("${keep[@]}")
+    echo "--- resuming with: ${PLANS[*]} ---" | tee -a "$LOG"
+    continue
+  fi
+
   goal=$(python - "plans/$failed_plan" <<'PY'
 import json, sys
 print(json.load(open(sys.argv[1])).get("goal", "continue the route"))
@@ -83,7 +118,8 @@ PY
   # nerd flag, the one condition retreating cannot satisfy) and the next
   # launch silently ran the worse plan. Rewrites go to their own file and
   # the original is left untouched.
-  rewritten="plans/${failed_plan%.json}.v${attempt}.json"
+  base="${failed_plan%.json}"; base="${base%%.v[0-9]*}"
+  rewritten="plans/${base}.v${attempt}.json"
   python planner/author.py --goal "$goal" --start "$start" \
       --out "$rewritten" --model "$MODEL" \
       --observed run/explored.json 2>&1 | tee -a "$LOG"
