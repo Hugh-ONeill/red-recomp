@@ -348,11 +348,33 @@
       "no_verify": true,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock34",
+        "run": "brock36",
         "via": "escalation",
-        "n_ops": 9,
-        "note": "stage 1 shortened to L8 (Bubble arrives L8 \u2014 the Tackle-only window is where wipes concentrate)"
-      }
+        "n_ops": 3
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        }
+      ]
     },
     {
       "id": "heal_mid_grind",
@@ -363,16 +385,16 @@
       "escalation_rounds": 5,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock34",
+        "run": "brock36",
         "via": "escalation",
         "n_ops": 4
       },
       "macro": [
         {
           "op": "cross",
-          "dir": "east",
+          "dir": "north",
           "when": {
-            "map": "ROUTE_22"
+            "map": "ROUTE_1"
           }
         },
         {
