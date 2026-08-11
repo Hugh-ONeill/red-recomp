@@ -1334,7 +1334,9 @@ def bootstrap(b: Bridge, cont: bool = False):
         print("[bootstrap] continue from save")
     else:
         print("[bootstrap] new_game (decision-free ceremony skip)")
-        b.send("new_game")
+        r = (b.send("new_game") or {}).get("result") or {}
+        if not r.get("ok"):
+            raise RuntimeError(f"new game failed: {r.get('detail')}")
     for _ in range(8):
         if b.send("mash_a", times=30)["mode"] == "overworld":
             return
