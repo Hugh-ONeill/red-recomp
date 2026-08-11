@@ -78,21 +78,32 @@ PY
   echo "    goal:  $goal"  | tee -a "$LOG"
   echo "    start: $start" | tee -a "$LOG"
 
-  # rewrite in place, but keep the old one — a rewrite that turns out worse
-  # should be diffable afterwards
-  cp "plans/$failed_plan" "plans/${failed_plan%.json}.attempt${attempt}.json"
+  # NEVER rewrite the input plan in place. A killed campaign left a
+  # DEGRADED plan behind under the original name (its audit dropped the
+  # nerd flag, the one condition retreating cannot satisfy) and the next
+  # launch silently ran the worse plan. Rewrites go to their own file and
+  # the original is left untouched.
+  rewritten="plans/${failed_plan%.json}.v${attempt}.json"
   python planner/author.py --goal "$goal" --start "$start" \
-      --out "plans/$failed_plan" --model "$MODEL" \
+      --out "$rewritten" --model "$MODEL" \
       --observed run/explored.json 2>&1 | tee -a "$LOG"
+  if [ ! -s "$rewritten" ]; then
+    echo "!! re-author produced nothing; keeping plans/$failed_plan" \
+        | tee -a "$LOG"
+    rewritten="plans/$failed_plan"
+  fi
 
   # resume from the failed leg onward; earlier legs already succeeded and
   # their save is what --continue picks up
   keep=(); seen=0
   for p in "${PLANS[@]}"; do
-    [ "$(basename "$p")" = "$failed_plan" ] && seen=1
+    if [ "$(basename "$p")" = "$failed_plan" ]; then
+      seen=1; keep+=("$rewritten"); continue
+    fi
     [ $seen = 1 ] && keep+=("$p")
   done
   PLANS=("${keep[@]}")
+  echo "--- resuming with: ${PLANS[*]} ---" | tee -a "$LOG"
 done
 
 echo "=== campaign exhausted $ATTEMPTS attempts ===" | tee -a "$LOG"
