@@ -1170,10 +1170,26 @@ Reply with ONLY a JSON array of ops, e.g.
                     self.log("target_unreachable", subgoal=sg["id"],
                              target=self._target_key(sg), region=here,
                              objects=[o.get("name") for o in objs][:5])
-                    # nothing here can achieve it: stop burning rounds
+                    # This REGION is proven barren — but that is not the same
+                    # as the subgoal being hopeless, and killing it here threw
+                    # away the whole goal the moment one room failed. Mt Moon
+                    # B2F has three separate regions; pure14 proved the first
+                    # one barren and gave up with two never entered, so the
+                    # super nerd was never found. Same rule the transitive
+                    # pruner already obeys: an untried door blocks the
+                    # conclusion.
+                    ways = self._untried_exits(cur)
+                    if not ways:
+                        print(f"   (target unreachable from {here} — "
+                              f"abandoning this area)")
+                        break
                     print(f"   (target unreachable from {here} — "
-                          f"abandoning this area)")
-                    break
+                          f"{len(ways)} untried exit(s) left, keeping on)")
+                    trace.append(
+                        f"PROVEN: what this goal needs is NOT in {here}. "
+                        f"But {len(ways)} way(s) out of here have never been "
+                        f"taken: {', '.join(ways)}. Take one — do not give "
+                        f"up and do not re-search this area.")
             if not cur:
                 # bridge hiccup lost the state: fall back to the subgoal start
                 self.log("escalate_state_lost", subgoal=sg["id"], round=rnd)
