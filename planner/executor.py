@@ -538,6 +538,25 @@ class Executor:
         self.log("rerouted", subgoal=sg["id"], to=region, hops=len(path))
         return region
 
+    def _leave_ui(self, obs, sg, tries: int = 6):
+        """Back out of a UI the goal never asked for.
+
+        Pressing A on everything is how blocking objects get found, but it
+        also walks into menus with no bearing on the goal — the Cable Club
+        receptionist opens "we have to save the game" and campaign attempt 1
+        sat in that prompt for 23 escalations. Telling the model to answer it
+        did not work; backing out is harness hygiene, like settle().
+        """
+        n = 0
+        while obs and obs.get("mode") == "ui" and n < tries:
+            self.b.send("tap", btn="b")
+            obs = self.settle() or obs
+            n += 1
+        if n:
+            self.log("ui_dismissed", subgoal=sg.get("id"), presses=n,
+                     mode=(obs or {}).get("mode"))
+        return obs
+
     def _logged_exploration(self, obs, sg) -> str:
         txt = self.exploration_text(obs, self._target_key(sg))
         self.log("escalate_context", subgoal=sg["id"],
@@ -1395,6 +1414,8 @@ Reply with ONLY a JSON array of ops, e.g.
                             "start; author the full sequence again.")
                 spent += 1
                 continue
+            if cur.get("mode") == "ui":
+                cur = self._leave_ui(cur, sg) or cur
             sig1 = self._snapshot(cur)
             here_now = self._where(cur)
             self._stuck_in[here_now] = self._stuck_in.get(here_now, 0) + 1
