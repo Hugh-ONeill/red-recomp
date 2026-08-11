@@ -295,7 +295,12 @@ class Executor:
         self.logf.flush()
 
     def handle_battle(self, subgoal: dict, obs: dict) -> dict:
-        name = subgoal.get("battle_policy", "default")
+        # traversal (spec-rule wild fleeing) is the DEFAULT: journey
+        # subgoals that fought every Route 1 wild kept wiping and halving
+        # the wallet (brock37 died shopping at L8 with 93 money). Trainers
+        # are fought under either policy; grind/catch subgoals declare
+        # their fight/catch intent explicitly.
+        name = subgoal.get("battle_policy", "traversal")
         self.log("battle_start", subgoal=subgoal["id"], policy=name)
         obs = BATTLE_POLICIES[name](self.b, obs, self.log,
                                     self.max_battle_turns)
