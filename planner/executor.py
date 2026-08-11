@@ -226,6 +226,10 @@ coordinates. Read:
     and it must be the LAST op — anything after it is DISCARDED, because you
     cannot know coordinates on a map you are not standing in. You will be
     re-prompted with a fresh observation after arriving.
+    The warp tile AT OR NEXT TO your position is the door you came IN by —
+    use_warp on it goes BACKWARD. To go forward, pick a warp elsewhere on
+    the map whose dest leads toward the goal (compare warp dests in
+    obs.map.warps), or cross an edge.
 Ops: {"op":"walk_to","x":N,"y":N} (within-map), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
 door/stairs), {"op":"interact","name":"OBJECT_NAME"}, {"op":"menu","index":N}
