@@ -1034,8 +1034,6 @@ Reply with ONLY a JSON array of ops, e.g.
                      spent=spent, trace=trace, inert=inert,
                      progress_ops=len(progress))
         self.log("escalate_end", subgoal=sg["id"], success=False)
-        self.note_dead_end(sg["id"],
-                           self._where(self.settle()))
         return False, sg.get("macro", [])
 
     def distill(self, sg: dict, ops: list):
