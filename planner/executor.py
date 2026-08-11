@@ -497,6 +497,17 @@ class Executor:
         (same as walk_to pathfinding inside a map) — the model still decides
         what to do on arrival."""
         here = self._where(obs)
+        cur_map = (obs.get("map") or {}).get("id")
+        # Never walk out of a room that is still doing something. A gym has
+        # ONE door, so "no untried exits" is true there every time — without
+        # these guards the router would drag the run out of the Brock fight
+        # mid-goal, which is the same mistake the revisit guard made.
+        if f"{self._cur_target}|{cur_map}" in self._battle_maps:
+            return None
+        tried_here = self._tried_objs.get(here, set())
+        if [o for o in ((obs.get("map") or {}).get("objects") or [])
+                if o.get("reachable") and o.get("name") not in tried_here]:
+            return None
         best = None
         for region, exits in self.frontier.items():
             if region == here:
