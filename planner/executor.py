@@ -343,7 +343,14 @@ class Executor:
                 if w.get("reachable")]
         keys += list((m.get("connections") or {}).keys())
         if keys:
-            self.frontier[here] = sorted(set(keys))
+            fresh = sorted(set(keys))
+            if self.frontier.get(here) != fresh:
+                # persist on CHANGE, not only on transitions: the inventory
+                # was accumulating in memory and the file stayed empty until
+                # the first map change, so watching it showed nothing for a
+                # while after the run started
+                self.frontier[here] = fresh
+                self._save_memory()
 
     def dead_for(self, target: str, region: str, _seen=None, depth=4) -> int:
         """Is this region hopeless for that target — directly, or because
