@@ -282,6 +282,7 @@ class Executor:
         self._dead_visits = 0
         self._entered_map: dict = {}   # "target|map" -> entries for target
         self._revisit_refusals: dict = {}   # target -> refusals spent
+        self._battle_maps: set = set()      # "target|map" where a fight ran
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -751,6 +752,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 spent_r = self._revisit_refusals.get(tgt, 0)
                 if (dest_map and seen_n >= 2 and spent_r < 3
                         and tgt != f"map:{dest_map}"
+                        and f"{tgt}|{dest_map}" not in self._battle_maps
                         and self._untried_exits(obs)):
                     self._revisit_refusals[tgt] = spent_r + 1
                     trace.append(
@@ -834,6 +836,14 @@ Reply with ONLY a JSON array of ops, e.g.
                     break
                 if obs and obs.get("mode") == "battle":
                     pre_map = (obs.get("map") or {}).get("id") or before[0]
+                    # A room that starts fights is NOT inert. The revisit
+                    # refusal exists for rooms with nothing in them; without
+                    # this, losing to Brock three times got PEWTER_GYM
+                    # refused as "the trigger is not there" and sent the run
+                    # wandering east out of town. Losing is a reason to come
+                    # back stronger, not evidence of a wrong room.
+                    if self._cur_target and pre_map:
+                        self._battle_maps.add(f"{self._cur_target}|{pre_map}")
                     obs = self.handle_battle(sg, obs)
                     obs = self.settle()
                     post_map = ((obs or {}).get("map") or {}).get("id")
