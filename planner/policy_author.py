@@ -269,6 +269,9 @@ def main():
     ap.add_argument("--plan", type=Path, default=REPO / "plans/brock.json")
     ap.add_argument("--model", default="gemma4:31b-it-q4_K_M")
     ap.add_argument("--run-id", default="policyauthor")
+    ap.add_argument("--eval-only", type=Path, default=None,
+                    help="skip authoring: evaluate this spec artifact (plus "
+                         "the baseline) and report")
     args = ap.parse_args()
 
     gym = Gym(args.plan, args.run_id, model=args.model)
@@ -286,6 +289,16 @@ def main():
                 raise
             time.sleep(3)
     print(f"[gym] ready (rival fight re-armable: {gym.rival_ok})")
+
+    if args.eval_only:
+        spec = battle_policy.load_spec(args.eval_only)
+        print(f"[eval-only] {spec.get('name')}")
+        r = gym.eval_spec(spec)
+        print(feedback_text(spec.get("name", "artifact"), r))
+        base = gym.eval_spec(battle_policy.DEFAULT_SPEC)
+        print(feedback_text("baseline typed_v0", base))
+        gym.shutdown()
+        return
 
     candidates = []   # (spec, results)
     feedback = "This is your first attempt."

@@ -11,8 +11,10 @@ SPEC DSL v1 (all keys optional; unknown keys are validation errors):
   name: str
   stab: float 1.0-2.0        same-type attack bonus weight in move scoring
   accuracy_weight: bool      weight move score by accuracy
-  prefer_ko: bool            a move estimated to KO wins over raw score
-  ko_margin: float >= 1.0    trust a KO only if est. damage >= foe hp*margin
+  prefer_ko: bool            a move OBSERVED to KO wins over raw score
+  ko_margin: float >= 1.0    trust a KO only if the least damage this move
+                             has been SEEN to do (this species, our level)
+                             >= foe hp*margin — empirical, no formulas
   avoid_status_moves: bool   never pick 0-power moves by score
   setup: [ { move: str       deliberate status-move use, e.g. TAIL_WHIP
              max_uses: int      per battle (default 1)
@@ -123,12 +125,17 @@ def effectiveness(move_type: str, foe_types) -> float:
     return mult
 
 
-def _gen1_damage(level, power, atk, dfn, stab, eff) -> float:
-    """Rough gen1 damage (no random spread / crit) for KO detection."""
-    if not power or not atk or not dfn:
-        return 0.0
-    base = ((2 * level / 5 + 2) * power * atk / dfn) / 50 + 2
-    return base * stab * eff
+def journal_key(move_id: str, species: str, level) -> tuple:
+    return (move_id, species, level)
+
+
+def observed_min_damage(journal: dict | None, move_id: str,
+                        species: str, level) -> float | None:
+    """Least damage this move has been SEEN to do to this species at our
+    current level — the player's remembered experience (HP bars are on
+    screen; no computed internals). None until observed."""
+    obs = (journal or {}).get(journal_key(move_id, species, level))
+    return min(obs) if obs else None
 
 
 def _hp_frac(mon: dict) -> float:
@@ -136,27 +143,27 @@ def _hp_frac(mon: dict) -> float:
     return hp / mx if mx else 1.0
 
 
-def score_move(mv: dict, me: dict, foe: dict, spec: dict) -> dict:
+def score_move(mv: dict, me: dict, foe: dict, spec: dict,
+               journal: dict | None = None) -> dict:
     mtype = mv.get("type")
     power = mv.get("power") or 0
     eff = effectiveness(mtype, foe.get("types"))
     stab = spec.get("stab", 1.5) if mtype in (me.get("types") or []) else 1.0
-    my_stats = me.get("stats") or {}
-    foe_stats = foe.get("stats") or {}
-    if mv.get("category") == "special":
-        atk, dfn = my_stats.get("special"), foe_stats.get("special")
-    else:
-        atk, dfn = my_stats.get("attack"), foe_stats.get("defense")
-    dmg = _gen1_damage(me.get("level") or 5, power, atk, dfn, stab, eff)
     acc = (mv.get("accuracy") or 100) / 100.0
     score = power * eff * stab
     if spec.get("accuracy_weight", True):
         score *= acc
+    # KO detection is EMPIRICAL (pamphlet standard, no computed internals):
+    # the least damage this move has been observed to do to this species at
+    # our level, gated by the spec's ko_margin. Unseen matchup -> no KO call.
+    seen = observed_min_damage(journal, mv.get("id"),
+                               foe.get("species"), me.get("level"))
+    kos = (seen is not None
+           and seen >= (foe.get("hp") or 1e9) * spec.get("ko_margin", 1.0))
     return {
         "index": mv.get("index"), "id": mv.get("id"),
         "power": power, "eff": eff, "stab": stab,
-        "damage": dmg, "acc": acc, "score": score,
-        "kos": dmg >= (foe.get("hp") or 1e9) * spec.get("ko_margin", 1.0),
+        "damage": seen, "acc": acc, "score": score, "kos": kos,
     }
 
 
@@ -188,7 +195,7 @@ def choose(obs: dict, spec: dict | None = None,
              if (m.get("pp") or 0) > 0]
     if not moves:
         return {"op": "battle_move", "index": 1}   # Struggle / no PP
-    scored = [score_move(m, me, foe, spec) for m in moves]
+    scored = [score_move(m, me, foe, spec, ctx.get("journal")) for m in moves]
     damaging = [s for s in scored if (s["power"] or 0) > 0]
     by_index = {m.get("index"): m for m in moves}
     best_dmg = max(damaging, key=lambda s: s["score"]) if damaging else None
@@ -240,16 +247,20 @@ if __name__ == "__main__":
     # smoke: score Squirtle's Tackle/Bubble vs a Rock/Ground Geodude
     demo = {"battle": {
         "kind": "trainer",
-        "me": {"level": 10, "types": ["WATER"], "hp": 20, "max_hp": 30,
+        "me": {"level": 10, "species": "SQUIRTLE", "types": ["WATER"],
+               "hp": 20, "max_hp": 30,
                "stats": {"attack": 20, "special": 25, "defense": 18},
                "moves": [
                    {"index": 1, "id": "TACKLE", "type": "NORMAL", "power": 35,
                     "category": "physical", "accuracy": 95, "pp": 30},
                    {"index": 2, "id": "BUBBLE", "type": "WATER", "power": 20,
                     "category": "special", "accuracy": 100, "pp": 30}]},
-        "foe": {"level": 10, "types": ["ROCK", "GROUND"], "hp": 30,
+        "foe": {"level": 10, "species": "GEODUDE",
+                "types": ["ROCK", "GROUND"], "hp": 30,
                 "stats": {"defense": 25, "special": 15}}}}
-    print(choose(demo))
+    print("cold (score only):", choose(demo))
+    seen = {journal_key("BUBBLE", "GEODUDE", 10): [34, 31]}
+    print("after observations:", choose(demo, ctx={"journal": seen}))
     tw = {"battle": dict(demo["battle"],
                          me=dict(demo["battle"]["me"], moves=demo["battle"]["me"]["moves"] + [
                              {"index": 3, "id": "TAIL_WHIP", "type": "NORMAL",

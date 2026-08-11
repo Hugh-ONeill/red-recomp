@@ -119,6 +119,34 @@ def set_active_spec(spec):
     ACTIVE_SPEC = spec
 
 
+# run-long damage journal: what the player has SEEN each move do to each
+# species at each of our levels (HP bars are on screen). Feeds the policy's
+# empirical KO detection — no computed damage internals in the decision
+# path (pamphlet standard).
+DAMAGE_JOURNAL: dict = {}
+
+
+def _journal_damage(before_b: dict, after_obs: dict, move_id: str):
+    me = before_b.get("me") or {}
+    foe = before_b.get("foe") or {}
+    key = battle_policy.journal_key(move_id, foe.get("species"),
+                                    me.get("level"))
+    hp0 = foe.get("hp") or 0
+    ab = (after_obs or {}).get("battle") or {}
+    if (after_obs or {}).get("mode") == "battle" \
+            and (ab.get("foe") or {}).get("species") == foe.get("species"):
+        d = hp0 - ((ab.get("foe") or {}).get("hp") or 0)
+        if d > 0:
+            DAMAGE_JOURNAL.setdefault(key, []).append(d)
+    elif (after_obs or {}).get("mode") != "battle" and hp0 > 0:
+        # battle ended on our move: the foe fainted — damage at least hp0
+        # (a lower bound; min() keeps the ledger conservative)
+        alive = any((m.get("hp") or 0) > 0
+                    for m in (after_obs or {}).get("party") or [])
+        if alive:
+            DAMAGE_JOURNAL.setdefault(key, []).append(hp0)
+
+
 def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
     """Drive a battle turn-by-turn with a battle_policy spec (rules as data).
     The spec also owns the wild-flee decision (should_flee); trainers can
@@ -127,7 +155,8 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
     agreement — the measuring stick, which does not alter play."""
     turns = 0
     flees = 0
-    ctx = {"turn": 0, "used": {}, "intent": intent}
+    ctx = {"turn": 0, "used": {}, "intent": intent,
+           "journal": DAMAGE_JOURNAL}
     while obs and obs.get("mode") == "battle" and turns < max_turns:
         turns += 1
         ctx["turn"] = turns
@@ -150,7 +179,15 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
                     log("oracle_score", turn=turns, **sc)
             obs = bridge.obs()   # refresh (probe left a battle obs)
         log("battle_turn", turn=turns, op=name, params=op, why=why)
+        before_b = (obs or {}).get("battle") or {}
+        move_id = None
+        if name == "battle_move":
+            mv = next((m for m in ((before_b.get("me") or {}).get("moves")
+                                   or []) if m.get("index") == idx), None)
+            move_id = (mv or {}).get("id")
         obs = bridge.send(name, **op)
+        if move_id:
+            _journal_damage(before_b, obs, move_id)
     log("battle_done", turns=turns, mode=obs.get("mode") if obs else None)
     return obs
 
