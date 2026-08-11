@@ -233,9 +233,14 @@ class Gym:
                     shop = self.sgs.get("buy_pewter_potions")
                     if shop:
                         ok2 = self.ex.run_subgoal(shop)
-                        if not ok2 and self.model:
+                        if (not ok2 and self.model
+                                and not shop.get("_esc_tried")):
                             # author the Pewter shopping trip once (in-
-                            # memory); later trials replay the macro
+                            # memory); later trials replay the macro. One
+                            # attempt only — a failing shop escalation
+                            # re-run every trial burned 7 model calls x15
+                            # (itemauthor4)
+                            shop["_esc_tried"] = True
                             succ, ops = self.ex.escalate(shop)
                             if succ:
                                 shop["macro"] = ops

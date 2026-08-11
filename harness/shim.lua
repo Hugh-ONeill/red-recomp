@@ -836,8 +836,10 @@ function OPS.buy(G, c)
     ui_close_shop(G); ui_back_out(G)
     return false, "cursor stuck on the buy list"
   end
+  -- the price text ("That'll be N. How many?") pages BEFORE the quantity
+  -- box: ride it with A instead of racing it with one fixed wait
   U.tap(G, "a"); U.wait(6)
-  if not ui_is_qty(G) then
+  if not ui_press_until(G, ui_is_qty, "a", 20) then
     ui_close_shop(G); ui_back_out(G)
     return false, "no quantity box opened"
   end

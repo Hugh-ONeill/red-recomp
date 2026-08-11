@@ -453,6 +453,9 @@ Reply with ONLY a JSON array of ops, e.g.
                     chg.append("party changed")
                 if (before[1], before[2]) != (after[1], after[2]):
                     chg.append("moved")
+                det = r.get("detail")
+                if det:
+                    chg.append(str(det))
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
             if blackout:
                 note += (f" — your party FAINTED mid-op (blackout): you "
