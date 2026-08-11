@@ -338,9 +338,9 @@
     },
     {
       "id": "train_to_l10",
-      "goal_text": "Train your Pokemon to level 10 in tall grass near Viridian City (Route 1 south or Route 22 west), then stop \u2014 you will heal before training further.",
+      "goal_text": "Train your Pokemon to level 8 in tall grass near Viridian City (Route 1 south or Route 22 west) \u2014 a short session; you will heal and continue after.",
       "done_when": {
-        "lead_level": 10
+        "lead_level": 8
       },
       "battle_policy": "default",
       "max_attempts": 12,
@@ -350,73 +350,9 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "brock34",
         "via": "escalation",
-        "n_ops": 9
-      },
-      "macro": [
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "south",
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_1"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "south",
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_1"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "west",
-          "when": {
-            "map": "VIRIDIAN_CITY"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_22"
-          }
-        }
-      ]
+        "n_ops": 9,
+        "note": "stage 1 shortened to L8 (Bubble arrives L8 \u2014 the Tackle-only window is where wipes concentrate)"
+      }
     },
     {
       "id": "heal_mid_grind",
@@ -677,16 +613,16 @@
     },
     {
       "id": "buy_pewter_potions",
-      "goal_text": "Buy 5 POTIONs at the Pewter City Mart before challenging the gym: find the mart building in Pewter City and buy from the clerk.",
+      "goal_text": "Buy POTIONs at the Pewter City Mart before the gym (ask for 5; the shop sells what you can afford \u2014 2 or more is enough).",
       "done_when": {
         "has_item": {
-          "POTION": 4
+          "POTION": 2
         }
       },
       "escalation_rounds": 6,
       "macro_provenance": {
         "authored_by": "hand-seeded-subgoal",
-        "note": "Pewter is the first mart that sells POTION; stock up before Brock"
+        "note": "Pewter is the first mart that sells POTION; stock up before Brock; target >=2: blackout money-halving is a real risk and the gym eval won badges on 2-3 potions"
       }
     },
     {
