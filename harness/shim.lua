@@ -450,12 +450,18 @@ function warp_reach(G)
   local key = function(x, y) return x .. "," .. y end
   local seen = { [key(p.cellX, p.cellY)] = true }
   local q, head = { { x = p.cellX, y = p.cellY } }, 1
-  -- TERRAIN ONLY: pass no entities. A wandering NPC standing in a corridor
-  -- changes what is reachable, which changed the region fingerprint from
-  -- one observation to the next — MT_MOON_B1F reported THREE regions for a
-  -- floor that has two, and the exploration memory keyed on a moving
-  -- target. Whether a Zubat is in the doorway is traffic, not geography.
-  local NOBODY = {}
+  -- STATIC blockers count, WANDERERS do not. Passing no entities at all
+  -- made region ids stable (a strolling NPC no longer redraws the map) but
+  -- also made the fossils on MT_MOON_B2F invisible — and in this game the
+  -- FOSSIL OBJECTS are what block the corridor, so "reachable" lied about
+  -- the way onward. Keep anything that stays put (items, STAY npcs) and
+  -- drop only movers: furniture is geography, traffic is not.
+  local STATIC = {}
+  for _, e in ipairs(ow.entities or {}) do
+    local mv = (e.def and e.def.movement) or "STAY"
+    if mv ~= "WALK" then STATIC[#STATIC + 1] = e end
+  end
+  local NOBODY = STATIC
   while q[head] do
     local cur = q[head]; head = head + 1
     for dn, d in pairs(DIRS) do
