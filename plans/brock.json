@@ -699,15 +699,26 @@
       "macro": [
         {
           "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_MART"
+          }
+        },
+        {
+          "op": "use_warp",
           "x": 16,
-          "y": 17
+          "y": 17,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
         }
       ],
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock24",
+        "run": "brock40",
         "via": "escalation",
-        "n_ops": 1
+        "n_ops": 2
       }
     },
     {
