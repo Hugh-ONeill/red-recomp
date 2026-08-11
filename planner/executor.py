@@ -697,8 +697,10 @@ class Executor:
         if not name:
             dw = subgoal.get("done_when") or {}
             name = ("catch" if "party_size" in dw
-                    else "fight" if "lead_level" in dw
+                    else "default" if "lead_level" in dw
                     else "traversal")
+            if name not in BATTLE_POLICIES:      # never crash on a bad key
+                name = "traversal"
         self.log("battle_start", subgoal=subgoal["id"], policy=name)
         self.status(doing=f"BATTLE ({name} policy)", obs=obs)
         obs = BATTLE_POLICIES[name](self.b, obs, self.log,
