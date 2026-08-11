@@ -507,8 +507,14 @@ class Executor:
             return None
         path = self._route(here, want)
         if not path:
-            self._faint_at = None       # no walked route back: let the model
-            return None                 # find its own way
+            # no RECORDED path back (the graph only knows edges actually
+            # walked, and a blackout can land somewhere never connected to
+            # the faint site yet). Log it — otherwise a silent clear looks
+            # identical to the walk-back never being needed.
+            self.log("blackout_return_noroute", subgoal=sg.get("id"),
+                     frm=here, want=want)
+            self._faint_at = None
+            return None
         for key, nxt in path:
             if "," in key:
                 x, y = key.split(",")
@@ -1063,6 +1069,8 @@ Reply with ONLY a JSON array of ops, e.g.
                     if post_map and pre_map and post_map != pre_map:
                         blackout = post_map
                         self._faint_at = before[0] and self._where(pre_obs)
+                        self.log("faint_marked", subgoal=sg["id"],
+                                 at=self._faint_at)
                         if self._cur_target:
                             self._blackouts[self._cur_target] = \
                                 self._blackouts.get(self._cur_target, 0) + 1
