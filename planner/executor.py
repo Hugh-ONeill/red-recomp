@@ -280,8 +280,9 @@ class Executor:
         self._came_from = None      # the region we were in a moment ago
         self._reversals = 0
         self._dead_visits = 0
-        self._entered_map: dict = {}   # map id -> entries this subgoal
-        self._revisit_refusals = 0
+        self._entered_map: dict = {}   # "target|map" -> entries for target
+        self._revisit_refusals: dict = {}   # target -> refusals spent
+        self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
         # Pure memory of past observations (the obs already showed each map's
@@ -424,8 +425,9 @@ class Executor:
             return
         self.visits[dst] = self.visits.get(dst, 0) + 1
         dmap = dst.split("|")[0]
-        if dmap != src.split("|")[0]:
-            self._entered_map[dmap] = self._entered_map.get(dmap, 0) + 1
+        if dmap != src.split("|")[0] and self._cur_target:
+            k = f"{self._cur_target}|{dmap}"
+            self._entered_map[k] = self._entered_map.get(k, 0) + 1
         ap = (after_obs or {}).get("player") or {}
         if ap.get("x") is not None:
             self._arrived = (dst, (ap["x"], ap["y"]))
@@ -744,17 +746,20 @@ Reply with ONLY a JSON array of ops, e.g.
                      ((obs.get("map") or {}).get("warps") or [])
                      if (w.get("x"), w.get("y")) == (step.get("x"),
                                                      step.get("y"))), None)
-                if (dest_map and self._entered_map.get(dest_map, 0) >= 2
-                        and self._revisit_refusals < 3
+                tgt = self._cur_target
+                seen_n = self._entered_map.get(f"{tgt}|{dest_map}", 0)
+                spent_r = self._revisit_refusals.get(tgt, 0)
+                if (dest_map and seen_n >= 2 and spent_r < 3
+                        and tgt != f"map:{dest_map}"
                         and self._untried_exits(obs)):
-                    self._revisit_refusals += 1
+                    self._revisit_refusals[tgt] = spent_r + 1
                     trace.append(
                         f"use_warp({step.get('x')},{step.get('y')}): REFUSED "
-                        f"— you have already been in {dest_map} "
-                        f"{self._entered_map[dest_map]}x during this goal "
-                        f"and the condition is still false, so it is not "
-                        f"there. Untried ways out of here: "
-                        f"{', '.join(self._untried_exits(obs))}. Take one.")
+                        f"— you have already been in {dest_map} {seen_n}x "
+                        f"chasing this same goal and the condition is still "
+                        f"false, so it is not there. Untried ways out of "
+                        f"here: {', '.join(self._untried_exits(obs))}. "
+                        f"Take one.")
                     continue
             if op == "interact":
                 here_r = self._where(obs)
@@ -943,8 +948,7 @@ Reply with ONLY a JSON array of ops, e.g.
         progress = []       # clean ops accumulated across rounds
         self._dead_ops = {}
         self._dead_visits = 0
-        self._entered_map = {}
-        self._revisit_refusals = 0
+        self._cur_target = self._target_key(sg)
         self._stuck_in: dict = {}
         self._tried_objs: dict = {}   # region -> {object names interacted}
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
