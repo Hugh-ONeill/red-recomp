@@ -1281,19 +1281,7 @@ Reply with ONLY a JSON array of ops, e.g.
             here_now = self._where(cur)
             self._stuck_in[here_now] = self._stuck_in.get(here_now, 0) + 1
             stuck_note = ""
-            spent_here = self._tried_objs.get(here_now, set())
-            here_objs = {o.get("name") for o in
-                         ((cur.get("map") or {}).get("objects") or [])
-                         if o.get("reachable")}
-            if here_objs and here_objs.issubset(spent_here):
-                stuck_note = (
-                    f"\nYou have now interacted with EVERYTHING reachable in "
-                    f"this area and DONE_WHEN is still false. The trigger is "
-                    f"NOT here. Leave through an exit you have not taken "
-                    f"yet — some events fire by TRAVELLING (walking out "
-                    f"along a road) rather than by entering a place or "
-                    f"talking to anyone.")
-            elif self._blackouts.get(self._target_key(sg), 0) >= 2:
+            if self._blackouts.get(self._target_key(sg), 0) >= 2:
                 # Being LOST and being TOO WEAK fail the same way from the
                 # executor's side (condition still false), but the remedies
                 # are opposite: one says leave, the other says come back
@@ -1308,6 +1296,22 @@ Reply with ONLY a JSON array of ops, e.g.
                     f"the party so one faint does not end the fight, buy and "
                     f"use healing items, or all three. Note that each "
                     f"blackout also costs you half your money.")
+            spent_here = self._tried_objs.get(here_now, set())
+            here_objs = {o.get("name") for o in
+                         ((cur.get("map") or {}).get("objects") or [])
+                         if o.get("reachable")}
+            if stuck_note:
+                pass          # a party wipe outranks an exhausted room:
+                              # "leave, it is not here" is the opposite of
+                              # the truth when you simply keep losing
+            elif here_objs and here_objs.issubset(spent_here):
+                stuck_note = (
+                    f"\nYou have now interacted with EVERYTHING reachable in "
+                    f"this area and DONE_WHEN is still false. The trigger is "
+                    f"NOT here. Leave through an exit you have not taken "
+                    f"yet — some events fire by TRAVELLING (walking out "
+                    f"along a road) rather than by entering a place or "
+                    f"talking to anyone.")
             elif self._stuck_in.get(here_now, 0) >= 3:
                 stuck_note = (
                     f"\n{self._stuck_in[here_now]} rounds in this same area "
