@@ -335,9 +335,10 @@ door/stairs), {"op":"interact","name":"OBJECT_NAME"}, {"op":"menu","index":N}
 (1-based: 1=YES/first, 2=NO/second), {"op":"grind"} (pace this map's wild
 grass; each battle is fought and the op repeats until the subgoal's level
 target is met — use when the goal is to TRAIN/level up),
-{"op":"buy","item":"POTION","count":N} (buy from THIS map's mart clerk;
-obs.money is your budget), {"op":"use_item","item":"POTION"} (use a bag
-item on your lead in the field), {"op":"wait"}. Battles are auto-handled.
+{"op":"buy","item":"POTION","count":N} (buy from THIS map's mart clerk —
+it talks to the clerk ITSELF, no interact needed first; obs.money is your
+budget), {"op":"use_item","item":"POTION"} (use a bag item on your lead in
+the field), {"op":"wait"}. Battles are auto-handled.
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
 and MAY BE IMPERFECT — if it names a target that isn't in obs.map.objects /

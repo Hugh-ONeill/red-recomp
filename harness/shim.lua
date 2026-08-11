@@ -779,27 +779,43 @@ end
 
 -- Buy c.count of c.item from this mart's clerk. Decision-free: the model
 -- picks WHAT and HOW MANY; the menu driving is mechanics.
+local function ui_shop_up(G) return ui_is_menu(G) or ui_is_list(G) end
+
 function OPS.buy(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
-  end
   if not (c.item and c.count) then return false, "buy needs item, count" end
-  local ow = G.overworld
-  local clerk
-  for _, npc in ipairs(ow.npcs or {}) do
-    local nm = ((npc.def or {}).name or ""):upper()
-    if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
+  -- Tolerate an already-open shop: the model often interacts the clerk
+  -- itself first (its macro left the greeting/menu on the stack and the
+  -- old strict not-in-overworld check failed the whole purchase). Ride
+  -- whatever dialog is up toward the BUY/SELL menu; only run our own
+  -- clerk interaction from clean overworld.
+  if G.overworld and G.stack:top() ~= G.overworld then
+    if not ui_shop_up(G) then
+      ui_press_until(G, ui_shop_up, "a", 20)
+    end
+    if not ui_shop_up(G) then
+      ui_back_out(G)
+    end
   end
-  if not clerk then return false, "no shop clerk on this map" end
-  if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
-    return false, "couldn't reach the clerk"
+  if G.overworld and G.stack:top() == G.overworld then
+    local ow = G.overworld
+    local clerk
+    for _, npc in ipairs(ow.npcs or {}) do
+      local nm = ((npc.def or {}).name or ""):upper()
+      if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
+    end
+    if not clerk then return false, "no shop clerk on this map" end
+    if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
+      return false, "couldn't reach the clerk"
+    end
+    if not ui_press_until(G, ui_is_menu, "a", 60) then
+      ui_back_out(G)
+      return false, "shop menu never opened"
+    end
   end
-  if not ui_press_until(G, ui_is_menu, "a", 60) then
-    ui_back_out(G)
-    return false, "shop menu never opened"
+  if ui_is_menu(G) then
+    ui_cursor_to(G, "index", 1)                   -- BUY
+    U.tap(G, "a"); U.wait(10)
   end
-  ui_cursor_to(G, "index", 1)                     -- BUY
-  U.tap(G, "a"); U.wait(10)
   if not ui_press_until(G, ui_is_list, "a", 30) then
     ui_close_shop(G); ui_back_out(G)
     return false, "buy list never opened"
