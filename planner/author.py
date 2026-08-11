@@ -90,7 +90,13 @@ you home and HALVES YOUR MONEY, so wipes during long unhealed grinds
 bankrupt later shopping.
 Marts sell healing items (a POTION heals 20 HP, ~300 money; you start with
 3000): add a SHOPPING subgoal (done_when {"has_item": {...}}) before a
-trainer gauntlet with no Center inside it.
+trainer gauntlet with no Center inside it. Know your marts: VIRIDIAN_MART
+sells NO potions (Poke Balls, Antidotes, Parlyz Heals only); PEWTER_MART
+is the first that sells POTION.
+A LONE Pokemon that faints means a blackout (money halved): CATCH A BACKUP
+early (a shopping stop for Poke Balls, then a catch subgoal with
+{"party_size": 2} on a grassy route) so a lead faint becomes a switch
+instead.
 
 Hard rule on GRANULARITY: each subgoal must be ONE map transition, OR one
 event/interaction that happens within a single map. Do not bundle multiple
