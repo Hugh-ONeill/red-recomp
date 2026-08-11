@@ -833,6 +833,24 @@ function OPS.buy(G, c)
   if have0 >= c.count then
     return true, ("already have %s x%d"):format(c.item, have0)
   end
+  -- AFFORDABILITY FIRST (the shop-price sticker is on the shelf, pamphlet-
+  -- tier): every observed "shop failure" was really an empty wallet, and
+  -- walking the whole menu to discover that wasted rounds and hid the real
+  -- cause. Report the arithmetic instead.
+  local money = (G.save and G.save.money) or 0
+  local price = ((G.data and G.data.items and G.data.items[c.item]) or {}).price
+  if price and price > 0 then
+    local afford = math.floor(money / price)
+    if afford < 1 then
+      return false, ("cannot afford %s: it costs %d and you have %d")
+        :format(c.item, price, money)
+    end
+    if afford < (c.count - have0) then
+      -- buy what the wallet allows rather than failing outright; the
+      -- QuantityBox caps at .max anyway, this just makes it intentional
+      c = { item = c.item, count = have0 + afford, max_steps = c.max_steps }
+    end
+  end
   -- Tolerate an already-open shop: the model often interacts the clerk
   -- itself first (its macro left the greeting/menu on the stack and the
   -- old strict not-in-overworld check failed the whole purchase). Ride
@@ -908,8 +926,10 @@ function OPS.buy(G, c)
   local have = bag_count(G, c.item)
   ui_close_shop(G)
   ui_back_out(G)
-  if have < 1 then
-    return false, "purchase did not reach the bag (no room or no money?)"
+  if have <= have0 then
+    return false, ("purchase did not reach the bag (money %d, bag had %d) "
+      .. "— no room, or the shop refused"):format(
+      (G.save and G.save.money) or 0, have0)
   end
   return true, ("bought: %s x%d in bag, %d money left"):format(
     c.item, have, (G.save and G.save.money) or 0)

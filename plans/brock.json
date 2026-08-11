@@ -251,7 +251,8 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "brock39",
         "via": "escalation",
-        "n_ops": 6
+        "n_ops": 6,
+        "note": "OPTIONAL 2026-08-12: a broke wallet must not kill the run \u2014 every observed 'shop bug' was an empty wallet (money 75/211 at the counter), not menu mechanics"
       },
       "macro": [
         {
@@ -300,7 +301,8 @@
             "map": "VIRIDIAN_MART"
           }
         }
-      ]
+      ],
+      "optional": true
     },
     {
       "id": "heal_at_viridian_center",

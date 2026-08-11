@@ -83,8 +83,10 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "chain1",
         "via": "escalation",
-        "n_ops": 3
-      }
+        "n_ops": 3,
+        "note": "OPTIONAL: broke wallets skip, not die"
+      },
+      "optional": true
     },
     {
       "id": "exit_pewter_to_route_3",
