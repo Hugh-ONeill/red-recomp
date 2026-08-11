@@ -42,6 +42,9 @@
         "run": "chain1",
         "via": "escalation",
         "n_ops": 4
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -86,7 +89,10 @@
         "n_ops": 3,
         "note": "OPTIONAL: broke wallets skip, not die"
       },
-      "optional": true
+      "optional": true,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
+      }
     },
     {
       "id": "exit_pewter_to_route_3",
@@ -117,6 +123,9 @@
         "run": "chain1",
         "via": "escalation",
         "n_ops": 2
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -140,7 +149,10 @@
             "map": "ROUTE_3"
           }
         }
-      ]
+      ],
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
+      }
     },
     {
       "id": "enter_mt_moon_center",
@@ -164,7 +176,10 @@
             "map": "ROUTE_4"
           }
         }
-      ]
+      ],
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
+      }
     },
     {
       "id": "heal_at_mt_moon",
@@ -191,6 +206,9 @@
         "run": "chain1",
         "via": "escalation",
         "n_ops": 2
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -223,7 +241,10 @@
             "map": "ROUTE_4"
           }
         }
-      ]
+      ],
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted/corrected (Center geography, east-exit topology)"
+      }
     },
     {
       "id": "descend_to_b1f",
@@ -247,6 +268,9 @@
         "run": "chain1",
         "via": "escalation",
         "n_ops": 1
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -271,6 +295,9 @@
         "run": "chain1",
         "via": "escalation",
         "n_ops": 1
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -322,6 +349,9 @@
         "run": "chain1",
         "via": "escalation",
         "n_ops": 5
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -334,6 +364,9 @@
       "macro_provenance": {
         "authored_by": "hand-seeded-subgoal",
         "note": "2026-08-12 PROBE FINDING: ROUTE_4 is ONE map id but two disconnected halves \u2014 from the west (entrance) side the east seam is unreachable (reachable=158 cells, east-edge reachable=[]). Mt Moon's only east exit is B1F's LAST_MAP warp at (27,3); 1F's LAST_MAP warps (14/15,35) are the ENTRANCE. The old exit_mt_moon_east ended on {map:ROUTE_4} which BOTH halves satisfy \u2014 so it 'succeeded' on the wrong side and reach_cerulean_city could never cross east."
+      },
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted/corrected (Center geography, east-exit topology)"
       }
     }
   ],

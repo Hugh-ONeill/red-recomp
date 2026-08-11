@@ -20,6 +20,9 @@
         "run": "brock4",
         "via": "escalation",
         "n_ops": 1
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -41,6 +44,9 @@
         "run": "brock10",
         "via": "escalation",
         "n_ops": 1
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -60,6 +66,9 @@
         "authored_by": "hand-seeded",
         "via": "fixed-escort-quirk",
         "note": "escort is deterministic; the model keeps taking the visible lab door which skips Oaks speech and leaves the balls inert"
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -87,6 +96,9 @@
         "authored_by": "hand-seeded",
         "via": "fixed-pick-sequence",
         "note": "gate-armed pick is interact+yes+decline-nickname; model authored it incrementally across rounds and checkpoint reset scrambled it"
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -107,6 +119,9 @@
         "authored_by": "hand-seeded",
         "via": "fixed-lab-quirk",
         "note": "rival battle triggers on EXIT (OaksLab door script), not on interacting the rival; battle auto-handled by policy. The fight is ~coin-flip RNG at L5 and a LOSS is survivable in gen1 \u2014 the plan is LOSS-TOLERANT by design: flag-only done_when, the train_to_l12 grind absorbs the level deficit, when-guards keep downstream macros from misfiring off the loss trajectory"
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -137,6 +152,9 @@
         "run": "brock8",
         "via": "escalation",
         "n_ops": 3
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -157,6 +175,9 @@
         "run": "brock8",
         "via": "escalation",
         "n_ops": 1
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -181,6 +202,9 @@
         "run": "brock34",
         "via": "escalation",
         "n_ops": 1
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -215,6 +239,9 @@
         "run": "brock10",
         "via": "escalation",
         "n_ops": 4
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -235,6 +262,9 @@
         "run": "brock10",
         "via": "escalation",
         "n_ops": 1
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -302,7 +332,10 @@
           }
         }
       ],
-      "optional": true
+      "optional": true,
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted (attrition/economy/party-depth discoveries)"
+      }
     },
     {
       "id": "heal_at_viridian_center",
@@ -345,7 +378,10 @@
           "op": "menu",
           "index": 1
         }
-      ]
+      ],
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted (attrition/economy/party-depth discoveries)"
+      }
     },
     {
       "id": "catch_backup",
@@ -385,7 +421,10 @@
             "map": "ROUTE_22"
           }
         }
-      ]
+      ],
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted (attrition/economy/party-depth discoveries)"
+      }
     },
     {
       "id": "train_to_l10",
@@ -410,7 +449,10 @@
             "map": "ROUTE_22"
           }
         }
-      ]
+      ],
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted (attrition/economy/party-depth discoveries)"
+      }
     },
     {
       "id": "heal_mid_grind",
@@ -452,7 +494,10 @@
           "op": "menu",
           "index": 1
         }
-      ]
+      ],
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted (attrition/economy/party-depth discoveries)"
+      }
     },
     {
       "id": "train_to_l13",
@@ -519,7 +564,10 @@
             "map": "ROUTE_22"
           }
         }
-      ]
+      ],
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted (attrition/economy/party-depth discoveries)"
+      }
     },
     {
       "id": "heal_before_forest",
@@ -561,7 +609,10 @@
           "op": "menu",
           "index": 1
         }
-      ]
+      ],
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted (attrition/economy/party-depth discoveries)"
+      }
     },
     {
       "id": "go_to_route_2",
@@ -593,7 +644,10 @@
         "via": "escalation",
         "n_ops": 2
       },
-      "battle_policy": "traversal"
+      "battle_policy": "traversal",
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
+      }
     },
     {
       "id": "enter_viridian_forest",
@@ -632,7 +686,10 @@
         "via": "escalation",
         "n_ops": 5
       },
-      "battle_policy": "traversal"
+      "battle_policy": "traversal",
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
+      }
     },
     {
       "id": "reach_pewter_city",
@@ -673,6 +730,9 @@
         "run": "brock24",
         "via": "escalation",
         "n_ops": 5
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -709,7 +769,10 @@
             "map": "PEWTER_MART"
           }
         }
-      ]
+      ],
+      "subgoal_provenance": {
+        "authored_by": "hand-inserted (attrition/economy/party-depth discoveries)"
+      }
     },
     {
       "id": "enter_pewter_gym",
@@ -741,6 +804,9 @@
         "run": "brock40",
         "via": "escalation",
         "n_ops": 2
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     },
     {
@@ -765,6 +831,9 @@
         "run": "brock24",
         "via": "escalation",
         "n_ops": 2
+      },
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
       }
     }
   ],

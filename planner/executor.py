@@ -751,6 +751,13 @@ Reply with ONLY a JSON array of ops, e.g.
         """Write the escalation's successful op sequence back as the macro,
         with provenance (the claim needs to show the model authored it)."""
         sg["macro"] = ops
+        # WHO WROTE THE SUBGOAL and WHO AUTHORED ITS MACRO are different
+        # facts, and distillation used to collapse them: writing a macro
+        # overwrote a hand-seeded subgoal's marker with the model's name, so
+        # the plan file OVERSTATED model authorship (found 2026-08-12 while
+        # auditing). Subgoal provenance is written once, at creation.
+        sg.setdefault("subgoal_provenance",
+                      {"authored_by": "unknown (pre-audit)"})
         sg["macro_provenance"] = {"authored_by": self.model, "run": self.run_id,
                                   "via": "escalation", "n_ops": len(ops)}
         if self.plan_path:
