@@ -252,8 +252,16 @@
       "done_when": {
         "map": "MT_MOON_B1F"
       },
-      "escalation_rounds": 4,
+      "escalation_rounds": 10,
       "macro": [
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 5,
+          "when": {
+            "map": "ROUTE_4"
+          }
+        },
         {
           "op": "use_warp",
           "x": 5,
@@ -261,26 +269,115 @@
           "when": {
             "map": "MT_MOON_1F"
           }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_3"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 5,
+          "when": {
+            "map": "ROUTE_4"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 11,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
         }
       ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "chain1",
+        "run": "thin1",
         "via": "escalation",
-        "n_ops": 1
-      },
-      "subgoal_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
+        "n_ops": 7
       }
     },
     {
       "id": "descend_to_b2f",
-      "goal_text": "Navigate through the first basement and descend to the second basement (B2F).",
+      "goal_text": "Navigate through B1F and descend further to the lowest level (B2F).",
       "done_when": {
         "map": "MT_MOON_B2F"
       },
-      "escalation_rounds": 4,
+      "escalation_rounds": 10,
       "macro": [
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 11,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "fossil2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "defeat_super_nerd",
+      "goal_text": "Locate and defeat the Super Nerd guarding the fossils on B2F.",
+      "done_when": {
+        "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
+      },
+      "escalation_rounds": 10,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 25,
+          "y": 9,
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 25,
+          "y": 9,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 5,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
         {
           "op": "use_warp",
           "x": 21,
@@ -288,73 +385,59 @@
           "when": {
             "map": "MT_MOON_B1F"
           }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
         }
       ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "chain1",
+        "run": "mem10",
         "via": "escalation",
-        "n_ops": 1
-      },
-      "subgoal_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
+        "n_ops": 10
       }
-    },
-    {
-      "id": "defeat_super_nerd",
-      "goal_text": "Find and defeat the Super Nerd guarding the fossils on B2F.",
-      "done_when": {
-        "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
-      },
-      "escalation_rounds": 4,
-      "macro": [
-        {
-          "op": "interact",
-          "name": "MTMOONB2F_SUPER_NERD",
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        },
-        {
-          "op": "interact",
-          "name": "MTMOONB2F_SUPER_NERD",
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        },
-        {
-          "op": "interact",
-          "name": "MTMOONB2F_SUPER_NERD",
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        },
-        {
-          "op": "interact",
-          "name": "MTMOONB2F_SUPER_NERD",
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        },
-        {
-          "op": "interact",
-          "name": "MTMOONB2F_SUPER_NERD",
-          "when": {
-            "map": "MT_MOON_B2F"
-          }
-        }
-      ],
-      "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "chain1",
-        "via": "escalation",
-        "n_ops": 5,
-        "note": "OPTIONAL: the fossil fight is a side objective \u2014 Cerulean does not require it, and on a save where it is already done the flag can never re-fire (mtleg1)"
-      },
-      "subgoal_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M (author.py decomposition)"
-      },
-      "optional": true
     },
     {
       "id": "take_fossil",
@@ -367,54 +450,157 @@
       "escalation_rounds": 6,
       "subgoal_provenance": {
         "authored_by": "hand-inserted TEST SCAFFOLD \u2014 verified in the recomp's own script (data/scripts/story2.lua mtMoonFossil: taking a fossil runs walk_npc, moving the nerd out of the corridor). The model's decompositions omitted it; the record run needs the AUTHOR to include it, not this insertion."
+      },
+      "macro": [
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_DOME_FOSSIL",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "fossil2",
+        "via": "escalation",
+        "n_ops": 2
       }
     },
     {
-      "id": "return_to_b1f_east",
-      "goal_text": "From B2F, cross to a DIFFERENT ladder than the one you came down (the one at B1F (17,11) leads back to where you started) and go up \u2014 you want B1F's EASTERN section, near (27,3).",
+      "id": "exit_mt_moon",
+      "goal_text": "Find the exit of Mt Moon and emerge onto Route 4.",
       "done_when": {
-        "map": "MT_MOON_B1F",
-        "player_at": {
-          "x": 27,
-          "y": 3,
-          "radius": 3
-        }
+        "map": "ROUTE_4"
       },
       "escalation_rounds": 10,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 5,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 14,
+          "y": 35,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 27,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_HP_UP",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_ROCKET2",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 15,
+          "y": 27,
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 25,
+          "y": 15,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 14,
+          "y": 35,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_3"
+          }
+        }
+      ],
       "subgoal_provenance": {
-        "authored_by": "hand-inserted (B1F partition finding)"
+        "authored_by": "unknown (pre-audit)"
       },
       "macro_provenance": {
-        "note": "mtleg5: radius 10 FALSE-PASSED from the west section \u2014 proximity is not connectivity on a partitioned floor"
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "fossil5",
+        "via": "escalation",
+        "n_ops": 11
       }
     },
     {
-      "id": "exit_to_route4_east",
-      "goal_text": "Take B1F's eastern exit warp at (27,3) to leave the mountain. It puts you on the EASTERN half of Route 4.",
-      "done_when": {
-        "map": "ROUTE_4",
-        "player_at": {
-          "x": 80,
-          "y": 10,
-          "radius": 22
-        }
-      },
-      "escalation_rounds": 8,
-      "subgoal_provenance": {
-        "authored_by": "hand-split (TEST SCAFFOLD \u2014 the record run must have the model author this structure itself; see the fresh-authoring check)"
-      }
-    },
-    {
-      "id": "cross_to_cerulean",
-      "goal_text": "From the eastern half of Route 4, head east to Cerulean City.",
+      "id": "reach_cerulean",
+      "goal_text": "Travel across Route 4 to enter Cerulean City.",
       "done_when": {
         "map": "CERULEAN_CITY"
       },
-      "escalation_rounds": 8,
+      "escalation_rounds": 10,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_4"
+          }
+        }
+      ],
       "subgoal_provenance": {
-        "authored_by": "hand-split (TEST SCAFFOLD \u2014 the record run must have the model author this structure itself; see the fresh-authoring check)"
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "trans1",
+        "via": "escalation",
+        "n_ops": 1
       }
     }
   ],
-  "authored_by": "gemma4:31b-it-q4_K_M"
+  "authored_by": "gemma4:31b-it-q4_K_M",
+  "note": "tail replaced with the leg that actually reached Cerulean (trans1); the scaffold-heavy return_to_b1f_east / exit_to_route4_east steps are gone \u2014 the search finds the east exit on its own now"
 }
