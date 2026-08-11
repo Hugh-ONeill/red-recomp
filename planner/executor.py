@@ -1346,7 +1346,7 @@ Reply with ONLY a JSON array of ops, e.g.
             retryable = any(("cannot afford" in t or "couldn't reach the clerk" in t
                              or "no shop clerk" in t) for t in trace)
             live = []
-            if cur and not retryable:
+            if cur:
                 _tried = self._tried_objs.get(self._where(cur), set())
                 live = [o.get("name") for o in
                         ((cur.get("map") or {}).get("objects") or [])
@@ -1356,7 +1356,7 @@ Reply with ONLY a JSON array of ops, e.g.
             # like a failure even standing on the answer. Recording proofs
             # from that produced "map:PALLET_TOWN is unreachable from
             # PALLET_TOWN" — self-contradictory, and persisted across runs.
-            if redo:
+            if redo or retryable:
                 pass
             elif unreachable and cur and live:
                 trace.append(
