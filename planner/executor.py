@@ -556,6 +556,11 @@ Reply with ONLY a JSON array of ops, e.g.
         goal = sg.get("goal_text", sg["id"])
         done = sg.get("done_when")
         rounds = sg.get("escalation_rounds", 4)
+        if redo:
+            # relocating across a dungeon takes many legs; the round budget
+            # for a normal subgoal is far too small (thin5 ran out inside
+            # the mountain, mid-journey, and reported failure)
+            rounds = max(rounds, 20)
         feedback = "This is the first attempt."
         inert = []          # targets that ran but did nothing / failed
         backward = []       # ops that moved us to an already-visited map
@@ -945,6 +950,22 @@ Reply with ONLY a JSON array of ops, e.g.
                     self.log("backtrack_relocated", subgoal=prev["id"])
                     print(f"   -> relocated; retrying {sg['id']}")
                     ok = self._attempt(sg)
+                    if not ok and backtracks < 2:
+                        # relocating somewhere else that still cannot reach
+                        # the goal is a wrong guess, not a dead end — try
+                        # once more from the new position
+                        backtracks += 1
+                        print(f"   <- backtracking again: {prev['id']}")
+                        self.log("backtrack", failed=sg["id"],
+                                 redoing=prev["id"], attempt=backtracks)
+                        try:
+                            moved2, _ = self.escalate(
+                                prev, redo=True,
+                                blocked_by=sg.get("goal_text", sg["id"])[:120])
+                        except TimeoutError:
+                            moved2 = False
+                        if moved2:
+                            ok = self._attempt(sg)
             # A plan is not dead because ONE subgoal is: a side objective
             # (the fossil fight), an unaffordable shop, or a step the world
             # already satisfied differently should not end the run. Carry on
