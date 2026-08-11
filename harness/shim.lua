@@ -568,7 +568,14 @@ function OPS.cross(G, c)
   end
   if not ex then
     if ride_cutscene() then return true, "crossed (cutscene)" end
-    return false, "no reachable " .. tostring(c.dir) .. " edge"
+    -- the connection exists (the fail-fast above passed) but BFS can't walk
+    -- to the seam: blocked terrain splits the map (ROUTE_2's north half is
+    -- only reachable through Viridian Forest)
+    local dest = md and md.connections and md.connections[cmap[dir]]
+    return false, ("the %s seam of %s (to %s) cannot be walked to from "
+      .. "here — terrain blocks it; the way there goes through a door or "
+      .. "another map"):format(cmap[dir], tostring(startMap),
+                               tostring(dest and dest.map or "?"))
   end
   if p.cellX ~= ex or p.cellY ~= ey then
     for round = 1, 3 do

@@ -163,9 +163,31 @@ class Executor:
 
     def _note(self, obs):
         m = (obs or {}).get("map") or {}
-        if m.get("id") and m.get("connections"):
-            self.atlas[m["id"]] = m["connections"]
+        if m.get("id") and (m.get("connections") or m.get("warps")):
+            e = self.atlas.setdefault(m["id"], {})
+            if m.get("connections"):
+                e["edges"] = m["connections"]
+            if m.get("warps"):
+                e["warps"] = [{"x": w.get("x"), "y": w.get("y"),
+                               "dest": w.get("dest")} for w in m["warps"]]
         return obs
+
+    def _atlas_text(self) -> str:
+        parts = []
+        for mid, e in self.atlas.items():
+            bits = []
+            if e.get("edges"):
+                bits.append(", ".join(f"{d}->{t}"
+                                      for d, t in e["edges"].items()))
+            if e.get("warps"):
+                dd: dict = {}
+                for w in e["warps"]:
+                    dd.setdefault(w["dest"], []).append(
+                        f"({w['x']},{w['y']})")
+                bits.append("doors: " + ", ".join(
+                    f"{d} at {'/'.join(v[:2])}" for d, v in dd.items()))
+            parts.append(f"{mid}: " + "; ".join(bits))
+        return " | ".join(parts)
 
     def log(self, kind, **kw):
         self.logf.write(json.dumps(
@@ -330,6 +352,7 @@ Reply with ONLY a JSON array of ops, e.g.
         rounds = sg.get("escalation_rounds", 4)
         feedback = "This is the first attempt."
         inert = []          # targets that ran but did nothing / failed
+        backward = []       # ops that moved us to an already-visited map
         progress = []       # clean ops accumulated across rounds
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
         cap = self.b.send("checkpoint_capture", token="esc")
@@ -348,11 +371,9 @@ Reply with ONLY a JSON array of ops, e.g.
             if rnd == 1 and sig0[0]:
                 visits[sig0[0]] = 1
             obs = model_view(start)
-            atlas = "; ".join(
-                f"{m}: " + ", ".join(f"{d}->{t}" for d, t in c.items())
-                for m, c in self.atlas.items())
+            atlas = self._atlas_text()
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}\n"
-                    f"ATLAS (map edges you have observed so far): "
+                    f"ATLAS (map edges and doors you have observed so far): "
                     f"{atlas or 'nothing yet'}\n"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
                     f"CURRENT_OBSERVATION: "
@@ -466,6 +487,16 @@ Reply with ONLY a JSON array of ops, e.g.
                 visits[sig1[0]] = visits.get(sig1[0], 0) + 1
                 if visits[sig1[0]] >= 2:
                     spent += 1   # back on a map already visited: circling
+                    mover = next((s for s in reversed(clean)
+                                  if s.get("op") in ("cross", "use_warp")),
+                                 None)
+                    if mover:
+                        desc = (mover["op"] + "("
+                                + ",".join(f"{k}={v}" for k, v in
+                                           mover.items() if k != "op")
+                                + f") -> {sig1[0]}")
+                        if desc not in backward:
+                            backward.append(desc)
                     loop_note = (
                         f"\nWARNING: you are going in CIRCLES — this is visit "
                         f"#{visits[sig1[0]]} to {sig1[0]} during this subgoal. "
@@ -508,7 +539,10 @@ Reply with ONLY a JSON array of ops, e.g.
                         + (f"\nObjects here you can interact: {objs}" if objs
                            else "")
                         + (f"\nThese targets did NOTHING — do NOT repeat them, "
-                           f"pick a DIFFERENT one: {inert}" if inert else ""))
+                           f"pick a DIFFERENT one: {inert}" if inert else "")
+                        + (f"\nThese ops moved you BACKWARD to already-"
+                           f"visited maps — never use them again this "
+                           f"subgoal: {backward}" if backward else ""))
             self.log("escalate_feedback", subgoal=sg["id"], round=rnd,
                      spent=spent, trace=trace, inert=inert,
                      progress_ops=len(progress))
