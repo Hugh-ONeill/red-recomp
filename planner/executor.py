@@ -280,6 +280,8 @@ class Executor:
         self._came_from = None      # the region we were in a moment ago
         self._reversals = 0
         self._dead_visits = 0
+        self._entered_map: dict = {}   # map id -> entries this subgoal
+        self._revisit_refusals = 0
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
         # Pure memory of past observations (the obs already showed each map's
@@ -421,6 +423,9 @@ class Executor:
         if key is None:
             return
         self.visits[dst] = self.visits.get(dst, 0) + 1
+        dmap = dst.split("|")[0]
+        if dmap != src.split("|")[0]:
+            self._entered_map[dmap] = self._entered_map.get(dmap, 0) + 1
         ap = (after_obs or {}).get("player") or {}
         if ap.get("x") is not None:
             self._arrived = (dst, (ap["x"], ap["y"]))
@@ -432,6 +437,23 @@ class Executor:
         e["to"] = dst
         self.log("explored", frm=src, via=str(key), to=dst, times=e["n"])
         self._save_memory()
+
+    def _untried_exits(self, obs) -> list:
+        """Ways out of here never taken — doors and roads alike. Map edges
+        count: a town's road out is the exit an event most often hides on."""
+        m = (obs or {}).get("map") or {}
+        taken = self.explored.get(self._where(obs), {}) or {}
+        out = []
+        for w in (m.get("warps") or []):
+            if not w.get("reachable"):
+                continue
+            k = f"{w.get('x')},{w.get('y')}"
+            if k not in taken:
+                out.append(f"({k})->{w.get('dest')}")
+        for d, t in (m.get("connections") or {}).items():
+            if d not in taken:
+                out.append(f"walk {d} -> {t}")
+        return out
 
     def exploration_text(self, obs, target: str = "") -> str:
         """Untried vs already-taken exits from where we stand."""
@@ -707,6 +729,33 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"already provably failed {bad}x. Take a different "
                         f"exit.")
                     continue
+                # ROOM ALREADY ANSWERED. Advice ("the trigger is not here,
+                # take an untried exit") loses to the subgoal's own goal
+                # prose, which names a place: enter_oaks_lab kept walking
+                # back into the lab while its flag actually fires by
+                # travelling north out of town, and the run ping-ponged
+                # Pallet<->lab until its rounds ran out. Entering the same
+                # map a third time in one subgoal, while DONE_WHEN is still
+                # false and an untried way out exists, cannot be new
+                # information. Yields after 3 refusals so a genuinely
+                # single-exit room is never sealed shut.
+                dest_map = next(
+                    (w.get("dest") for w in
+                     ((obs.get("map") or {}).get("warps") or [])
+                     if (w.get("x"), w.get("y")) == (step.get("x"),
+                                                     step.get("y"))), None)
+                if (dest_map and self._entered_map.get(dest_map, 0) >= 2
+                        and self._revisit_refusals < 3
+                        and self._untried_exits(obs)):
+                    self._revisit_refusals += 1
+                    trace.append(
+                        f"use_warp({step.get('x')},{step.get('y')}): REFUSED "
+                        f"— you have already been in {dest_map} "
+                        f"{self._entered_map[dest_map]}x during this goal "
+                        f"and the condition is still false, so it is not "
+                        f"there. Untried ways out of here: "
+                        f"{', '.join(self._untried_exits(obs))}. Take one.")
+                    continue
             if op == "interact":
                 here_r = self._where(obs)
                 tried = self._tried_objs.setdefault(here_r, set())
@@ -894,6 +943,8 @@ Reply with ONLY a JSON array of ops, e.g.
         progress = []       # clean ops accumulated across rounds
         self._dead_ops = {}
         self._dead_visits = 0
+        self._entered_map = {}
+        self._revisit_refusals = 0
         self._stuck_in: dict = {}
         self._tried_objs: dict = {}   # region -> {object names interacted}
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
