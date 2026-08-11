@@ -838,6 +838,7 @@ Reply with ONLY a JSON array of ops, e.g.
         progress = []       # clean ops accumulated across rounds
         self._dead_ops = {}
         self._dead_visits = 0
+        self._stuck_in: dict = {}
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
         cap = self._send_safe("checkpoint_capture", token="esc") or {}
         can_reset = bool((cap.get("result") or {}).get("ok"))
@@ -1042,6 +1043,17 @@ Reply with ONLY a JSON array of ops, e.g.
                 spent += 1
                 continue
             sig1 = self._snapshot(cur)
+            here_now = self._where(cur)
+            self._stuck_in[here_now] = self._stuck_in.get(here_now, 0) + 1
+            stuck_note = ""
+            if self._stuck_in.get(here_now, 0) >= 3:
+                stuck_note = (
+                    f"\n{self._stuck_in[here_now]} rounds in this same area "
+                    f"have not moved DONE_WHEN. Whatever sets it may not be "
+                    f"HERE. Events can be triggered by TRAVELLING (walking "
+                    f"out along a road or path) rather than by entering a "
+                    f"building or talking to someone. Consider leaving and "
+                    f"taking an UNTRIED map edge or door.")
             loop_note = ""
             had_blackout = any("blackout" in t for t in trace)
             if (sig1[0], sig1[4], sig1[5]) == (sig0[0], sig0[4], sig0[5]):
@@ -1104,7 +1116,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"{len(cur.get('party') or [])}. Your next macro "
                         f"CONTINUES from here — author only the REMAINING "
                         f"steps, do not repeat ones that already took effect."
-                        + loop_note
+                        + loop_note + stuck_note
                         + open_prompt
                         + self.exploration_text(cur, self._target_key(sg))
                         + (("\nWarps you can currently WALK TO from here: "
