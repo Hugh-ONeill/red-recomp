@@ -288,11 +288,81 @@
       "no_verify": true,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock24",
+        "run": "brock26",
         "via": "escalation",
-        "n_ops": 11,
-        "note": "macro cleared 2026-08-11 for re-distill with when-guards (position-blind replay broke replay1/2)"
-      }
+        "n_ops": 10
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        }
+      ]
     },
     {
       "id": "heal_before_forest",
@@ -303,11 +373,38 @@
       "escalation_rounds": 5,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock24",
+        "run": "brock26",
         "via": "escalation",
-        "n_ops": 4,
-        "note": "macro cleared 2026-08-11 for re-distill with when-guards (position-blind replay broke replay1/2)"
-      }
+        "n_ops": 4
+      },
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 25,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANPOKECENTER_NURSE",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ]
     },
     {
       "id": "go_to_route_2",
