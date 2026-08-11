@@ -277,8 +277,13 @@ class Executor:
         self.log("battle_start", subgoal=subgoal["id"], policy=name)
         obs = BATTLE_POLICIES[name](self.b, obs, self.log,
                                     self.max_battle_turns)
-        # spec-rule field heal after the battle (no turn cost): the model's
-        # rule decides when a potion beats walking on at low HP
+        # spec-rule field cure/heal after the battle (no turn cost): the
+        # model's rules decide when an item beats walking on. Cure first —
+        # poison keeps chipping until it is.
+        item = battle_policy.should_field_cure(obs, ACTIVE_SPEC)
+        if item:
+            self.log("field_cure", subgoal=subgoal["id"], item=item)
+            obs = self._send_safe("use_item", item=item) or obs
         item = battle_policy.should_field_heal(obs, ACTIVE_SPEC)
         if item:
             self.log("field_heal", subgoal=subgoal["id"], item=item)

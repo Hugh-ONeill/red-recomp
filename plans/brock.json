@@ -235,17 +235,17 @@
       }
     },
     {
-      "id": "buy_potions",
-      "goal_text": "Buy 5 POTIONs at the Viridian City Mart (the shop building in Viridian City): go there and buy from the clerk. You have about 3000 money; a POTION costs 300.",
+      "id": "buy_status_heals",
+      "goal_text": "Buy status-heal items at the Viridian City Mart (it sells no Potions \u2014 no HP items are for sale before Pewter): buy 3 ANTIDOTE and 2 PARLYZ_HEAL from the clerk. You have about 3000 money.",
       "done_when": {
         "has_item": {
-          "POTION": 4
+          "ANTIDOTE": 2
         }
       },
       "escalation_rounds": 6,
       "macro_provenance": {
         "authored_by": "hand-seeded-subgoal",
-        "note": "items layer 2026-08-11: no in-forest healing exists and the model policy's flee trade arrives chipped (brock30); macro left for escalation to author with the buy op"
+        "note": "items layer: Viridian stocks POKE_BALL/ANTIDOTE/PARLYZ_HEAL/BURN_HEAL only \u2014 poison is the forest chip vector, so status defense here; POTIONs are Pewter's buy (before Brock)"
       }
     },
     {
@@ -523,6 +523,20 @@
         "run": "brock24",
         "via": "escalation",
         "n_ops": 5
+      }
+    },
+    {
+      "id": "buy_pewter_potions",
+      "goal_text": "Buy 5 POTIONs at the Pewter City Mart before challenging the gym: find the mart building in Pewter City and buy from the clerk.",
+      "done_when": {
+        "has_item": {
+          "POTION": 4
+        }
+      },
+      "escalation_rounds": 6,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "Pewter is the first mart that sells POTION; stock up before Brock"
       }
     },
     {

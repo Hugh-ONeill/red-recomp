@@ -64,7 +64,11 @@ DSL_DOC = """SPEC DSL (JSON object; every key optional; no other keys):
   field_heal: null or {"item": "POTION", "hp_below": 0.0-1.0}
     (after a battle ends while traveling: if own hp fraction is below
      hp_below and the item is in the bag, use it in the FIELD — no turn
-     cost — before walking on)"""
+     cost — before walking on)
+  field_cure: list of {"status": "PSN"|"PAR"|"BRN"|"SLP"|"FRZ",
+                       "item": "ANTIDOTE"}
+    (after a battle: cure that status with that item if the bag has one —
+     poison keeps draining HP every few steps until cured)"""
 
 CONTEXT = """THE RUN this policy plays (one Squirtle, no items, no switches):
   - Rival fight at L5: foe Bulbasaur L5 (Tackle/Growl). Our moves: TACKLE
@@ -74,11 +78,12 @@ CONTEXT = """THE RUN this policy plays (one Squirtle, no items, no switches):
     grind battles are 'fight' intent — fleeing them starves XP.
   - Viridian Forest traversal: wild Weedle/Kakuna/Caterpie/Metapod L3-6
     plus unavoidable Bug Catcher trainers (Weedle/Caterpie/Kakuna L6-9).
-    Poison Sting can poison; there is NO Pokemon Center mid-forest — but
-    the plan buys ~5 POTIONs (20 HP each) before entering. A run that
-    enters a trainer's sight at low HP with unspent potions is the #1
-    recorded death (a potion between fights costs nothing; in a fight it
-    costs the turn).
+    Poison Sting can poison, and poison drains HP as you walk. NO HP items
+    are for sale before Pewter: entering the forest the bag holds
+    ANTIDOTEs and PARLYZ_HEALs (Viridian's stock), NOT potions. POTIONs
+    (20 HP) are bought in Pewter AFTER the forest, before Brock. Uncured
+    poison across the forest is the #1 recorded death; for Brock, potions
+    in the bag go unused unless your rules spend them.
   - Pewter Gym: trainer (Diglett/Sandshrew L11) then BROCK: Geodude L12,
     Onix L14 (Rock/Ground — weak to water). Our kit by then: TACKLE,
     TAIL_WHIP, BUBBLE (water 20bp special), maybe WITHDRAW.

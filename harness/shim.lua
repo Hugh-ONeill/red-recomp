@@ -820,13 +820,17 @@ function OPS.buy(G, c)
     ui_close_shop(G); ui_back_out(G)
     return false, "buy list never opened"
   end
-  local idx
+  local idx, sold = nil, {}
   for i, row in ipairs(ui_rows(G)) do
+    sold[#sold + 1] = tostring(row.value)
     if row.value == c.item then idx = i break end
   end
   if not idx then
     ui_close_shop(G); ui_back_out(G)
-    return false, c.item .. " is not sold here"
+    -- name the actual stock so the caller can adapt instead of retrying
+    -- blind (Viridian famously sells no POTION at all)
+    return false, c.item .. " is not sold here — this mart sells: "
+      .. table.concat(sold, ", ")
   end
   if not ui_cursor_to(G, "index", idx) then
     ui_close_shop(G); ui_back_out(G)

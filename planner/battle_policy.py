@@ -32,6 +32,9 @@ SPEC DSL v1 (all keys optional; unknown keys are validation errors):
                              after a battle ends, if own hp frac < this and
                              the item is in the bag, use it in the field
                              (no turn cost) before travel resumes
+  field_cure: [ { status: "PSN"|"PAR"|"BRN"|"SLP"|"FRZ", item: str } ]
+                             after a battle: cure the listed status with
+                             the item if the lead has it and the bag has one
 
 choose(obs, spec, ctx) -> op dict for the executor. ctx carries per-battle
 state the executor owns: {"turn": n, "used": {move: count},
@@ -57,6 +60,7 @@ DEFAULT_SPEC = {
     "flee_wild": {"when_traversal": True, "hp_below": None},
     "battle_items": [],
     "field_heal": None,
+    "field_cure": [],
 }
 
 _SPEC_KEYS = set(DEFAULT_SPEC) | {"name", "provenance"}   # provenance = metadata
@@ -126,6 +130,16 @@ def validate_spec(spec) -> list:
             if hb is not None and not (isinstance(hb, (int, float))
                                        and 0.0 <= hb <= 1.0):
                 probs.append("field_heal.hp_below in [0,1]")
+    if "field_cure" in spec:
+        if not isinstance(spec["field_cure"], list):
+            probs.append("field_cure must be a list")
+        else:
+            for i, r in enumerate(spec["field_cure"]):
+                if not isinstance(r, dict) or not r.get("item") \
+                        or r.get("status") not in ("PSN", "PAR", "BRN",
+                                                   "SLP", "FRZ"):
+                    probs.append(f"field_cure[{i}] needs status "
+                                 "PSN/PAR/BRN/SLP/FRZ and an item")
     if "flee_wild" in spec:
         fw = spec["flee_wild"]
         if not isinstance(fw, dict):
@@ -217,6 +231,26 @@ def should_field_heal(obs: dict, spec: dict | None = None) -> str | None:
     item = fh.get("item")
     bag = (obs or {}).get("bag") or {}
     return item if bag and bag.get(item, 0) > 0 else None
+
+
+def should_field_cure(obs: dict, spec: dict | None = None) -> str | None:
+    """After a battle: cure the lead's status per the spec's rules.
+    Returns the item to use, or None."""
+    spec = spec or DEFAULT_SPEC
+    if (obs or {}).get("mode") != "overworld":
+        return None
+    lead = ((obs or {}).get("party") or [{}])[0]
+    if (lead.get("hp") or 0) <= 0:
+        return None
+    status = lead.get("status")
+    if status in (None, "", "0", "NONE", "OK"):
+        return None
+    bag = (obs or {}).get("bag") or {}
+    for rule in spec.get("field_cure") or []:
+        if rule.get("status") == status and bag \
+                and bag.get(rule.get("item"), 0) > 0:
+            return rule["item"]
+    return None
 
 
 def should_flee(obs: dict, spec: dict | None = None,
