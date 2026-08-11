@@ -278,20 +278,20 @@
     },
     {
       "id": "train_to_l12",
-      "goal_text": "Train your Pokemon to level 14 by battling wild Pokemon in tall grass: from Viridian City, go to a grassy route next to town (Route 1 to the south or Route 22 to the west) and grind there.",
+      "goal_text": "Train your Pokemon to level 13 by battling wild Pokemon in tall grass: from Viridian City, go to a grassy route next to town (Route 1 to the south or Route 22 to the west) and grind there.",
       "done_when": {
-        "lead_level": 14
+        "lead_level": 13
       },
       "battle_policy": "default",
       "max_attempts": 12,
-      "escalation_rounds": 6,
+      "escalation_rounds": 8,
       "no_verify": true,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "brock27",
         "via": "escalation",
         "n_ops": 16,
-        "note": "target L12->L14 after brock27: the model policy flees traversal wilds (its own XP/HP trade), so Brock's levels must be banked in the grind"
+        "note": "target L12->L14 after brock27: the model policy flees traversal wilds (its own XP/HP trade), so Brock's levels must be banked in the grind; L14 needed 40+ toddler-wild battles and wiped on chip (brock28, 3 blackouts); L13 is the gym-measured badge knee"
       },
       "macro": [
         {
