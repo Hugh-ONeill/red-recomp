@@ -288,17 +288,24 @@
       "no_verify": true,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock27",
+        "run": "brock29",
         "via": "escalation",
-        "n_ops": 16,
-        "note": "target L12->L14 after brock27: the model policy flees traversal wilds (its own XP/HP trade), so Brock's levels must be banked in the grind; L14 needed 40+ toddler-wild battles and wiped on chip (brock28, 3 blackouts); L13 is the gym-measured badge knee"
+        "n_ops": 13
       },
       "macro": [
         {
-          "op": "cross",
-          "dir": "north",
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
           "when": {
-            "map": "PALLET_TOWN"
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
           }
         },
         {
@@ -308,10 +315,18 @@
           }
         },
         {
-          "op": "cross",
-          "dir": "north",
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
           "when": {
-            "map": "PALLET_TOWN"
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
           }
         },
         {
@@ -321,81 +336,51 @@
           }
         },
         {
-          "op": "cross",
-          "dir": "north",
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
           "when": {
-            "map": "PALLET_TOWN"
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "VIRIDIAN_CITY"
           }
         },
         {
           "op": "grind",
           "when": {
-            "map": "ROUTE_1"
+            "map": "ROUTE_22"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
           }
         },
         {
           "op": "cross",
-          "dir": "north",
+          "dir": "west",
           "when": {
-            "map": "PALLET_TOWN"
+            "map": "VIRIDIAN_CITY"
           }
         },
         {
           "op": "grind",
           "when": {
-            "map": "ROUTE_1"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "north",
-          "when": {
-            "map": "PALLET_TOWN"
+            "map": "ROUTE_22"
           }
         },
         {
           "op": "grind",
           "when": {
-            "map": "ROUTE_1"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "north",
-          "when": {
-            "map": "PALLET_TOWN"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_1"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "north",
-          "when": {
-            "map": "PALLET_TOWN"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_1"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "north",
-          "when": {
-            "map": "PALLET_TOWN"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_1"
+            "map": "ROUTE_22"
           }
         }
       ]
@@ -409,16 +394,16 @@
       "escalation_rounds": 5,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock27",
+        "run": "brock29",
         "via": "escalation",
         "n_ops": 4
       },
       "macro": [
         {
           "op": "cross",
-          "dir": "north",
+          "dir": "east",
           "when": {
-            "map": "ROUTE_1"
+            "map": "ROUTE_22"
           }
         },
         {
@@ -578,17 +563,25 @@
       "escalation_rounds": 4,
       "macro": [
         {
-          "op": "interact",
-          "name": "PEWTERGYM_BROCK"
+          "op": "use_warp",
+          "x": 1,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
         },
         {
-          "op": "interact",
-          "name": "PEWTERGYM_BROCK"
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
         }
       ],
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock24",
+        "run": "brock29",
         "via": "escalation",
         "n_ops": 2
       }
