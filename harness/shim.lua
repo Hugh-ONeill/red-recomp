@@ -783,6 +783,14 @@ local function ui_shop_up(G) return ui_is_menu(G) or ui_is_list(G) end
 
 function OPS.buy(G, c)
   if not (c.item and c.count) then return false, "buy needs item, count" end
+  -- TARGET semantics: own c.count total, not "c.count more". Escalation
+  -- rounds carry state forward and re-propose their macros — with buy-more
+  -- semantics every retry SPENT REAL MONEY (brock31 walked into Pewter
+  -- with 127 of 3000 left and could not afford a single POTION).
+  local have0 = bag_count(G, c.item)
+  if have0 >= c.count then
+    return true, ("already have %s x%d"):format(c.item, have0)
+  end
   -- Tolerate an already-open shop: the model often interacts the clerk
   -- itself first (its macro left the greeting/menu on the stack and the
   -- old strict not-in-overworld check failed the whole purchase). Ride
@@ -841,9 +849,10 @@ function OPS.buy(G, c)
   U.tap(G, "a"); U.wait(6)
   if not ui_press_until(G, ui_is_qty, "a", 20) then
     ui_close_shop(G); ui_back_out(G)
-    return false, "no quantity box opened"
+    return false, ("no quantity box opened (money: %d — not enough?)")
+      :format((G.save and G.save.money) or 0)
   end
-  local want = math.min(c.count, ui_top(G).max or c.count)
+  local want = math.min(c.count - have0, ui_top(G).max or c.count)
   if not ui_qty_to(G, want) then
     ui_close_shop(G); ui_back_out(G)
     return false, "couldn't set the quantity"

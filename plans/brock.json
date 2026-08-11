@@ -244,9 +244,51 @@
       },
       "escalation_rounds": 6,
       "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "items layer: Viridian stocks POKE_BALL/ANTIDOTE/PARLYZ_HEAL/BURN_HEAL only \u2014 poison is the forest chip vector, so status defense here; POTIONs are Pewter's buy (before Brock)"
-      }
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock31",
+        "via": "escalation",
+        "n_ops": 5
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11,
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 29,
+          "y": 19,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "buy",
+          "item": "ANTIDOTE",
+          "count": 3,
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
+        }
+      ]
     },
     {
       "id": "heal_at_viridian_center",
@@ -257,32 +299,33 @@
       "escalation_rounds": 5,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock18",
+        "run": "brock31",
         "via": "escalation",
-        "n_ops": 6
+        "n_ops": 4
       },
       "macro": [
         {
           "op": "use_warp",
-          "x": 4,
-          "y": 11
-        },
-        {
-          "op": "cross",
-          "dir": "north"
-        },
-        {
-          "op": "cross",
-          "dir": "north"
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
         },
         {
           "op": "use_warp",
           "x": 23,
-          "y": 25
+          "y": 25,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
         },
         {
           "op": "interact",
-          "name": "VIRIDIANPOKECENTER_NURSE"
+          "name": "VIRIDIANPOKECENTER_NURSE",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
         },
         {
           "op": "menu",
@@ -302,24 +345,24 @@
       "no_verify": true,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock30",
+        "run": "brock31",
         "via": "escalation",
-        "n_ops": 9
+        "n_ops": 18
       },
       "macro": [
         {
           "op": "use_warp",
-          "x": 4,
-          "y": 11,
+          "x": 3,
+          "y": 7,
           "when": {
-            "map": "OAKS_LAB"
+            "map": "VIRIDIAN_POKECENTER"
           }
         },
         {
           "op": "cross",
-          "dir": "north",
+          "dir": "south",
           "when": {
-            "map": "PALLET_TOWN"
+            "map": "VIRIDIAN_CITY"
           }
         },
         {
@@ -329,10 +372,18 @@
           }
         },
         {
-          "op": "cross",
-          "dir": "north",
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
           "when": {
-            "map": "PALLET_TOWN"
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
           }
         },
         {
@@ -342,29 +393,87 @@
           }
         },
         {
-          "op": "cross",
-          "dir": "north",
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
           "when": {
-            "map": "PALLET_TOWN"
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "VIRIDIAN_CITY"
           }
         },
         {
           "op": "grind",
           "when": {
-            "map": "ROUTE_1"
+            "map": "ROUTE_22"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
           }
         },
         {
           "op": "cross",
           "dir": "north",
           "when": {
-            "map": "PALLET_TOWN"
+            "map": "VIRIDIAN_CITY"
           }
         },
         {
           "op": "grind",
           "when": {
-            "map": "ROUTE_1"
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_2"
           }
         }
       ]
@@ -378,24 +487,16 @@
       "escalation_rounds": 5,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock28",
+        "run": "brock31",
         "via": "escalation",
-        "n_ops": 5
+        "n_ops": 4
       },
       "macro": [
         {
-          "op": "use_warp",
-          "x": 4,
-          "y": 13,
-          "when": {
-            "map": "PEWTER_GYM"
-          }
-        },
-        {
           "op": "cross",
-          "dir": "north",
+          "dir": "south",
           "when": {
-            "map": "ROUTE_1"
+            "map": "ROUTE_2"
           }
         },
         {
