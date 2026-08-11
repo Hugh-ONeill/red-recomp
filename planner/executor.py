@@ -447,17 +447,24 @@ class Executor:
         count: a town's road out is the exit an event most often hides on."""
         m = (obs or {}).get("map") or {}
         taken = self.explored.get(self._where(obs), {}) or {}
+        seen_maps = {a.split("|")[0] for a in self.visits}
         out = []
         for w in (m.get("warps") or []):
             if not w.get("reachable"):
                 continue
             k = f"{w.get('x')},{w.get('y')}"
             if k not in taken:
-                out.append(f"({k})->{w.get('dest')}")
+                out.append((w.get("dest") in seen_maps,
+                            f"({k})->{w.get('dest')}"))
         for d, t in (m.get("connections") or {}).items():
             if d not in taken:
-                out.append(f"walk {d} -> {t}")
-        return out
+                out.append((t in seen_maps, f"walk {d} -> {t}"))
+        # FRONTIER FIRST: an exit into a map never visited can teach
+        # something; one back into a map already seen mostly cannot. Pallet's
+        # buildings kept winning over the road north purely by listing order,
+        # and the road is where the trigger was.
+        out.sort(key=lambda p: p[0])
+        return [t for _, t in out]
 
     def exploration_text(self, obs, target: str = "") -> str:
         """Untried vs already-taken exits from where we stand."""
