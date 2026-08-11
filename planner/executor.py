@@ -735,12 +735,26 @@ Reply with ONLY a JSON array of ops, e.g.
                 back = (step.get("x"), step.get("y")) == self._arrived[1]
                 if not back:
                     # doorways come in TWIN tiles leading to the same place
-                    # (gates, building fronts): refusing only the exact tile
-                    # let the run alternate between them and bounce anyway
-                    known = (self.explored.get(self._where(obs), {})
-                             or {}).get(f"{step.get('x')},{step.get('y')}")
-                    back = bool(known and self._came_from
-                                and known.get("to") == self._came_from)
+                    # (gates, building fronts). The obs already states each
+                    # warp's destination MAP, so we do not need to have
+                    # walked the twin first — checking only the learned
+                    # graph let a first-time twin through, which is how the
+                    # run kept re-entering Viridian Forest from its north
+                    # gate instead of stepping out to Route 2.
+                    dest_map = None
+                    for w in ((obs.get("map") or {}).get("warps") or []):
+                        if (w.get("x"), w.get("y")) == (step.get("x"),
+                                                        step.get("y")):
+                            dest_map = w.get("dest")
+                            break
+                    prev_map = (self._came_from or "").split("|")[0]
+                    back = bool(dest_map and prev_map
+                                and dest_map == prev_map)
+                    if not back:
+                        known = (self.explored.get(self._where(obs), {})
+                                 or {}).get(f"{step.get('x')},{step.get('y')}")
+                        back = bool(known and self._came_from
+                                    and known.get("to") == self._came_from)
             if back and self._reversals < 2:
                 self._reversals += 1
                 trace.append(
