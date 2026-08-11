@@ -1178,7 +1178,14 @@ Reply with ONLY a JSON array of ops, e.g.
                 live = [o.get("name") for o in
                         ((cur.get("map") or {}).get("objects") or [])
                         if o.get("reachable") and o.get("name") not in _tried]
-            if unreachable and cur and live:
+            # REDO suppresses the done-check on purpose (its job is to
+            # relocate, not to satisfy the goal), so every redo round looks
+            # like a failure even standing on the answer. Recording proofs
+            # from that produced "map:PALLET_TOWN is unreachable from
+            # PALLET_TOWN" — self-contradictory, and persisted across runs.
+            if redo:
+                pass
+            elif unreachable and cur and live:
                 trace.append(
                     f"Do NOT conclude this area is a dead end yet: you can "
                     f"reach {len(live)} thing(s) here you have never "
