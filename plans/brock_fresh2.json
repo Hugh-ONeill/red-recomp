@@ -1,0 +1,218 @@
+{
+  "goal": "Get the Boulder Badge from Brock in Pewter City",
+  "subgoals": [
+    {
+      "id": "go_downstairs",
+      "goal_text": "Go downstairs from the bedroom to the first floor.",
+      "done_when": {
+        "map": "REDS_HOUSE_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_house",
+      "goal_text": "Leave the house and enter Pallet Town.",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_oaks_lab",
+      "goal_text": "Go to Professor Oak's lab.",
+      "done_when": {
+        "map": "OAKS_LAB"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "wait_for_oak_intro",
+      "goal_text": "Talk to Professor Oak and wait for him to finish his introduction so you can choose a Pokemon.",
+      "done_when": {
+        "flag": "EVENT_OAK_ASKED_TO_CHOOSE_MON"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "pick_starter",
+      "goal_text": "Choose your starter Pokemon from the Poke Balls on the table.",
+      "done_when": {
+        "flag": "EVENT_GOT_STARTER"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "battle_rival",
+      "goal_text": "Battle your rival in the lab.",
+      "done_when": {
+        "flag": "EVENT_BATTLED_RIVAL_IN_OAKS_LAB"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_lab_to_pallet",
+      "goal_text": "Leave the lab and return to Pallet Town.",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_1",
+      "goal_text": "Travel north from Pallet Town onto Route 1.",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_viridian_city",
+      "goal_text": "Continue north through Route 1 to reach Viridian City.",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_viridian_mart",
+      "goal_text": "Enter the Viridian Mart to pick up the parcel.",
+      "done_when": {
+        "map": "VIRIDIAN_MART"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_oaks_parcel",
+      "goal_text": "Interact with the counter to receive Oak's Parcel.",
+      "done_when": {
+        "flag": "EVENT_GOT_OAKS_PARCEL"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_mart_to_viridian",
+      "goal_text": "Leave the mart and return to Viridian City.",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "return_to_pallet",
+      "goal_text": "Travel south from Viridian City back through Route 1 to Pallet Town.",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "deliver_parcel_to_oak",
+      "goal_text": "Go back into Oak's lab and deliver the parcel to Professor Oak.",
+      "done_when": {
+        "flag": "EVENT_GOT_POKEDEX"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_lab_to_pallet_2",
+      "goal_text": "Leave the lab and return to Pallet Town.",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "buy_poke_balls",
+      "goal_text": "Go to Viridian City and buy Poke Balls at the mart so you can catch a backup Pokemon.",
+      "done_when": {
+        "has_item": {
+          "POKE_BALL": 5
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "catch_backup",
+      "goal_text": "Go to Route 1 or Route 22 and catch a second Pokemon to avoid blacking out.",
+      "done_when": {
+        "party_size": 2
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_before_forest",
+      "goal_text": "Visit the Viridian Pokemon Center to fully heal your party before heading north.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_route_2",
+      "goal_text": "Travel north from Viridian City onto Route 2.",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_viridian_forest",
+      "goal_text": "Enter the Viridian Forest.",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "train_for_brock_1",
+      "goal_text": "Battle wild Pokemon in Viridian Forest to raise your lead Pokemon's level.",
+      "done_when": {
+        "lead_level": 10
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_forest_to_pewter",
+      "goal_text": "Navigate through the forest and exit into Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "buy_potions",
+      "goal_text": "Visit the Pewter Mart to buy Potions for the upcoming gym battle.",
+      "done_when": {
+        "has_item": {
+          "POTION": 3
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_before_gym",
+      "goal_text": "Visit the Pewter Pokemon Center to ensure your party is at full health.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter City Gym.",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Battle and defeat Brock to earn the Boulder Badge.",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}
