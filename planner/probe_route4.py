@@ -99,6 +99,16 @@ def main():
     # skips the whole replay (the probe's real cost)
     r = (b.send("save_game") or {}).get("result") or {}
     print(f"\n[save on {here}] {r.get('detail')}")
+    # the save menu can linger (save_game's own close is unreliable — see
+    # its comments); clear it with B before the field probe, or map_probe
+    # answers "not in overworld" from inside a menu
+    for _ in range(12):
+        o = b.obs() or {}
+        if o.get("mode") == "overworld":
+            break
+        b.send("tap", btn="b")
+    obs = ex.settle() or {}
+    here = (obs.get("map") or {}).get("id")
     print(f"\n== probing from {here} at {obs.get('player')}")
     for side in ("east", "south"):
         r = (b.send("map_probe", dir=side) or {}).get("result") or {}
