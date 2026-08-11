@@ -1574,6 +1574,14 @@ function OPS.save_game(G)
     if t == G.overworld then break end
     U.wait(4)
   end
+  -- the write lands while "Now saving..." is still held (120 frames) — let
+  -- the auto-boxes finish before backing out, or B presses hit a box that
+  -- ignores input and the run resumes with the menu still up
+  for _ = 1, 200 do
+    local t = ui_top(G)
+    if t == G.overworld or (t and t.screenId == "StartMenu") then break end
+    U.wait(4)
+  end
   ui_back_out(G)                                  -- close the StartMenu
   if not written then
     return false, ("save file never changed (top=%s)"):format(
