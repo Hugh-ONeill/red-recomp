@@ -199,6 +199,21 @@ class Gym:
     def _lead(self, obs):
         return ((obs or {}).get("party") or [{}])[0]
 
+    def _run_or_author(self, sg) -> bool:
+        """Mirror record-config behavior inside eval trials: replay the
+        macro; on failure, escalate ONCE per eval session (in-memory) —
+        e.g. the shop leg ends inside the mart and the next subgoal's
+        macro assumes the street (itemauthor5: every trial died 'entering
+        the gym')."""
+        ok = self.ex.run_subgoal(sg)
+        if not ok and self.model and not sg.get("_esc_tried"):
+            sg["_esc_tried"] = True
+            succ, ops = self.ex.escalate(sg)
+            if succ:
+                sg["macro"] = ops
+                ok = True
+        return ok
+
     def eval_spec(self, spec: dict, k_rival: int = 6,
                   k_gauntlet: int = 3) -> dict:
         ex_mod.set_active_spec(spec)
@@ -228,24 +243,13 @@ class Gym:
             start = LOG.stat().st_size
             stopped = None
             try:
-                if self.ex.run_subgoal(self.sgs["reach_pewter_city"]):
+                if self._run_or_author(self.sgs["reach_pewter_city"]):
                     res["pewter"] += 1
                     shop = self.sgs.get("buy_pewter_potions")
                     if shop:
-                        ok2 = self.ex.run_subgoal(shop)
-                        if (not ok2 and self.model
-                                and not shop.get("_esc_tried")):
-                            # author the Pewter shopping trip once (in-
-                            # memory); later trials replay the macro. One
-                            # attempt only — a failing shop escalation
-                            # re-run every trial burned 7 model calls x15
-                            # (itemauthor4)
-                            shop["_esc_tried"] = True
-                            succ, ops = self.ex.escalate(shop)
-                            if succ:
-                                shop["macro"] = ops
-                    if self.ex.run_subgoal(self.sgs["enter_pewter_gym"]):
-                        if not self.ex.run_subgoal(self.sgs["defeat_brock"]):
+                        self._run_or_author(shop)
+                    if self._run_or_author(self.sgs["enter_pewter_gym"]):
+                        if not self._run_or_author(self.sgs["defeat_brock"]):
                             stopped = "the BROCK fight"
                     else:
                         stopped = "entering the gym"
