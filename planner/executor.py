@@ -838,6 +838,13 @@ Reply with ONLY a JSON array of ops, e.g.
                     self.distill(sg, ops)
                     ok = True
                     print(f"   distilled {sg['id']} ({len(ops)} ops)")
+            if not ok and sg.get("optional"):
+                # a shop you cannot afford is skipped, not run-fatal — the
+                # player walks on and makes do (brock39 arrived at Pewter
+                # with 140 money and died to a hard potion gate)
+                print(f"   skipped (optional): {sg['id']}")
+                self.log("subgoal_skipped_optional", subgoal=sg["id"])
+                continue
             if not ok:
                 print(f"!! FAILED: subgoal {sg['id']}")
                 self.log("plan_failed_at", subgoal=sg["id"])
