@@ -228,8 +228,44 @@ local function observe(G, seq, result)
               width = wb and wb * 2, height = hb and hb * 2 }
     if md and md.warps then
       o.map.warps = {}
+      -- reachable: can we currently WALK to that tile? On partitioned maps
+      -- (Mt Moon B1F's two sections) the right warp can be visible-but-
+      -- unreachable, and without this the model re-proposes it forever.
+      local reach = {}
+      do
+        local okc, Collision = pcall(require, "src.world.Collision")
+        local ow2, p2 = G.overworld, G.overworld.player
+        if okc and ow2 and p2 then
+          local key = function(x, y) return x .. "," .. y end
+          local seen = { [key(p2.cellX, p2.cellY)] = true }
+          local q, head = { { x = p2.cellX, y = p2.cellY } }, 1
+          while q[head] do
+            local cur = q[head]; head = head + 1
+            for dn, d in pairs(DIRS) do
+              local nx, ny = cur.x + d[1], cur.y + d[2]
+              if not seen[key(nx, ny)] then
+                local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
+                                           { __index = p2 })
+                if Collision.canMove(ow2.map, ow2.entities, probe, dn) then
+                  seen[key(nx, ny)] = true
+                  q[#q + 1] = { x = nx, y = ny }
+                else
+                  local lx, ly = ledge_landing(G, ow2.map, cur.x, cur.y, dn)
+                  if lx and not seen[key(lx, ly)] then
+                    seen[key(lx, ly)] = true
+                    q[#q + 1] = { x = lx, y = ly }
+                  end
+                end
+              end
+            end
+          end
+          reach = seen
+        end
+      end
       for i, w in ipairs(md.warps) do
-        o.map.warps[i] = { x = w.x, y = w.y, dest = w.destMap }
+        o.map.warps[i] = { x = w.x, y = w.y, dest = w.destMap,
+                           reachable = reach[w.x .. "," .. w.y] and true
+                                       or false }
       end
     end
     -- Connections to adjacent maps (the routes/towns you reach by walking off

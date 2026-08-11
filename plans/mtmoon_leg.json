@@ -184,7 +184,7 @@
         "player_at": {
           "x": 27,
           "y": 3,
-          "radius": 10
+          "radius": 3
         }
       },
       "escalation_rounds": 10,
@@ -195,7 +195,8 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "mtleg4",
         "via": "escalation",
-        "n_ops": 1
+        "n_ops": 1,
+        "note": "mtleg5: radius 10 FALSE-PASSED from the west section \u2014 proximity is not connectivity on a partitioned floor"
       },
       "macro": [
         {
