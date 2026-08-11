@@ -1,5 +1,5 @@
 {
-  "name": "Kanto_Starter_Elite",
+  "name": "Kanto_Early_Game_Aggressive",
   "stab": 1.5,
   "accuracy_weight": true,
   "prefer_ko": true,
@@ -23,12 +23,12 @@
     {
       "item": "POTION",
       "hp_below": 0.3,
-      "max_uses": 3
+      "max_uses": 4
     }
   ],
   "field_heal": {
     "item": "POTION",
-    "hp_below": 0.5
+    "hp_below": 0.6
   },
   "field_cure": [
     {
@@ -40,9 +40,17 @@
       "item": "PARLYZ_HEAL"
     }
   ],
+  "catch": {
+    "ball": "POKE_BALL",
+    "throw_at_hp_frac": 0.3,
+    "max_balls": 5
+  },
+  "replacement": {
+    "order": "healthiest"
+  },
   "provenance": {
     "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "itemauthor6",
+    "run": "partyauthor",
     "via": "policy_author",
     "rounds": 4,
     "eval": {
@@ -52,45 +60,45 @@
       "badge": 3,
       "gauntlet_trials": 3,
       "blackouts": 0,
-      "agree": 54,
-      "scored": 75,
-      "dmg_gap": 102.0,
+      "agree": 47,
+      "scored": 67,
+      "dmg_gap": 122.0,
       "rival_detail": [
-        "W (ended 21/21 hp)",
-        "W (ended 21/21 hp)",
-        "W (ended 21/21 hp)",
-        "W (ended 21/21 hp)",
-        "W (ended 21/21 hp)",
-        "W (ended 21/21 hp)"
+        "W (ended 23/23 hp)",
+        "W (ended 23/23 hp)",
+        "W (ended 23/23 hp)",
+        "W (ended 23/23 hp)",
+        "W (ended 23/23 hp)",
+        "W (ended 23/23 hp)"
       ],
       "gauntlet_detail": [
-        "BADGE (lead ended 10/40 hp)",
-        "BADGE (lead ended 19/40 hp)",
-        "BADGE (lead ended 9/40 hp)"
+        "BADGE (lead ended 14/44 hp)",
+        "BADGE (lead ended 35/51 hp)",
+        "BADGE (lead ended 22/44 hp)"
       ]
     },
     "baseline_typed_v0": {
-      "rival_wins": 4,
+      "rival_wins": 6,
       "rival_trials": 6,
-      "pewter": 2,
-      "badge": 1,
+      "pewter": 3,
+      "badge": 3,
       "gauntlet_trials": 3,
       "blackouts": 0,
-      "agree": 32,
-      "scored": 45,
-      "dmg_gap": 47.0,
+      "agree": 36,
+      "scored": 67,
+      "dmg_gap": 101.0,
       "rival_detail": [
-        "L (ended 19/19 hp)",
-        "W (ended 21/21 hp)",
-        "L (ended 19/19 hp)",
-        "W (ended 21/21 hp)",
-        "W (ended 21/21 hp)",
-        "W (ended 21/21 hp)"
+        "W (ended 23/23 hp)",
+        "W (ended 23/23 hp)",
+        "W (ended 23/23 hp)",
+        "W (ended 23/23 hp)",
+        "W (ended 23/23 hp)",
+        "W (ended 23/23 hp)"
       ],
       "gauntlet_detail": [
-        "FAILED at the forest crossing (lead ended 33/33 hp)",
-        "BADGE (lead ended 11/39 hp)",
-        "FAILED at entering the gym (lead ended 33/33 hp)"
+        "BADGE (lead ended 22/44 hp)",
+        "BADGE (lead ended 33/51 hp)",
+        "BADGE (lead ended 22/44 hp)"
       ]
     }
   }
