@@ -288,24 +288,16 @@
       "no_verify": true,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock26",
+        "run": "brock27",
         "via": "escalation",
-        "n_ops": 10
+        "n_ops": 16
       },
       "macro": [
         {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
           "op": "cross",
-          "dir": "south",
+          "dir": "north",
           "when": {
-            "map": "VIRIDIAN_CITY"
+            "map": "PALLET_TOWN"
           }
         },
         {
@@ -315,18 +307,10 @@
           }
         },
         {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
           "op": "cross",
-          "dir": "south",
+          "dir": "north",
           "when": {
-            "map": "VIRIDIAN_CITY"
+            "map": "PALLET_TOWN"
           }
         },
         {
@@ -336,30 +320,81 @@
           }
         },
         {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
           "op": "grind",
           "when": {
             "map": "ROUTE_1"
           }
         },
         {
-          "op": "use_warp",
-          "x": 3,
-          "y": 7,
-          "when": {
-            "map": "VIRIDIAN_POKECENTER"
-          }
-        },
-        {
           "op": "cross",
-          "dir": "west",
+          "dir": "north",
           "when": {
-            "map": "VIRIDIAN_CITY"
+            "map": "PALLET_TOWN"
           }
         },
         {
           "op": "grind",
           "when": {
-            "map": "ROUTE_22"
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_1"
           }
         }
       ]
@@ -373,16 +408,16 @@
       "escalation_rounds": 5,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock26",
+        "run": "brock27",
         "via": "escalation",
         "n_ops": 4
       },
       "macro": [
         {
           "op": "cross",
-          "dir": "east",
+          "dir": "north",
           "when": {
-            "map": "ROUTE_22"
+            "map": "ROUTE_1"
           }
         },
         {
