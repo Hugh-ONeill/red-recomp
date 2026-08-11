@@ -1,0 +1,76 @@
+{
+  "name": "Squirtle_EarlyGame_Optimized",
+  "stab": 1.5,
+  "accuracy_weight": true,
+  "prefer_ko": true,
+  "ko_margin": 1.2,
+  "avoid_status_moves": false,
+  "setup": [
+    {
+      "move": "TAIL_WHIP",
+      "max_uses": 2,
+      "first_turns": 3,
+      "min_hp_frac": 0.5,
+      "vs": "any",
+      "only_if_best_physical": true
+    }
+  ],
+  "flee_wild": {
+    "when_traversal": true,
+    "hp_below": 0.2
+  },
+  "provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "policyauthor3",
+    "via": "policy_author",
+    "rounds": 4,
+    "eval": {
+      "rival_wins": 4,
+      "rival_trials": 6,
+      "pewter": 3,
+      "badge": 3,
+      "gauntlet_trials": 3,
+      "blackouts": 0,
+      "agree": 40,
+      "scored": 57,
+      "dmg_gap": 85.0,
+      "rival_detail": [
+        "L (ended 20/20 hp)",
+        "L (ended 20/20 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)"
+      ],
+      "gauntlet_detail": [
+        "BADGE (lead ended 19/42 hp)",
+        "BADGE (lead ended 24/42 hp)",
+        "BADGE (lead ended 16/42 hp)"
+      ]
+    },
+    "baseline_typed_v0": {
+      "rival_wins": 6,
+      "rival_trials": 6,
+      "pewter": 2,
+      "badge": 1,
+      "gauntlet_trials": 3,
+      "blackouts": 0,
+      "agree": 27,
+      "scored": 44,
+      "dmg_gap": 46.0,
+      "rival_detail": [
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)"
+      ],
+      "gauntlet_detail": [
+        "BADGE (lead ended 31/42 hp)",
+        "FAILED at the BROCK fight (lead ended 38/38 hp)",
+        "FAILED at the forest crossing (lead ended 36/36 hp)"
+      ]
+    }
+  }
+}
