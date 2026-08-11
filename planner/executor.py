@@ -616,16 +616,15 @@ class Executor:
         # shut. Picking one up costs a turn and can never hurt.
         taken_objs = self._tried_objs.get(here, set())
         loot = [o.get("name") for o in (m.get("objects") or [])
-                if o.get("kind") == "item" and o.get("reachable")
+                if o.get("reachable") and o.get("name")
                 and o.get("name") not in taken_objs]
         loot_line = ""
         if loot:
-            loot_line = (f"\nITEMS lying within reach here that you have NOT "
-                         f"picked up: {', '.join(loot[:6])}. Taking one is "
-                         f"free and always worth doing before you leave — "
-                         f"and an item sitting in a passage can be exactly "
-                         f"what is blocking it, so picking it up may open "
-                         f"the way.")
+            loot_line = (f"\nTHINGS within reach here you have NOT touched "
+                         f"yet: {', '.join(loot[:6])}. Press A on them before "
+                         f"you leave — it is free, and a thing sitting in a "
+                         f"passage can be exactly what is blocking it, so "
+                         f"interacting with it may open the way.")
         if not (untried or tried):
             if elsewhere:
                 return (warned + "\nNothing here is new, but these places "
