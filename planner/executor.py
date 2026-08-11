@@ -494,8 +494,16 @@ class Executor:
                     + "]")
             else:
                 untried.append(
-                    (f"walk {k} out of here -> {w.get('dest')}"
+                    (w.get("dest") in {a.split("|")[0] for a in self.visits},
+                     f"walk {k} out of here -> {w.get('dest')}"
                      if not k[0].isdigit() else f"({k})->{w.get('dest')}"))
+        # FRONTIER FIRST here too. _untried_exits (used by the refusal text)
+        # was ordered but THIS list is the one the model reads every round,
+        # and it was emitting doors in map order — which is how Pallet's
+        # houses kept out-ranking the road north for ~20 escalations.
+        seen_maps = {a.split("|")[0] for a in self.visits}
+        untried.sort(key=lambda p: p[0])
+        untried = [t for _, t in untried]
         been = self.visits.get(here, 0)
         warned = ""
         if been >= 2:
