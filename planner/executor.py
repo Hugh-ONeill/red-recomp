@@ -1052,7 +1052,20 @@ Reply with ONLY a JSON array of ops, e.g.
                            or "couldn't reach the warp tile" in t]
             if unreachable and cur:
                 here = self._where(cur)
-                self.note_dead_end(self._target_key(sg), here)
+                # CONFIRM against the map before calling it geography. A
+                # script can block an exit that is perfectly walkable (the
+                # rival intercepts you leaving Oak's lab), and that failure
+                # looks identical in the trace — but it does NOT change the
+                # reachability flags. Only mark when the map agrees.
+                cmap = cur.get("map") or {}
+                confirmed = any(
+                    not w.get("reachable") for w in (cmap.get("warps") or []))
+                confirmed = confirmed or any(
+                    not o.get("reachable") for o in (cmap.get("objects") or []))
+                confirmed = confirmed or any(
+                    "cannot be walked to from" in t for t in trace)
+                if confirmed:
+                    self.note_dead_end(self._target_key(sg), here)
                 objs = [o for o in ((cur.get("map") or {}).get("objects")
                                     or []) if not o.get("reachable")]
                 seam = any("cannot be walked to from" in t
