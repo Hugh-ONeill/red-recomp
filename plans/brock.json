@@ -93,8 +93,7 @@
       "id": "battle_rival_lab",
       "goal_text": "Battle your rival inside Oak's Lab.",
       "done_when": {
-        "flag": "EVENT_BATTLED_RIVAL_IN_OAKS_LAB",
-        "lead_level": 6
+        "flag": "EVENT_BATTLED_RIVAL_IN_OAKS_LAB"
       },
       "escalation_rounds": 4,
       "macro": [
@@ -107,7 +106,7 @@
       "macro_provenance": {
         "authored_by": "hand-seeded",
         "via": "fixed-lab-quirk",
-        "note": "rival battle triggers on EXIT (OaksLab door script), not on interacting the rival; battle auto-handled by policy; done_when includes lead_level 6 so a LOST fight fails fast instead of silently derailing the run (replay1)"
+        "note": "rival battle triggers on EXIT (OaksLab door script), not on interacting the rival; battle auto-handled by policy. The fight is ~coin-flip RNG at L5 and a LOSS is survivable in gen1 \u2014 the plan is LOSS-TOLERANT by design: flag-only done_when, the train_to_l12 grind absorbs the level deficit, when-guards keep downstream macros from misfiring off the loss trajectory"
       }
     },
     {
