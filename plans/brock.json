@@ -168,14 +168,17 @@
       "escalation_rounds": 4,
       "macro": [
         {
-          "op": "walk_to",
+          "op": "use_warp",
           "x": 29,
-          "y": 19
+          "y": 19,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
         }
       ],
       "macro_provenance": {
-        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
-        "run": "brock8",
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock34",
         "via": "escalation",
         "n_ops": 1
       }
@@ -345,7 +348,7 @@
       "no_verify": true,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock33",
+        "run": "brock34",
         "via": "escalation",
         "n_ops": 9
       },
@@ -355,7 +358,7 @@
           "x": 3,
           "y": 7,
           "when": {
-            "map": "VIRIDIAN_MART"
+            "map": "VIRIDIAN_POKECENTER"
           }
         },
         {
@@ -372,10 +375,18 @@
           }
         },
         {
-          "op": "cross",
-          "dir": "north",
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
           "when": {
-            "map": "PALLET_TOWN"
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
           }
         },
         {
@@ -385,29 +396,24 @@
           }
         },
         {
-          "op": "cross",
-          "dir": "north",
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
           "when": {
-            "map": "PALLET_TOWN"
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "VIRIDIAN_CITY"
           }
         },
         {
           "op": "grind",
           "when": {
-            "map": "ROUTE_1"
-          }
-        },
-        {
-          "op": "cross",
-          "dir": "north",
-          "when": {
-            "map": "PALLET_TOWN"
-          }
-        },
-        {
-          "op": "grind",
-          "when": {
-            "map": "ROUTE_1"
+            "map": "ROUTE_22"
           }
         }
       ]
@@ -421,16 +427,16 @@
       "escalation_rounds": 5,
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "brock33",
+        "run": "brock34",
         "via": "escalation",
         "n_ops": 4
       },
       "macro": [
         {
           "op": "cross",
-          "dir": "north",
+          "dir": "east",
           "when": {
-            "map": "ROUTE_1"
+            "map": "ROUTE_22"
           }
         },
         {
