@@ -242,17 +242,11 @@
       },
       "escalation_rounds": 5,
       "macro_provenance": {
-        "authored_by": "hand-seeded-subgoal",
-        "note": "attrition guard added after brock15 blacked out in Viridian Forest (no heal stop existed in the authored plan); macro left for escalation to author"
-      }
-    },
-    {
-      "id": "go_to_route_2",
-      "goal_text": "Walk north through Viridian City and Route 2 to reach the entrance of Viridian Forest.",
-      "done_when": {
-        "map": "ROUTE_2"
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock18",
+        "via": "escalation",
+        "n_ops": 6
       },
-      "escalation_rounds": 4,
       "macro": [
         {
           "op": "use_warp",
@@ -268,16 +262,45 @@
           "dir": "north"
         },
         {
+          "op": "use_warp",
+          "x": 23,
+          "y": 25
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANPOKECENTER_NURSE"
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ]
+    },
+    {
+      "id": "go_to_route_2",
+      "goal_text": "Walk north through Viridian City and Route 2 to reach the entrance of Viridian Forest.",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7
+        },
+        {
           "op": "cross",
           "dir": "north"
         }
       ],
       "macro_provenance": {
-        "authored_by": "gemma4:26b-a4b-it-q4_K_M",
-        "run": "brock11",
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "brock18",
         "via": "escalation",
-        "n_ops": 4
-      }
+        "n_ops": 2
+      },
+      "battle_policy": "traversal"
     },
     {
       "id": "enter_viridian_forest",
@@ -303,7 +326,8 @@
         "run": "brock12",
         "via": "escalation",
         "n_ops": 2
-      }
+      },
+      "battle_policy": "traversal"
     },
     {
       "id": "reach_pewter_city",
@@ -311,7 +335,8 @@
       "done_when": {
         "map": "PEWTER_CITY"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "battle_policy": "traversal"
     },
     {
       "id": "enter_pewter_gym",

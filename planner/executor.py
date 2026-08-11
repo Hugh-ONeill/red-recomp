@@ -139,12 +139,34 @@ def battle_slot1(bridge, obs, log, max_turns):
     return obs
 
 
+def battle_traversal(bridge, obs, log, max_turns):
+    """Speedrun-correct traversal default: FLEE wild battles to save HP for
+    the unavoidable trainer fights (a lone low-level starter that fights
+    every forest encounter wipes — brock15/18). Trainers block escape and
+    get the default policy; if fleeing keeps failing, fight it out."""
+    turns = 0
+    while obs and obs.get("mode") == "battle" and turns < max_turns:
+        if (obs.get("battle") or {}).get("kind") != "wild":
+            return _run_policy(battle_policy.DEFAULT_SPEC, bridge, obs, log,
+                               max_turns - turns)
+        turns += 1
+        log("battle_turn", turn=turns, op="battle_run", params={},
+            why="flee wild (traversal)")
+        obs = bridge.send("battle_run")
+        if turns >= 3 and obs and obs.get("mode") == "battle":
+            return _run_policy(battle_policy.DEFAULT_SPEC, bridge, obs, log,
+                               max_turns - turns)
+    log("battle_done", turns=turns, mode=obs.get("mode") if obs else None)
+    return obs
+
+
 BATTLE_POLICIES = {
     "default": lambda b, o, lg, mt: _run_policy(
         battle_policy.DEFAULT_SPEC, b, o, lg, mt),
     "typed_v0": lambda b, o, lg, mt: _run_policy(
         battle_policy.SPECS["typed_v0"], b, o, lg, mt),
     "slot1": battle_slot1,
+    "traversal": battle_traversal,
 }
 
 
