@@ -275,6 +275,7 @@ class Executor:
         self.explored: dict = {}
         self.dead_ends: dict = {}   # subgoal id -> {region: failures}
         self.visits: dict = {}      # region -> times arrived
+        self.frontier: dict = {}    # region -> every exit visible from it
         self._arrived = None        # (region, (x,y)) — the door we came in by
         self._reversals = 0
         self._dead_visits = 0
@@ -289,6 +290,7 @@ class Executor:
         self.t0 = time.time()
 
     def _note(self, obs):
+        self.note_frontier(obs)
         m = (obs or {}).get("map") or {}
         if m.get("id") and (m.get("connections") or m.get("warps")):
             e = self.atlas.setdefault(m["id"], {})
@@ -312,21 +314,62 @@ class Executor:
             self.explored = data.get("explored", {})
             self.dead_ends = data.get("dead_ends", {})
             self.visits = data.get("visits", {})
+            self.frontier = data.get("frontier", {})
             edges = sum(len(v) for v in self.explored.values())
             if edges:
                 print(f"[memory] {len(self.explored)} areas, {edges} known "
                       f"exits from previous runs")
         except (OSError, ValueError):
-            self.explored, self.dead_ends, self.visits = {}, {}, {}
+            self.explored, self.dead_ends = {}, {}
+            self.visits, self.frontier = {}, {}
 
     def _save_memory(self):
         try:
             self.MEMORY.write_text(json.dumps(
                 {"explored": self.explored, "dead_ends": self.dead_ends,
-                 "visits": self.visits},
+                 "visits": self.visits, "frontier": self.frontier},
                 indent=1))
         except OSError:
             pass
+
+    def note_frontier(self, obs):
+        """Every exit visible from where we stand — the inventory that makes
+        'all ways out are dead' a justified conclusion rather than a guess."""
+        here = self._where(obs)
+        if "None" in here:
+            return
+        m = (obs or {}).get("map") or {}
+        keys = [f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])
+                if w.get("reachable")]
+        keys += list((m.get("connections") or {}).keys())
+        if keys:
+            self.frontier[here] = sorted(set(keys))
+
+    def dead_for(self, target: str, region: str, _seen=None, depth=4) -> int:
+        """Is this region hopeless for that target — directly, or because
+        every exit from it leads somewhere hopeless? Computed on demand and
+        never stored: taking a fossil or shifting a boulder can open a way
+        that was shut, and a cached inference outlives the wall it rests on."""
+        direct = (self.dead_ends.get(target, {}) or {}).get(region, 0)
+        if direct:
+            return direct
+        if depth <= 0:
+            return 0
+        _seen = _seen or set()
+        if region in _seen:
+            return 0
+        exits = self.frontier.get(region)
+        taken = self.explored.get(region, {})
+        if not exits or any(k not in taken for k in exits):
+            return 0          # untried ways out remain: not proven hopeless
+        _seen = _seen | {region}
+        for k in exits:
+            dest = taken[k]["to"]
+            if dest == region:
+                continue
+            if not self.dead_for(target, dest, _seen, depth - 1):
+                return 0      # one live route out is enough
+        return 1              # every way out leads somewhere hopeless
 
     def note_dead_end(self, sg_id: str, region: str):
         """This area could not achieve that subgoal — remember it."""
@@ -389,7 +432,7 @@ class Executor:
             k = f"{w.get('x')},{w.get('y')}"
             if k in taken:
                 dest = taken[k]["to"]
-                bad = (self.dead_ends.get(target, {}) or {}).get(dest, 0)
+                bad = self.dead_for(target, dest)
                 tried.append(
                     f"({k}) -> {dest} [taken {taken[k]['n']}x"
                     + (f"; that area is a KNOWN DEAD END for this goal, "
@@ -631,8 +674,8 @@ Reply with ONLY a JSON array of ops, e.g.
             if op == "use_warp":
                 known = (self.explored.get(self._where(obs), {}) or {}).get(
                     f"{step.get('x')},{step.get('y')}")
-                bad = (self.dead_ends.get(self._target_key(sg), {})
-                       or {}).get((known or {}).get("to", ""), 0)
+                bad = self.dead_for(self._target_key(sg),
+                                    (known or {}).get("to", ""))
                 if bad and self._dead_visits < 2:
                     self._dead_visits += 1
                     trace.append(
@@ -722,8 +765,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # other moment we can check — and it also teaches the edge,
                 # so next time the exit itself carries the warning.
                 land = self._where(obs)
-                bad = (self.dead_ends.get(self._target_key(sg), {})
-                       or {}).get(land, 0)
+                bad = self.dead_for(self._target_key(sg), land)
                 if bad:
                     trace.append(
                         f"ARRIVED IN A KNOWN DEAD END: {land} — this goal has "
@@ -880,8 +922,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 cur_obs = self.settle() or {}
                 region = (cur_obs.get("map") or {}).get("region")
                 land = self._where(cur_obs)
-                failed_here = (self.dead_ends.get(blocked_target, {})
-                               or {}).get(land, 0)
+                failed_here = self.dead_for(blocked_target, land)
                 if failed_here:
                     ok = False
                     trace.append(
