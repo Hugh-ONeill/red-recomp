@@ -609,13 +609,30 @@ class Executor:
             left = [e for e in exits if e not in done_x]
             if left:
                 elsewhere.append(f"{region} ({', '.join(sorted(left))})")
+        # FIELD ITEMS within reach. Computed BEFORE the early return: a
+        # dead-end room with no listed exits is exactly where a blocking
+        # item sits. pure30 beat the Mt Moon nerd beside two reachable
+        # fossils, left without touching either, and the corridor stayed
+        # shut. Picking one up costs a turn and can never hurt.
+        taken_objs = self._tried_objs.get(here, set())
+        loot = [o.get("name") for o in (m.get("objects") or [])
+                if o.get("kind") == "item" and o.get("reachable")
+                and o.get("name") not in taken_objs]
+        loot_line = ""
+        if loot:
+            loot_line = (f"\nITEMS lying within reach here that you have NOT "
+                         f"picked up: {', '.join(loot[:6])}. Taking one is "
+                         f"free and always worth doing before you leave — "
+                         f"and an item sitting in a passage can be exactly "
+                         f"what is blocking it, so picking it up may open "
+                         f"the way.")
         if not (untried or tried):
             if elsewhere:
                 return (warned + "\nNothing here is new, but these places "
                         "you have already been still have ways you have "
                         "NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
-                        + ". Go back to one and take it.")
-            return warned
+                        + ". Go back to one and take it." + loot_line)
+            return warned + loot_line
         out = warned + "\nEXITS FROM HERE — "
         out += ("UNTRIED (prefer these, they are the only way to find "
                 f"anything new): {', '.join(untried)}. " if untried
@@ -627,21 +644,7 @@ class Executor:
             out += ("\nPlaces you have already been that still have ways "
                     "you have NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
                     + ".")
-        # FIELD ITEMS you are standing next to. Picking one up costs a turn
-        # and can never hurt, and an item sitting IN a passage is sometimes
-        # the thing blocking it — pure30 beat the Mt Moon nerd standing
-        # beside two reachable fossils, walked out without touching either,
-        # and the corridor it needed stayed shut.
-        taken_objs = self._tried_objs.get(here, set())
-        loot = [o.get("name") for o in (m.get("objects") or [])
-                if o.get("kind") == "item" and o.get("reachable")
-                and o.get("name") not in taken_objs]
-        if loot:
-            out += (f"\nITEMS lying within reach here that you have NOT "
-                    f"picked up: {', '.join(loot[:6])}. Taking one is free "
-                    f"and always worth doing before you leave — and an item "
-                    f"sitting in a passage can be exactly what is blocking "
-                    f"it, so picking it up may open the way.")
+        out += loot_line
         return out
 
     def _atlas_text(self) -> str:
