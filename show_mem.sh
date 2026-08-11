@@ -22,7 +22,8 @@ for area in sorted(explored, key=lambda a: -visits.get(a, 0)):
     print(f"{area}   (arrived {visits.get(area, 0)}x)")
     for exit_key, e in sorted(explored[area].items(),
                               key=lambda kv: -kv[1]["n"]):
-        print(f"    {exit_key:>10s} -> {e['to']:<26s} taken {e['n']}x")
+        print(f"    [{area}] {exit_key:>8s} -> {e['to']:<26s} "
+              f"taken {e['n']}x")
 
 lonely = [a for a in visits if a not in explored]
 for area in lonely:
