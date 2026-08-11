@@ -52,14 +52,22 @@ def main():
     # give it escalation (pure replay stalled on Route 3, chain-probe 1)
     ex = ex_mod.Executor(b, run_id="probe4", can_escalate=True,
                          model="gemma4:31b-it-q4_K_M")
-    ex_mod.bootstrap(b)
+    save = (Path.home() / ".local/share/love/pokemon-love2d/saves/red"
+            / "slot1.lua")
+    ex_mod.bootstrap(b, cont=save.exists())
+    print(f"[boot] {'continued from save' if save.exists() else 'new game'}: "
+          f"{(b.obs() or {}).get('map', {}).get('id')}")
 
     for plan_path in (REPO / "plans/brock.json", REPO / "plans/mtmoon.json"):
         plan = json.loads(plan_path.read_text())
-        print(f"== replaying {plan_path.name}")
+        print(f"== {plan_path.name}")
         for sg in plan["subgoals"]:
             if sg["id"] in SKIP:
                 continue
+            obs = ex.settle() or {}
+            if (obs.get("map") or {}).get("id") == "ROUTE_4":
+                print("   reached ROUTE_4 — stopping to probe")
+                break
             ex.plan, ex.plan_path = plan, None
             ok = ex.run_subgoal(sg) if sg.get("macro") else False
             if not ok:
@@ -67,12 +75,16 @@ def main():
                 if ok:
                     sg["macro"] = ops
             print(f"   {sg['id']}: {'ok' if ok else 'FAILED'}")
-            if not ok and sg["id"] not in ("buy_pewter_potions",):
-                obs = ex.settle() or {}
-                print(f"   stopped: map={(obs.get('map') or {}).get('id')} "
-                      f"mode={obs.get('mode')} "
-                      f"text={(obs.get('recent_text') or '')[:60]!r}")
-                break
+            if ok:
+                # RATCHET: save after every success so the next probe
+                # resumes here instead of replaying the route
+                r = (ex._send_safe("save_game") or {}).get("result") or {}
+                if not r.get("ok"):
+                    print(f"      (save: {r.get('detail')})")
+        else:
+            continue
+        break
+
 
     obs = ex.settle() or {}
     here = (obs.get("map") or {}).get("id")
