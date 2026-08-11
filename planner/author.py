@@ -61,6 +61,30 @@ ROUTE_MAPS = ["REDS_HOUSE_2F", "REDS_HOUSE_1F", "PALLET_TOWN", "OAKS_LAB",
               "PEWTER_POKECENTER", "PEWTER_GYM",
               "ROUTE_3", "MT_MOON_POKECENTER", "ROUTE_4",
               "MT_MOON_1F", "MT_MOON_B1F", "MT_MOON_B2F", "CERULEAN_CITY"]
+# EXACT item ids, for the same reason the map/flag lists exist: the model
+# knows Poke Balls and Potions are things, it cannot know the engine spells
+# them POKE_BALL (underscore) and PARLYZ_HEAL. Left to guess it wrote
+# "POKEBALL", which has_item can never match, so the subgoal was
+# unsatisfiable from the moment it was written.
+KEY_ITEMS = {
+    "POKE_BALL": "a Poke Ball (NOTE the underscore) — needed to catch",
+    "POTION": "heals 20 HP out of battle or in it",
+    "ANTIDOTE": "cures poison",
+    "PARLYZ_HEAL": "cures paralysis",
+    "BURN_HEAL": "cures a burn",
+    "ESCAPE_ROPE": "warps you out of a cave",
+    "REPEL": "keeps weak wild encounters away for a while",
+}
+# What each shop actually stocks. A has_item goal placed at a counter that
+# does not sell the item is unsatisfiable no matter how well it is played:
+# shop_for_potions at the VIRIDIAN mart failed every single run.
+SHOP_STOCK = {
+    "VIRIDIAN_MART": "POKE_BALL, ANTIDOTE, PARLYZ_HEAL, BURN_HEAL "
+                     "(NO Potions — do not put a POTION goal here)",
+    "PEWTER_MART": "POKE_BALL, POTION, ESCAPE_ROPE, ANTIDOTE, BURN_HEAL, "
+                   "AWAKENING",
+}
+
 KEY_FLAGS = {
     "EVENT_OAK_ASKED_TO_CHOOSE_MON": "Oak finished his intro and the starter "
         "Poke Balls are now active to choose from (use this to mark 'reached "
@@ -145,6 +169,11 @@ def build_prompt(goal: str, start: str | None = None) -> str:
         "predicate when one fits, but these mark events that are not just a "
         "map change):\n"
         + "\n".join(f"  {k}: {v}" for k, v in KEY_FLAGS.items())
+        + "\n\nITEM IDs (use exact strings in has_item):\n"
+        + "\n".join(f"  {k}: {v}" for k, v in KEY_ITEMS.items())
+        + "\n\nWHAT EACH SHOP SELLS — a has_item goal at a counter that "
+          "does not stock the item can never be satisfied:\n"
+        + "\n".join(f"  {k}: {v}" for k, v in SHOP_STOCK.items())
         + f"\n\nBADGES: {', '.join(BADGES)}\n\n"
         "Author the ordered subgoal list now. Remember the granularity rule.")
 
@@ -180,6 +209,11 @@ def validate(plan: dict) -> list:
                 probs.append(f"{tag} ({sid}) unknown predicate '{k}'")
             elif k == "map" and v not in ROUTE_MAPS:
                 probs.append(f"{tag} ({sid}) map '{v}' not in the route list")
+            elif k == "has_item" and isinstance(v, dict):
+                for item in v:
+                    if item not in KEY_ITEMS:
+                        probs.append(f"{sg.get('id')}: unknown item {item!r} "
+                                     f"(valid: {', '.join(KEY_ITEMS)})")
             elif k == "flag" and v not in KEY_FLAGS:
                 probs.append(f"{tag} ({sid}) flag '{v}' not in the vocabulary")
             elif k == "badge" and v not in BADGES:
