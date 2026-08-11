@@ -126,6 +126,9 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
 # set by main() when --score-battles is passed: score every battle turn
 # against the oracle without changing what the policy plays.
 SCORE_BATTLES = False
+# distill-then-verify: replay a successful macro from the subgoal's start
+# checkpoint before committing it. Off by default — see escalate().
+VERIFY_MACROS = False
 
 
 # the spec every named policy resolves through; --policy-spec swaps in a
@@ -830,7 +833,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # rounds' partial progress concatenated) from the start
                 # checkpoint; commit only if they reach done_when again.
                 restored = False
-                if can_reset:
+                if can_reset and VERIFY_MACROS:
                     rr = self._send_safe("checkpoint_restore", token="esc") or {}
                     restored = bool((rr.get("result") or {}).get("ok"))
                 if restored:
@@ -1186,6 +1189,11 @@ def main():
                     help="in-game SAVE after each completed plan (player-"
                          "action persistence for chained legs)")
     ap.add_argument("--max-battle-turns", type=int, default=40)
+    ap.add_argument("--verify-macros", action="store_true",
+                    help="replay each successful macro from a restored "
+                         "checkpoint before committing it (authoring "
+                         "hygiene; visibly bounces the player and pollutes "
+                         "the exploration memory, so off by default)")
     ap.add_argument("--score-battles", action="store_true",
                     help="probe the oracle each battle turn and log "
                          "policy-vs-oracle agreement (does not change play)")
@@ -1204,8 +1212,9 @@ def main():
         print(f"[policy] active spec: {ACTIVE_SPEC.get('name')} "
               f"({args.policy_spec})")
 
-    global SCORE_BATTLES
+    global SCORE_BATTLES, VERIFY_MACROS
     SCORE_BATTLES = args.score_battles
+    VERIFY_MACROS = args.verify_macros
     b = Bridge()
     if args.bootstrap:
         bootstrap(b, cont=args.cont)
