@@ -1145,7 +1145,28 @@ Reply with ONLY a JSON array of ops, e.g.
                            if "no reachable tile adjacent" in t
                            or "cannot be walked to from" in t
                            or "couldn't reach the warp tile" in t]
-            if unreachable and cur:
+            # An object you can REACH but have not TOUCHED can be the
+            # blocker itself — Mt Moon's fossils sit in the corridor and
+            # taking one clears it. Proving a room barren while such an
+            # object is still un-clicked is not a proof at all: pure14
+            # called B2F hopeless with a reachable fossil untouched, so the
+            # corridor stayed shut and the super nerd was never found.
+            # Same law the transitive pruner obeys — geometry can change.
+            live = []
+            if cur:
+                _tried = self._tried_objs.get(self._where(cur), set())
+                live = [o.get("name") for o in
+                        ((cur.get("map") or {}).get("objects") or [])
+                        if o.get("reachable") and o.get("name") not in _tried]
+            if unreachable and cur and live:
+                trace.append(
+                    f"Do NOT conclude this area is a dead end yet: you can "
+                    f"reach {len(live)} thing(s) here you have never "
+                    f"interacted with ({', '.join(live[:6])}). Something you "
+                    f"can reach but have not touched may BE the obstacle — "
+                    f"picking an item up or moving it can open a way that is "
+                    f"shut. Interact with all of them before leaving.")
+            elif unreachable and cur:
                 here = self._where(cur)
                 # CONFIRM against the map before calling it geography. A
                 # script can block an exit that is perfectly walkable (the
