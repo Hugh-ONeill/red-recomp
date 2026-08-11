@@ -466,6 +466,67 @@ class Executor:
         out.sort(key=lambda p: p[0])
         return [t for _, t in out]
 
+    def _route(self, frm: str, to: str):
+        """Shortest path over the LEARNED region graph, as (exit_key, dest)
+        hops. Only edges actually walked count — this navigates known
+        ground, it never guesses a connection."""
+        from collections import deque
+        if frm == to:
+            return []
+        seen, q = {frm}, deque([(frm, [])])
+        while q:
+            cur, path = q.popleft()
+            for key, e in (self.explored.get(cur) or {}).items():
+                nxt = e.get("to")
+                if not nxt or nxt in seen:
+                    continue
+                hop = path + [(key, nxt)]
+                if nxt == to:
+                    return hop
+                seen.add(nxt)
+                q.append((nxt, hop))
+        return None
+
+    def _route_to_frontier(self, obs, sg):
+        """Walk back to the NEAREST region that still has exits never taken.
+
+        Knowing where the unopened ladders are is useless if you cannot get
+        there: reaching MT_MOON_1F from deep in B2F is several legs and
+        escalation authors ONE leg per macro, so the model could never spend
+        the knowledge. Navigation over already-walked ground is harness work
+        (same as walk_to pathfinding inside a map) — the model still decides
+        what to do on arrival."""
+        here = self._where(obs)
+        best = None
+        for region, exits in self.frontier.items():
+            if region == here:
+                continue
+            done_x = set((self.explored.get(region) or {}).keys())
+            if not [e for e in exits if e not in done_x]:
+                continue
+            path = self._route(here, region)
+            if path is not None and (best is None or len(path) < len(best[1])):
+                best = (region, path)
+        if not best or not best[1]:
+            return None
+        region, path = best
+        for key, nxt in path:
+            if "," in key:
+                x, y = key.split(",")
+                self.b.send("use_warp", x=int(x), y=int(y))
+            else:
+                self.b.send("cross", dir=key)
+            o = self.settle()
+            if o and o.get("mode") == "battle":
+                o = self.handle_battle(sg, o)
+                o = self.settle()
+            if self._where(o) != nxt:
+                self.log("reroute_lost", subgoal=sg["id"], wanted=nxt,
+                         got=self._where(o))
+                return None
+        self.log("rerouted", subgoal=sg["id"], to=region, hops=len(path))
+        return region
+
     def _logged_exploration(self, obs, sg) -> str:
         txt = self.exploration_text(obs, self._target_key(sg))
         self.log("escalate_context", subgoal=sg["id"],
@@ -1396,6 +1457,17 @@ Reply with ONLY a JSON array of ops, e.g.
                     f"menu op to answer it (1=YES/first, 2=NO/second) — e.g. "
                     f"to accept, follow the interact with {{\"op\":\"menu\","
                     f"\"index\":1}}.")
+            # Nothing new reachable from here? Walk back to somewhere that
+            # still has unopened exits, rather than burning rounds re-reading
+            # a finished room.
+            if not self._untried_exits(cur):
+                went = self._route_to_frontier(cur, sg)
+                if went:
+                    cur = self.settle() or cur
+                    stuck_note += (
+                        f"\nYou were walked back to {went} because it still "
+                        f"has exits you have NEVER taken, and where you were "
+                        f"had none. Take one of them now.")
             feedback = ("Per-step results of your last macro:\n"
                         + "\n".join(f"  {i + 1}. {t}"
                                     for i, t in enumerate(trace))
