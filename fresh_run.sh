@@ -9,7 +9,9 @@
 # resumes the on-disk save instead of new_game.
 set -euo pipefail
 cd "$(dirname "$0")"
-setsid ./run.sh 200 &
+# RED_HEADED=1 opens a real window (run.sh --headed) and RED_SPEED sets the
+# clock: 200x is a blur to watch, 10-20x is followable by eye.
+setsid ./run.sh ${RED_HEADED:+--headed} "${RED_SPEED:-200}" &
 GAME_PID=$!
 # kill the whole process group: xvfb-run's cleanup does not reliably reach
 # love, which otherwise survives as an orphan on the dead Xvfb display
