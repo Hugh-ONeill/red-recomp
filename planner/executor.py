@@ -571,7 +571,7 @@ Reply with ONLY a JSON array of ops, e.g.
         return (p.get("x"), p.get("y"))
 
     def escalate(self, sg: dict, redo: bool = False,
-                 blocked_by: str = "") -> tuple[bool, list]:
+                 blocked_by: str = "", avoid_region: str = "") -> tuple[bool, list]:
         """SPD escalation: the model AUTHORS a candidate macro (its strength),
         the executor RUNS it with a per-step trace, and on success distills.
         On failure the DIAGNOSTIC trace (which ops did nothing / where it
@@ -686,15 +686,17 @@ Reply with ONLY a JSON array of ops, e.g.
                 # "somewhere else that also satisfies it": a couple of tiles
                 # is the same place. A real relocation crosses the map (the
                 # east half of Route 4 is ~70 cells from the west half).
-                now = self._pos(self.settle())
-                far = (redo_from[0] is not None and now[0] is not None
-                       and abs(now[0] - redo_from[0])
-                           + abs(now[1] - redo_from[1]) >= 12)
-                if not far:
+                cur_obs = self.settle() or {}
+                region = (cur_obs.get("map") or {}).get("region")
+                # the test is REGION, not distance: thin7 went back into the
+                # cave and out the SAME door — tiles away, same dead end
+                if avoid_region and region == avoid_region:
                     ok = False
-                    trace.append("(you are still in the SAME area — DONE_WHEN "
-                                 "holds but nothing has changed; you must "
-                                 "physically relocate)")
+                    trace.append(
+                        "(you are back in the SAME walkable area you started "
+                        "from — the same places are reachable, so nothing has "
+                        "changed. You must reach a DIFFERENT area: a door you "
+                        "have not used, the far side of the map.)")
             if stripped:
                 trace.insert(0, f"(note: {stripped} leading walk_to op(s) "
                              "dropped — cross/use_warp path-find on their "
@@ -974,13 +976,15 @@ Reply with ONLY a JSON array of ops, e.g.
             if (not ok and self.can_escalate and idx > 0
                     and backtracks < 2 and not sg.get("optional")):
                 prev = subgoals[idx - 1]
+                stuck_region = ((self.settle() or {}).get("map")
+                                or {}).get("region", "")
                 backtracks += 1
                 print(f"   <- backtracking: redoing {prev['id']} "
                       f"(it may have finished in the wrong place)")
                 self.log("backtrack", failed=sg["id"], redoing=prev["id"])
                 try:
                     moved, ops = self.escalate(
-                        prev, redo=True,
+                        prev, redo=True, avoid_region=stuck_region,
                         blocked_by=sg.get("goal_text", sg["id"])[:120])
                 except TimeoutError as e:
                     self.log("escalate_timeout", subgoal=prev["id"],
@@ -1000,7 +1004,7 @@ Reply with ONLY a JSON array of ops, e.g.
                                  redoing=prev["id"], attempt=backtracks)
                         try:
                             moved2, _ = self.escalate(
-                                prev, redo=True,
+                                prev, redo=True, avoid_region=stuck_region,
                                 blocked_by=sg.get("goal_text", sg["id"])[:120])
                         except TimeoutError:
                             moved2 = False
@@ -1097,6 +1101,7 @@ def main():
     for plan_path in args.plans:
         plan = json.loads(plan_path.read_text())
         ex.plan, ex.plan_path = plan, plan_path
+        ex.status(plan=plan_path.name)
         print(f"\n===== PLAN: {plan_path.name} =====")
         ok = ex.run_plan(plan)
         if not ok:

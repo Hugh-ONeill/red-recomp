@@ -230,6 +230,23 @@ local function observe(G, seq, result)
     if md and md.warps then
       o.map.warps = {}
       local reach = warp_reach(G) or {}
+      -- REGION: two positions in the same walkable component share the same
+      -- smallest reachable cell. "Did I actually get somewhere else?" is a
+      -- question about the COMPONENT, not about distance (coming out the
+      -- same cave door lands tiles away but in the same region — thin7).
+      do
+        local bx, by
+        for k in pairs(reach) do
+          local cx, cy = k:match("^(-?%d+),(-?%d+)$")
+          if cx then
+            cx, cy = tonumber(cx), tonumber(cy)
+            if not bx or cy < by or (cy == by and cx < bx) then
+              bx, by = cx, cy
+            end
+          end
+        end
+        if bx then o.map.region = bx .. "," .. by end
+      end
       for i, w in ipairs(md.warps) do
         o.map.warps[i] = { x = w.x, y = w.y, dest = w.destMap,
                            reachable = reach[w.x .. "," .. w.y] and true
