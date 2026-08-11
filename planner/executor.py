@@ -836,6 +836,7 @@ Reply with ONLY a JSON array of ops, e.g.
 
     def run_plan(self, plan: dict) -> bool:
         self.log("plan_start", goal=plan.get("goal"), escalate=self.can_escalate)
+        fails = 0
         for sg in plan["subgoals"]:
             has_macro = bool(sg.get("macro"))
             print(f"== subgoal: {sg['id']}" + ("" if has_macro else " (no macro)"))
@@ -856,6 +857,24 @@ Reply with ONLY a JSON array of ops, e.g.
                     self.distill(sg, ops)
                     ok = True
                     print(f"   distilled {sg['id']} ({len(ops)} ops)")
+            # A plan is not dead because ONE subgoal is: a side objective
+            # (the fossil fight), an unaffordable shop, or a step the world
+            # already satisfied differently should not end the run. Carry on
+            # and let the remaining subgoals judge — the plan fails when it
+            # cannot make progress at all (3 failures in a row) or when the
+            # LAST subgoal is unmet. Marking specific subgoals "optional" by
+            # hand is an inserted signal a record run cannot contain; this
+            # decides it at runtime instead.
+            if not ok and not sg.get("optional"):
+                fails += 1
+                last = sg is plan["subgoals"][-1]
+                if fails < 3 and not last:
+                    print(f"   !! {sg['id']} failed — continuing")
+                    self.log("subgoal_failed_continuing", subgoal=sg["id"],
+                             consecutive=fails)
+                    continue
+            elif ok:
+                fails = 0
             if not ok and sg.get("optional"):
                 # a shop you cannot afford is skipped, not run-fatal — the
                 # player walks on and makes do (brock39 arrived at Pewter
