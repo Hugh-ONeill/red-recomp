@@ -266,6 +266,13 @@ local function observe(G, seq, result)
     -- toggled-off objects are gone). Classified so the model can walk_to and
     -- interact with balls, NPCs, and signs instead of mashing blindly.
     o.map.objects = {}
+    local objreach = warp_reach(G) or {}
+    local function adjacent_reachable(x, y)
+      for _, d in pairs(DIRS) do
+        if objreach[(x + d[1]) .. "," .. (y + d[2])] then return true end
+      end
+      return false
+    end
     for _, npc in ipairs(G.overworld.npcs or {}) do
       local d = npc.def or {}
       local name = d.name or ""
@@ -280,6 +287,11 @@ local function observe(G, seq, result)
       o.map.objects[#o.map.objects + 1] = {
         x = npc.cellX, y = npc.cellY, kind = kind, name = name,
         facing = npc.facing,
+        -- can we actually get next to it from here? "The Super Nerd is on
+        -- this floor but not reachable from this room" is knowable on
+        -- arrival; without it the run spends 10 escalation rounds finding
+        -- out (user: "the first two ladders lead to dead-end rooms").
+        reachable = adjacent_reachable(npc.cellX, npc.cellY),
       }
     end
   elseif top and (top.enemy or top.kind) then

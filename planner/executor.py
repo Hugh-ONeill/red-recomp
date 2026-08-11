@@ -892,6 +892,21 @@ Reply with ONLY a JSON array of ops, e.g.
                          verified=False)
                 return True, progress
             cur = self.settle() or {}
+            unreachable = [t for t in trace
+                           if "no reachable tile adjacent" in t]
+            if unreachable and cur:
+                here = self._where(cur)
+                self.note_dead_end(sg["id"], here)
+                objs = [o for o in ((cur.get("map") or {}).get("objects")
+                                    or []) if not o.get("reachable")]
+                if objs:
+                    self.log("target_unreachable", subgoal=sg["id"],
+                             region=here,
+                             objects=[o.get("name") for o in objs][:5])
+                    # nothing here can achieve it: stop burning rounds
+                    print(f"   (target unreachable from {here} — "
+                          f"abandoning this area)")
+                    break
             if not cur:
                 # bridge hiccup lost the state: fall back to the subgoal start
                 self.log("escalate_state_lost", subgoal=sg["id"], round=rnd)
@@ -943,6 +958,8 @@ Reply with ONLY a JSON array of ops, e.g.
                     if tgt not in inert:
                         inert.append(tgt)
             objs = [f"{o.get('kind')}:{o.get('name')}({o.get('x')},{o.get('y')})"
+                    + ("" if o.get("reachable") else " [CANNOT REACH from "
+                       "this area — a wall or ledge is in the way]")
                     for o in (cur.get("map") or {}).get("objects", [])]
             conns = (cur.get("map") or {}).get("connections") or {}
             open_prompt = ""
