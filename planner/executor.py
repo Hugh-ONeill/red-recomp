@@ -340,10 +340,13 @@ Reply with ONLY a JSON array of ops, e.g.
         # The absolute cap bounds oscillation (A<->B crossings are each "a
         # map change" yet go nowhere).
         spent, rnd = 0, 0
+        visits: dict = {}     # round-end maps: re-entering one = circling
         while spent < rounds and rnd < rounds * 3:
             rnd += 1
             start = self.settle()
             sig0 = self._snapshot(start)
+            if rnd == 1 and sig0[0]:
+                visits[sig0[0]] = 1
             obs = model_view(start)
             atlas = "; ".join(
                 f"{m}: " + ", ".join(f"{d}->{t}" for d, t in c.items())
@@ -376,13 +379,29 @@ Reply with ONLY a JSON array of ops, e.g.
             # target a map the model has never seen — always hallucinated.
             cut = next((i for i, s in enumerate(macro)
                         if s.get("op") in ("cross", "use_warp")), None)
-            if cut is not None and cut + 1 < len(macro):
-                self.log("escalate_truncated", subgoal=sg["id"], round=rnd,
-                         kept=cut + 1, dropped=len(macro) - cut - 1)
-                macro = macro[:cut + 1]
+            stripped = 0
+            if cut is not None:
+                if cut + 1 < len(macro):
+                    self.log("escalate_truncated", subgoal=sg["id"], round=rnd,
+                             kept=cut + 1, dropped=len(macro) - cut - 1)
+                    macro = macro[:cut + 1]
+                # cross/use_warp path-find from wherever you stand; a walk_to
+                # prelude is never needed and walking onto a door mat
+                # teleports (the Pallet<->lab oscillation burned 8 rounds of
+                # go_to_route_2 on walk_to(12,11) = the lab door).
+                keep = [s for s in macro[:-1] if s.get("op") != "walk_to"]
+                stripped = len(macro) - 1 - len(keep)
+                if stripped:
+                    self.log("escalate_stripped_walkto", subgoal=sg["id"],
+                             round=rnd, dropped=stripped)
+                    macro = keep + [macro[-1]]
             self.log("escalate_proposal", subgoal=sg["id"], round=rnd,
                      macro=macro)
             ok, trace, clean = self._run_traced(sg, macro)
+            if stripped:
+                trace.insert(0, f"(note: {stripped} leading walk_to op(s) "
+                             "dropped — cross/use_warp path-find on their "
+                             "own; never use door tiles as waypoints)")
             progress.extend(clean)
             if ok:
                 # DISTILL-THEN-VERIFY: a macro is only trustworthy if it
@@ -440,8 +459,19 @@ Reply with ONLY a JSON array of ops, e.g.
                 spent += 1
                 continue
             sig1 = self._snapshot(cur)
+            loop_note = ""
             if (sig1[0], sig1[4], sig1[5]) == (sig0[0], sig0[4], sig0[5]):
                 spent += 1   # round went nowhere (same map/party/flags)
+            elif sig1[0]:
+                visits[sig1[0]] = visits.get(sig1[0], 0) + 1
+                if visits[sig1[0]] >= 2:
+                    spent += 1   # back on a map already visited: circling
+                    loop_note = (
+                        f"\nWARNING: you are going in CIRCLES — this is visit "
+                        f"#{visits[sig1[0]]} to {sig1[0]} during this subgoal. "
+                        f"Use the ATLAS to pick the direction that leads "
+                        f"toward DONE_WHEN; do not re-enter maps you just "
+                        f"left.")
             # accumulate targets that failed or did nothing, so the model is
             # told NOT to repeat them (it looped on the pokedex before).
             for t in trace:
@@ -470,6 +500,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"{len(cur.get('party') or [])}. Your next macro "
                         f"CONTINUES from here — author only the REMAINING "
                         f"steps, do not repeat ones that already took effect."
+                        + loop_note
                         + open_prompt
                         + (f"\nEdges from this map (cross that dir to reach): "
                            + ", ".join(f"{d}->{m}" for d, m in conns.items())
