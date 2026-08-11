@@ -1637,9 +1637,24 @@ Reply with ONLY a JSON array of ops, e.g.
             # from (Route 4's two halves). Re-open it in REDO mode — same
             # done_when, but it must relocate — then try this one again.
             # Harness logic, not route knowledge: it fixes the whole class.
+            # ...but only if redoing it could CHANGE anything. Backtracking
+            # into a subgoal whose condition already holds just makes it
+            # wander: exit_house (done_when map:PALLET_TOWN) was redone from
+            # inside Pallet over and over, and because REDO demands a region
+            # change it toured the houses instead. Walk back to the last
+            # subgoal that is actually unsatisfied.
+            prev = None
             if (not ok and self.can_escalate and idx > 0
                     and backtracks < 2 and not sg.get("optional")):
-                prev = subgoals[idx - 1]
+                at = self.settle() or {}
+                for j in range(idx - 1, -1, -1):
+                    if not pred_holds(subgoals[j].get("done_when") or {}, at):
+                        prev = subgoals[j]
+                        break
+                if prev is None:
+                    self.log("backtrack_skipped", failed=sg["id"],
+                             reason="every earlier subgoal already holds")
+            if prev is not None:
                 stuck_region = ((self.settle() or {}).get("map")
                                 or {}).get("region", "")
                 backtracks += 1
