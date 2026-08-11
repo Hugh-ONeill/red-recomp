@@ -100,14 +100,19 @@ class Gym:
     """Boots the game, replays the plan to capture eval checkpoints, then
     scores candidate specs with reseeded restore trials."""
 
-    def __init__(self, plan_path: Path, run_id: str):
-        self.plan = json.loads(plan_path.read_text())
-        self.sgs = {s["id"]: s for s in self.plan["subgoals"]}
+    def __init__(self, plan_path: Path, run_id: str, model: str = ""):
+        self.plan_path = plan_path
         self.run_id = run_id
+        self.model = model
         self.game = None
         self.rival_ok = False
 
+    def _load_plan(self):
+        self.plan = json.loads(self.plan_path.read_text())
+        self.sgs = {s["id"]: s for s in self.plan["subgoals"]}
+
     def boot(self):
+        self._load_plan()   # fresh copy: setup escalation mutates in-memory
         if (RUN / "obs.json").exists():
             (RUN / "obs.json").unlink()
         self.game = subprocess.Popen(
@@ -122,8 +127,11 @@ class Gym:
             raise RuntimeError("game did not come up")
         self.b = Bridge()
         ex_mod.SCORE_BATTLES = True
-        self.ex = ex_mod.Executor(self.b, plan=self.plan,
-                                  run_id=self.run_id)
+        # escalation available during SETUP only (plan_path=None: authored
+        # fixes stay in-memory, the plan file is never touched by eval)
+        self.ex = ex_mod.Executor(self.b, plan=self.plan, plan_path=None,
+                                  can_escalate=bool(self.model),
+                                  model=self.model, run_id=self.run_id)
         ex_mod.bootstrap(self.b)
 
     def shutdown(self):
@@ -143,6 +151,12 @@ class Gym:
                 self.b.send("checkpoint_capture", token="eval_gate")
                 break
             ok = self.ex.run_subgoal(sg)
+            if not ok and self.model:
+                print(f"[gym] setup: escalating {sg['id']}")
+                success, ops = self.ex.escalate(sg)
+                if success:
+                    sg["macro"] = ops   # in-memory only
+                    ok = True
             if not ok:
                 raise RuntimeError(f"setup failed at {sg['id']}")
         # verify the rival fight re-arms after a reseeded restore: some
@@ -257,10 +271,20 @@ def main():
     ap.add_argument("--run-id", default="policyauthor")
     args = ap.parse_args()
 
-    gym = Gym(args.plan, args.run_id)
-    print("[gym] booting + replaying to the eval checkpoints...")
-    gym.boot()
-    gym.prepare()
+    gym = Gym(args.plan, args.run_id, model=args.model)
+    for attempt in (1, 2):
+        try:
+            print(f"[gym] booting + replaying to the eval checkpoints "
+                  f"(attempt {attempt})...")
+            gym.boot()
+            gym.prepare()
+            break
+        except Exception as e:
+            print(f"[gym] setup attempt {attempt} failed: {e}")
+            gym.shutdown()
+            if attempt == 2:
+                raise
+            time.sleep(3)
     print(f"[gym] ready (rival fight re-armable: {gym.rival_ok})")
 
     candidates = []   # (spec, results)
