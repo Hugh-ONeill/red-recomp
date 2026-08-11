@@ -277,6 +277,7 @@ class Executor:
         self.visits: dict = {}      # region -> times arrived
         self.frontier: dict = {}    # region -> every exit visible from it
         self._arrived = None        # (region, (x,y)) — the door we came in by
+        self._came_from = None      # the region we were in a moment ago
         self._reversals = 0
         self._dead_visits = 0
         self._load_memory()
@@ -423,6 +424,7 @@ class Executor:
         ap = (after_obs or {}).get("player") or {}
         if ap.get("x") is not None:
             self._arrived = (dst, (ap["x"], ap["y"]))
+            self._came_from = src
             self._reversals = 0
         node = self.explored.setdefault(src, {})
         e = node.setdefault(key, {"n": 0, "to": dst})
@@ -727,10 +729,19 @@ Reply with ONLY a JSON array of ops, e.g.
             # their own side, so the run oscillated B1F<->B2F until its
             # rounds ran out. Yields after 2 refusals so a true dead end can
             # still be backed out of.
-            if (op == "use_warp" and self._arrived
-                    and self._where(obs) == self._arrived[0]
-                    and (step.get("x"), step.get("y")) == self._arrived[1]
-                    and self._reversals < 2):
+            back = False
+            if op == "use_warp" and self._arrived \
+                    and self._where(obs) == self._arrived[0]:
+                back = (step.get("x"), step.get("y")) == self._arrived[1]
+                if not back:
+                    # doorways come in TWIN tiles leading to the same place
+                    # (gates, building fronts): refusing only the exact tile
+                    # let the run alternate between them and bounce anyway
+                    known = (self.explored.get(self._where(obs), {})
+                             or {}).get(f"{step.get('x')},{step.get('y')}")
+                    back = bool(known and self._came_from
+                                and known.get("to") == self._came_from)
+            if back and self._reversals < 2:
                 self._reversals += 1
                 trace.append(
                     f"use_warp({step.get('x')},{step.get('y')}): REFUSED — "
