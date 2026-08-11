@@ -94,6 +94,9 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             for item, n in (want or {}).items():
                 if not bag or bag.get(item, 0) < n:
                     return False
+        elif key == "party_size":
+            if len(obs.get("party") or []) < want:
+                return False
         elif key == "badge":
             if want not in (obs.get("badges") or []):
                 return False
@@ -160,9 +163,26 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
     agreement — the measuring stick, which does not alter play."""
     turns = 0
     flees = 0
+    picks = 0
     ctx = {"turn": 0, "used": {}, "intent": intent,
            "journal": DAMAGE_JOURNAL}
-    while obs and obs.get("mode") == "battle" and turns < max_turns:
+    while obs and turns < max_turns:
+        if obs.get("mode") != "battle":
+            # the active mon may have fainted into the forced party pick
+            # ("Use next POKeMON?" -> party menu). With a backup alive,
+            # send the replacement the spec's rule chooses — party depth
+            # exists precisely so a lead faint is not a blackout.
+            slot = battle_policy.choose_replacement(obs, spec)
+            if (obs.get("mode") == "ui" and picks < 6 and slot):
+                picks += 1
+                log("battle_turn", turn=turns, op="pick_party",
+                    params={"slot": slot}, why="replacement")
+                nxt = bridge.send("pick_party", slot=slot)
+                r = (nxt or {}).get("result") or {}
+                obs = nxt
+                if r.get("ok"):
+                    continue
+            break
         turns += 1
         ctx["turn"] = turns
         if (flees < 3 and battle_policy.should_flee(obs, spec, ctx)):
@@ -214,6 +234,8 @@ BATTLE_POLICIES = {
     "slot1": battle_slot1,
     "traversal": lambda b, o, lg, mt: _run_policy(
         ACTIVE_SPEC, b, o, lg, mt, intent="traversal"),
+    "catch": lambda b, o, lg, mt: _run_policy(
+        ACTIVE_SPEC, b, o, lg, mt, intent="catch"),
 }
 
 
@@ -277,17 +299,21 @@ class Executor:
         self.log("battle_start", subgoal=subgoal["id"], policy=name)
         obs = BATTLE_POLICIES[name](self.b, obs, self.log,
                                     self.max_battle_turns)
-        # spec-rule field cure/heal after the battle (no turn cost): the
-        # model's rules decide when an item beats walking on. Cure first —
-        # poison keeps chipping until it is.
-        item = battle_policy.should_field_cure(obs, ACTIVE_SPEC)
-        if item:
-            self.log("field_cure", subgoal=subgoal["id"], item=item)
-            obs = self._send_safe("use_item", item=item) or obs
-        item = battle_policy.should_field_heal(obs, ACTIVE_SPEC)
-        if item:
-            self.log("field_heal", subgoal=subgoal["id"], item=item)
-            obs = self._send_safe("use_item", item=item) or obs
+        # spec-rule field cure/heal after the battle (no turn cost) for the
+        # neediest party mon: the model's rules decide when an item beats
+        # walking on. Cure first — poison keeps chipping until it is.
+        pick = battle_policy.should_field_cure(obs, ACTIVE_SPEC)
+        if pick:
+            self.log("field_cure", subgoal=subgoal["id"], item=pick[0],
+                     slot=pick[1])
+            obs = self._send_safe("use_item", item=pick[0],
+                                  slot=pick[1]) or obs
+        pick = battle_policy.should_field_heal(obs, ACTIVE_SPEC)
+        if pick:
+            self.log("field_heal", subgoal=subgoal["id"], item=pick[0],
+                     slot=pick[1])
+            obs = self._send_safe("use_item", item=pick[0],
+                                  slot=pick[1]) or obs
         return obs
 
     def _send_safe(self, op, **kw):

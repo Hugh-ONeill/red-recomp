@@ -47,6 +47,9 @@ PREDICATES = {
     "has_item": "bag holds at least N of each listed item (e.g. "
                 "{\"has_item\":{\"POTION\":4}} — use for shopping subgoals "
                 "at a mart)",
+    "party_size": "party has at least N Pokemon (e.g. {\"party_size\":2} — "
+                  "use for catch subgoals; set battle_policy \"catch\" on "
+                  "them)",
 }
 ROUTE_MAPS = ["REDS_HOUSE_2F", "REDS_HOUSE_1F", "PALLET_TOWN", "OAKS_LAB",
               "ROUTE_1", "VIRIDIAN_CITY", "VIRIDIAN_MART", "ROUTE_2",

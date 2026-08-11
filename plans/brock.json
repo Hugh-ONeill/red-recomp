@@ -239,10 +239,11 @@
     },
     {
       "id": "buy_status_heals",
-      "goal_text": "Buy status-heal items at the Viridian City Mart (it sells no Potions \u2014 no HP items are for sale before Pewter): buy 3 ANTIDOTE and 2 PARLYZ_HEAL from the clerk. You have about 3000 money.",
+      "goal_text": "Shop at the Viridian City Mart (no Potions sold here): buy 4 POKE_BALL, 3 ANTIDOTE and 2 PARLYZ_HEAL from the clerk. You have about 3000 money.",
       "done_when": {
         "has_item": {
-          "ANTIDOTE": 2
+          "ANTIDOTE": 2,
+          "POKE_BALL": 3
         }
       },
       "escalation_rounds": 6,
@@ -250,7 +251,8 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "brock31",
         "via": "escalation",
-        "n_ops": 5
+        "n_ops": 5,
+        "note": "party-depth layer: POKE_BALLs added for the Route 22 backup catch"
       },
       "macro": [
         {
@@ -335,6 +337,21 @@
           "index": 1
         }
       ]
+    },
+    {
+      "id": "catch_backup",
+      "goal_text": "Catch a backup Pokemon in the tall grass on Route 22, west of Viridian City (Nidoran, Spearow, Rattata or Mankey are all fine). Pace the grass; wild battles during this task are catch attempts.",
+      "done_when": {
+        "party_size": 2
+      },
+      "battle_policy": "catch",
+      "max_attempts": 10,
+      "escalation_rounds": 6,
+      "no_verify": true,
+      "macro_provenance": {
+        "authored_by": "hand-seeded-subgoal",
+        "note": "party depth 2026-08-12: a backup mon turns a lead faint into a switch instead of a blackout (money-halving); macro left for escalation (journey + grind; the catch policy throws the balls)"
+      }
     },
     {
       "id": "train_to_l10",

@@ -68,9 +68,21 @@ DSL_DOC = """SPEC DSL (JSON object; every key optional; no other keys):
   field_cure: list of {"status": "PSN"|"PAR"|"BRN"|"SLP"|"FRZ",
                        "item": "ANTIDOTE"}
     (after a battle: cure that status with that item if the bag has one —
-     poison keeps draining HP every few steps until cured)"""
+     poison keeps draining HP every few steps until cured. Field item
+     rules cover the WHOLE party, neediest mon first.)
+  catch: {"ball": "POKE_BALL", "throw_at_hp_frac": 0.0-1.0,
+          "max_balls": 1-10}
+    (during a CATCH task: weaken the wild mon with the gentlest non-KO
+     move until it is below that fraction of the hp it appeared with,
+     then throw — gen1 catch odds scale with missing hp)
+  replacement: {"order": "healthiest"|"first_alive"}
+    (when your active mon faints and a backup lives, which one comes in —
+     a replacement instead of a blackout, which would HALVE your money)"""
 
-CONTEXT = """THE RUN this policy plays (one Squirtle, no items, no switches):
+CONTEXT = """THE RUN this policy plays (Squirtle lead; the plan buys Poke
+Balls and CATCHES A BACKUP mon on Route 22 — your catch rule does the
+throwing, your replacement rule decides who comes in when the lead
+faints; a switch-in costs a turn, a blackout costs HALF YOUR MONEY):
   - Rival fight at L5: foe Bulbasaur L5 (Tackle/Growl). Our moves: TACKLE
     (normal 35bp), TAIL_WHIP (status, lowers foe Defense). Roughly a coin
     flip under plain Tackle-spam; this fight is worth thinking about.

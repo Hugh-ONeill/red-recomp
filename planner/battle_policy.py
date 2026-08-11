@@ -34,7 +34,16 @@ SPEC DSL v1 (all keys optional; unknown keys are validation errors):
                              (no turn cost) before travel resumes
   field_cure: [ { status: "PSN"|"PAR"|"BRN"|"SLP"|"FRZ", item: str } ]
                              after a battle: cure the listed status with
-                             the item if the lead has it and the bag has one
+                             the item if any party mon has it (field item
+                             rules cover the WHOLE party, neediest first)
+  catch: { ball: str          throw this ball at wild mons during a CATCH
+           throw_at_hp_frac:  subgoal; weaken with the gentlest non-KO
+             float (def 0.7)  move until the foe is below this fraction of
+           max_balls: int }   the hp it appeared with, then throw (gen1
+                              catch odds scale with missing hp)
+  replacement: { order: "healthiest"|"first_alive" }
+                             when the active mon faints with a backup
+                             alive, which party slot comes in
 
 choose(obs, spec, ctx) -> op dict for the executor. ctx carries per-battle
 state the executor owns: {"turn": n, "used": {move: count},
@@ -61,6 +70,10 @@ DEFAULT_SPEC = {
     "battle_items": [],
     "field_heal": None,
     "field_cure": [],
+    # functional placeholder so the plan's catch subgoal works under the
+    # baseline spec too; the record run's values come from the model
+    "catch": {"ball": "POKE_BALL", "throw_at_hp_frac": 0.7, "max_balls": 3},
+    "replacement": {"order": "healthiest"},
 }
 
 _SPEC_KEYS = set(DEFAULT_SPEC) | {"name", "provenance"}   # provenance = metadata
@@ -140,6 +153,24 @@ def validate_spec(spec) -> list:
                                                    "SLP", "FRZ"):
                     probs.append(f"field_cure[{i}] needs status "
                                  "PSN/PAR/BRN/SLP/FRZ and an item")
+    if "catch" in spec and spec["catch"] is not None:
+        ca = spec["catch"]
+        if not isinstance(ca, dict) or not ca.get("ball"):
+            probs.append("catch must be null or {ball, throw_at_hp_frac, "
+                         "max_balls}")
+        else:
+            th = ca.get("throw_at_hp_frac")
+            if th is not None and not (isinstance(th, (int, float))
+                                       and 0.0 < th <= 1.0):
+                probs.append("catch.throw_at_hp_frac in (0,1]")
+            if "max_balls" in ca and not (isinstance(ca["max_balls"], int)
+                                          and 1 <= ca["max_balls"] <= 10):
+                probs.append("catch.max_balls int in [1,10]")
+    if "replacement" in spec and spec["replacement"] is not None:
+        rp = spec["replacement"]
+        if not isinstance(rp, dict) or rp.get("order") not in (
+                None, "healthiest", "first_alive"):
+            probs.append("replacement.order must be healthiest/first_alive")
     if "flee_wild" in spec:
         fw = spec["flee_wild"]
         if not isinstance(fw, dict):
@@ -214,43 +245,67 @@ def score_move(mv: dict, me: dict, foe: dict, spec: dict,
     }
 
 
-def should_field_heal(obs: dict, spec: dict | None = None) -> str | None:
-    """After a battle: spec-rule field heal (no turn cost). Returns the
-    item to use, or None."""
+def should_field_heal(obs: dict,
+                      spec: dict | None = None) -> tuple[str, int] | None:
+    """After a battle: spec-rule field heal (no turn cost) for the NEEDIEST
+    party mon below the threshold. Returns (item, slot) or None."""
     spec = spec or DEFAULT_SPEC
     fh = spec.get("field_heal")
     if not fh:
         return None
     if (obs or {}).get("mode") != "overworld":
         return None
-    lead = ((obs or {}).get("party") or [{}])[0]
-    if (lead.get("hp") or 0) <= 0:
-        return None
-    if _hp_frac(lead) >= fh.get("hp_below", 0.5):
-        return None
     item = fh.get("item")
     bag = (obs or {}).get("bag") or {}
-    return item if bag and bag.get(item, 0) > 0 else None
+    if not bag or bag.get(item, 0) < 1:
+        return None
+    worst, slot = 1.0, None
+    for i, mon in enumerate((obs or {}).get("party") or []):
+        if (mon.get("hp") or 0) <= 0:
+            continue
+        f = _hp_frac(mon)
+        if f < fh.get("hp_below", 0.5) and f < worst:
+            worst, slot = f, i + 1
+    return (item, slot) if slot else None
 
 
-def should_field_cure(obs: dict, spec: dict | None = None) -> str | None:
-    """After a battle: cure the lead's status per the spec's rules.
-    Returns the item to use, or None."""
+def should_field_cure(obs: dict,
+                      spec: dict | None = None) -> tuple[str, int] | None:
+    """After a battle: cure a statused party mon per the spec's rules.
+    Returns (item, slot) or None."""
     spec = spec or DEFAULT_SPEC
     if (obs or {}).get("mode") != "overworld":
         return None
-    lead = ((obs or {}).get("party") or [{}])[0]
-    if (lead.get("hp") or 0) <= 0:
-        return None
-    status = lead.get("status")
-    if status in (None, "", "0", "NONE", "OK"):
-        return None
     bag = (obs or {}).get("bag") or {}
-    for rule in spec.get("field_cure") or []:
-        if rule.get("status") == status and bag \
-                and bag.get(rule.get("item"), 0) > 0:
-            return rule["item"]
+    if not bag:
+        return None
+    for i, mon in enumerate((obs or {}).get("party") or []):
+        if (mon.get("hp") or 0) <= 0:
+            continue
+        status = mon.get("status")
+        if status in (None, "", "0", "NONE", "OK"):
+            continue
+        for rule in spec.get("field_cure") or []:
+            if rule.get("status") == status \
+                    and bag.get(rule.get("item"), 0) > 0:
+                return (rule["item"], i + 1)
     return None
+
+
+def choose_replacement(obs: dict, spec: dict | None = None) -> int | None:
+    """The active mon fainted: which party slot comes in (1-based)."""
+    spec = spec or DEFAULT_SPEC
+    order = (spec.get("replacement") or {}).get("order", "healthiest")
+    best, slot = -1.0, None
+    for i, mon in enumerate((obs or {}).get("party") or []):
+        if (mon.get("hp") or 0) <= 0:
+            continue
+        if order == "first_alive":
+            return i + 1
+        f = _hp_frac(mon)
+        if f > best:
+            best, slot = f, i + 1
+    return slot
 
 
 def should_flee(obs: dict, spec: dict | None = None,
@@ -277,6 +332,7 @@ def choose(obs: dict, spec: dict | None = None,
     ctx = ctx or {}
     b = obs.get("battle") or {}
     me, foe = b.get("me") or {}, b.get("foe") or {}
+    kind = b.get("kind") or "wild"
     moves = [m for m in (me.get("moves") or [])
              if (m.get("pp") or 0) > 0]
     if not moves:
@@ -298,6 +354,25 @@ def choose(obs: dict, spec: dict | None = None,
                 "_why": f"heal with {item}"}
     scored = [score_move(m, me, foe, spec, ctx.get("journal")) for m in moves]
     damaging = [s for s in scored if (s["power"] or 0) > 0]
+    # CATCH intent on a wild foe: weaken with the gentlest non-KO move to
+    # the throw threshold (gen1 catch odds scale with missing hp), then
+    # throw. The foe's first-seen hp stands in for its max.
+    ca = spec.get("catch")
+    if ctx.get("intent") == "catch" and kind == "wild" and ca:
+        hp0 = ctx.setdefault("foe_hp0", foe.get("hp") or 1)
+        frac = (foe.get("hp") or 0) / max(1, hp0)
+        balls = ctx.get("balls", 0)
+        bag = obs.get("bag") or {}
+        have_ball = bag and bag.get(ca.get("ball"), 0) > 0
+        if have_ball and balls < ca.get("max_balls", 3):
+            safe = [s for s in damaging if not s["kos"]]
+            safe.sort(key=lambda s: s["score"])
+            if frac <= ca.get("throw_at_hp_frac", 0.7) or not safe:
+                ctx["balls"] = balls + 1
+                return {"op": "throw_ball", "ball": ca["ball"],
+                        "_why": f"throw (foe at {frac:.0%})"}
+            return {"op": "battle_move", "index": safe[0]["index"],
+                    "_why": f"weaken with {safe[0]['id']}"}
     by_index = {m.get("index"): m for m in moves}
     best_dmg = max(damaging, key=lambda s: s["score"]) if damaging else None
     best_is_physical = bool(
@@ -305,7 +380,6 @@ def choose(obs: dict, spec: dict | None = None,
         and (by_index.get(best_dmg["index"]) or {}).get("category")
         != "special")
     # deliberate setup-move rules come before damage ranking
-    kind = b.get("kind") or "wild"
     used = ctx.setdefault("used", {})
     for rule in spec.get("setup") or []:
         mid = rule.get("move")

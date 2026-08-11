@@ -1287,6 +1287,84 @@ function OPS.battle_item(G, c)
   return true, "used " .. c.item .. " in battle"
 end
 
+-- Throw a ball in battle (battle ITEM -> ball -> A throws outright, no
+-- submenu). Rides the shake/catch text; declines the nickname prompt.
+-- Decision-free: WHEN to throw is the policy's call.
+function OPS.throw_ball(G, c)
+  local b = in_battle(G)
+  if not b then return false, "not in battle" end
+  local ball = c.ball or "POKE_BALL"
+  if bag_count(G, ball) < 1 then return false, "no " .. ball .. " left" end
+  local party0 = #((G.save and G.save.party) or {})
+  for _ = 1, 40 do
+    if b.phase == "menu" then break end
+    U.tap(G, "a"); U.wait(3)
+  end
+  if b.phase ~= "menu" then return false, "no battle action menu" end
+  if not battle_menu_to(G, b, 3) then return false, "couldn't reach ITEM" end
+  U.tap(G, "a"); U.wait(6)
+  if not ui_press_until(G, ui_is_list, "a", 40) then
+    ui_back_out(G); return false, "battle bag never opened"
+  end
+  local idx
+  for i, row in ipairs(ui_rows(G) or {}) do
+    if row.value == ball then idx = i break end
+  end
+  if not idx or not ui_cursor_to(G, "index", idx) then
+    ui_back_out(G); return false, ball .. " not in the battle bag"
+  end
+  U.tap(G, "a"); U.wait(10)
+  -- ride the throw: shakes text; on success a nickname YES/NO appears
+  -- (answer NO) and the battle ends; on a miss the turn plays out
+  for _ = 1, 200 do
+    local t = G.stack:top()
+    if ui_is_choice(G) then                 -- "give a nickname?"
+      ui_cursor_to(G, "index", 2)           -- NO
+      U.tap(G, "a"); U.wait(6)
+    elseif not (t and (t.enemy or t.kind)) then
+      break                                 -- battle over (caught or done)
+    elseif t.phase == "menu" or t.phase == "moveSelect" then
+      break                                 -- miss: battle continues
+    else
+      U.tap(G, "a"); U.wait(4)
+    end
+  end
+  local caught = #((G.save and G.save.party) or {}) > party0
+  return true, caught and "CAUGHT (party grew)" or
+    ("threw " .. ball .. ", not caught")
+end
+
+-- Pick a party slot on a forced party menu (the lead fainted: "Use next
+-- POKeMON?" -> party list). Decision-free: WHICH slot is the policy's call.
+function OPS.pick_party(G, c)
+  local slot = c.slot or 2
+  -- ride any choice/text to the party menu (A answers YES on the prompt)
+  local pm
+  for _ = 1, 60 do
+    pm = ui_top(G)
+    if pm and pm.onSwitch ~= nil and pm.index ~= nil then break end
+    if pm == G.overworld then return false, "not in a party pick" end
+    U.tap(G, "a"); U.wait(4)
+    pm = nil
+  end
+  if not pm then return false, "party menu never appeared" end
+  if not ui_cursor_to(G, "index", slot) then
+    return false, "couldn't reach slot " .. slot
+  end
+  U.tap(G, "a"); U.wait(8)
+  -- ride back into the battle (or out of it)
+  for _ = 1, 120 do
+    local t = G.stack:top()
+    if t == G.overworld then break end
+    if t and (t.enemy or t.kind)
+       and (t.phase == "menu" or t.phase == "moveSelect") then
+      break
+    end
+    U.tap(G, "a"); U.wait(4)
+  end
+  return true, "sent out slot " .. slot
+end
+
 -- Checkpoint capture/restore (in-memory), for escalation's clean retries:
 -- a failed macro proposal corrupts the state, so each escalation round
 -- restores the subgoal's start. CLAIM_RULES: checkpoints are for development/
