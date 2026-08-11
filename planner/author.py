@@ -257,6 +257,41 @@ REVIEW_SYS = (
 )
 
 
+def observed_text(path: Path) -> str:
+    """What earlier runs actually WALKED, as evidence for the audit.
+
+    The model's own idea of the map can be wrong in ways no amount of
+    self-review will catch: it believed Mt Moon was entered from ROUTE_3 and
+    left to ROUTE_4, so {map:ROUTE_4} looked like a proper far-side
+    condition. In this recomp ROUTE_4 is on BOTH sides, so that subgoal was
+    satisfied by stepping back out the entrance. This is not route knowledge
+    handed to the model — it is the model's own play, read back to it.
+    """
+    try:
+        d = json.loads(Path(path).read_text() or "{}")
+    except Exception:
+        return ""
+    exp = d.get("explored") or {}
+    if not exp:
+        return ""
+    lines = []
+    for region in sorted(exp):
+        for key, e in sorted((exp[region] or {}).items()):
+            lines.append(f"  {region}  --{key}-->  {e.get('to')}")
+    dead = []
+    for tgt, regions in (d.get("dead_ends") or {}).items():
+        for region, n in regions.items():
+            dead.append(f"  {tgt} was NOT reachable from {region} ({n}x)")
+    out = ("\n\nWHAT PREVIOUS RUNS ACTUALLY WALKED (evidence — trust this "
+           "over your memory of the game; MAP|region means one connected "
+           "area, so the SAME map id appearing with DIFFERENT regions is a "
+           "map split into parts that cannot walk to each other):\n"
+           + "\n".join(lines))
+    if dead:
+        out += "\n\nPROVEN UNREACHABLE:\n" + "\n".join(dead)
+    return out
+
+
 def build_review(goal: str, plan: dict, start: str | None) -> str:
     """Ask the model to audit its own plan for conditions that cannot work.
 
@@ -296,11 +331,12 @@ def build_review(goal: str, plan: dict, start: str | None) -> str:
 
 
 def review(goal: str, plan: dict, model: str, start: str | None = None,
-           rounds: int = 2) -> dict:
+           rounds: int = 2, observed: Path | None = None) -> dict:
     """Second model pass over its own plan. Returns the revision only if it
     still validates; a broken revision is discarded in favour of the
     original, so review can improve a plan but never corrupt it."""
-    base = build_prompt(goal, start)
+    base = build_prompt(goal, start) + (observed_text(observed)
+                                        if observed else "")
     for rnd in range(1, rounds + 1):
         reply = brock_probe.chat(
             [{"role": "system", "content": REVIEW_SYS},
@@ -348,12 +384,16 @@ def main():
                     help="starting-state description (default: new game)")
     ap.add_argument("--no-review", action="store_true",
                     help="skip the model's self-audit pass")
+    ap.add_argument("--observed", type=Path, default=None,
+                    help="explored.json from earlier runs: real connectivity "
+                         "evidence for the audit pass")
     args = ap.parse_args()
     plan = author(args.goal, args.model, start=args.start)
     if not plan:
         sys.exit("author failed to produce a valid plan")
     if not args.no_review:
-        plan = review(args.goal, plan, args.model, start=args.start)
+        plan = review(args.goal, plan, args.model, start=args.start,
+                      observed=args.observed)
     plan.setdefault("goal", args.goal)
     plan["authored_by"] = args.model
     args.out.write_text(json.dumps(plan, indent=2))
