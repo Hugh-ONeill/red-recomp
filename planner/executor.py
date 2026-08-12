@@ -2652,6 +2652,14 @@ Reply with ONLY a JSON array of ops, e.g.
                              ok=r.get("ok"), detail=r.get("detail"),
                              map=(obs.get("map") or {}).get("id")
                              if obs else None,
+                             # WHERE it stood, not just which map: a cross
+                             # that fails "seam unreachable" is a claim
+                             # about the TILE, and pinning down whether the
+                             # party was on the east or west half of Route 4
+                             # cannot be done from the map id alone
+                             at=(f"{(obs or {}).get('x')},{(obs or {}).get('y')}"
+                                 f" {((obs or {}).get('map') or {}).get('region')}")
+                             if obs else None,
                              mode=obs.get("mode") if obs else None)
                     if obs and obs.get("mode") == "battle":
                         obs = self.handle_battle(sg, obs)
