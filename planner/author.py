@@ -386,6 +386,15 @@ def journal_text(path: Path, limit: int = 60) -> str:
                 events.append(f"  MONEY   {t.split('FAILED — ')[-1][:90]}")
             elif "is not sold here" in t:
                 events.append(f"  SHOP    {t.split('FAILED — ')[-1][:90]}")
+            # A WALL the run kept hitting is exactly what a rewrite must
+            # know. "cross(east) FAILED — the east seam of ROUTE_4 (to
+            # CERULEAN_CITY) cannot be crossed" lived only in transient
+            # escalation feedback, so three rewrites in a row re-authored
+            # the same west-side loop that dies on it.
+            elif "seam of" in t and "FAILED" in t:
+                wall = f"  WALL    {t.split('FAILED — ')[-1][:120]}"
+                if not events or events[-1] != wall:
+                    events.append(wall)
             elif "party FAINTED" in t:
                 pass
     if not events:
