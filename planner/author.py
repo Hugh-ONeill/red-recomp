@@ -346,8 +346,31 @@ def journal_text(path: Path, limit: int = 60) -> str:
     except Exception:
         return ""
     events = []
+    # PP exhaustion detector: a battle whose every chosen move scored 0 was
+    # fought with ONLY status moves usable — the attacking moves were out of
+    # PP (that fact is on the move menu the whole time). The wipes in Mt
+    # Moon were this: the trek drained Ember and Scratch, a wild Zubat was
+    # "fought" with 31 turns of GROWL, and connectivity can never say why.
+    # The tell is the TAIL: the scorer only picks a 0-score move when
+    # nothing that deals damage has PP left, so a run of them ending the
+    # battle means the attacking moves ran dry (PP may run out MID-fight —
+    # the wipe battle opened with the last two Scratches).
+    bt_tail = 0
     for r in seg:
         k = r.get("kind")
+        if k == "battle_start":
+            bt_tail = 0
+        elif k == "battle_turn" and r.get("op") == "battle_move":
+            bt_tail = (bt_tail + 1 if "score=0.0" in (r.get("why") or "")
+                       else 0)
+        elif k == "battle_done":
+            if bt_tail >= 8:
+                events.append(
+                    f"  NO PP   a {r.get('turns')}-turn battle ended with "
+                    f"{bt_tail} straight 0-damage moves — every ATTACKING "
+                    f"move was out of PP. Long stretches of wild battles "
+                    f"drain PP and only a Pokemon Center restores it")
+            bt_tail = 0
         if k == "subgoal_done" or k == "escalate_success":
             events.append(f"  OK      {r.get('subgoal')}")
         elif k == "subgoal_failed":
