@@ -8,10 +8,27 @@
 set -uo pipefail
 cd "$(dirname "$0")"
 
-pids() {   # executors, games, loops — never anything else
+# PIDs of this script and everything that launched it. The first version
+# matched its OWN launching shell (whose command line contains
+# "campaign.run.sh"), killed it, and so never got as far as relaunching.
+ancestors() {
+  local p=$$
+  while [ "$p" -gt 1 ]; do
+    echo "$p"
+    p=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
+    [ -z "$p" ] && break
+  done
+}
+
+pids() {   # executors, games, loops — never this script or its parents
+  local skip
+  skip=$(ancestors | tr '\n' '|' | sed 's/|$//')
   ps -eo pid,args \
     | grep -E "executor\.py --bootstrap|love \.|campaign(\.run)?\.sh|fresh_run\.sh|xvfb-run" \
-    | grep -v grep | awk '{print $1}'
+    | grep -v grep \
+    | grep -vE "shell-snapshots|stop_all\.sh" \
+    | awk '{print $1}' \
+    | grep -vE "^(${skip})$"
 }
 
 for sig in TERM TERM KILL; do
