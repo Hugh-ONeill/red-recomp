@@ -1531,13 +1531,18 @@ Reply with ONLY a JSON array of ops, e.g.
             # from the Route 4 stub anyway — advice failed, so this is
             # enforcement, and a refused-only round stays free instead of
             # burning budget.
-            if op == "cross" and step.get("dir") in \
+            if False and op == "cross" and step.get("dir") in \
                     self._no_cross.get(self._where(obs), set()):
-                # Restate the alternatives IN the refusal: five straight
-                # rounds re-proposed cross(east) against this text while
-                # the door list sat lower in the context. Refusals are the
-                # one line the model demonstrably reads — the same earned
-                # evidence lands here or nowhere.
+                # DISABLED — the refusal was refusing the WINNING move.
+                # Route 4's one-way ledges make its east segment's
+                # reachable-cell fingerprint identical to the west stub's
+                # (from the east you can drop down and reach west cells),
+                # so a seam proof earned on the west side sealed the cross
+                # from the east side, where it succeeds and IS the way to
+                # Cerulean. A region id is not a sound key under one-way
+                # passability; until fingerprints are direction-aware the
+                # cross must always be allowed to run — the shim's seam
+                # search fails fast where it genuinely cannot work.
                 here_r = self._where(obs)
                 doors = []
                 for region, exits in self.frontier.items():
