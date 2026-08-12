@@ -40,10 +40,27 @@ for src in ("run/last_state.json", "run/obs.json"):
         continue
 if o is None:
     print("a brand new game"); raise SystemExit
+# HP reaches the start text: the audit's ALREADY DONE check pruned
+# buy_potions because the bag was visible here, but kept every heal leg —
+# and the Pewter round trip serving them — because health never was.
+def mon_text(p):
+    s = f"{p.get('species')} L{p.get('level')}"
+    hp, mx = p.get("hp"), p.get("max_hp")
+    if hp is not None and mx:
+        s += f" {hp}/{mx}hp"
+    st = str(p.get("status") or "")
+    if st not in ("", "0", "NONE", "OK"):
+        s += f" {st}"
+    return s
+def party_text(mons):
+    txt = ", ".join(mon_text(p) for p in mons)
+    full = [p for p in mons if p.get("max_hp")]
+    if full and all(p.get("hp") == p.get("max_hp") for p in full):
+        txt += " (party at full HP)"
+    return txt
 if "region" in o:                    # last_state.json is already flattened
     m = o.get("map")
-    party = ", ".join(f"{p.get('species')} L{p.get('level')}"
-                      for p in (o.get("party") or []))
+    party = party_text(o.get("party") or [])
     badges = ", ".join(o.get("badges") or []) or "no badges"
     bag = ", ".join(f"{k} x{v}" for k, v in (o.get("bag") or {}).items()) \
         or "an empty bag"
@@ -54,8 +71,7 @@ m = (o.get("map") or {}).get("id")
 if not m:                      # stale/missing obs: say so rather than
     print("an unknown location")   # inventing "standing in None"
     raise SystemExit
-party = ", ".join(f"{p.get('species')} L{p.get('level')}"
-                  for p in (o.get("party") or []))
+party = party_text(o.get("party") or [])
 badges = ", ".join(o.get("badges") or []) or "no badges"
 bag = ", ".join(f"{k} x{v}" for k, v in (o.get("bag") or {}).items()) or "an empty bag"
 print(f"standing in {m} with {party or 'no party'}, {badges}, and {bag}")
