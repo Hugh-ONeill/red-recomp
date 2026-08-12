@@ -1977,6 +1977,23 @@ def main():
             r = (ex._send_safe("save_game") or {}).get("result") or {}
             print(f"[save] {r.get('detail') or 'save failed'}")
     o = b.obs() or {}
+    # Durable snapshot of where the run ENDED. obs.json belongs to the live
+    # bridge and is gone once the game process dies, so the campaign's
+    # re-author was reading "an unknown location" — throwing away the single
+    # most useful piece of evidence it has about what to fix.
+    try:
+        (RUN / "last_state.json").write_text(json.dumps({
+            "map": (o.get("map") or {}).get("id"),
+            "region": (o.get("map") or {}).get("region"),
+            "party": [{"species": m.get("species"), "level": m.get("level"),
+                       "hp": m.get("hp")} for m in (o.get("party") or [])],
+            "badges": o.get("badges") or [],
+            "bag": o.get("bag") or {},
+            "money": o.get("money"),
+            "flags": o.get("flags") or [],
+        }, indent=1))
+    except Exception as e:
+        print(f"[warn] could not write last_state.json: {e}")
     print(f"\nRESULT: {'ALL PLANS COMPLETE' if ok else 'PLAN FAILED'} | "
           f"map={(o.get('map') or {}).get('id')} "
           f"party={[(m.get('species'), m.get('level')) for m in o.get('party') or []]} "

@@ -29,10 +29,27 @@ LOG=run/campaign.log
 state_text() {
   python - <<'PY'
 import json
-try:
-    o = json.load(open("run/obs.json"))
-except Exception:
+# last_state.json is written by the executor as it exits, so it OUTLIVES the
+# game process; obs.json belongs to the live bridge and is gone by the time
+# the re-author runs.
+o = None
+for src in ("run/last_state.json", "run/obs.json"):
+    try:
+        o = json.load(open(src)); break
+    except Exception:
+        continue
+if o is None:
     print("a brand new game"); raise SystemExit
+if "region" in o:                    # last_state.json is already flattened
+    m = o.get("map")
+    party = ", ".join(f"{p.get('species')} L{p.get('level')}"
+                      for p in (o.get("party") or []))
+    badges = ", ".join(o.get("badges") or []) or "no badges"
+    bag = ", ".join(f"{k} x{v}" for k, v in (o.get("bag") or {}).items()) \
+        or "an empty bag"
+    print(f"standing in {m or 'an unknown location'} with "
+          f"{party or 'no party'}, {badges}, and {bag}")
+    raise SystemExit
 m = (o.get("map") or {}).get("id")
 if not m:                      # stale/missing obs: say so rather than
     print("an unknown location")   # inventing "standing in None"
@@ -72,13 +89,14 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   # attempt's, and the loop then rewrites a plan it is not even running.
   # The chain runs in order, so the failed leg is the first one in PLANS
   # whose final condition is not satisfied.
-  failed_plan=$(python - run/obs.json "${PLANS[@]}" <<'PY'
+  failed_plan=$(python - run/last_state.json "${PLANS[@]}" <<'PY'
 import json, sys
 obs = {}
-try:
-    obs = json.load(open(sys.argv[1]))
-except Exception:
-    pass
+for src in (sys.argv[1], "run/obs.json"):
+    try:
+        obs = json.load(open(src)); break
+    except Exception:
+        continue
 def met(plan_path):
     try:
         plan = json.load(open(plan_path))
