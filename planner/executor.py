@@ -287,6 +287,7 @@ class Executor:
         self._faint_at = None               # region we were in when wiped
         self._ui_pending = 0                # rounds a prompt has sat open
         self._dead_ops: dict = {}           # (target, op, arg) -> failures
+        self.save_each = False              # in-game SAVE after each subgoal
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -1981,6 +1982,16 @@ Reply with ONLY a JSON array of ops, e.g.
                 self.log("plan_failed_at", subgoal=sg["id"])
                 return False
             print(f"   done: {sg['id']}")
+            # Save after each completed SUBGOAL, not just each plan. A leg
+            # that never completes never saved, so a restart threw away
+            # everything won inside it — the Mt Moon fossil was taken and
+            # then lost on the next launch, twice. "Resume from the last
+            # step that worked" only means anything if the step is recorded.
+            if self.save_each:
+                r = (self._send_safe("save_game") or {}).get("result") or {}
+                if not r.get("ok"):
+                    self.log("subgoal_save_failed", subgoal=sg["id"],
+                             detail=r.get("detail"))
         self.log("plan_complete", goal=plan.get("goal"),
                  escalations=self.escalations)
         return True
@@ -2060,6 +2071,7 @@ def main():
     ex = Executor(b, max_battle_turns=args.max_battle_turns,
                   can_escalate=args.escalate, model=args.model,
                   run_id=args.run_id)
+    ex.save_each = args.save_after_each
     ok = True
     for plan_path in args.plans:
         plan = json.loads(plan_path.read_text())
