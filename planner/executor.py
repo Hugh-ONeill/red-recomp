@@ -1634,8 +1634,32 @@ Reply with ONLY a JSON array of ops, e.g.
                     not o.get("reachable") for o in (cmap.get("objects") or []))
                 confirmed = confirmed or any(
                     "cannot be walked to from" in t for t in trace)
+                # A cave room almost always contains SOME unreachable rock
+                # or ledge-gap item, so "any object here is unreachable" is
+                # not evidence about anything in particular — it stamped
+                # flag:EVENT_BEAT_MT_MOON_3_SUPER_NERD onto B1F rooms four
+                # times, and the nerd is on B2F. Two extra conditions:
+                #   - the region must have NO untried exit left. While an
+                #     unopened door remains you cannot conclude anything is
+                #     unreachable from here (the transitive pruner's rule,
+                #     applied to the primary proof).
+                #   - a FLAG target needs SEAM evidence, not scenery: a rock
+                #     you cannot walk to says nothing about an event on
+                #     another floor.
+                tk = self._target_key(sg)
+                seam_evidence = any("cannot be walked to from" in t
+                                    or "couldn't reach the warp tile" in t
+                                    for t in trace)
+                if self._untried_exits(cur):
+                    confirmed = False
+                    self.log("dead_end_withheld", subgoal=sg["id"],
+                             region=here, reason="untried exits remain")
+                elif tk.startswith("flag:") and not seam_evidence:
+                    confirmed = False
+                    self.log("dead_end_withheld", subgoal=sg["id"],
+                             region=here, reason="scenery is not flag evidence")
                 if confirmed:
-                    self.note_dead_end(self._target_key(sg), here)
+                    self.note_dead_end(tk, here)
                 objs = [o for o in ((cur.get("map") or {}).get("objects")
                                     or []) if not o.get("reachable")]
                 seam = any("cannot be walked to from" in t
