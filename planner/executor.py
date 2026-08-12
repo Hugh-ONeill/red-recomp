@@ -2726,7 +2726,11 @@ Reply with ONLY a JSON array of ops, e.g.
             # region meant it almost never qualified, because the run
             # changes rooms between rounds. The ESCORT still waits: moving
             # the party is disruptive, sweeping is not.
-            if not progress:
+            # THIS round's clean ops, not the run's. `progress` accumulates
+            # across rounds, so gating on it meant the sweep could only ever
+            # fire before the subgoal's first successful op — which is
+            # almost never — and it never ran at all.
+            if not clean:
                 here_s = self._where(cur)
                 touched = self._tried_objs.setdefault(here_s, set())
                 loose = [o.get("name") for o in
