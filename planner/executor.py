@@ -1418,6 +1418,13 @@ Reply with ONLY a JSON array of ops, e.g.
         goal = sg.get("goal_text", sg["id"])
         done = sg.get("done_when")
         rounds = sg.get("escalation_rounds", 4)
+        # An EVENT GATE is load-bearing: failing it now ENDS the plan (a
+        # missed event cannot be walked past), so giving it the same budget
+        # as a trivial map hop meant whole attempts died in ~60s on the one
+        # subgoal that actually needed searching. Gates get a deeper budget.
+        _dw = sg.get("done_when") or {}
+        if "flag" in _dw or "badge" in _dw:
+            rounds = max(rounds * 3, 12)
         if redo:
             # relocating across a dungeon takes many legs; the round budget
             # for a normal subgoal is far too small (thin5 ran out inside
