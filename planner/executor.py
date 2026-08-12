@@ -1517,11 +1517,42 @@ Reply with ONLY a JSON array of ops, e.g.
             # burning budget.
             if op == "cross" and step.get("dir") in \
                     self._no_cross.get(self._where(obs), set()):
+                # Restate the alternatives IN the refusal: five straight
+                # rounds re-proposed cross(east) against this text while
+                # the door list sat lower in the context. Refusals are the
+                # one line the model demonstrably reads — the same earned
+                # evidence lands here or nowhere.
+                here_r = self._where(obs)
+                doors = []
+                for region, exits in self.frontier.items():
+                    if region == here_r:
+                        continue
+                    done_x = set((self.explored.get(region) or {}).keys())
+                    left = [e for e in exits if e not in done_x]
+                    if not left:
+                        continue
+                    path = self._route(here_r, region)
+                    if path:
+                        doors.append((len(path), region, left, path[0]))
+                doors.sort(key=lambda d: d[0])
+                extra = ""
+                if doors:
+                    parts = []
+                    for n, region, left, (fk, fd) in doors[:3]:
+                        leg = (f"walk {fk}" if not fk[0].isdigit()
+                               else f"door ({fk})")
+                        parts.append(f"{region} (unopened: "
+                                     f"{', '.join(sorted(left))}; {n} "
+                                     f"leg(s), first {leg} to {fd})")
+                    extra = (" The only ways that can still open new "
+                             "ground: " + "; ".join(parts) + ". Proposing "
+                             "this cross again changes nothing — pick one "
+                             "of those.")
                 trace.append(
                     f"cross({step.get('dir')}): REFUSED — that seam is "
                     f"PROVEN uncrossable from this area (terrain blocks "
                     f"every cell of the edge). It will never work from "
-                    f"here; the way onward is somewhere else.")
+                    f"here; the way onward is somewhere else." + extra)
                 continue
             # NO IMMEDIATE REVERSAL — the classic search prune, not game
             # knowledge: both directions of a ladder read as "untried" from
