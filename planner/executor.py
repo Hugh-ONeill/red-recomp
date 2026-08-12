@@ -519,6 +519,12 @@ class Executor:
         keys = [f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])
                 if w.get("reachable")]
         keys += list((m.get("connections") or {}).keys())
+        # a seam PROVEN uncrossable stays out: the frontier is rebuilt from
+        # obs on every visit, so the prune was silently undone each time we
+        # stood here again — and the walk-back then kept dragging the run
+        # back to this "untried exit" that can never open
+        keys = [k for k in keys
+                if k not in self._no_cross.get(here, set())]
         if keys:
             fresh = sorted(set(keys))
             if self.frontier.get(here) != fresh:
