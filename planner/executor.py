@@ -2591,6 +2591,11 @@ Reply with ONLY a JSON array of ops, e.g.
                      stuck=stuck_note[:400], loop=loop_note[:200])
             self.log("escalate_feedback", subgoal=sg["id"], round=rnd,
                      spent=spent, trace=trace, inert=inert,
+                     # where the round STARTED and where it ended: a cross
+                     # that reports "seam unreachable" is a claim about the
+                     # tile under the player, and the escalation path logs
+                     # no per-step position at all
+                     at=self._where(cur),
                      progress_ops=len(progress))
         self.log("escalate_end", subgoal=sg["id"], success=False)
         return False, sg.get("macro", [])
