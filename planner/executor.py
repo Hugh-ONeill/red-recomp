@@ -2113,6 +2113,22 @@ def main():
         ex.status(plan=plan_path.name)
         print(f"\n===== PLAN: {plan_path.name} =====")
         ok = ex.run_plan(plan)
+        # A leg that walked to the end of its subgoal list has not
+        # necessarily ACHIEVED anything: continue-past-failure lets it reach
+        # the end with the objective unmet, and the chain then started the
+        # NEXT leg on a premise that was never true — mountain subgoals were
+        # running on a fresh Charmander L7 with no badge. Check the leg's
+        # final condition against the live game before going on.
+        if ok:
+            final = (plan.get("subgoals") or [{}])[-1].get("done_when") or {}
+            if final and not pred_holds(final, ex.settle()):
+                print(f"!! {plan_path.name} reached its last subgoal but its "
+                      f"objective {json.dumps(final)} is NOT met — stopping "
+                      f"here rather than starting the next leg on a false "
+                      f"premise")
+                ex.log("plan_objective_unmet", plan=plan_path.name,
+                       final=json.dumps(final))
+                ok = False
         if not ok:
             break
         if args.save_after_each:
