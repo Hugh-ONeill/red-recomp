@@ -645,7 +645,7 @@ class Executor:
         out.sort(key=lambda p: p[0])
         return [t for _, t in out]
 
-    def _route(self, frm: str, to: str):
+    def _route(self, frm: str, to: str, avoid: set | None = None):
         """Shortest path over the LEARNED region graph, as (exit_key, dest)
         hops. Only edges actually walked count — this navigates known
         ground, it never guesses a connection."""
@@ -665,7 +665,7 @@ class Executor:
                     out.setdefault(k, v)
             return out
 
-        seen, q = {frm}, deque([(frm, [])])
+        seen, q = {frm} | set(avoid or ()), deque([(frm, [])])
         while q:
             cur, path = q.popleft()
             for key, e in edges(cur).items():
@@ -1278,7 +1278,14 @@ Reply with ONLY a JSON array of ops, e.g.
                     unsearched = [r for r in
                                   set(list(self.explored) + list(self.visits))
                                   if not worked.get(r)]
-                    beyond = any(self._route(dest_region, u)
+                    # Reaching unsearched ground by walking BACK OUT through
+                    # this door is not "beyond" — B2F|23,21 is a one-exit
+                    # room, so everything unsearched was nominally reachable
+                    # from it and the refusal never fired. Exclude the room
+                    # we are standing in from the path.
+                    here_now = self._where(obs)
+                    beyond = any(self._route(dest_region, u,
+                                             avoid={here_now})
                                  for u in unsearched[:12])
                     if not beyond:
                         self._revisit_refusals[tgt] = \
