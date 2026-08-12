@@ -1564,6 +1564,45 @@ Reply with ONLY a JSON array of ops, e.g.
                             f"have talked to them. Reachable people here you "
                             f"have not spoken to: {', '.join(near[:5])}. "
                             f"Interact with them, then try the route again.")
+                if op == "interact" and step.get("name") and (
+                        "no reachable tile adjacent" in det
+                        or "not visible" in det):
+                    # Where the thing WAS seen. Dead ends and visit counts
+                    # only say where the target is NOT; the sightings ledger
+                    # earned the positive fact on an earlier visit, and the
+                    # graph knows the walked way back. Without this, a plan
+                    # that descended into the wrong B2F room burned its
+                    # rounds wandering 1F while the nerd's room sat 6 walked
+                    # legs away. Same standard as THE KNOWN WAY THERE:
+                    # observed evidence, surfaced at the moment of need —
+                    # the model still chooses.
+                    name = step["name"]
+                    here_now = self._where(obs)
+                    seen_in = [reg for reg, objs in self.sightings.items()
+                               if name in objs and reg != here_now]
+                    routed = False
+                    for reg in seen_in:
+                        path = self._route(here_now, reg)
+                        if not path:
+                            continue
+                        first_key, first_dest = path[0]
+                        leg = (f"walk {first_key}"
+                               if not first_key[0].isdigit()
+                               else f"the door at ({first_key})")
+                        trace.append(
+                            f"{name} is not reachable from THIS area — but "
+                            f"you have SEEN it, reachable, in {reg}. You "
+                            f"have walked a route there before: start by "
+                            f"taking {leg} to {first_dest} "
+                            f"({len(path)} leg(s) total).")
+                        routed = True
+                        break
+                    if seen_in and not routed:
+                        trace.append(
+                            f"{name} is not reachable from THIS area, but "
+                            f"you have SEEN it, reachable, in {seen_in[0]} "
+                            f"— no walked route from here is known, so "
+                            f"explore toward it.")
                 if "cannot afford" in det:
                     trace.append(
                         "That is a MONEY problem, not a route problem — "
