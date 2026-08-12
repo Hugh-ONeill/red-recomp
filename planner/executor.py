@@ -368,6 +368,13 @@ class Executor:
             self.frontier = data.get("frontier", {})
             self.sightings = data.get("sightings", {})
             self.searched = data.get("searched", {})
+            # every entry was recorded under the fully-worked condition, so
+            # the union of all targets IS the set of worked rooms
+            anyd = self.searched.setdefault("*", {})
+            for tgt, rooms in list(self.searched.items()):
+                if tgt != "*":
+                    for r in rooms:
+                        anyd[r] = True
             self._rebuild_area_aliases()
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
@@ -523,9 +530,17 @@ class Executor:
         room being SEARCHED again without stopping the run PASSING through."""
         if not region or "None" in region or not target:
             return
+        # Also record it under "*": FULLY WORKED (every exit taken, every
+        # reachable object touched) is a fact about the ROOM, not the goal.
+        # Keying it only by target fragmented the ledger — B2F's dead-end
+        # rooms were marked under the nerd flag, so a later subgoal aiming at
+        # map:MT_MOON_B2F saw them as untouched and walked straight back in.
         d = self.searched.setdefault(target, {})
-        if region not in d:
-            d[region] = True
+        anyd = self.searched.setdefault("*", {})
+        fresh = region not in d or region not in anyd
+        d[region] = True
+        anyd[region] = True
+        if fresh:
             self.log("room_searched", target=target, region=region)
             self._save_memory()
 
@@ -1257,11 +1272,12 @@ Reply with ONLY a JSON array of ops, e.g.
                 known_dest = (self.explored.get(self._where(obs), {}) or {}).get(
                     f"{step.get('x')},{step.get('y')}")
                 dest_region = (known_dest or {}).get("to")
-                if (dest_region and self.searched.get(tgt, {}).get(dest_region)
+                worked = self.searched.get("*", {})
+                if (dest_region and worked.get(dest_region)
                         and self._revisit_refusals.get(tgt, 0) < 3):
                     unsearched = [r for r in
                                   set(list(self.explored) + list(self.visits))
-                                  if not self.searched.get(tgt, {}).get(r)]
+                                  if not worked.get(r)]
                     beyond = any(self._route(dest_region, u)
                                  for u in unsearched[:12])
                     if not beyond:
