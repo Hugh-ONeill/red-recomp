@@ -126,7 +126,9 @@ give the milestones and how to know each is done.
 ATTRITION: battles chip your party's HP and there is no auto-healing —
 insert a Pokemon Center heal stop (done_when {"party_healthy": true}) before
 long wild-encounter stretches like Viridian Forest. If upcoming trainers
-outlevel your party, add TRAINING subgoals on a grassy route
+outlevel your party — or the SAME fight keeps wiping you even at a level
+advantage, which means the damage race is what you are losing, not the
+levels — add TRAINING subgoals on a grassy route
 (done_when {"lead_level": N}) — and STAGE long grinds: a few levels per
 subgoal with a Pokemon Center heal stop between stages. Fainting sends
 you home and HALVES YOUR MONEY, so wipes during long unhealed grinds
@@ -371,8 +373,25 @@ def journal_text(path: Path, limit: int = 60) -> str:
     # the wipe battle opened with the last two Scratches).
     bt_tail = 0
     last_fight = ""
+    # The damage RACE of the last fight, from the per-turn HP trace. The
+    # wipe line alone read "STARYU L18 vs your CHARMELEON L24" — a level
+    # ADVANTAGE — so six rewrites re-marched the same plan; that the foe's
+    # hits landed twice as hard as ours is the on-screen fact that says
+    # what kind of problem this is, and it never reached the author.
+    dealt, taken = [], []
+    prev_fh = prev_mh = None
     for r in seg:
         k = r.get("kind")
+        if k == "battle_turn":
+            fh, mh = r.get("foe_hp"), r.get("me_hp")
+            if fh is not None:
+                if prev_fh is not None and 0 < prev_fh - fh <= 40:
+                    dealt.append(prev_fh - fh)
+                prev_fh = fh
+            if mh is not None:
+                if prev_mh is not None and 0 < prev_mh - mh <= 60:
+                    taken.append(prev_mh - mh)
+                prev_mh = mh
         if k == "battle_start":
             bt_tail = 0
         elif k == "battle_turn" and r.get("op") == "battle_move":
@@ -388,6 +407,8 @@ def journal_text(path: Path, limit: int = 60) -> str:
             bt_tail = 0
         if k == "battle_start" and r.get("foe"):
             last_fight = f" (last fight: {r.get('foe')} vs your {r.get('me')})"
+            dealt, taken = [], []
+            prev_fh = prev_mh = None
         if k == "subgoal_done" or k == "escalate_success":
             # A stop that was already satisfied DID nothing: the Cerulean
             # heal kept instant-passing on a blackout-healed party, so the
@@ -401,8 +422,13 @@ def journal_text(path: Path, limit: int = 60) -> str:
         elif k == "subgoal_failed":
             events.append(f"  FAILED  {r.get('subgoal')}")
         elif k == "blackout":
+            race = ""
+            if dealt and taken:
+                race = (f"; your hits dealt ~{round(sum(dealt)/len(dealt))}"
+                        f"/turn while theirs took "
+                        f"~{round(sum(taken)/len(taken))}/turn from you")
             events.append(f"  WIPED   during {r.get('subgoal')}"
-                          f"{last_fight} — sent to "
+                          f"{last_fight}{race} — sent to "
                           f"{r.get('respawn')}, and a blackout costs you "
                           f"HALF YOUR MONEY")
         elif k == "rerouted":
