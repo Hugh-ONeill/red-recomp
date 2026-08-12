@@ -199,6 +199,14 @@ PY
     rewritten="plans/$failed_plan"
   fi
 
+  # An EVENT GATE must survive a rewrite. The add/update-never-delete rule
+  # only holds WITHIN one authoring pass; the campaign re-authors from
+  # scratch, so a plan written while stuck in Mt Moon B2F became "walk out"
+  # and dropped defeat_super_nerd — a leg that can march to its last subgoal
+  # having achieved nothing. Map hops may be re-planned freely.
+  python planner/carry_gates.py "plans/$failed_plan" "$rewritten" \
+      2>&1 | tee -a "$LOG"
+
   # resume from the failed leg onward; earlier legs already succeeded and
   # their save is what --continue picks up
   keep=(); seen=0
