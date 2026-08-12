@@ -491,12 +491,19 @@ class Executor:
         # so the room went from exits {21,17} to {21,17, 5,7}. Exit keys are
         # tile coordinates on that map, so two areas that both reach the same
         # warp tile ARE the same place — share one exit, same room.
+        # WARP TILES ONLY. A map-EDGE direction is not a tile: the edge
+        # spans every pocket that touches that boundary, so Route 4's
+        # 'south' glued the west stub to the east region and the router
+        # then crossed 'east' from the stub — the walk-back replanned into
+        # the same wall four times and the KNOWN-WAY advice line fed the
+        # model the same impossible cross for a whole escalation.
         by_map: dict = {}
         for region, exits in (self.frontier or {}).items():
-            if not exits:
+            tiles = {k for k in exits if "," in k}
+            if not tiles:
                 continue
             by_map.setdefault(region.split("|")[0], []).append(
-                (region, set(exits)))
+                (region, tiles))
         AREA_ALIASES.clear()
         for regions in by_map.values():
             for i, (ra, ea) in enumerate(regions):
