@@ -2998,6 +2998,33 @@ Reply with ONLY a JSON array of ops, e.g.
                         obs = self.settle()
                         if traversal and not pred_holds(done, obs):
                             continue     # battle interrupted travel: resume
+                    # A wipe during REPLAY was invisible: both blackout
+                    # detectors live in the escalation loop, so a macro
+                    # party that died in Mt Moon woke at a Center with no
+                    # faint marker and no walk-back, and the map trail read
+                    # as silent teleports to Pewter, over and over. Same
+                    # state test as escalation: an unasked-for jump to a
+                    # respawn map with the party's HP suddenly RISEN.
+                    pre_map = ((pre_obs or {}).get("map") or {}).get("id")
+                    post_map = ((obs or {}).get("map") or {}).get("id")
+                    if (pre_map and post_map and post_map != pre_map
+                            and (post_map.endswith("POKECENTER")
+                                 or post_map in ("REDS_HOUSE_1F",
+                                                 "PALLET_TOWN"))):
+                        mons = (obs or {}).get("party") or []
+                        tot = lambda o: sum((m.get("hp") or 0) for m in
+                                            (o or {}).get("party") or [])
+                        healed = bool(mons) and all(
+                            m.get("max_hp") and m.get("hp") == m["max_hp"]
+                            for m in mons)
+                        if healed and tot(obs) > tot(pre_obs):
+                            self._faint_at = self._where(pre_obs)
+                            self.log("blackout", subgoal=sg["id"], op=op,
+                                     respawn=post_map, detected="macro")
+                            self.log("faint_marked", subgoal=sg["id"],
+                                     at=self._faint_at)
+                            self.log("subgoal_failed", subgoal=sg["id"])
+                            return False
                     # RECORD WHAT THE MACRO WALKED. Only escalation ops were
                     # recording edges, so every map change made by a stored
                     # macro was invisible to the graph: the party descended
