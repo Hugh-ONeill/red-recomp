@@ -394,6 +394,8 @@ class Executor:
                 if tgt != "*":
                     for r in rooms:
                         anyd[r] = True
+            self._tried_objs = {r: set(v) for r, v in
+                                (data.get("touched") or {}).items()}
             self._rebuild_area_aliases()
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
@@ -412,7 +414,13 @@ class Executor:
                 {"explored": self.explored, "dead_ends": self.dead_ends,
                  "visits": self.visits, "frontier": self.frontier,
                  "sightings": self.sightings, "searched": self.searched,
-                 "contested": self.contested},
+                 "contested": self.contested,
+                 # touched outlives the process so "sighted but never
+                 # touched" stays computable across attempts — the Mt Moon
+                 # fossils are the door east, and every restart forgot who
+                 # had already been talked to
+                 "touched": {r: sorted(s)
+                             for r, s in self._tried_objs.items()}},
                 indent=1))
         except OSError:
             pass
@@ -1016,6 +1024,38 @@ class Executor:
                          f"you leave — it is free, and a thing sitting in a "
                          f"passage can be exactly what is blocking it, so "
                          f"interacting with it may open the way.")
+        # ...and the same fact about ROOMS YOU ARE NOT IN. When every
+        # frontier exit is taken, the only thing that still changes the
+        # geometry is an untouched object (the Mt Moon fossils are the door
+        # east), and the loot line above only fires when standing beside
+        # one. Sightings + the touched ledger earned this across runs.
+        # A sighting can go stale once a thing is taken — the obs on
+        # arrival is the truth — so this is a pointer, not a promise.
+        held = []
+        for region, names in self.sightings.items():
+            if region == here:
+                continue
+            got = self._tried_objs.get(region, set())
+            left = [n for n in names if n not in got]
+            if not left:
+                continue
+            # nearest first, by the walked graph: a fresh touched ledger
+            # lists every room since Pallet, and Mom's house must not
+            # out-rank the fossil room when the run is standing at Mt Moon
+            path = self._route(here, region)
+            if not path:
+                continue
+            held.append((len(path),
+                         f"{region} ({', '.join(sorted(left)[:4])} — "
+                         f"{len(path)} leg(s) away)"))
+        if held:
+            held.sort(key=lambda p: p[0])
+            loot_line += ("\nRooms you have SEEN things in that you have "
+                          "never touched: "
+                          + "; ".join(t for _, t in held[:4])
+                          + ". A thing in a passage can BE the blockage — "
+                          "going back and pressing A on it can open ground "
+                          "no exit reaches.")
         if not (untried or tried):
             if elsewhere:
                 return (warned + "\nNothing here is new, but these places "
