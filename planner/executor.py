@@ -1487,7 +1487,16 @@ Reply with ONLY a JSON array of ops, e.g.
                         self.log("blackout", subgoal=sg["id"], op=op,
                                  respawn=post_map)
                         break
-                    if traversal and not pred_holds(done, obs):
+                    # interact resumes after a battle too. Only traversal
+                    # ops were re-sent, so an interact whose approach walk
+                    # was jumped by a wild resolved the battle and then
+                    # reported "ok (moved, battle ended)" — telling the
+                    # model it fought the nerd when it fought a Zubat, and
+                    # ending an intercepted fossil grab with no fossil. If
+                    # the battle WAS the target's own, the re-send lands on
+                    # after-text and exits on the first battle-free pass.
+                    if ((traversal or op == "interact")
+                            and not pred_holds(done, obs)):
                         continue
                 break
             r = (obs or {}).get("result") or {}
