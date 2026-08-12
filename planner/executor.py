@@ -235,7 +235,12 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
             break
         turns += 1
         ctx["turn"] = turns
-        if (flees < 3 and battle_policy.should_flee(obs, spec, ctx)):
+        # gen1 escape odds IMPROVE with each failed attempt (the formula
+        # counts tries), so a small cap is self-defeating: capping at 3
+        # left a no-attacking-PP Charmeleon fighting a wild Zubat with
+        # GROWL for 31 turns until it wiped. Keep trying while the spec
+        # says flee; the turn cap still bounds the battle.
+        if (flees < 12 and battle_policy.should_flee(obs, spec, ctx)):
             flees += 1
             log("battle_turn", turn=turns, op="battle_run", params={},
                 why=f"flee wild ({intent})")
