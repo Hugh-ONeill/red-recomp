@@ -50,6 +50,12 @@ PREDICATES = {
     "player_at": "standing within radius R of a tile, e.g. "
                  "{\"player_at\":{\"x\":27,\"y\":3,\"radius\":4}}. Combine it "
                  "with map when a map predicate alone cannot say WHERE",
+    "area": "a SPECIFIC ENCLOSED AREA rather than a whole map, written "
+        "\"MAP|region\" (e.g. {\"area\":\"MT_MOON_B2F|20,5\"}). A floor can "
+        "be several rooms that cannot walk to each other, so {\"map\":...} "
+        "is satisfied by landing in ANY of them — use this when the thing "
+        "you need is in one particular room. Only use area codes that appear "
+        "in the observed evidence below; do not invent one",
     "party_min_level": "EVERY party member is at least VALUE "
         "(e.g. {\"party_min_level\":15}). Use this to TRAIN A BACKUP: "
         "lead_level only looks at slot 1, so it is already true when your "
@@ -294,7 +300,11 @@ def observed_text(path: Path) -> str:
     for tgt, regions in (d.get("dead_ends") or {}).items():
         for region, n in regions.items():
             dead.append(f"  {tgt} was NOT reachable from {region} ({n}x)")
-    out = ("\n\nWHAT PREVIOUS RUNS ACTUALLY WALKED (evidence — trust this "
+    areas = sorted({r for r in exp} | {t for v in exp.values()
+                                       for t in [e.get("to") for e in v.values()] if t})
+    out = ("\n\nAREA CODES you may use with the \"area\" predicate (these are "
+           "the enclosed areas actually walked):\n  " + ", ".join(areas[:40])
+           + "\n\nWHAT PREVIOUS RUNS ACTUALLY WALKED (evidence — trust this "
            "over your memory of the game; MAP|region means one connected "
            "area, so the SAME map id appearing with DIFFERENT regions is a "
            "map split into parts that cannot walk to each other):\n"

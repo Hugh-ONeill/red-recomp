@@ -89,6 +89,14 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             lead = (obs.get("party") or [{}])[0]
             if (lead.get("level") or 0) < want:
                 return False
+        elif key == "area":
+            # An ENCLOSED AREA, not just a floor: "MAP|region", the same id
+            # the graph, sightings and searched-rooms use. Mt Moon B2F has
+            # four unconnected rooms and only one holds the nerd, so
+            # {"map":"MT_MOON_B2F"} was satisfied by landing in any of them.
+            m = (obs.get("map") or {})
+            if f"{m.get('id')}|{m.get('region')}" != want:
+                return False
         elif key == "party_min_level":
             # EVERY party member at least this level. lead_level could only
             # see slot 1, so "train the backup" was inexpressible: the model
@@ -522,7 +530,7 @@ class Executor:
     def _target_key(sg) -> str:
         """What this subgoal is actually trying to reach/achieve."""
         dw = sg.get("done_when") or {}
-        for k in ("map", "flag", "badge"):
+        for k in ("area", "map", "flag", "badge"):
             if dw.get(k):
                 return f"{k}:{dw[k]}"
         if dw.get("has_item"):
@@ -820,8 +828,21 @@ class Executor:
         # 44 times. The graph can answer "which exit starts the journey", so
         # say it rather than leaving the model to infer it from visit counts.
         route_line = ""
+        want_area = target.split(":", 1)[1] if target.startswith("area:") else ""
         want_map = target.split(":", 1)[1] if target.startswith("map:") else ""
-        if want_map and want_map != (m.get("id") or ""):
+        if want_area and want_area != here:
+            path = self._route(here, want_area)
+            if path:
+                first_key, first_dest = path[0]
+                step = (f"walk {first_key}" if not first_key[0].isdigit()
+                        else f"the door at ({first_key})")
+                route_line = (
+                    f"\nTHE KNOWN WAY TO {want_area} FROM HERE: take {step} "
+                    f"to {first_dest} — {len(path)} leg(s) over ground you "
+                    f"have already walked. That area is a SPECIFIC ROOM, not "
+                    f"the whole floor; arriving elsewhere on the same floor "
+                    f"is not arriving.")
+        elif want_map and want_map != (m.get("id") or ""):
             best = None
             for region in set(list(self.explored) + list(self.visits)):
                 if region.split("|")[0] != want_map:
