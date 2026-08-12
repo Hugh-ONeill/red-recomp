@@ -835,6 +835,11 @@ class Executor:
             if [o for o in ((obs.get("map") or {}).get("objects") or [])
                     if o.get("reachable") and o.get("name") not in tried_here]:
                 return None
+        # LEAST-VISITED first, not nearest. Nearest is goal-blind: from the
+        # Route 4 stub the closest region with unopened doors is PEWTER
+        # CITY (six of them, two hops, and visited a dozen times), so the
+        # escort marched AWAY from the frontier that mattered. Fresh ground
+        # is where new ground is; distance only breaks ties.
         best = None
         for region, exits in self.frontier.items():
             if region == here:
@@ -843,8 +848,11 @@ class Executor:
             if not [e for e in exits if e not in done_x]:
                 continue
             path = self._route(here, region)
-            if path is not None and (best is None or len(path) < len(best[1])):
-                best = (region, path)
+            if path is None:
+                continue
+            rank = (self.visits.get(region, 0), len(path))
+            if best is None or rank < best[2]:
+                best = (region, path, rank)
         if not best or not best[1]:
             return None
         region, path = best
