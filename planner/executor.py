@@ -2143,15 +2143,31 @@ Reply with ONLY a JSON array of ops, e.g.
                     and backtracks < 2 and not sg.get("optional")):
                 at = self.settle() or {}
                 cand = subgoals[idx - 1]
-                if pred_holds(cand.get("done_when") or {}, at):
-                    # Nothing to relocate: it already finished where it says
-                    # it should be. Scanning FURTHER back was worse — from
-                    # Pallet it picked go_downstairs and sent the run back
-                    # inside the house. Backtracking only ever means "the
-                    # step before this one landed in the wrong place".
+                holds = pred_holds(cand.get("done_when") or {}, at)
+                # A satisfied MAP subgoal is still worth redoing when that
+                # map has other enclosed areas we have not searched for this
+                # goal — "I am on B2F" is true in all four of its rooms, and
+                # the nerd is in one of them. Without this the gate ended the
+                # plan and the campaign restarted, instead of relocating one
+                # room over (user: "instead of backtracking from B2F it
+                # spawns a new version and restarts").
+                elsewhere = []
+                want = (cand.get("done_when") or {}).get("map")
+                if holds and want:
+                    done = self.searched.get(self._target_key(sg), {})
+                    here_now = self._where(at)
+                    elsewhere = [r for r in
+                                 set(list(self.explored) + list(self.visits))
+                                 if r.split("|")[0] == want
+                                 and r != here_now and r not in done]
+                if holds and not elsewhere:
                     self.log("backtrack_skipped", failed=sg["id"],
                              candidate=cand["id"], reason="already holds")
                 else:
+                    if holds:
+                        self.log("backtrack_relocate_within_map",
+                                 failed=sg["id"], candidate=cand["id"],
+                                 unsearched=len(elsewhere))
                     prev = cand
             if prev is not None:
                 stuck_region = ((self.settle() or {}).get("map")
