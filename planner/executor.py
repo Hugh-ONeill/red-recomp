@@ -2374,7 +2374,16 @@ Reply with ONLY a JSON array of ops, e.g.
             # everything won inside it — the Mt Moon fossil was taken and
             # then lost on the next launch, twice. "Resume from the last
             # step that worked" only means anything if the step is recorded.
-            if self.save_each:
+            # Do NOT save while a blackout recovery is still pending. A wipe
+            # teleports you to a Center; if a subgoal completes there and we
+            # save, the setback is baked into the save and the NEXT attempt
+            # resumes in town — undoing the walk-back and re-walking to the
+            # mountain (user: "after a blackout it just wandered around
+            # pewter"). Save once the party is back where it fell.
+            if self.save_each and self._faint_at:
+                self.log("save_deferred", subgoal=sg["id"],
+                         pending_return=self._faint_at)
+            elif self.save_each:
                 r = (self._send_safe("save_game") or {}).get("result") or {}
                 if not r.get("ok"):
                     self.log("subgoal_save_failed", subgoal=sg["id"],
