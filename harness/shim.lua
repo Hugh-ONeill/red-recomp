@@ -1339,11 +1339,27 @@ function OPS.battle_move(G, c)
   end
   if b.moveIndex ~= want then return false, "cursor missed move" end
   U.tap(G, "a"); U.wait(3)
+  -- The confirm can be EATEN in the opening-text race, leaving the phase
+  -- sitting in moveSelect — and the text loop below used to count that as
+  -- a resolved turn. Against Misty that made three phantom EMBERs: three
+  -- "turns" with no damage dealt or taken, so the lead met her second mon
+  -- at half health. Retry the confirm; if the move still will not submit
+  -- (also the disabled-move and no-PP shapes), fail the op honestly so the
+  -- caller picks something else instead of burning a phantom turn.
+  for _ = 1, 8 do
+    local nb = in_battle(G)
+    if not nb or nb.phase ~= "moveSelect" then break end
+    U.tap(G, "a"); U.wait(4)
+  end
+  local still = in_battle(G)
+  if still and still.phase == "moveSelect" then
+    return false, "move would not submit (disabled or out of PP?)"
+  end
   -- play out the turn's text back to the next decision or battle end
   for _ = 1, 120 do
     local nb = in_battle(G)
     if not nb then return true, "battle ended" end
-    if nb.phase == "menu" or nb.phase == "moveSelect" then return true end
+    if nb.phase == "menu" then return true end
     U.tap(G, "a"); U.wait(3)
   end
   return true, "turn resolved (timeout advancing text)"
