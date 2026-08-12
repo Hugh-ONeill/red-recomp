@@ -51,19 +51,29 @@ def carry(old: dict, new: dict) -> tuple:
         already walked away from, unsatisfiable by construction."""
         idx = next((i for i, sg in enumerate(old_subs)
                     if cond(sg) == cond(gate)), None)
-        if idx is not None:
-            # after whatever preceded it, if the new plan still has that step
-            for prev in reversed(old_subs[:idx]):
-                at = next((i for i, sg in enumerate(subs)
-                           if cond(sg) == cond(prev)), None)
-                if at is not None:
-                    return at + 1
-            # else before whatever followed it
-            for nxt in old_subs[idx + 1:]:
-                at = next((i for i, sg in enumerate(subs)
-                           if cond(sg) == cond(nxt)), None)
-                if at is not None:
-                    return at
+        if idx is None:
+            return max(0, len(subs) - 1)
+        # Anchor on position in the NEW plan, not on the first match found
+        # scanning the old one. Taking the first backward match put the gate
+        # after descend_to_b1f while descend_to_b2f sat later in the new plan
+        # — the nerd fought from the wrong floor. Of everything that preceded
+        # the gate, use the one that ends up LATEST in the new plan; of
+        # everything that followed it, the one that lands EARLIEST.
+        # Conditions REPEAT in these plans — descend_to_b1f and
+        # exit_mt_moon_b2f are both {map: MT_MOON_B1F} — so "latest match"
+        # walks the gate past the exit it should precede. Anchor on the
+        # gate's IMMEDIATE predecessor at its FIRST occurrence, stepping
+        # further back only when that step is absent from the new plan.
+        for prev in reversed(old_subs[:idx]):
+            at = next((i for i, sg in enumerate(subs)
+                       if cond(sg) == cond(prev)), None)
+            if at is not None:
+                return at + 1
+        for nxt in old_subs[idx + 1:]:
+            at = next((i for i, sg in enumerate(subs)
+                       if cond(sg) == cond(nxt)), None)
+            if at is not None:
+                return at
         return max(0, len(subs) - 1)
 
     for sg in missing:
