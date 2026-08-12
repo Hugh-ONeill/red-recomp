@@ -39,10 +39,35 @@ def carry(old: dict, new: dict) -> tuple:
     if not missing:
         return new, []
     subs = list(new.get("subgoals") or [])
-    # a gate belongs before the leg's final step (which is usually "arrive
-    # somewhere"), never after it
+    old_subs = list(old.get("subgoals") or [])
+
+    def cond(sg):
+        return json.dumps(sg.get("done_when") or {}, sort_keys=True)
+
+    def place(gate):
+        """Insert by the gate's NEIGHBOURS in the old plan, not blindly at
+        the end. Appending before the last step put defeat_super_nerd AFTER
+        the subgoals that leave Mt Moon — a fight with someone you have
+        already walked away from, unsatisfiable by construction."""
+        idx = next((i for i, sg in enumerate(old_subs)
+                    if cond(sg) == cond(gate)), None)
+        if idx is not None:
+            # after whatever preceded it, if the new plan still has that step
+            for prev in reversed(old_subs[:idx]):
+                at = next((i for i, sg in enumerate(subs)
+                           if cond(sg) == cond(prev)), None)
+                if at is not None:
+                    return at + 1
+            # else before whatever followed it
+            for nxt in old_subs[idx + 1:]:
+                at = next((i for i, sg in enumerate(subs)
+                           if cond(sg) == cond(nxt)), None)
+                if at is not None:
+                    return at
+        return max(0, len(subs) - 1)
+
     for sg in missing:
-        subs.insert(max(0, len(subs) - 1), sg)
+        subs.insert(place(sg), sg)
     merged = dict(new)
     merged["subgoals"] = subs
     return merged, [sg["id"] for sg in missing]
