@@ -1181,11 +1181,31 @@ class Executor:
         # item sits. pure30 beat the Mt Moon nerd beside two reachable
         # fossils, left without touching either, and the corridor stayed
         # shut. Picking one up costs a turn and can never hurt.
+        # ATTACKING PP, stated while it still matters. The party's move PP
+        # is in the observation and the journal reports a dry lead after a
+        # wipe, but nothing said it during the run that was dying: a lead
+        # with no damaging PP left fights everything with 0-power moves
+        # until it faints. Only a Pokemon Center restores PP, so this is a
+        # fact worth acting on — whether to walk back for it is the
+        # model's call.
+        # Which moves are attacks is the MODEL's knowledge, not the
+        # harness's — so state the PP and let it judge. It is shown only
+        # when something is already empty, so it stays quiet until it
+        # matters.
+        pp_line = ""
+        lead = ((obs or {}).get("party") or [None])[0] if obs else None
+        moves = (lead or {}).get("moves") or []
+        if moves and any((mv.get("pp") or 0) == 0 for mv in moves):
+            pp_line = (f"\nPP of your lead ({lead.get('species')}): "
+                       + ", ".join(f"{mv.get('id')} {mv.get('pp')}"
+                                   for mv in moves)
+                       + ". A move at 0 cannot be used; only a Pokemon "
+                         "Center restores PP.")
         taken_objs = self._tried_objs.get(here, set())
         loot = [o.get("name") for o in (m.get("objects") or [])
                 if o.get("reachable") and o.get("name")
                 and o.get("name") not in taken_objs]
-        loot_line = ""
+        loot_line = pp_line
         if loot:
             loot_line = (f"\nTHINGS within reach here you have NOT touched "
                          f"yet: {', '.join(loot[:6])}. Press A on them before "
