@@ -145,9 +145,13 @@ and some maps are split into disconnected areas you cannot walk between
 whenever a subgoal RETURNS to a map an earlier subgoal already reached —
 you will see the same map id twice in your list — {"map": X} cannot tell
 the two arrivals apart and the second subgoal is already "done" the moment
-it starts. In that case add "player_at" alongside it to pin down WHICH part
-of the map (a small radius; proximity across a wall does not count as
-arrival). Prefer a landmark you can name: the far ladder, the east exit.
+it starts. The fix is {"area": "MAP|region"} — an area code names ONE
+walkable room of that map, so it can tell the two arrivals apart. The
+observed evidence below lists the area codes already walked, with the
+doors between them; pick the code for the part you actually mean (the far
+side of the mountain, the room with the exit east). Use "player_at" only
+when no area code covers the spot you need — a coordinate you have never
+stood on is a guess, while an area code is a place you have been.
 
 Hard rule on GRANULARITY: each subgoal must be ONE map transition, OR one
 event/interaction that happens within a single map. Do not bundle multiple
