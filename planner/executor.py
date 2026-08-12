@@ -1207,7 +1207,7 @@ class Executor:
                 and o.get("name") not in taken_objs]
         loot_line = pp_line
         if loot:
-            loot_line = (f"\nTHINGS within reach here you have NOT touched "
+            loot_line += (f"\nTHINGS within reach here you have NOT touched "
                          f"yet: {', '.join(loot[:6])}. Press A on them before "
                          f"you leave — it is free, and a thing sitting in a "
                          f"passage can be exactly what is blocking it, so "
