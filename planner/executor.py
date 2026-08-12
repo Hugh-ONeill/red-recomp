@@ -1457,9 +1457,17 @@ Reply with ONLY a JSON array of ops, e.g.
             # A gen1 blackout is unmistakable in state: you did not ask to go
             # there, you are in a Center, and the whole party is suddenly at
             # full HP.
+            # Excluding cross/use_warp was wrong: you cannot CROSS into a
+            # Pokemon Center, and warping in while hurt does not heal you —
+            # the HP-rise test already rules both out. The exclusion just
+            # meant a wipe during those ops went undetected and the walk-back
+            # never armed. Gen1 also respawns at HOME before any Center has
+            # been used, so accept that too. Only a checkpoint restore can
+            # legitimately teleport-and-heal.
+            respawn_like = (str(after[0]).endswith("POKECENTER")
+                            or after[0] in ("REDS_HOUSE_1F", "PALLET_TOWN"))
             if (not blackout and before[0] and after[0] and before[0] != after[0]
-                    and str(after[0]).endswith("POKECENTER")
-                    and op not in ("use_warp", "cross", "checkpoint_restore")):
+                    and respawn_like and op != "checkpoint_restore"):
                 mons = (obs or {}).get("party") or []
                 healed = bool(mons) and all(
                     m.get("max_hp") and m.get("hp") == m["max_hp"] for m in mons)
