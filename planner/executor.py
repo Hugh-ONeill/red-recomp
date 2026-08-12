@@ -290,6 +290,7 @@ class Executor:
         self.save_each = False              # in-game SAVE after each subgoal
         self._tried_objs: dict = {}         # region -> objects interacted
         self._inert_objs: dict = {}         # region -> objects that did nothing
+        self._cant_afford: dict = {}        # item -> unit price we lack
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -1111,6 +1112,24 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"here: {', '.join(self._untried_exits(obs))}. "
                         f"Take one.")
                     continue
+            if op == "buy" and step.get("item") in self._cant_afford:
+                # The 3-strikes guard keys on the op AND its params, so
+                # buying 5, then 3, then 2 Potions looked like three
+                # different actions and each got its own three tries. Being
+                # unable to afford something is a fact about the ITEM and the
+                # WALLET, not about the count — hold it until the money
+                # actually changes.
+                price = self._cant_afford[step["item"]]
+                money = (obs or {}).get("money")
+                if isinstance(money, int) and money < price:
+                    trace.append(
+                        f"buy({step.get('item')}): REFUSED — you have "
+                        f"{money} and one costs {price}. No count works, and "
+                        f"the price will not change by asking again. Earn "
+                        f"money (trainers pay, wild battles do not) or move "
+                        f"on without it.")
+                    continue
+                self._cant_afford.pop(step["item"], None)   # wallet grew
             if op == "interact":
                 here_r = self._where(obs)
                 # Talking again to something that did NOTHING last time is
@@ -1246,6 +1265,11 @@ Reply with ONLY a JSON array of ops, e.g.
                 # until you talk to him, and the run stood in front of him
                 # re-proposing the same warp. Talking is free and people
                 # move once their business is done.
+                if "cannot afford" in det and step.get("item"):
+                    import re as _re
+                    m = _re.search(r"it costs (\d+)", det)
+                    if m:
+                        self._cant_afford[step["item"]] = int(m.group(1))
                 if ("couldn't reach the warp tile" in det
                         or "no path" in det):
                     near = [o.get("name") for o in
