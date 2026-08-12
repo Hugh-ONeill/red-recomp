@@ -294,6 +294,7 @@ class Executor:
         self.visits: dict = {}      # region -> times arrived
         self.frontier: dict = {}    # region -> every exit visible from it
         self.sightings: dict = {}   # region -> named objects seen there
+        self.searched: dict = {}    # target -> {region: fully worked}
         self._arrived = None        # (region, (x,y)) — the door we came in by
         self._came_from = None      # the region we were in a moment ago
         self._reversals = 0
@@ -348,6 +349,7 @@ class Executor:
             self.visits = data.get("visits", {})
             self.frontier = data.get("frontier", {})
             self.sightings = data.get("sightings", {})
+            self.searched = data.get("searched", {})
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
             if edges:
@@ -356,13 +358,14 @@ class Executor:
         except (OSError, ValueError):
             self.explored, self.dead_ends = {}, {}
             self.visits, self.frontier, self.sightings = {}, {}, {}
+            self.searched = {}
 
     def _save_memory(self):
         try:
             self.MEMORY.write_text(json.dumps(
                 {"explored": self.explored, "dead_ends": self.dead_ends,
                  "visits": self.visits, "frontier": self.frontier,
-                 "sightings": self.sightings},
+                 "sightings": self.sightings, "searched": self.searched},
                 indent=1))
         except OSError:
             pass
@@ -471,6 +474,18 @@ class Executor:
         return 1              # every way out leads somewhere hopeless
 
     SPATIAL = ("map:", "flag:", "item:")
+
+    def note_searched(self, target: str, region: str):
+        """This area has been fully worked for that target: every exit taken,
+        everything reachable touched. Distinct from a dead end — it stops the
+        room being SEARCHED again without stopping the run PASSING through."""
+        if not region or "None" in region or not target:
+            return
+        d = self.searched.setdefault(target, {})
+        if region not in d:
+            d[region] = True
+            self.log("room_searched", target=target, region=region)
+            self._save_memory()
 
     def note_dead_end(self, sg_id: str, region: str,
                       shop_proof: bool = False):
@@ -824,6 +839,21 @@ class Executor:
                     f"have already walked ({len(best)} legs total). Take it "
                     f"even if you have used it before; an untried exit that "
                     f"leads somewhere else is not progress toward this goal.")
+        # Rooms already worked for THIS goal: nothing left to find in them,
+        # but you may still walk through — that distinction is why they are
+        # not dead ends.
+        done_rooms = [r for r in (self.searched.get(target) or {})
+                      if r != here]
+        searched_line = ""
+        if self.searched.get(target, {}).get(here):
+            searched_line = ("\nYou have ALREADY fully searched this exact "
+                             "area for this goal — every exit taken, "
+                             "everything touched. Do not search it again; "
+                             "pass through or go somewhere new.")
+        elif done_rooms:
+            searched_line = ("\nAlready fully searched for this goal (walk "
+                             "through if you must, but nothing is left in "
+                             "them): " + ", ".join(sorted(done_rooms)[:5]) + ".")
         been = self.visits.get(here, 0)
         warned = ""
         if been >= 2:
@@ -873,7 +903,7 @@ class Executor:
                         "you have already been still have ways you have "
                         "NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
                         + ". Go back to one and take it." + loot_line)
-            return warned + route_line + loot_line
+            return warned + route_line + searched_line + loot_line
         out = warned + "\nEXITS FROM HERE — "
         out += ("UNTRIED (prefer these, they are the only way to find "
                 f"anything new): {', '.join(untried)}. " if untried
@@ -887,7 +917,7 @@ class Executor:
             out += ("\nPlaces you have already been that still have ways "
                     "you have NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
                     + ".")
-        out += route_line + loot_line
+        out += route_line + searched_line + loot_line
         return out
 
     def _atlas_text(self) -> str:
@@ -1751,9 +1781,17 @@ Reply with ONLY a JSON array of ops, e.g.
                 # which is NOT evidence — this is about the room, not the
                 # budget.)
                 if not self._untried_exits(cur) and not live:
-                    confirmed = True
-                    self.log("dead_end_room_worked", subgoal=sg["id"],
-                             region=here)
+                    # SEARCHED, not sealed. Every exit taken and everything
+                    # touched proves the target is not IN this room — it does
+                    # NOT prove the target is unreachable THROUGH it. Marking
+                    # a dead end here branded B1F corridor rooms unreachable
+                    # for a B2F flag, and the run then refused the very
+                    # ladders leading down to it. Record it as searched so
+                    # the room is not re-worked, and leave passage alone;
+                    # whether everything beyond is hopeless is the transitive
+                    # pruner's job, computed on demand.
+                    confirmed = False
+                    self.note_searched(tk, here)
                 elif self._untried_exits(cur):
                     confirmed = False
                     self.log("dead_end_withheld", subgoal=sg["id"],
