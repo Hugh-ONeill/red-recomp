@@ -637,15 +637,28 @@ class Executor:
         from collections import deque
         if frm == to:
             return []
+        def edges(region):
+            # An area's walked edges are split across its fingerprints: the
+            # same Mt Moon 1F room is 2,2 before a blocker moves and 3,2
+            # after, and the descent was only ever walked from one of them.
+            # Routing that ignores the aliases cannot get back into the
+            # mountain at all — the blackout walk-back reported "no route"
+            # from a Pokemon Center that plainly connects.
+            out = dict(self.explored.get(region) or {})
+            for alias in AREA_ALIASES.get(region, ()):
+                for k, v in (self.explored.get(alias) or {}).items():
+                    out.setdefault(k, v)
+            return out
+
         seen, q = {frm}, deque([(frm, [])])
         while q:
             cur, path = q.popleft()
-            for key, e in (self.explored.get(cur) or {}).items():
+            for key, e in edges(cur).items():
                 nxt = e.get("to")
                 if not nxt or nxt in seen:
                     continue
                 hop = path + [(key, nxt)]
-                if nxt == to:
+                if nxt == to or nxt in AREA_ALIASES.get(to, ()):
                     return hop
                 seen.add(nxt)
                 q.append((nxt, hop))
