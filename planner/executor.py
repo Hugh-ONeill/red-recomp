@@ -1498,6 +1498,14 @@ Reply with ONLY a JSON array of ops, e.g.
                         # shop proof ("is not sold here", a dead end) may
                         # shut a door against an item target.
                         and not (tgt or "").startswith("item:")
+                        # Nor is HEALING. A Pokemon Center is where the
+                        # condition is SATISFIED, not where something is
+                        # found, and it stays satisfiable however many
+                        # times the party has been inside. Sealing that
+                        # door left the run walking to the Center and being
+                        # turned away at it, round after round, with a
+                        # half-dead lead.
+                        and not (tgt or "").startswith("party_healthy")
                         and self._revisit_refusals.get(tgt, 0) < 3):
                     unsearched = [r for r in
                                   set(list(self.explored) + list(self.visits))
