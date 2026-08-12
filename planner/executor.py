@@ -2083,7 +2083,21 @@ Reply with ONLY a JSON array of ops, e.g.
             if not ok and not sg.get("optional"):
                 fails += 1
                 last = sg is plan["subgoals"][-1]
-                if fails < 3 and not last:
+                # An EVENT is a gate, not a step you can walk past. When
+                # defeat_mt_moon_nerd failed, the plan carried on and
+                # "completed" three subgoals that are satisfied by RETREATING
+                # (ascend to B1F, ascend to 1F, exit to Route 4), marching to
+                # the end having achieved nothing and only noticing at
+                # Cerulean. A missed map hop can be carried; a missed event
+                # cannot, because everything after it assumes it happened.
+                gate = "flag" in (sg.get("done_when") or {}) or \
+                       "badge" in (sg.get("done_when") or {})
+                if gate:
+                    print(f"   !! {sg['id']} failed and it is an EVENT gate "
+                          f"— not continuing past it")
+                    self.log("gate_subgoal_failed", subgoal=sg["id"],
+                             done_when=json.dumps(sg.get("done_when")))
+                elif fails < 3 and not last:
                     print(f"   !! {sg['id']} failed — continuing")
                     self.log("subgoal_failed_continuing", subgoal=sg["id"],
                              consecutive=fails)
