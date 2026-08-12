@@ -286,6 +286,7 @@ class Executor:
         self._battle_maps: set = set()      # "target|map" where a fight ran
         self._blackouts: dict = {}          # target -> party wipes
         self._faint_at = None               # region we were in when wiped
+        self._ui_pending = 0                # rounds a prompt has sat open
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -625,6 +626,17 @@ class Executor:
         sat in that prompt for 23 escalations. Telling the model to answer it
         did not work; backing out is harness hygiene, like settle().
         """
+        # PATIENCE FIRST. A prompt the model has not had a turn to answer
+        # may be the one it WANTS — pressing B on "Do you want the DOME
+        # FOSSIL?" answers No and silently loses the item that opens Mt
+        # Moon's corridor. Only back out of a UI that survived a round with
+        # the model already told a prompt is open.
+        text = (obs or {}).get("recent_text")
+        self.log("ui_seen", subgoal=sg.get("id"), text=str(text)[:160],
+                 pending=self._ui_pending)
+        if self._ui_pending < 1:
+            self._ui_pending += 1
+            return obs
         n = 0
         while obs and obs.get("mode") == "ui" and n < tries:
             self.b.send("tap", btn="b")
@@ -632,7 +644,8 @@ class Executor:
             n += 1
         if n:
             self.log("ui_dismissed", subgoal=sg.get("id"), presses=n,
-                     mode=(obs or {}).get("mode"))
+                     text=str(text)[:160], mode=(obs or {}).get("mode"))
+        self._ui_pending = 0
         return obs
 
     def _logged_exploration(self, obs, sg) -> str:
@@ -1504,6 +1517,8 @@ Reply with ONLY a JSON array of ops, e.g.
                 continue
             if cur.get("mode") == "ui":
                 cur = self._leave_ui(cur, sg) or cur
+            else:
+                self._ui_pending = 0
             if self._faint_at and cur.get("mode") == "overworld":
                 back = self._return_from_blackout(cur, sg)
                 if back:
