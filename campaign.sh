@@ -113,7 +113,12 @@ def met(plan_path):
     if "badge" in last:
         return last["badge"] in (obs.get("badges") or [])
     if "map" in last:
-        return last["map"] == (obs.get("map") or {}).get("id")
+        # obs.json stores map as {"id": ...}; last_state.json flattens it to
+        # a plain string. Accept both — assuming one shape crashed the loop
+        # right after a successful attempt.
+        m = obs.get("map")
+        cur = m.get("id") if isinstance(m, dict) else m
+        return last["map"] == cur
     if "flag" in last:
         return last["flag"] in (obs.get("flags") or [])
     return False
