@@ -774,6 +774,26 @@ class Executor:
                 self._rebuild_area_aliases()
                 path = self._route(self._where(cur), want)
             if not path:
+                # The graph can be INCOMPLETE rather than mis-keyed: the
+                # party fainted on B2F having descended inside a macro, so
+                # 1F->B1F was never recorded and no path to the exact room
+                # existed — while the way back to the MAP was fully known.
+                # Getting to the right floor is most of the return; the
+                # rest is ordinary play. Aim at the nearest region of the
+                # same map before giving up.
+                want_map = want.split("|")[0]
+                best = None
+                for region in set(list(self.explored) + list(self.visits)):
+                    if region.split("|")[0] != want_map or region == want:
+                        continue
+                    p = self._route(here, region)
+                    if p and (best is None or len(p) < len(best)):
+                        best, want = p, region
+                if best:
+                    self.log("blackout_return_partial",
+                             subgoal=sg.get("id"), to=want, hops=len(best))
+                    path = best
+            if not path:
                 self.log("blackout_return_noroute", subgoal=sg.get("id"),
                          frm=here, want=want)
                 self._faint_at = None
