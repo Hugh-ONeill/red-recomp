@@ -74,7 +74,9 @@ ROUTE_MAPS = ["REDS_HOUSE_2F", "REDS_HOUSE_1F", "PALLET_TOWN", "OAKS_LAB",
               "VIRIDIAN_FOREST", "PEWTER_CITY", "PEWTER_MART",
               "PEWTER_POKECENTER", "PEWTER_GYM",
               "ROUTE_3", "MT_MOON_POKECENTER", "ROUTE_4",
-              "MT_MOON_1F", "MT_MOON_B1F", "MT_MOON_B2F", "CERULEAN_CITY"]
+              "MT_MOON_1F", "MT_MOON_B1F", "MT_MOON_B2F", "CERULEAN_CITY",
+              "CERULEAN_POKECENTER", "CERULEAN_MART", "CERULEAN_GYM",
+              "ROUTE_24", "ROUTE_25", "BILLS_HOUSE"]
 # EXACT item ids, for the same reason the map/flag lists exist: the model
 # knows Poke Balls and Potions are things, it cannot know the engine spells
 # them POKE_BALL (underscore) and PARLYZ_HEAL. Left to guess it wrote
@@ -113,7 +115,7 @@ KEY_FLAGS = {
     "EVENT_BEAT_MT_MOON_3_SUPER_NERD": "beat the Super Nerd guarding the "
         "fossils on Mt Moon's bottom floor (B2F) — the fossil pick follows",
 }
-BADGES = ["BOULDERBADGE"]
+BADGES = ["BOULDERBADGE", "CASCADEBADGE"]
 
 SYS = """You author a PLAN to accomplish a Pokemon Red goal: an ordered list
 of SUBGOALS. You write the decomposition and the success condition of each
