@@ -450,12 +450,32 @@ class Executor:
 
     SPATIAL = ("map:", "flag:", "item:")
 
-    def note_dead_end(self, sg_id: str, region: str):
+    def note_dead_end(self, sg_id: str, region: str,
+                      shop_proof: bool = False):
         if not sg_id.startswith(self.SPATIAL):
             return          # healing/levelling are not facts about geography
         """This area could not achieve that subgoal — remember it."""
         if not region or "None" in region:
             return
+        # An ITEM is not a property of a place. Standing on Route 2 without
+        # a Potion proves nothing permanent — you buy one in a shop or find
+        # it elsewhere — yet the spatial proof kept stamping
+        # "item:POTION unreachable from ROUTE_2". Only the explicit
+        # "this shop does not stock it" rule may mark an item target.
+        if sg_id.startswith("item:") and not shop_proof:
+            return
+        # And do not record a MAP proof the walked graph already refutes:
+        # pruning at load is too late, the false mark traps the run for the
+        # rest of the attempt (map:PEWTER_GYM from VIRIDIAN_CITY, which is
+        # plainly walkable).
+        if sg_id.startswith("map:"):
+            want = sg_id.split(":", 1)[1]
+            dests = [r for r in set(list(self.explored) + list(self.visits))
+                     if r.split("|")[0] == want]
+            if any(self._route(region, d) for d in dests):
+                self.log("dead_end_refused", subgoal=sg_id, region=region,
+                         reason="a walked path to it already exists")
+                return
         d = self.dead_ends.setdefault(sg_id, {})
         d[region] = d.get(region, 0) + 1
         self.log("dead_end", subgoal=sg_id, region=region, times=d[region])
@@ -1184,8 +1204,22 @@ Reply with ONLY a JSON array of ops, e.g.
                 # burned ~15 rounds re-entering the Viridian mart, which does
                 # not sell POTION at all, and reached Brock with no heals.
                 det = str(r.get("detail") or "")
+                # Name the problem as MONEY and say what actually fixes it.
+                # The bare "cannot afford" was retried as if it were a
+                # pathing failure; it is not, and no amount of walking back
+                # to the counter changes it.
+                if "cannot afford" in det:
+                    trace.append(
+                        "That is a MONEY problem, not a route problem — "
+                        "walking back to this counter will not change it. "
+                        "Either buy FEWER (lower the count to what you can "
+                        "afford), or go and earn money first: every trainer "
+                        "you beat pays prize money, and wild battles do not. "
+                        "If neither is worth it, move on without the item — "
+                        "this subgoal can stay unfinished.")
                 if "is not sold here" in det and self._cur_target:
-                    self.note_dead_end(self._cur_target, self._where(obs))
+                    self.note_dead_end(self._cur_target, self._where(obs),
+                                       shop_proof=True)
                     trace.append(
                         f"PROVEN: this shop does not stock it and never "
                         f"will. Either buy what IS on this shelf if it "
