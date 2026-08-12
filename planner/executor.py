@@ -849,15 +849,28 @@ class Executor:
             return None
         region, path = best
         for key, nxt in path:
-            if "," in key:
-                x, y = key.split(",")
-                self.b.send("use_warp", x=int(x), y=int(y))
-            else:
-                self.b.send("cross", dir=key)
-            o = self.settle()
-            if o and o.get("mode") == "battle":
-                o = self.handle_battle(sg, o)
+            # A wild encounter EATS the hop: the walk to the ladder is
+            # interrupted, the battle resolves, and the party is standing
+            # where it started with the op already spent. Mt Moon's
+            # encounter rate meant the escort never completed a single leg
+            # — every attempt logged reroute_lost from 1F wanting B1F|4,4.
+            # Re-send while a battle keeps interrupting; give up only when
+            # a clean pass still lands somewhere unexpected.
+            o = None
+            for _ in range(4):
+                if "," in key:
+                    x, y = key.split(",")
+                    self.b.send("use_warp", x=int(x), y=int(y))
+                else:
+                    self.b.send("cross", dir=key)
                 o = self.settle()
+                fought = False
+                while o and o.get("mode") == "battle":
+                    o = self.handle_battle(sg, o)
+                    o = self.settle()
+                    fought = True
+                if self._where(o) == nxt or not fought:
+                    break
             if self._where(o) != nxt:
                 self.log("reroute_lost", subgoal=sg["id"], wanted=nxt,
                          got=self._where(o))
