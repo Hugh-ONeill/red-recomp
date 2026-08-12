@@ -1453,6 +1453,17 @@ Reply with ONLY a JSON array of ops, e.g.
                                 self.searched.get(self._cur_target, {}).pop(reg, None)
                                 self.searched.get("*", {}).pop(reg, None)
                                 self._save_memory()
+                    # Same rule one level down: an interact that STARTS A
+                    # BATTLE did not exhaust the object. A lost fight leaves
+                    # the trainer undefeated, and a fossil grab intercepted
+                    # by its guard never showed the fossil dialog at all —
+                    # counting either as "tried" sealed the fossil room:
+                    # every later interact was refused as already-done and
+                    # the nerd's flag was declared unreachable in the very
+                    # room he stands in.
+                    if op == "interact" and step.get("name"):
+                        self._tried_objs.get(self._where(pre_obs),
+                                             set()).discard(step["name"])
                     obs = self.handle_battle(sg, obs)
                     obs = self.settle()
                     post_map = ((obs or {}).get("map") or {}).get("id")
