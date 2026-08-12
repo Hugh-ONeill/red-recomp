@@ -439,22 +439,32 @@ def build_review(goal: str, plan: dict, start: str | None) -> str:
         "4. A GAP. Two consecutive subgoals with something unstated in "
         "between (a gate, a door, a required event) that nothing achieves.\n"
         "5. NAMES. Only the map ids, flags, items and predicates from the "
-        "vocabulary above, spelled exactly.\n\n"
+        "vocabulary above, spelled exactly.\n"
+        "6. ALREADY DONE. A subgoal whose outcome the START state already "
+        "shows — an item already in the bag, a badge already worn, a flag "
+        "already set — is a detour, not a step. REMOVE it (and any travel "
+        "that exists only to serve it). Do not remove flag or badge "
+        "subgoals that are still unmet: those are the events later steps "
+        "depend on.\n\n"
         "Keep what is right — do not rewrite the plan for style. Return the "
         "full corrected plan."
     )
 
 
 def merge_plans(orig: dict, revised: dict) -> tuple:
-    """Let a revision ADD and UPDATE subgoals, never DELETE one.
+    """Let a revision ADD, UPDATE — and REMOVE all but the event gates.
 
-    An audit run against thin evidence talks itself out of conditions that
-    are load-bearing: one dropped defeat_mt_moon_nerd — the only condition
-    in the mountain leg that RETREATING cannot satisfy — leaving a chain of
-    map hops that all mark themselves done by walking back out. Deleting is
-    the one edit with no safe failure mode, so it is not allowed; a subgoal
-    the revision considers wrong can still be re-pointed by updating its
-    done_when.
+    The original rule was add/update-never-delete: an audit run against
+    thin evidence talked itself out of defeat_mt_moon_nerd — the only
+    condition in the mountain leg that RETREATING cannot satisfy — leaving
+    a chain of map hops that all mark themselves done by walking back out.
+    But never-delete has its own failure mode (user, 2026-08-12): with the
+    potions already saved in the bag, every rewrite still marched the
+    party back to Pewter to shop. The load-bearing steps are exactly the
+    EVENT GATES (flag/badge — things later steps depend on and retreat
+    cannot satisfy); only those are restored when a revision drops them.
+    Map hops, heals and shopping the audit can justify pruning are its
+    call.
     """
     rev_ids = {x["id"] for x in revised["subgoals"]}
     out = list(revised["subgoals"])
@@ -462,6 +472,9 @@ def merge_plans(orig: dict, revised: dict) -> tuple:
     for i, sg in enumerate(orig["subgoals"]):
         if sg["id"] in rev_ids:
             continue
+        dw = sg.get("done_when") or {}
+        if not (isinstance(dw, dict) and ("flag" in dw or "badge" in dw)):
+            continue                      # non-gate: the audit may drop it
         restored.append(sg["id"])
         pos = len(out)
         if i > 0:                       # keep it behind the step it followed
