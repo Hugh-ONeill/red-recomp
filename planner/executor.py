@@ -675,10 +675,24 @@ class Executor:
             if k in taken:
                 dest = taken[k]["to"]
                 bad = self.dead_for(target, dest)
+                # A door you have used before is still the way ON if what
+                # lies beyond it has unopened exits. Route 2 is split: its
+                # north half is only reachable THROUGH the forest, so the
+                # forest door (taken 6x) was the correct move while the text
+                # told the model retaking it showed nothing new.
+                beyond = ""
+                if not bad:
+                    done_x = set((self.explored.get(dest) or {}).keys())
+                    left = [e for e in (self.frontier.get(dest) or [])
+                            if e not in done_x]
+                    if left:
+                        beyond = (f"; BUT {dest} still has {len(left)} exit(s) "
+                                  f"never taken, so going back through here "
+                                  f"is how you reach them")
                 tried.append(
                     f"({k}) -> {dest} [taken {taken[k]['n']}x"
                     + (f"; that area is a KNOWN DEAD END for this goal, "
-                       f"failed there {bad}x — do NOT go back" if bad else "")
+                       f"failed there {bad}x — do NOT go back" if bad else beyond)
                     + "]")
             else:
                 untried.append(
@@ -748,7 +762,9 @@ class Executor:
                 else "none untried. ")
         if tried:
             out += (f"Already taken from here: {'; '.join(tried)} — retaking "
-                    "one returns you where it says, which you have seen.")
+                    "one returns you where it says. That is still the right "
+                    "move if the note says there is unopened ground beyond "
+                    "it, or if nothing here is untried.")
         if elsewhere:
             out += ("\nPlaces you have already been that still have ways "
                     "you have NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
