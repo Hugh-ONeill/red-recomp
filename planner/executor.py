@@ -396,13 +396,20 @@ class Executor:
             # never find there. Within a process the cant-afford ->
             # contested rule keeps this honest; across processes, item
             # proofs and their room seals expire.
-            anyd0 = self.searched.get("*", {})
-            for tgt in [t for t in self.searched if t.startswith("item:")]:
-                for r in self.searched.pop(tgt, {}):
-                    anyd0.pop(r, None)
-            # every entry was recorded under the fully-worked condition, so
-            # the union of all targets IS the set of worked rooms
+            # Every other non-flag key expires with them: travel and status
+            # targets minted vacuous per-target proofs before the whitelist
+            # in note_searched existed (a room never contains a map, nor
+            # "being healthy"), and the rooms they stamped kept re-poisoning
+            # the shared "*" ledger at every load. A room genuinely worked
+            # re-earns its "*" entry in play; a "*" entry recorded by the
+            # current code has no per-target key behind it and survives.
             anyd = self.searched.setdefault("*", {})
+            for tgt in [t for t in self.searched
+                        if t != "*" and not t.startswith("flag:")]:
+                for r in self.searched.pop(tgt, {}):
+                    anyd.pop(r, None)
+            # every surviving entry was recorded under the fully-worked
+            # condition, so the union of targets joins the worked rooms
             for tgt, rooms in list(self.searched.items()):
                 if tgt != "*":
                     for r in rooms:
