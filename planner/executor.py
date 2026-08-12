@@ -1601,6 +1601,22 @@ Reply with ONLY a JSON array of ops, e.g.
                     prev_map = (self._came_from or "").split("|")[0]
                     back = bool(dest_map and prev_map
                                 and dest_map == prev_map)
+                    # ...but "same MAP" only means "same PLACE" on a map
+                    # with one region. Mt Moon B1F has four, and its
+                    # north-east pocket — the one holding the mountain's
+                    # east exit — is reachable ONLY by a B2F ladder whose
+                    # destMap is, of course, MT_MOON_B1F. Every time the
+                    # model proposed it this guard called it the door it
+                    # had just come through and refused the one move that
+                    # leads onward. Where the map is known to have several
+                    # regions, only the learned graph (below) may conclude
+                    # a reversal.
+                    if back and dest_map:
+                        regions = {r for r in
+                                   set(list(self.explored) + list(self.visits))
+                                   if r.split("|")[0] == dest_map}
+                        if len(regions) > 1:
+                            back = False
                     if not back:
                         known = (self.explored.get(self._where(obs), {})
                                  or {}).get(f"{step.get('x')},{step.get('y')}")
