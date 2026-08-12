@@ -1436,12 +1436,27 @@ Reply with ONLY a JSON array of ops, e.g.
                 # the test is REGION, not distance: thin7 went back into the
                 # cave and out the SAME door — tiles away, same dead end
                 if avoid_region and region == avoid_region:
-                    ok = False
-                    trace.append(
-                        "(you are back in the SAME walkable area you started "
-                        "from — the same places are reachable, so nothing has "
-                        "changed. You must reach a DIFFERENT area: a door you "
-                        "have not used, the far side of the map.)")
+                    # ...but a demand nobody can meet is not a plan. If the
+                    # area has no untried way out, no other region can be
+                    # reached from it, and insisting only burns the budget:
+                    # exit_mt_moon sat at REDO round 31 on ROUTE_4 already
+                    # satisfying its own condition. Accept and move on.
+                    if not self._untried_exits(cur_obs):
+                        trace.append(
+                            "(you are back where you started, and this area "
+                            "has no untried way out — accepting it rather "
+                            "than demanding a relocation that is not "
+                            "possible from here.)")
+                        self.log("redo_accepted_no_exits", subgoal=sg["id"],
+                                 region=land)
+                    else:
+                        ok = False
+                        trace.append(
+                            "(you are back in the SAME walkable area you "
+                            "started from — the same places are reachable, so "
+                            "nothing has changed. You must reach a DIFFERENT "
+                            "area: a door you have not used, the far side of "
+                            "the map.)")
             if stripped:
                 trace.insert(0, f"(note: {stripped} leading walk_to op(s) "
                              "dropped — cross/use_warp path-find on their "
