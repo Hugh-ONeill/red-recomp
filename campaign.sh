@@ -34,6 +34,9 @@ try:
 except Exception:
     print("a brand new game"); raise SystemExit
 m = (o.get("map") or {}).get("id")
+if not m:                      # stale/missing obs: say so rather than
+    print("an unknown location")   # inventing "standing in None"
+    raise SystemExit
 party = ", ".join(f"{p.get('species')} L{p.get('level')}"
                   for p in (o.get("party") or []))
 badges = ", ".join(o.get("badges") or []) or "no badges"
@@ -64,9 +67,39 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
     exit 0
   fi
 
-  # which leg died, and what was it trying to do
-  failed_plan=$(grep "===== PLAN:" "$LOG" | tail -1 | sed 's/.*PLAN: //; s/ =====//')
-  [ -n "$failed_plan" ] || { echo "no failed plan identified" >&2; exit 1; }
+  # Which leg died. Do NOT parse stdout for this: python block-buffers when
+  # redirected, so the last "===== PLAN:" line can still be the PREVIOUS
+  # attempt's, and the loop then rewrites a plan it is not even running.
+  # The chain runs in order, so the failed leg is the first one in PLANS
+  # whose final condition is not satisfied.
+  failed_plan=$(python - run/obs.json "${PLANS[@]}" <<'PY'
+import json, sys
+obs = {}
+try:
+    obs = json.load(open(sys.argv[1]))
+except Exception:
+    pass
+def met(plan_path):
+    try:
+        plan = json.load(open(plan_path))
+    except Exception:
+        return False
+    last = (plan.get("subgoals") or [{}])[-1].get("done_when") or {}
+    if "badge" in last:
+        return last["badge"] in (obs.get("badges") or [])
+    if "map" in last:
+        return last["map"] == (obs.get("map") or {}).get("id")
+    if "flag" in last:
+        return last["flag"] in (obs.get("flags") or [])
+    return False
+import os
+for p in sys.argv[2:]:
+    if not met(p):
+        print(os.path.basename(p)); break
+PY
+)
+  [ -n "$failed_plan" ] || { echo "no unmet leg found; nothing to rewrite" \
+      | tee -a "$LOG"; exit 0; }
   echo "--- rewriting plans/$failed_plan from evidence ---" | tee -a "$LOG"
 
   # Is this leg's OBJECTIVE already met? A plan can fail on a subgoal it
