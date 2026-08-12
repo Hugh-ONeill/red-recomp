@@ -57,6 +57,15 @@ def model_view(obs: dict) -> dict:
 
 
 # ---------------------------------------------------------------- predicates
+# Enclosed-area codes are the smallest reachable cell, computed WITH static
+# blockers — so removing a blocker re-fingerprints the room. Mt Moon's fossil
+# room is MT_MOON_B2F|20,5 before a fossil is taken and MT_MOON_B2F|3,2 after,
+# same room, same single exit. A goal naming the pre-gate code would become
+# unsatisfiable the moment the gate opened. Areas sharing an exit signature
+# are treated as the same place. Populated by the Executor from what it walked.
+AREA_ALIASES: dict = {}
+
+
 def pred_holds(pred: dict | None, obs: dict) -> bool:
     if not pred:
         return True
@@ -95,7 +104,8 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             # four unconnected rooms and only one holds the nerd, so
             # {"map":"MT_MOON_B2F"} was satisfied by landing in any of them.
             m = (obs.get("map") or {})
-            if f"{m.get('id')}|{m.get('region')}" != want:
+            got = f"{m.get('id')}|{m.get('region')}"
+            if got != want and got not in AREA_ALIASES.get(want, ()):
                 return False
         elif key == "party_min_level":
             # EVERY party member at least this level. lead_level could only
@@ -358,6 +368,7 @@ class Executor:
             self.frontier = data.get("frontier", {})
             self.sightings = data.get("sightings", {})
             self.searched = data.get("searched", {})
+            self._rebuild_area_aliases()
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
             if edges:
@@ -409,6 +420,28 @@ class Executor:
                   + (" ..." if len(dropped) > 4 else ""))
             self._save_memory()
 
+    def _rebuild_area_aliases(self):
+        """Group enclosed areas by their EXIT SIGNATURE. Two codes with the
+        same exits on the same map are the same room seen before and after a
+        blocker moved (the fossil), so a goal naming either should hold."""
+        # Equal exit SETS is too strict: taking the fossil opened a corridor,
+        # so the room went from exits {21,17} to {21,17, 5,7}. Exit keys are
+        # tile coordinates on that map, so two areas that both reach the same
+        # warp tile ARE the same place — share one exit, same room.
+        by_map: dict = {}
+        for region, exits in (self.frontier or {}).items():
+            if not exits:
+                continue
+            by_map.setdefault(region.split("|")[0], []).append(
+                (region, set(exits)))
+        AREA_ALIASES.clear()
+        for regions in by_map.values():
+            for i, (ra, ea) in enumerate(regions):
+                for rb, eb in regions[i + 1:]:
+                    if ea & eb:
+                        AREA_ALIASES.setdefault(ra, set()).add(rb)
+                        AREA_ALIASES.setdefault(rb, set()).add(ra)
+
     def note_sightings(self, obs):
         """Which named things were SEEN in this region.
 
@@ -453,6 +486,7 @@ class Executor:
                 # the first map change, so watching it showed nothing for a
                 # while after the run started
                 self.frontier[here] = fresh
+                self._rebuild_area_aliases()
                 self._save_memory()
 
     def dead_for(self, target: str, region: str, _seen=None, depth=4) -> int:
