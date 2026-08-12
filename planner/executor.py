@@ -756,6 +756,16 @@ class Executor:
                 return want
             path = self._route(here, want)
             if not path:
+                # A respawn can land in a FRESH fingerprint of a known room
+                # (a strolling Center NPC shifts the region id), whose
+                # frontier and aliases have not been recorded yet — routing
+                # from it then fails while the room plainly connects. Record
+                # what we are standing in, rebuild aliases, try once more.
+                cur = self.b.obs() or obs
+                self.note_frontier(cur)
+                self._rebuild_area_aliases()
+                path = self._route(self._where(cur), want)
+            if not path:
                 self.log("blackout_return_noroute", subgoal=sg.get("id"),
                          frm=here, want=want)
                 self._faint_at = None
