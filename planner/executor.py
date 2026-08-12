@@ -608,37 +608,48 @@ class Executor:
 
     SPATIAL = ("map:", "flag:", "item:")
 
+    def _worked_for(self, target: str) -> dict:
+        """Rooms with nothing left to find, as seen by this goal. The
+        room-level "*" facts serve every goal EXCEPT the classes a fully
+        worked room can still SATISFY — a mart's counter still sells and a
+        Center still heals however many times the party has been inside —
+        which consult only their own per-target proofs."""
+        if (target or "").startswith(("item:", "party_healthy")):
+            return self.searched.get(target) or {}
+        return self.searched.get("*") or {}
+
     def note_searched(self, target: str, region: str):
-        """This area has been fully worked for that target: every exit taken,
-        everything reachable touched. Distinct from a dead end — it stops the
-        room being SEARCHED again without stopping the run PASSING through."""
+        """This area has been fully worked: every exit taken, everything
+        reachable touched. Distinct from a dead end — it stops the room
+        being SEARCHED again without stopping the run PASSING through."""
         if not region or "None" in region or not target:
             return
-        # Only things that can BE somewhere get searched proofs. "The target
-        # is not in this room" is trivially true of every room when the
-        # target is another map, so travel goals produced proofs carrying no
-        # information — and they are not free, because the shared "*" ledger
-        # is what other goals consult before taking a door. MT_MOON_1F was
-        # recorded as searched for map:ROUTE_4 while two of its doors open
-        # onto Route 4.
-        if target.startswith(("map:", "area:")):
-            return
-        # Also record it under "*": FULLY WORKED (every exit taken, every
-        # reachable object touched) is a fact about the ROOM, not the goal.
-        # Keying it only by target fragmented the ledger — B2F's dead-end
-        # rooms were marked under the nerd flag, so a later subgoal aiming at
-        # map:MT_MOON_B2F saw them as untouched and walked straight back in.
         # A room where a FIGHT ran for this goal is not exhausted — losing
         # to the Mt Moon nerd marked his room worked, and the refusal then
         # blocked the ladder leading back to him. A lost fight is unfinished
         # business, not an emptied room.
         if self.contested.get(target, {}).get(region):
             return
-        d = self.searched.setdefault(target, {})
+        # FULLY WORKED (every exit taken, every reachable object touched) is
+        # a fact about the ROOM, not the goal, so it always lands in "*" —
+        # the ledger door-refusals and route advice consult. Keying it only
+        # by target fragmented the ledger: B2F's dead-end rooms were marked
+        # under the nerd flag, so a later subgoal aiming at map:MT_MOON_B2F
+        # saw them as untouched and walked straight back in.
         anyd = self.searched.setdefault("*", {})
-        fresh = region not in d or region not in anyd
-        d[region] = True
+        fresh = region not in anyd
         anyd[region] = True
+        # The per-target claim exists only for things that can BE somewhere.
+        # "The target is not in this room" is trivially true of every room
+        # when the target is a map, a waypoint, or a party condition, so
+        # those proofs carried no information — MT_MOON_1F was recorded as
+        # searched for map:ROUTE_4 while two of its doors open onto Route 4,
+        # and player_at waypoints slipped the old map:/area: prefix check by
+        # arriving as subgoal: keys.
+        if target.startswith(("flag:", "item:")):
+            d = self.searched.setdefault(target, {})
+            fresh = fresh or region not in d
+            d[region] = True
         if fresh:
             self.log("room_searched", target=target, region=region)
             self._save_memory()
