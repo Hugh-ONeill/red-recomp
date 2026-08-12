@@ -800,6 +800,7 @@ class Executor:
                 self._faint_at = None
                 return None
             for key, nxt in path:
+                pre_hop = self.b.obs()
                 if "," in key:
                     x, y = key.split(",")
                     self.b.send("use_warp", x=int(x), y=int(y))
@@ -809,6 +810,14 @@ class Executor:
                 if o and o.get("mode") == "battle":
                     o = self.handle_battle(sg, o)
                     o = self.settle()
+                # the walk back is real walking: record the doors it used
+                if o and pre_hop and ((pre_hop.get("map") or {}).get("id")
+                                      != (o.get("map") or {}).get("id")):
+                    self.note_transition(
+                        pre_hop,
+                        {"x": int(key.split(",")[0]),
+                         "y": int(key.split(",")[1])} if "," in key
+                        else {"dir": key}, o)
                 total += 1
                 got = self._where(o)
                 if got != nxt and got not in AREA_ALIASES.get(nxt, ()):
@@ -895,12 +904,24 @@ class Executor:
             # a clean pass still lands somewhere unexpected.
             o = None
             for _ in range(4):
+                pre_hop = self.b.obs()
                 if "," in key:
                     x, y = key.split(",")
                     self.b.send("use_warp", x=int(x), y=int(y))
                 else:
                     self.b.send("cross", dir=key)
                 o = self.settle()
+                # A hop the ESCORT walked is still a door taken. Neither
+                # this nor the blackout walk-back recorded anything, so
+                # every exit they used stayed "untried" in the graph and
+                # rooms they had shuttled through could never be finished.
+                if o and pre_hop and ((pre_hop.get("map") or {}).get("id")
+                                      != (o.get("map") or {}).get("id")):
+                    self.note_transition(
+                        pre_hop,
+                        {"x": int(key.split(",")[0]),
+                         "y": int(key.split(",")[1])} if "," in key
+                        else {"dir": key}, o)
                 fought = False
                 while o and o.get("mode") == "battle":
                     o = self.handle_battle(sg, o)
