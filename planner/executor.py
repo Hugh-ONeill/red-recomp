@@ -2028,6 +2028,23 @@ Reply with ONLY a JSON array of ops, e.g.
         while spent < rounds and rnd < rounds * 3:
             rnd += 1
             start = self.settle()
+            # A PURCHASE YOU CANNOT AFFORD IS NOT A SEARCH PROBLEM. Once
+            # the price is known and the wallet is short, no amount of
+            # walking changes it — yet buy_potions burned a whole attempt's
+            # rounds re-entering the mart, and backtracks kept re-opening
+            # it. End the leg immediately and let the rest of the plan run;
+            # the model's own advice already says it may stay unfinished.
+            tgt0 = self._target_key(sg)
+            if tgt0.startswith("item:"):
+                item0 = tgt0.split(":", 1)[1]
+                price0 = self._cant_afford.get(item0)
+                money0 = (start or {}).get("money")
+                if (price0 and isinstance(money0, int) and money0 < price0):
+                    self.log("escalate_unaffordable", subgoal=sg["id"],
+                             item=item0, price=price0, money=money0)
+                    print(f"   (cannot afford {item0}: {money0} < {price0} "
+                          f"— leaving this subgoal unfinished)")
+                    return False, sg.get("macro", [])
             sig0 = self._snapshot(start)
             if rnd == 1 and sig0[0]:
                 visits[sig0[0]] = 1
