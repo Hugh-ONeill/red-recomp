@@ -2586,8 +2586,6 @@ Reply with ONLY a JSON array of ops, e.g.
             if (not ok and self.can_escalate and idx > 0
                     and backtracks < 2 and not sg.get("optional")):
                 at = self.settle() or {}
-                cand = subgoals[idx - 1]
-                holds = pred_holds(cand.get("done_when") or {}, at)
                 # A satisfied MAP subgoal is still worth redoing when that
                 # map has other enclosed areas we have not searched for this
                 # goal — "I am on B2F" is true in all four of its rooms, and
@@ -2595,18 +2593,36 @@ Reply with ONLY a JSON array of ops, e.g.
                 # plan and the campaign restarted, instead of relocating one
                 # room over (user: "instead of backtracking from B2F it
                 # spawns a new version and restarts").
+                # And look PAST satisfied gates: with defeat_super_nerd's
+                # flag already set, the candidate scan stopped on it with
+                # "already holds" while the relocatable descend_to_b2f sat
+                # one step further back — so the stored macro kept replaying
+                # the wrong ladder and the waypoint leg kept dying in the
+                # wrong room (user: "wrong door").
+                cand = None
+                holds = False
                 elsewhere = []
-                want = (cand.get("done_when") or {}).get("map")
-                if holds and want:
-                    done = self.searched.get(self._target_key(sg), {})
-                    here_now = self._where(at)
-                    elsewhere = [r for r in
-                                 set(list(self.explored) + list(self.visits))
-                                 if r.split("|")[0] == want
-                                 and r != here_now and r not in done]
-                if holds and not elsewhere:
+                for back in range(idx - 1, max(-1, idx - 5), -1):
+                    c = subgoals[back]
+                    h = pred_holds(c.get("done_when") or {}, at)
+                    if not h:
+                        cand, holds = c, False
+                        break
+                    want = (c.get("done_when") or {}).get("map")
+                    if want:
+                        done = self.searched.get(self._target_key(sg), {})
+                        here_now = self._where(at)
+                        elw = [r for r in
+                               set(list(self.explored) + list(self.visits))
+                               if r.split("|")[0] == want
+                               and r != here_now and r not in done]
+                        if elw:
+                            cand, holds, elsewhere = c, True, elw
+                            break
+                if cand is None:
                     self.log("backtrack_skipped", failed=sg["id"],
-                             candidate=cand["id"], reason="already holds")
+                             candidate=subgoals[idx - 1]["id"],
+                             reason="nothing redoable behind")
                 else:
                     if holds:
                         self.log("backtrack_relocate_within_map",
