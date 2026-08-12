@@ -799,6 +799,31 @@ class Executor:
         seen_maps = {a.split("|")[0] for a in self.visits}
         untried.sort(key=lambda p: p[0])
         untried = [t for _, t in untried]
+        # THE KNOWN WAY THERE. Frontier-first is right when nothing is known,
+        # but on ROUTE_2 the only untried exit ran SOUTH to Viridian while
+        # the way to Mt Moon lay north through Pewter — a door already taken
+        # 44 times. The graph can answer "which exit starts the journey", so
+        # say it rather than leaving the model to infer it from visit counts.
+        route_line = ""
+        want_map = target.split(":", 1)[1] if target.startswith("map:") else ""
+        if want_map and want_map != (m.get("id") or ""):
+            best = None
+            for region in set(list(self.explored) + list(self.visits)):
+                if region.split("|")[0] != want_map:
+                    continue
+                path = self._route(here, region)
+                if path and (best is None or len(path) < len(best)):
+                    best = path
+            if best:
+                first_key, first_dest = best[0]
+                step = (f"walk {first_key}" if not first_key[0].isdigit()
+                        else f"the door at ({first_key})")
+                route_line = (
+                    f"\nTHE KNOWN WAY TO {want_map} FROM HERE: take {step} "
+                    f"to {first_dest} — that is the first leg of a route you "
+                    f"have already walked ({len(best)} legs total). Take it "
+                    f"even if you have used it before; an untried exit that "
+                    f"leads somewhere else is not progress toward this goal.")
         been = self.visits.get(here, 0)
         warned = ""
         if been >= 2:
@@ -848,7 +873,7 @@ class Executor:
                         "you have already been still have ways you have "
                         "NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
                         + ". Go back to one and take it." + loot_line)
-            return warned + loot_line
+            return warned + route_line + loot_line
         out = warned + "\nEXITS FROM HERE — "
         out += ("UNTRIED (prefer these, they are the only way to find "
                 f"anything new): {', '.join(untried)}. " if untried
@@ -862,7 +887,7 @@ class Executor:
             out += ("\nPlaces you have already been that still have ways "
                     "you have NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
                     + ".")
-        out += loot_line
+        out += route_line + loot_line
         return out
 
     def _atlas_text(self) -> str:
