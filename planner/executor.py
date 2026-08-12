@@ -214,6 +214,7 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
     turns = 0
     flees = 0
     picks = 0
+    op_fails = 0
     ctx = {"turn": 0, "used": {}, "intent": intent,
            "journal": DAMAGE_JOURNAL}
     while obs and turns < max_turns:
@@ -278,6 +279,21 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
                                    or []) if m.get("index") == idx), None)
             move_id = (mv or {}).get("id")
         obs = bridge.send(name, **op)
+        r = (obs or {}).get("result") or {}
+        if r.get("ok") is False:
+            # A rejected op is not a turn. At 200x the battle INTRO outlasts
+            # one op's worth of A-presses, so the opening battle_move calls
+            # come back "menu never appeared" — and counting them as turns
+            # burned three phantom Embers against Misty before a real one
+            # fired. Same class as the flee check above: never ignore the
+            # op's result.
+            log("battle_move_failed", turn=turns, detail=r.get("detail"))
+            turns -= 1
+            op_fails += 1
+            if op_fails >= 8:
+                break
+            continue
+        op_fails = 0
         if move_id:
             _journal_damage(before_b, obs, move_id)
     log("battle_done", turns=turns, mode=obs.get("mode") if obs else None)
