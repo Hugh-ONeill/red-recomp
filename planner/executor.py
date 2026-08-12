@@ -343,6 +343,7 @@ class Executor:
         self._cant_afford: dict = {}        # item -> unit price we lack
         self._no_cross: dict = {}           # region -> dirs proven uncrossable
         self._rounds_here: dict = {}        # target|region -> rounds spent
+        self._fight_region: str | None = None   # where the last trainer fought
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -1720,14 +1721,8 @@ Reply with ONLY a JSON array of ops, e.g.
                     if self._cur_target and pre_map and not is_wild:
                         self._battle_regions.add(
                             f"{self._cur_target}|{self._where(pre_obs)}")
-                        if self._cur_target:
-                            reg = self._where(pre_obs)
-                            c = self.contested.setdefault(self._cur_target, {})
-                            if reg and "None" not in reg and not c.get(reg):
-                                c[reg] = True
-                                self.searched.get(self._cur_target, {}).pop(reg, None)
-                                self.searched.get("*", {}).pop(reg, None)
-                                self._save_memory()
+                    self._fight_region = (self._where(pre_obs)
+                                          if not is_wild else None)
                     # Same rule one level down: an interact that STARTS A
                     # BATTLE did not exhaust the object. A lost fight leaves
                     # the trainer undefeated, and a fossil grab intercepted
@@ -1754,6 +1749,19 @@ Reply with ONLY a JSON array of ops, e.g.
                         if self._cur_target:
                             self._blackouts[self._cur_target] = \
                                 self._blackouts.get(self._cur_target, 0) + 1
+                            # A room is contested when a fight here BEAT US:
+                            # that is the unfinished business worth coming
+                            # back for. A trainer you defeated leaves the
+                            # room ordinary, and marking those too kept
+                            # every populated room out of the searched
+                            # ledger for the rest of the run.
+                            reg = self._fight_region
+                            c = self.contested.setdefault(self._cur_target, {})
+                            if reg and "None" not in reg and not c.get(reg):
+                                c[reg] = True
+                                self.searched.get(self._cur_target,
+                                                  {}).pop(reg, None)
+                                self.searched.get("*", {}).pop(reg, None)
                         self.log("blackout", subgoal=sg["id"], op=op,
                                  respawn=post_map)
                         break
