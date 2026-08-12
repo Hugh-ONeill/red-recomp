@@ -1001,13 +1001,33 @@ class Executor:
         # three ladders on 1F had never been opened — pure17 ended with its
         # frontier unexhausted and the super nerd's region never entered.
         elsewhere = []
+        near_hint = ""
+        near_best = None
         for region, exits in self.frontier.items():
             if region == here:
                 continue
             done_x = set((self.explored.get(region) or {}).keys())
             left = [e for e in exits if e not in done_x]
-            if left:
-                elsewhere.append(f"{region} ({', '.join(sorted(left))})")
+            if not left:
+                continue
+            elsewhere.append(f"{region} ({', '.join(sorted(left))})")
+            # Naming a destination without its first leg loses to local
+            # exits (the ROUTE_2 lesson): after the fossil fell, the newly
+            # opened door on B2F sat in this list for a whole escalation
+            # while the run descended the wrong ladder twice.
+            path = self._route(here, region)
+            if path and (near_best is None or len(path) < len(near_best[1])):
+                near_best = (region, path, left)
+        if near_best:
+            region, path, left = near_best
+            first_key, first_dest = path[0]
+            leg = (f"walk {first_key}" if not first_key[0].isdigit()
+                   else f"the door at ({first_key})")
+            near_hint = (
+                f"\nThe NEAREST unopened way is in {region} (door(s) "
+                f"{', '.join(sorted(left))}), {len(path)} leg(s) from here "
+                f"over ground you have walked: start by taking {leg} to "
+                f"{first_dest}.")
         # FIELD ITEMS within reach. Computed BEFORE the early return: a
         # dead-end room with no listed exits is exactly where a blocking
         # item sits. pure30 beat the Mt Moon nerd beside two reachable
@@ -1088,7 +1108,8 @@ class Executor:
                         + "\nNothing here is new, but these places "
                         "you have already been still have ways you have "
                         "NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
-                        + ". Go back to one and take it." + loot_line)
+                        + ". Go back to one and take it." + near_hint
+                        + loot_line)
             return warned + route_line + searched_line + loot_line
         out = warned + "\nEXITS FROM HERE — "
         out += ("UNTRIED (prefer these, they are the only way to find "
@@ -1102,7 +1123,7 @@ class Executor:
         if elsewhere:
             out += ("\nPlaces you have already been that still have ways "
                     "you have NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
-                    + ".")
+                    + "." + near_hint)
         out += route_line + searched_line + loot_line
         return out
 
