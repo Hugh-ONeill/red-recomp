@@ -1644,7 +1644,12 @@ Reply with ONLY a JSON array of ops, e.g.
                     f"can reach but have not touched may BE the obstacle — "
                     f"picking an item up or moving it can open a way that is "
                     f"shut. Interact with all of them before leaving.")
-            elif unreachable and cur:
+            elif cur and (unreachable
+                          or (not self._untried_exits(cur) and not live)):
+                # entry condition covers BOTH shapes: a reachability failure,
+                # or a room that is simply finished (no untried exit, nothing
+                # untouched). The latter produces no failure trace at all,
+                # which is why finished rooms were never being labelled.
                 here = self._where(cur)
                 # CONFIRM against the map before calling it geography. A
                 # script can block an exit that is perfectly walkable (the
@@ -1674,7 +1679,18 @@ Reply with ONLY a JSON array of ops, e.g.
                 seam_evidence = any("cannot be walked to from" in t
                                     or "couldn't reach the warp tile" in t
                                     for t in trace)
-                if self._untried_exits(cur):
+                # FULLY WORKED is itself the strongest proof: every exit
+                # taken, everything reachable touched, condition still false.
+                # Tightening the other shapes left this case unmarked, so a
+                # finished room never got labelled and the run kept coming
+                # back to it. (Distinct from "escalation rounds ran out",
+                # which is NOT evidence — this is about the room, not the
+                # budget.)
+                if not self._untried_exits(cur) and not live:
+                    confirmed = True
+                    self.log("dead_end_room_worked", subgoal=sg["id"],
+                             region=here)
+                elif self._untried_exits(cur):
                     confirmed = False
                     self.log("dead_end_withheld", subgoal=sg["id"],
                              region=here, reason="untried exits remain")
