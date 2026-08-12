@@ -326,6 +326,7 @@ class Executor:
             self.visits = data.get("visits", {})
             self.frontier = data.get("frontier", {})
             self.sightings = data.get("sightings", {})
+            self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
             if edges:
                 print(f"[memory] {len(self.explored)} areas, {edges} known "
@@ -343,6 +344,37 @@ class Executor:
                 indent=1))
         except OSError:
             pass
+
+    def _prune_dead_ends(self):
+        """Drop proofs the MAP now contradicts.
+
+        A dead-end proof is local — "I could not walk to it from here" — but
+        it is used to refuse exits, so a destination that needs two legs got
+        branded unreachable. ROUTE_2's south half accumulated
+        map:PEWTER_GYM x7 and even map:VIRIDIAN_FOREST, whose gate is right
+        there, and the run then refused its way out of Viridian. If a walked
+        path exists from the region to the target map, the proof is false and
+        goes. Flag/item proofs are left alone: the graph cannot speak to
+        those.
+        """
+        dropped = []
+        for tgt in list(self.dead_ends):
+            if not tgt.startswith("map:"):
+                continue
+            want = tgt.split(":", 1)[1]
+            dests = [r for r in set(list(self.explored) + list(self.visits))
+                     if r.split("|")[0] == want]
+            for region in list(self.dead_ends[tgt]):
+                if any(self._route(region, d) for d in dests):
+                    del self.dead_ends[tgt][region]
+                    dropped.append(f"{tgt}@{region}")
+            if not self.dead_ends[tgt]:
+                del self.dead_ends[tgt]
+        if dropped:
+            print(f"[memory] dropped {len(dropped)} dead-end proof(s) the map "
+                  f"contradicts: {', '.join(dropped[:4])}"
+                  + (" ..." if len(dropped) > 4 else ""))
+            self._save_memory()
 
     def note_sightings(self, obs):
         """Which named things were SEEN in this region.
