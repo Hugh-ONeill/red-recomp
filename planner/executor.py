@@ -787,6 +787,22 @@ class Executor:
         # mid-goal, which is the same mistake the revisit guard made.
         if f"{self._cur_target}|{here}" in self._battle_regions:
             return None
+        # TRANSIT IS NOT WANDERING. This walk-back exists for searches;
+        # for a travel goal, moving through fully-explored corridor rooms
+        # IS the plan. Dragging the run back to a frontier every time it
+        # crossed into ROUTE_3 pinned it to the Route 4 stub — 38
+        # crossings, 38 walk-backs — with Pewter reachable the whole time.
+        tgt = self._cur_target or ""
+        if tgt.startswith(("map:", "area:")):
+            dest = tgt.split(":", 1)[1]
+            if "|" in dest:
+                if self._route(here, dest):
+                    return None
+            else:
+                for region in set(list(self.explored) + list(self.visits)):
+                    if (region.split("|")[0] == dest
+                            and self._route(here, region)):
+                        return None
         tried_here = self._tried_objs.get(here, set())
         if [o for o in ((obs.get("map") or {}).get("objects") or [])
                 if o.get("reachable") and o.get("name") not in tried_here]:
