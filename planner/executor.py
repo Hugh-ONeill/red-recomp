@@ -335,6 +335,7 @@ class Executor:
         self._inert_objs: dict = {}         # region -> {object: state it was inert in}
         self._cant_afford: dict = {}        # item -> unit price we lack
         self._no_cross: dict = {}           # region -> dirs proven uncrossable
+        self._rounds_here: dict = {}        # target|region -> rounds spent
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -2510,7 +2511,15 @@ Reply with ONLY a JSON array of ops, e.g.
             # back while the run shuttled between two known warps. Same
             # first-refusal rule as the object veto — local options get
             # their turn, then navigation resumes.
-            patient = rnd >= 3
+            # Patience counted PER ESCALATION never matured: a backtrack
+            # re-opens the subgoal with rnd back at 1, so a run that spent
+            # thirty rounds shuttling between two rooms never once reached
+            # the threshold. Count rounds spent on this TARGET in this
+            # REGION, across escalations — the same law that fixed the
+            # revisit counter, the op ledger and the searched ledger.
+            hk = f"{self._cur_target}|{self._where(cur)}"
+            self._rounds_here[hk] = self._rounds_here.get(hk, 0) + 1
+            patient = self._rounds_here[hk] >= 3
             if patient or not self._untried_exits(cur):
                 went = self._route_to_frontier(cur, sg, patient=patient)
                 if went:
