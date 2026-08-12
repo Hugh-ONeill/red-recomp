@@ -1709,7 +1709,15 @@ Reply with ONLY a JSON array of ops, e.g.
                     # refused as "the trigger is not there" and sent the run
                     # wandering east out of town. Losing is a reason to come
                     # back stronger, not evidence of a wrong room.
-                    if self._cur_target and pre_map:
+                    # ...but only a TRAINER makes a room contested. A cave
+                    # spawns wild encounters in every corridor, so counting
+                    # those marked every Mt Moon room contested, and a
+                    # contested room can never be recorded as searched —
+                    # which silently disabled the searched and dead-end
+                    # ledgers underground, exactly where they matter most.
+                    is_wild = ((obs.get("battle") or {}).get("kind")
+                               == "wild")
+                    if self._cur_target and pre_map and not is_wild:
                         self._battle_regions.add(
                             f"{self._cur_target}|{self._where(pre_obs)}")
                         if self._cur_target:
