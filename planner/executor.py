@@ -1531,7 +1531,9 @@ coordinates. Read:
     obs.map.warps), or cross an edge.
 Ops: {"op":"walk_to","x":N,"y":N} (within-map), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
-door/stairs), {"op":"interact","name":"OBJECT_NAME"}, {"op":"menu","index":N}
+door/stairs), {"op":"interact","name":"OBJECT_NAME","answer":"yes"} (answer
+accepts a yes/no question the thing asks — taking an item it offers needs
+"yes"; with no answer given the question is DECLINED), {"op":"menu","index":N}
 (1-based: 1=YES/first, 2=NO/second), {"op":"grind"} (pace this map's wild
 grass; each battle is fought and the op repeats until the subgoal's
 DONE_WHEN is met, whatever it is — levels, or party size. Wild Pokemon
@@ -2138,12 +2140,26 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"serves the goal, or leave and find another shop — "
                         f"do not try this counter again.")
             elif before == after:
-                note += ": ran but had NO visible effect (nothing changed)"
-                if op == "interact" and step.get("name"):
-                    # remember WHICH state it was useless in; if the world
-                    # changes (hp drops, a flag fires) it is worth another go
-                    self._inert_objs.setdefault(
-                        self._where(pre_obs), {})[step["name"]] = before
+                det0 = str(r.get("detail") or "")
+                if "asked a QUESTION" in det0:
+                    # A DECLINED QUESTION is not an exhausted object. The
+                    # fossil take-prompt was auto-declined, and this branch
+                    # then marked the fossil inert (refusing every retry)
+                    # and left it "touched" (sealing the room as worked) —
+                    # with the corridor east gated on accepting. Surface
+                    # the question, retract the touch, keep it retryable.
+                    note += f": {det0}"
+                    if op == "interact" and step.get("name"):
+                        self._tried_objs.get(self._where(pre_obs),
+                                             set()).discard(step["name"])
+                else:
+                    note += ": ran but had NO visible effect (nothing changed)"
+                    if op == "interact" and step.get("name"):
+                        # remember WHICH state it was useless in; if the
+                        # world changes (hp drops, a flag fires) it is
+                        # worth another go
+                        self._inert_objs.setdefault(
+                            self._where(pre_obs), {})[step["name"]] = before
             else:
                 chg = []
                 if before[0] != after[0]:

@@ -1507,6 +1507,39 @@ function OPS.interact(G, c)
     end
     return false
   end
+  -- Advance the interaction's own text. If the thing asks a QUESTION (a
+  -- yes/no choice box), answer per c.answer — "yes" confirms (the gen1
+  -- cursor rests on YES), "no" declines — and with NO answer given,
+  -- decline deterministically and SAY SO. Leaving the prompt for whoever
+  -- touched the UI next meant the fossil take-prompt was confirmed by an
+  -- A-mash in one world and cancelled by the B-dismisser in the next —
+  -- and the declined fossil left the corridor east shut.
+  local function settle_dialog()
+    for _ = 1, 60 do
+      local t = G.stack:top()
+      if t == ow then return true end
+      if t and (t.enemy or t.kind) then return true, "battle started" end
+      if ui_is_choice(G) then
+        if c.answer == "yes" then
+          U.tap(G, "a"); U.wait(6)
+        elseif c.answer ~= nil then
+          U.tap(G, "b"); U.wait(6)
+        else
+          U.tap(G, "b"); U.wait(6)
+          for _ = 1, 30 do
+            if G.stack:top() == ow then break end
+            U.tap(G, "a"); U.wait(4)
+          end
+          return true, "it asked a QUESTION and no answer was given — " ..
+                        "declined; interact again with answer=\"yes\" " ..
+                        "to accept"
+        end
+      else
+        U.tap(G, "a"); U.wait(4)
+      end
+    end
+    return true, "dialog still open"
+  end
   -- retry across ambient-dialog interruptions (e.g. the lab rival's timed
   -- "fed up with waiting"): clear any text box, then approach and press.
   for _ = 1, 4 do
@@ -1515,14 +1548,14 @@ function OPS.interact(G, c)
       U.tap(G, "a"); U.wait(3)
     end
     if G.stack:top() ~= ow then return false, "stuck in a menu/dialog" end
-    if press_from_adjacent() then return true end
+    if press_from_adjacent() then return settle_dialog() end
     for _, a in ipairs(adj) do
       OPS.walk_to(G, { x = a[1], y = a[2], max_steps = 60 })
       if G.stack:top() == ow and p.cellX == a[1] and p.cellY == a[2] then
         break
       end
     end
-    if press_from_adjacent() then return true end
+    if press_from_adjacent() then return settle_dialog() end
   end
   return false, "no reachable tile adjacent to target"
 end
