@@ -791,7 +791,7 @@ class Executor:
         self._faint_at = None
         return None
 
-    def _route_to_frontier(self, obs, sg):
+    def _route_to_frontier(self, obs, sg, patient: bool = False):
         """Walk back to the NEAREST region that still has exits never taken.
 
         Knowing where the unopened ladders are is useless if you cannot get
@@ -824,10 +824,17 @@ class Executor:
                     if (region.split("|")[0] == dest
                             and self._route(here, region)):
                         return None
-        tried_here = self._tried_objs.get(here, set())
-        if [o for o in ((obs.get("map") or {}).get("objects") or [])
-                if o.get("reachable") and o.get("name") not in tried_here]:
-            return None
+        # An untouched thing gets FIRST REFUSAL, not a veto. This gate
+        # exists because a thing in a passage can be the blockage — but
+        # Mt Moon's floors always hold a trainer or an item, so the escort
+        # could never fire there and the run picked the wrong ladder round
+        # after round with the right one named in its context. After a few
+        # rounds in the same room the objects have had their chance.
+        if not patient:
+            tried_here = self._tried_objs.get(here, set())
+            if [o for o in ((obs.get("map") or {}).get("objects") or [])
+                    if o.get("reachable") and o.get("name") not in tried_here]:
+                return None
         best = None
         for region, exits in self.frontier.items():
             if region == here:
@@ -2477,7 +2484,7 @@ Reply with ONLY a JSON array of ops, e.g.
             # still has unopened exits, rather than burning rounds re-reading
             # a finished room.
             if not self._untried_exits(cur):
-                went = self._route_to_frontier(cur, sg)
+                went = self._route_to_frontier(cur, sg, patient=rnd >= 3)
                 if went:
                     cur = self.settle() or cur
                     stuck_note += (
