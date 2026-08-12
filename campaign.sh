@@ -208,8 +208,14 @@ PY
   # nerd flag, the one condition retreating cannot satisfy) and the next
   # launch silently ran the worse plan. Rewrites go to their own file and
   # the original is left untouched.
+  # Version by the next FREE number, not the attempt number: attempts
+  # restart at 1 in every campaign invocation, so a resumed campaign whose
+  # input already carried .v1 wrote its rewrite over that very file — the
+  # in-place clobber this naming scheme exists to prevent.
   base="${failed_plan%.json}"; base="${base%%.v[0-9]*}"
-  rewritten="plans/${base}.v${attempt}.json"
+  v=1
+  while [ -e "plans/${base}.v${v}.json" ]; do v=$((v+1)); done
+  rewritten="plans/${base}.v${v}.json"
   python planner/author.py --goal "$goal" --start "$start" \
       --out "$rewritten" --model "$MODEL" \
       --observed run/explored.json \
