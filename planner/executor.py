@@ -614,6 +614,15 @@ class Executor:
         room being SEARCHED again without stopping the run PASSING through."""
         if not region or "None" in region or not target:
             return
+        # Only things that can BE somewhere get searched proofs. "The target
+        # is not in this room" is trivially true of every room when the
+        # target is another map, so travel goals produced proofs carrying no
+        # information — and they are not free, because the shared "*" ledger
+        # is what other goals consult before taking a door. MT_MOON_1F was
+        # recorded as searched for map:ROUTE_4 while two of its doors open
+        # onto Route 4.
+        if target.startswith(("map:", "area:")):
+            return
         # Also record it under "*": FULLY WORKED (every exit taken, every
         # reachable object touched) is a fact about the ROOM, not the goal.
         # Keying it only by target fragmented the ledger — B2F's dead-end
