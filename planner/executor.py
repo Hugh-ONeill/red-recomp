@@ -307,7 +307,7 @@ class Executor:
         self._dead_ops: dict = {}           # (target, op, arg) -> failures
         self.save_each = False              # in-game SAVE after each subgoal
         self._tried_objs: dict = {}         # region -> objects interacted
-        self._inert_objs: dict = {}         # region -> objects that did nothing
+        self._inert_objs: dict = {}         # region -> {object: state it was inert in}
         self._cant_afford: dict = {}        # item -> unit price we lack
         self._cur_target = ""
         self._load_memory()
@@ -1059,7 +1059,15 @@ Reply with ONLY a JSON array of ops, e.g.
                 (len((obs or {}).get("party") or []),
                  sum(m.get("level") or 0
                      for m in (obs or {}).get("party") or [])),
-                len((obs or {}).get("flags") or []))
+                len((obs or {}).get("flags") or []),
+                # HP as its own element. Without it a full heal changed
+                # NOTHING in the snapshot, so talking to the nurse always
+                # read as "no visible effect" — which then marked her inert
+                # and refused every later heal. Kept out of the circling
+                # test (indices 0/4/5) so taking chip damage is still not
+                # mistaken for progress.
+                sum(m.get("hp") or 0
+                    for m in (obs or {}).get("party") or []))
 
     def _run_traced(self, sg, macro, ignore_done=False):
         """Run a proposed macro step-by-step, returning (done, trace, clean).
@@ -1158,7 +1166,8 @@ Reply with ONLY a JSON array of ops, e.g.
                 # no state, and the run kept greeting it. This is narrower
                 # than "never interact twice": the Pokemon Center nurse
                 # changes party HP, so she never lands here.
-                if step.get("name") in self._inert_objs.get(here_r, set()):
+                _in = self._inert_objs.get(here_r, {})
+                if _in.get(step.get("name")) == self._snapshot(obs):
                     trace.append(
                         f"interact({step.get('name')}): REFUSED — you already "
                         f"interacted with it here and NOTHING changed. It has "
@@ -1325,8 +1334,10 @@ Reply with ONLY a JSON array of ops, e.g.
             elif before == after:
                 note += ": ran but had NO visible effect (nothing changed)"
                 if op == "interact" and step.get("name"):
+                    # remember WHICH state it was useless in; if the world
+                    # changes (hp drops, a flag fires) it is worth another go
                     self._inert_objs.setdefault(
-                        self._where(pre_obs), set()).add(step["name"])
+                        self._where(pre_obs), {})[step["name"]] = before
             else:
                 chg = []
                 if before[0] != after[0]:
