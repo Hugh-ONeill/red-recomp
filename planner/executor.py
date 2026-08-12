@@ -1023,7 +1023,6 @@ class Executor:
         # frontier unexhausted and the super nerd's region never entered.
         elsewhere = []
         near_hint = ""
-        near_best = None
         for region, exits in self.frontier.items():
             if region == here:
                 continue
@@ -1031,24 +1030,23 @@ class Executor:
             left = [e for e in exits if e not in done_x]
             if not left:
                 continue
-            elsewhere.append(f"{region} ({', '.join(sorted(left))})")
             # Naming a destination without its first leg loses to local
-            # exits (the ROUTE_2 lesson): after the fossil fell, the newly
-            # opened door on B2F sat in this list for a whole escalation
-            # while the run descended the wrong ladder twice.
+            # exits (the ROUTE_2 lesson) — but naming only the NEAREST
+            # was goal-blind: it sold a Route 2 gate door while the way
+            # to Cerulean waited on B2F. Distance and first leg for EVERY
+            # candidate; which door matters is the model's judgment.
             path = self._route(here, region)
-            if path and (near_best is None or len(path) < len(near_best[1])):
-                near_best = (region, path, left)
-        if near_best:
-            region, path, left = near_best
-            first_key, first_dest = path[0]
-            leg = (f"walk {first_key}" if not first_key[0].isdigit()
-                   else f"the door at ({first_key})")
-            near_hint = (
-                f"\nThe NEAREST unopened way is in {region} (door(s) "
-                f"{', '.join(sorted(left))}), {len(path)} leg(s) from here "
-                f"over ground you have walked: start by taking {leg} to "
-                f"{first_dest}.")
+            if path:
+                fk, fd = path[0]
+                leg = (f"walk {fk}" if not fk[0].isdigit()
+                       else f"door ({fk})")
+                elsewhere.append(
+                    f"{region} ({', '.join(sorted(left))} — {len(path)} "
+                    f"leg(s) away, first: {leg} to {fd})")
+            else:
+                elsewhere.append(
+                    f"{region} ({', '.join(sorted(left))} — no walked "
+                    f"route from here)")
         # FIELD ITEMS within reach. Computed BEFORE the early return: a
         # dead-end room with no listed exits is exactly where a blocking
         # item sits. pure30 beat the Mt Moon nerd beside two reachable
