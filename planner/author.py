@@ -465,7 +465,7 @@ def build_review(goal: str, plan: dict, start: str | None) -> str:
         "satisfied by climbing all the way back out and then descending "
         "again — a round trip that eats the whole attempt. Put supply "
         "stops BEFORE the descent, next to the last outdoor step.\n"
-        "7. ALREADY DONE. A subgoal whose outcome the START state already "
+        "8. ALREADY DONE. A subgoal whose outcome the START state already "
         "shows — an item already in the bag, a badge already worn, a flag "
         "already set — is a detour, not a step. REMOVE it (and any travel "
         "that exists only to serve it). Do not remove flag or badge "
