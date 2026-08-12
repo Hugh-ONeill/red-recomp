@@ -2050,7 +2050,37 @@ Reply with ONLY a JSON array of ops, e.g.
                 seam = any("cannot be walked to from" in t
                            or "couldn't reach the warp tile" in t
                            for t in trace)
-                if objs or seam:
+                # A TRAVEL goal cannot be killed by a barren room. EVERY
+                # room on the way back to Pewter is "barren" for
+                # map:PEWTER_CITY — what matters is whether the walked
+                # graph still knows the way onward. Abandoning on the
+                # local-room proof ended return_to_pewter three rounds in,
+                # and the potion stop it guarded never happened: the run
+                # entered the mountain with an empty bag again.
+                routed = None
+                if tk.startswith(("map:", "area:")):
+                    dest = tk.split(":", 1)[1]
+                    if "|" in dest:
+                        routed = self._route(here, dest)
+                    else:
+                        for region in set(list(self.explored)
+                                          + list(self.visits)):
+                            if region.split("|")[0] != dest:
+                                continue
+                            p = self._route(here, region)
+                            if p and (routed is None or len(p) < len(routed)):
+                                routed = p
+                if (objs or seam) and routed:
+                    first_key, first_dest = routed[0]
+                    leg = (f"walk {first_key}" if not first_key[0].isdigit()
+                           else f"the door at ({first_key})")
+                    trace.append(
+                        f"Nothing in THIS room serves the goal — but the "
+                        f"goal is to GET SOMEWHERE, and the walked route "
+                        f"still exists: take {leg} to {first_dest} "
+                        f"({len(routed)} leg(s) to go). Keep moving; do "
+                        f"not search this room.")
+                elif objs or seam:
                     self.log("target_unreachable", subgoal=sg["id"],
                              target=self._target_key(sg), region=here,
                              objects=[o.get("name") for o in objs][:5])
