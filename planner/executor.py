@@ -2312,9 +2312,18 @@ Reply with ONLY a JSON array of ops, e.g.
             live = []
             if cur:
                 _tried = self._tried_objs.get(self._where(cur), set())
+                # An untouched ITEM counts even when it reads unreachable
+                # right now. Reachability is judged from the four tiles
+                # around an object at this instant, so a wanderer standing
+                # in the one open approach tile makes a perfectly pathable
+                # item ball look unreachable — it then vanished from this
+                # list and the floor signed off as fully worked with items
+                # still on it. People move; items do not, so an untouched
+                # item is unfinished business either way.
                 live = [o.get("name") for o in
                         ((cur.get("map") or {}).get("objects") or [])
-                        if o.get("reachable") and o.get("name") not in _tried]
+                        if (o.get("reachable") or o.get("kind") == "item")
+                        and o.get("name") not in _tried]
             # REDO suppresses the done-check on purpose (its job is to
             # relocate, not to satisfy the goal), so every redo round looks
             # like a failure even standing on the answer. Recording proofs
