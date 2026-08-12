@@ -1915,10 +1915,24 @@ def bootstrap(b: Bridge, cont: bool = False):
         r = (b.send("new_game") or {}).get("result") or {}
         if not r.get("ok"):
             raise RuntimeError(f"new game failed: {r.get('detail')}")
-    for _ in range(8):
-        if b.send("mash_a", times=30)["mode"] == "overworld":
+    # Mash A to get through the title/info box, but CHECK AFTER SETTLING and
+    # back out of anything A opened by accident. A save inside a Pokemon
+    # Center resumes standing at the nurse, so a blind 30-press burst talks
+    # to her (the log even shows "saved game") and the mode at check time is
+    # dialog, never overworld — every --continue attempt died here with
+    # "bootstrap failed" before playing a single step.
+    for i in range(12):
+        o = b.send("mash_a", times=6) or {}
+        mode = o.get("mode")
+        if mode == "overworld":
             return
-    raise RuntimeError("bootstrap failed")
+        if mode in ("ui", "dialog") and i >= 3:
+            b.send("tap", btn="b")          # close what A opened
+        o = b.obs() or {}
+        if o.get("mode") == "overworld":
+            return
+    raise RuntimeError(
+        f"bootstrap failed (stuck in mode={(b.obs() or {}).get('mode')})")
 
 
 def main():
