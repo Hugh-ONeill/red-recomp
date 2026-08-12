@@ -751,17 +751,21 @@ class Executor:
         count: a town's road out is the exit an event most often hides on."""
         m = (obs or {}).get("map") or {}
         taken = self.explored.get(self._where(obs), {}) or {}
+        # a proven-uncrossable seam is not an exit — leaving it "untried"
+        # here meant the searched proof could never fire for a stub region
+        # and the escort ranked it as frontier forever
+        blocked = self._no_cross.get(self._where(obs), set())
         seen_maps = {a.split("|")[0] for a in self.visits}
         out = []
         for w in (m.get("warps") or []):
             if not w.get("reachable"):
                 continue
             k = f"{w.get('x')},{w.get('y')}"
-            if k not in taken:
+            if k not in taken and k not in blocked:
                 out.append((w.get("dest") in seen_maps,
                             f"({k})->{w.get('dest')}"))
         for d, t in (m.get("connections") or {}).items():
-            if d not in taken:
+            if d not in taken and d not in blocked:
                 out.append((t in seen_maps, f"walk {d} -> {t}"))
         # FRONTIER FIRST: an exit into a map never visited can teach
         # something; one back into a map already seen mostly cannot. Pallet's
@@ -1074,9 +1078,15 @@ class Executor:
                  for w in (m.get("warps") or [])]
         warps += [{"key": d, "dest": t, "reachable": True}
                   for d, t in (m.get("connections") or {}).items()]
+        # A seam PROVEN uncrossable from this region is not an exit. A map
+        # connection belongs to the whole map, so the stub side of a split
+        # route still lists the far side's edge — and advertising it as
+        # preferred-untried held the run on the Route 4 stub for twenty
+        # rounds while the real door was named two lines below.
+        blocked = self._no_cross.get(here, set())
         untried, tried = [], []
         for w in warps:
-            if not w.get("reachable"):
+            if not w.get("reachable") or w["key"] in blocked:
                 continue
             k = w["key"]
             if k in taken:
