@@ -1140,9 +1140,11 @@ class Executor:
                 route_line = (
                     f"\nTHE KNOWN WAY TO {want_area} FROM HERE: take {step} "
                     f"to {first_dest} — {len(path)} leg(s) over ground you "
-                    f"have already walked. That area is a SPECIFIC ROOM, not "
-                    f"the whole floor; arriving elsewhere on the same floor "
-                    f"is not arriving.")
+                    f"have already walked. Take it even if you have used it "
+                    f"before; an untried exit that leads somewhere else is "
+                    f"not progress toward this goal. That area is a SPECIFIC "
+                    f"ROOM, not the whole floor; arriving elsewhere on the "
+                    f"same floor is not arriving.")
         elif want_map and want_map != (m.get("id") or ""):
             best = None
             for region in set(list(self.explored) + list(self.visits)):
@@ -1631,18 +1633,23 @@ Reply with ONLY a JSON array of ops, e.g.
                         # half-dead lead.
                         and not (tgt or "").startswith("party_healthy")
                         and self._revisit_refusals.get(tgt, 0) < 3):
-                    unsearched = [r for r in
-                                  set(list(self.explored) + list(self.visits))
-                                  if not worked.get(r)]
+                    unsearched = sorted(
+                        r for r in
+                        set(list(self.explored) + list(self.visits))
+                        if not worked.get(r))
                     # Reaching unsearched ground by walking BACK OUT through
                     # this door is not "beyond" — B2F|23,21 is a one-exit
                     # room, so everything unsearched was nominally reachable
                     # from it and the refusal never fired. Exclude the room
                     # we are standing in from the path.
+                    # Check EVERY unsearched region: a sampled subset in set
+                    # order dropped Cerulean from the list and this refusal
+                    # then sealed the mountain door — the one route to it —
+                    # as "nothing unsearched beyond".
                     here_now = self._where(obs)
                     beyond = any(self._route(dest_region, u,
                                              avoid={here_now})
-                                 for u in unsearched[:12])
+                                 for u in unsearched)
                     if not beyond:
                         self._revisit_refusals[tgt] = \
                             self._revisit_refusals.get(tgt, 0) + 1
