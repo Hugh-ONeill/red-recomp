@@ -706,35 +706,44 @@ class Executor:
         if here == want:
             self._faint_at = None
             return None
-        path = self._route(here, want)
-        if not path:
-            # no RECORDED path back (the graph only knows edges actually
-            # walked, and a blackout can land somewhere never connected to
-            # the faint site yet). Log it — otherwise a silent clear looks
-            # identical to the walk-back never being needed.
-            self.log("blackout_return_noroute", subgoal=sg.get("id"),
-                     frm=here, want=want)
-            self._faint_at = None
-            return None
-        for key, nxt in path:
-            if "," in key:
-                x, y = key.split(",")
-                self.b.send("use_warp", x=int(x), y=int(y))
-            else:
-                self.b.send("cross", dir=key)
-            o = self.settle()
-            if o and o.get("mode") == "battle":
-                o = self.handle_battle(sg, o)
-                o = self.settle()
-            if self._where(o) != nxt:
-                self.log("blackout_return_lost", subgoal=sg.get("id"),
-                         wanted=nxt, got=self._where(o))
+        # RE-PLAN on a surprise instead of giving up. Ladders come in pairs
+        # and a warp can resolve to the other end, so a hop landing somewhere
+        # unexpected is normal — aborting there cleared the marker and left
+        # the run stranded (wanted MT_MOON_B1F|24,14, got MT_MOON_1F|3,2).
+        total = 0
+        for attempt in range(4):
+            here = self._where(self.settle() or {})
+            if here == want or here in AREA_ALIASES.get(want, ()):
+                self._faint_at = None
+                self.log("blackout_return", subgoal=sg.get("id"), to=want,
+                         hops=total, replans=attempt)
+                return want
+            path = self._route(here, want)
+            if not path:
+                self.log("blackout_return_noroute", subgoal=sg.get("id"),
+                         frm=here, want=want)
                 self._faint_at = None
                 return None
+            for key, nxt in path:
+                if "," in key:
+                    x, y = key.split(",")
+                    self.b.send("use_warp", x=int(x), y=int(y))
+                else:
+                    self.b.send("cross", dir=key)
+                o = self.settle()
+                if o and o.get("mode") == "battle":
+                    o = self.handle_battle(sg, o)
+                    o = self.settle()
+                total += 1
+                got = self._where(o)
+                if got != nxt and got not in AREA_ALIASES.get(nxt, ()):
+                    self.log("blackout_return_replan", subgoal=sg.get("id"),
+                             wanted=nxt, got=got, attempt=attempt)
+                    break          # re-plan from wherever we actually are
+        self.log("blackout_return_lost", subgoal=sg.get("id"),
+                 want=want, gave_up_after=total)
         self._faint_at = None
-        self.log("blackout_return", subgoal=sg.get("id"), to=want,
-                 hops=len(path))
-        return want
+        return None
 
     def _route_to_frontier(self, obs, sg):
         """Walk back to the NEAREST region that still has exits never taken.
