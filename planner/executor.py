@@ -313,6 +313,7 @@ class Executor:
         self.frontier: dict = {}    # region -> every exit visible from it
         self.sightings: dict = {}   # region -> named objects seen there
         self.searched: dict = {}    # target -> {region: fully worked}
+        self.contested: dict = {}   # target -> {region: a fight ran here}
         self._arrived = None        # (region, (x,y)) — the door we came in by
         self._came_from = None      # the region we were in a moment ago
         self._reversals = 0
@@ -368,6 +369,7 @@ class Executor:
             self.frontier = data.get("frontier", {})
             self.sightings = data.get("sightings", {})
             self.searched = data.get("searched", {})
+            self.contested = data.get("contested", {})
             # every entry was recorded under the fully-worked condition, so
             # the union of all targets IS the set of worked rooms
             anyd = self.searched.setdefault("*", {})
@@ -385,13 +387,15 @@ class Executor:
             self.explored, self.dead_ends = {}, {}
             self.visits, self.frontier, self.sightings = {}, {}, {}
             self.searched = {}
+            self.contested = {}
 
     def _save_memory(self):
         try:
             self.MEMORY.write_text(json.dumps(
                 {"explored": self.explored, "dead_ends": self.dead_ends,
                  "visits": self.visits, "frontier": self.frontier,
-                 "sightings": self.sightings, "searched": self.searched},
+                 "sightings": self.sightings, "searched": self.searched,
+                 "contested": self.contested},
                 indent=1))
         except OSError:
             pass
@@ -535,6 +539,12 @@ class Executor:
         # Keying it only by target fragmented the ledger — B2F's dead-end
         # rooms were marked under the nerd flag, so a later subgoal aiming at
         # map:MT_MOON_B2F saw them as untouched and walked straight back in.
+        # A room where a FIGHT ran for this goal is not exhausted — losing
+        # to the Mt Moon nerd marked his room worked, and the refusal then
+        # blocked the ladder leading back to him. A lost fight is unfinished
+        # business, not an emptied room.
+        if self.contested.get(target, {}).get(region):
+            return
         d = self.searched.setdefault(target, {})
         anyd = self.searched.setdefault("*", {})
         fresh = region not in d or region not in anyd
@@ -1273,7 +1283,9 @@ Reply with ONLY a JSON array of ops, e.g.
                     f"{step.get('x')},{step.get('y')}")
                 dest_region = (known_dest or {}).get("to")
                 worked = self.searched.get("*", {})
+                contested = self.contested.get(tgt, {})
                 if (dest_region and worked.get(dest_region)
+                        and not contested.get(dest_region)
                         and self._revisit_refusals.get(tgt, 0) < 3):
                     unsearched = [r for r in
                                   set(list(self.explored) + list(self.visits))
@@ -1424,6 +1436,14 @@ Reply with ONLY a JSON array of ops, e.g.
                     if self._cur_target and pre_map:
                         self._battle_regions.add(
                             f"{self._cur_target}|{self._where(pre_obs)}")
+                        if self._cur_target:
+                            reg = self._where(pre_obs)
+                            c = self.contested.setdefault(self._cur_target, {})
+                            if reg and "None" not in reg and not c.get(reg):
+                                c[reg] = True
+                                self.searched.get(self._cur_target, {}).pop(reg, None)
+                                self.searched.get("*", {}).pop(reg, None)
+                                self._save_memory()
                     obs = self.handle_battle(sg, obs)
                     obs = self.settle()
                     post_map = ((obs or {}).get("map") or {}).get("id")
