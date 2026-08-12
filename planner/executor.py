@@ -1708,6 +1708,23 @@ Reply with ONLY a JSON array of ops, e.g.
                             f"have talked to them. Reachable people here you "
                             f"have not spoken to: {', '.join(near[:5])}. "
                             f"Interact with them, then try the route again.")
+                if op == "cross" and "seam of" in det and (
+                        "terrain blocks" in det
+                        or "cannot be walked to" in det):
+                    # The cross op seam-searches the WHOLE edge, so one
+                    # failure proves no cell of this component crosses it.
+                    # Leaving it in the frontier made it the "nearest
+                    # unopened door" forever — the hint kept selling the
+                    # east seam of the Route 4 stub while the real way
+                    # east sat two ladders down.
+                    d0 = step.get("dir")
+                    fr = self.frontier.get(self._where(obs))
+                    if d0 and fr and d0 in fr:
+                        fr.remove(d0)
+                        self.log("frontier_pruned",
+                                 region=self._where(obs), exit=d0,
+                                 why="seam proven uncrossable")
+                        self._save_memory()
                 if op == "interact" and step.get("name") and (
                         "no reachable tile adjacent" in det
                         or "not visible" in det):
