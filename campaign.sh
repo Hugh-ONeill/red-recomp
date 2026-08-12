@@ -62,7 +62,12 @@ print(f"standing in {m} with {party or 'no party'}, {badges}, and {bag}")
 PY
 }
 
+# RED_CONTINUE=1: resume the existing save instead of a new game on the
+# first attempt — for carrying on after a campaign exhausted its attempts
+# with real progress banked (badge won, nerd flag set) rather than
+# replaying the whole route from Pallet.
 first=1
+[ "${RED_CONTINUE:-0}" = "1" ] && first=0
 for attempt in $(seq 1 "$ATTEMPTS"); do
   echo "=== attempt $attempt/$ATTEMPTS: ${PLANS[*]} ===" | tee -a "$LOG"
 
