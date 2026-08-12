@@ -1209,6 +1209,25 @@ Reply with ONLY a JSON array of ops, e.g.
                 # The bare "cannot afford" was retried as if it were a
                 # pathing failure; it is not, and no amount of walking back
                 # to the counter changes it.
+                # A tile you cannot path to is often a PERSON standing on
+                # the way, not geometry — Viridian's old man blocks the road
+                # until you talk to him, and the run stood in front of him
+                # re-proposing the same warp. Talking is free and people
+                # move once their business is done.
+                if ("couldn't reach the warp tile" in det
+                        or "no path" in det):
+                    near = [o.get("name") for o in
+                            ((obs.get("map") or {}).get("objects") or [])
+                            if o.get("reachable") and o.get("kind") != "item"
+                            and o.get("name") not in
+                            self._tried_objs.get(self._where(obs), set())]
+                    if near:
+                        trace.append(
+                            f"You could not path there. Someone may be "
+                            f"STANDING in the way — people move once you "
+                            f"have talked to them. Reachable people here you "
+                            f"have not spoken to: {', '.join(near[:5])}. "
+                            f"Interact with them, then try the route again.")
                 if "cannot afford" in det:
                     trace.append(
                         "That is a MONEY problem, not a route problem — "
