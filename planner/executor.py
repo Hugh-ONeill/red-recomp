@@ -3184,8 +3184,14 @@ def _write_last_state(b):
         (RUN / "last_state.json").write_text(json.dumps({
             "map": (o.get("map") or {}).get("id"),
             "region": (o.get("map") or {}).get("region"),
+            # hp alone is unreadable at plan time — health only means
+            # anything against max_hp, and a start state that cannot say
+            # "already healthy" leaves the re-author keeping every heal leg
+            # defensively while it prunes shopping the visible bag settles
             "party": [{"species": m.get("species"), "level": m.get("level"),
-                       "hp": m.get("hp")} for m in (o.get("party") or [])],
+                       "hp": m.get("hp"), "max_hp": m.get("max_hp"),
+                       "status": m.get("status")}
+                      for m in (o.get("party") or [])],
             "badges": o.get("badges") or [],
             "bag": o.get("bag") or {},
             "money": o.get("money"),
