@@ -856,7 +856,7 @@ class Executor:
                 best = (region, path, rank)
         if not best or not best[1]:
             return None
-        region, path = best
+        region, path = best[0], best[1]
         for key, nxt in path:
             # A wild encounter EATS the hop: the walk to the ladder is
             # interrupted, the battle resolves, and the party is standing
