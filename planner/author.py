@@ -50,6 +50,14 @@ PREDICATES = {
     "player_at": "standing within radius R of a tile, e.g. "
                  "{\"player_at\":{\"x\":27,\"y\":3,\"radius\":4}}. Combine it "
                  "with map when a map predicate alone cannot say WHERE",
+    "party_min_level": "EVERY party member is at least VALUE "
+        "(e.g. {\"party_min_level\":15}). Use this to TRAIN A BACKUP: "
+        "lead_level only looks at slot 1, so it is already true when your "
+        "lead is strong and trains nothing. NOTE a Pokemon only gains "
+        "experience while it is the LEAD, so a subgoal like this needs a "
+        "pick_party op to put the weak one in front first",
+    "slot_level": "a particular party slot reaches a level "
+        "(e.g. {\"slot_level\":{\"slot\":2,\"min\":15}}), 1-based",
     "party_size": "party has at least N Pokemon (e.g. {\"party_size\":2} — "
                   "use for catch subgoals; set battle_policy \"catch\" on "
                   "them)",

@@ -89,6 +89,24 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             lead = (obs.get("party") or [{}])[0]
             if (lead.get("level") or 0) < want:
                 return False
+        elif key == "party_min_level":
+            # EVERY party member at least this level. lead_level could only
+            # see slot 1, so "train the backup" was inexpressible: the model
+            # wrote train_nidoran {lead_level:15} while a L22 Charmeleon led,
+            # which was already true and trained nothing. The weakest member
+            # decides this one, so it cannot be satisfied by the lead alone.
+            mons = obs.get("party") or []
+            if not mons or any((m.get("level") or 0) < want for m in mons):
+                return False
+        elif key == "slot_level":
+            # a specific party slot (1-based), for "get the SECOND one to N"
+            mons = obs.get("party") or []
+            slot = int((want or {}).get("slot", 1))
+            need = int((want or {}).get("min", 0))
+            if slot < 1 or slot > len(mons):
+                return False
+            if (mons[slot - 1].get("level") or 0) < need:
+                return False
         elif key == "has_item":
             bag = obs.get("bag") or {}
             for item, n in (want or {}).items():
@@ -494,7 +512,8 @@ class Executor:
                 return f"{k}:{dw[k]}"
         if dw.get("has_item"):
             return "item:" + ",".join(sorted(dw["has_item"]))
-        for k in ("party_size", "lead_level", "party_healthy"):
+        for k in ("party_size", "lead_level", "party_min_level",
+                  "slot_level", "party_healthy"):
             if k in dw:
                 return f"{k}:{dw[k]}"
         return "subgoal:" + sg.get("id", "?")
@@ -914,7 +933,9 @@ class Executor:
         if not name:
             dw = subgoal.get("done_when") or {}
             name = ("catch" if "party_size" in dw
-                    else "default" if "lead_level" in dw
+                    else "default" if ("lead_level" in dw
+                                       or "party_min_level" in dw
+                                       or "slot_level" in dw)
                     else "traversal")
             if name not in BATTLE_POLICIES:      # never crash on a bad key
                 name = "traversal"
