@@ -2534,7 +2534,15 @@ Reply with ONLY a JSON array of ops, e.g.
             hk = f"{self._cur_target}|{self._where(cur)}"
             self._rounds_here[hk] = self._rounds_here.get(hk, 0) + 1
             patient = self._rounds_here[hk] >= 3
-            if patient or not self._untried_exits(cur):
+            # NEVER overrule a move the model actually made. With patience
+            # alone the escort hauled the party back to the frontier every
+            # round while the model was deliberately walking to Pewter for
+            # its shopping goal — the harness deciding, not facilitating.
+            # Escort only when the round left the party where it started:
+            # that is being stuck, and being stuck is what it is for.
+            moved_itself = bool(progress)
+            if not moved_itself and (patient
+                                     or not self._untried_exits(cur)):
                 went = self._route_to_frontier(cur, sg, patient=patient)
                 if went:
                     cur = self.settle() or cur
