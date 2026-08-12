@@ -94,15 +94,22 @@ import json, sys
 obs = {}
 for src in (sys.argv[1], "run/obs.json"):
     try:
-        obs = json.load(open(src)); break
+        cand = json.load(open(src))
+        if isinstance(cand, dict):      # a file caught mid-write can parse
+            obs = cand                  # as a bare string; .get would crash
+            break
     except Exception:
         continue
 def met(plan_path):
     try:
         plan = json.load(open(plan_path))
+        subs = plan.get("subgoals") or []
+        last = (subs[-1] if subs and isinstance(subs[-1], dict)
+                else {}).get("done_when") or {}
+        if not isinstance(last, dict):
+            return False
     except Exception:
         return False
-    last = (plan.get("subgoals") or [{}])[-1].get("done_when") or {}
     if "badge" in last:
         return last["badge"] in (obs.get("badges") or [])
     if "map" in last:
