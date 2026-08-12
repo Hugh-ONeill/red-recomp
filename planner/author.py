@@ -318,6 +318,14 @@ def observed_text(path: Path) -> str:
                 "at the RIGHT part of a map — the same map id can have "
                 "several unconnected parts, and only one of them holds the "
                 "thing you need):\n" + "\n".join(seen))
+    fired = [f"  {f} fired in {region}"
+             for f, region in sorted((d.get("flag_sites") or {}).items())]
+    if fired:
+        out += ("\n\nWHERE EVENTS ACTUALLY FIRED (an event happens in ONE "
+                "place, so a subgoal for it must come AFTER the subgoal "
+                "that arrives there — and that arrival is best written as "
+                "the area code below, not the whole map):\n"
+                + "\n".join(fired))
     if dead:
         out += "\n\nPROVEN UNREACHABLE:\n" + "\n".join(dead)
     return out

@@ -344,6 +344,8 @@ class Executor:
         self._no_cross: dict = {}           # region -> dirs proven uncrossable
         self._rounds_here: dict = {}        # target|region -> rounds spent
         self._fight_region: str | None = None   # where the last trainer fought
+        self.flag_sites: dict = {}          # flag -> area it fired in
+        self._known_flags = None            # None until the first obs
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -358,6 +360,7 @@ class Executor:
     def _note(self, obs):
         self.note_frontier(obs)
         self.note_sightings(obs)
+        self.note_flag_site(obs)
         m = (obs or {}).get("map") or {}
         if m.get("id") and (m.get("connections") or m.get("warps")):
             e = self.atlas.setdefault(m["id"], {})
@@ -408,6 +411,7 @@ class Executor:
                                 (data.get("touched") or {}).items()}
             self._no_cross = {r: set(v) for r, v in
                               (data.get("no_cross") or {}).items()}
+            self.flag_sites = data.get("flag_sites") or {}
             self._rebuild_area_aliases()
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
@@ -434,7 +438,8 @@ class Executor:
                  "touched": {r: sorted(s)
                              for r, s in self._tried_objs.items()},
                  "no_cross": {r: sorted(s)
-                              for r, s in self._no_cross.items()}},
+                              for r, s in self._no_cross.items()},
+                 "flag_sites": self.flag_sites},
                 indent=1))
         except OSError:
             pass
@@ -491,6 +496,36 @@ class Executor:
                     if ea & eb:
                         AREA_ALIASES.setdefault(ra, set()).add(rb)
                         AREA_ALIASES.setdefault(rb, set()).add(ra)
+
+    def note_flag_site(self, obs):
+        """Where an event actually fired.
+
+        A plan can order a flag subgoal before the subgoal that reaches the
+        place it happens — asking for the bottom-floor fight while standing
+        a floor above it, unsatisfiable where it stands. The sightings
+        ledger says where a THING was seen; nothing said where an EVENT
+        occurred. This is that, earned the only honest way: watch which
+        flags are new and record the area the party was standing in.
+        """
+        flags = set((obs or {}).get("flags") or [])
+        if not flags:
+            return
+        if self._known_flags is None:      # first observation: baseline only
+            self._known_flags = flags
+            return
+        fresh = flags - self._known_flags
+        self._known_flags = flags
+        if not fresh:
+            return
+        here = self._where(obs)
+        if "None" in here:
+            return
+        for f in fresh:
+            if self.flag_sites.get(f) == here:
+                continue
+            self.flag_sites[f] = here
+            self.log("flag_fired", flag=f, region=here)
+        self._save_memory()
 
     def note_sightings(self, obs):
         """Which named things were SEEN in this region.
