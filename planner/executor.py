@@ -334,6 +334,7 @@ class Executor:
         self._tried_objs: dict = {}         # region -> objects interacted
         self._inert_objs: dict = {}         # region -> {object: state it was inert in}
         self._cant_afford: dict = {}        # item -> unit price we lack
+        self._no_cross: dict = {}           # region -> dirs proven uncrossable
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -396,6 +397,8 @@ class Executor:
                         anyd[r] = True
             self._tried_objs = {r: set(v) for r, v in
                                 (data.get("touched") or {}).items()}
+            self._no_cross = {r: set(v) for r, v in
+                              (data.get("no_cross") or {}).items()}
             self._rebuild_area_aliases()
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
@@ -420,7 +423,9 @@ class Executor:
                  # fossils are the door east, and every restart forgot who
                  # had already been talked to
                  "touched": {r: sorted(s)
-                             for r, s in self._tried_objs.items()}},
+                             for r, s in self._tried_objs.items()},
+                 "no_cross": {r: sorted(s)
+                              for r, s in self._no_cross.items()}},
                 indent=1))
         except OSError:
             pass
@@ -1507,6 +1512,19 @@ Reply with ONLY a JSON array of ops, e.g.
                     continue
                 if step.get("name"):
                     tried.add(step["name"])
+            # A seam PROVEN uncrossable is refused, not retried. The trace
+            # said so every time and the model kept proposing cross(east)
+            # from the Route 4 stub anyway — advice failed, so this is
+            # enforcement, and a refused-only round stays free instead of
+            # burning budget.
+            if op == "cross" and step.get("dir") in \
+                    self._no_cross.get(self._where(obs), set()):
+                trace.append(
+                    f"cross({step.get('dir')}): REFUSED — that seam is "
+                    f"PROVEN uncrossable from this area (terrain blocks "
+                    f"every cell of the edge). It will never work from "
+                    f"here; the way onward is somewhere else.")
+                continue
             # NO IMMEDIATE REVERSAL — the classic search prune, not game
             # knowledge: both directions of a ladder read as "untried" from
             # their own side, so the run oscillated B1F<->B2F until its
@@ -1718,13 +1736,16 @@ Reply with ONLY a JSON array of ops, e.g.
                     # east seam of the Route 4 stub while the real way
                     # east sat two ladders down.
                     d0 = step.get("dir")
-                    fr = self.frontier.get(self._where(obs))
+                    here0 = self._where(obs)
+                    if d0:
+                        self._no_cross.setdefault(here0, set()).add(d0)
+                    fr = self.frontier.get(here0)
                     if d0 and fr and d0 in fr:
                         fr.remove(d0)
                         self.log("frontier_pruned",
-                                 region=self._where(obs), exit=d0,
+                                 region=here0, exit=d0,
                                  why="seam proven uncrossable")
-                        self._save_memory()
+                    self._save_memory()
                 if op == "interact" and step.get("name") and (
                         "no reachable tile adjacent" in det
                         or "not visible" in det):
