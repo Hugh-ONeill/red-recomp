@@ -1768,8 +1768,8 @@ Reply with ONLY a JSON array of ops, e.g.
             # grind/cross/walk_to fight their encounters INSIDE the Lua op,
             # so a wipe during one of those lands at a Pokemon Center with
             # the executor never having seen a battle. It then had no
-            # faint marker and the walk-back never armed (user: "party wipe
-            # in mt moon returned us to viridian pokecenter then its stuck").
+            # faint marker and the walk-back never armed: a wipe in Mt
+            # Moon landed at the Viridian centre and the run stalled there.
             # A gen1 blackout is unmistakable in state: you did not ask to go
             # there, you are in a Center, and the whole party is suddenly at
             # full HP.
@@ -2251,7 +2251,7 @@ Reply with ONLY a JSON array of ops, e.g.
             #   warp exists but its tile cannot be reached
             # the third is the characteristic failure INSIDE a dungeon and
             # was missing, so cave rooms never got marked and the run kept
-            # reconsidering them (user: "they're not getting labelled")
+            # reconsidering them: finished cave rooms stayed unlabelled.
             in_control = (cur.get("mode") == "overworld"
                           and not (cur.get("player") or {}).get("moving"))
             unreachable = [] if not in_control else [t for t in trace
@@ -2729,8 +2729,7 @@ Reply with ONLY a JSON array of ops, e.g.
                     # macro was invisible to the graph: the party descended
                     # 1F->B1F->B2F on a replayed macro, fainted, and the
                     # walk-back found no route to a floor it had just walked
-                    # (user: "shouldn't it record the edges its been to even
-                    # within a macro?"). A door is a door whoever opened it.
+                    # A door is a door whoever opened it.
                     if (r.get("ok") and pre_obs
                             and (pre_obs.get("map") or {}).get("id")
                             != ((obs or {}).get("map") or {}).get("id")):
@@ -2794,14 +2793,14 @@ Reply with ONLY a JSON array of ops, e.g.
                 # goal — "I am on B2F" is true in all four of its rooms, and
                 # the nerd is in one of them. Without this the gate ended the
                 # plan and the campaign restarted, instead of relocating one
-                # room over (user: "instead of backtracking from B2F it
-                # spawns a new version and restarts").
+                # room over, instead of ending the plan and restarting the
+                # whole campaign.
                 # And look PAST satisfied gates: with defeat_super_nerd's
                 # flag already set, the candidate scan stopped on it with
                 # "already holds" while the relocatable descend_to_b2f sat
                 # one step further back — so the stored macro kept replaying
                 # the wrong ladder and the waypoint leg kept dying in the
-                # wrong room (user: "wrong door").
+                # wrong room, taking the wrong ladder every time.
                 cand = None
                 holds = False
                 elsewhere = []
@@ -2922,8 +2921,8 @@ Reply with ONLY a JSON array of ops, e.g.
             # teleports you to a Center; if a subgoal completes there and we
             # save, the setback is baked into the save and the NEXT attempt
             # resumes in town — undoing the walk-back and re-walking to the
-            # mountain (user: "after a blackout it just wandered around
-            # pewter"). Save once the party is back where it fell.
+            # mountain, leaving the run wandering the town it respawned in.
+            # Save once the party is back where it fell.
             if self.save_each and self._faint_at:
                 self.log("save_deferred", subgoal=sg["id"],
                          pending_return=self._faint_at)
