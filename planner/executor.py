@@ -2697,6 +2697,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # the traversal resumes instead of burning a whole attempt.
                 traversal = op in ("cross", "walk_to", "use_warp", "grind")
                 for _ in range(12):
+                    pre_obs = obs
                     try:
                         obs = self.b.send(op, **step)
                     except TimeoutError as e:
@@ -2723,6 +2724,17 @@ Reply with ONLY a JSON array of ops, e.g.
                         obs = self.settle()
                         if traversal and not pred_holds(done, obs):
                             continue     # battle interrupted travel: resume
+                    # RECORD WHAT THE MACRO WALKED. Only escalation ops were
+                    # recording edges, so every map change made by a stored
+                    # macro was invisible to the graph: the party descended
+                    # 1F->B1F->B2F on a replayed macro, fainted, and the
+                    # walk-back found no route to a floor it had just walked
+                    # (user: "shouldn't it record the edges its been to even
+                    # within a macro?"). A door is a door whoever opened it.
+                    if (r.get("ok") and pre_obs
+                            and (pre_obs.get("map") or {}).get("id")
+                            != ((obs or {}).get("map") or {}).get("id")):
+                        self.note_transition(pre_obs, dict(step, op=op), obs)
                     break
             if pred_holds(done, self.settle()):
                 self.log("subgoal_done", subgoal=sg["id"], attempt=attempt,
