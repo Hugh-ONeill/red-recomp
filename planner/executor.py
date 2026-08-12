@@ -1249,6 +1249,31 @@ Reply with ONLY a JSON array of ops, e.g.
                      if (w.get("x"), w.get("y")) == (step.get("x"),
                                                      step.get("y"))), None)
                 tgt = self._cur_target
+                # ALREADY-SEARCHED ROOM. The searched ledger was advice only,
+                # and advice keeps losing — the run kept dropping back into
+                # the same two Mt Moon rooms it had already worked. Refuse
+                # the door, but ONLY when nothing unsearched lies beyond it:
+                # a finished room is often the corridor to an unfinished one.
+                known_dest = (self.explored.get(self._where(obs), {}) or {}).get(
+                    f"{step.get('x')},{step.get('y')}")
+                dest_region = (known_dest or {}).get("to")
+                if (dest_region and self.searched.get(tgt, {}).get(dest_region)
+                        and self._revisit_refusals.get(tgt, 0) < 3):
+                    unsearched = [r for r in
+                                  set(list(self.explored) + list(self.visits))
+                                  if not self.searched.get(tgt, {}).get(r)]
+                    beyond = any(self._route(dest_region, u)
+                                 for u in unsearched[:12])
+                    if not beyond:
+                        self._revisit_refusals[tgt] = \
+                            self._revisit_refusals.get(tgt, 0) + 1
+                        trace.append(
+                            f"use_warp({step.get('x')},{step.get('y')}): "
+                            f"REFUSED — {dest_region} has already been fully "
+                            f"searched for this goal and nothing unsearched "
+                            f"lies beyond it. Going back in cannot find "
+                            f"anything. Try somewhere you have not worked.")
+                        continue
                 seen_n = self._entered_map.get(f"{tgt}|{dest_map}", 0)
                 spent_r = self._revisit_refusals.get(tgt, 0)
                 if (dest_map and seen_n >= 2 and spent_r < 3
