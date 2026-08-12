@@ -497,12 +497,30 @@ function warp_reach(G)
   return seen
 end
 
+-- Cells a walk may never pass THROUGH: warp tiles fire on the step, so a
+-- path routed over one teleports the party mid-walk. Walking to ladder
+-- (5,5) through the (25,15) ladder's tile went down the wrong hole, and
+-- the wrong landing was then recorded against (5,5) — severing the learned
+-- route east of Route 3. Only the walk's own destination may be a warp.
+local function warp_block(G, tx, ty)
+  local ow = G.overworld
+  local md = ow.map and ow.map.def
+  local blocked = {}
+  for _, w in ipairs((md and md.warps) or {}) do
+    if not (w.x == tx and w.y == ty) then
+      blocked[w.x .. "," .. w.y] = true
+    end
+  end
+  return blocked
+end
+
 local function bfs_dir(G, tx, ty)
   local Collision = require("src.world.Collision")
   local ow = G.overworld
   local p = ow.player
   if p.cellX == tx and p.cellY == ty then return nil, "arrived" end
   local key = function(x, y) return x .. "," .. y end
+  local wblock = warp_block(G, tx, ty)
   local seen = { [key(p.cellX, p.cellY)] = true }
   local queue = { { x = p.cellX, y = p.cellY, first = nil } }
   local head = 1
@@ -510,7 +528,7 @@ local function bfs_dir(G, tx, ty)
     local cur = queue[head]; head = head + 1
     for dir, d in pairs(DIRS) do
       local nx, ny = cur.x + d[1], cur.y + d[2]
-      if not seen[key(nx, ny)] then
+      if not seen[key(nx, ny)] and not wblock[key(nx, ny)] then
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
                                    { __index = p })
         if Collision.canMove(ow.map, ow.entities, probe, dir) then
@@ -520,7 +538,7 @@ local function bfs_dir(G, tx, ty)
           queue[#queue + 1] = { x = nx, y = ny, first = first }
         else
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dir)
-          if lx and not seen[key(lx, ly)] then
+          if lx and not seen[key(lx, ly)] and not wblock[key(lx, ly)] then
             seen[key(lx, ly)] = true
             local first = cur.first or dir
             if lx == tx and ly == ty then return first end
@@ -599,6 +617,7 @@ local function bfs_to_edge(G, dir)
     return p.cellX, p.cellY
   end
   local key = function(x, y) return x .. "," .. y end
+  local wblock = warp_block(G, -1, -1)   -- edge walks never end on a warp
   local seen = { [key(p.cellX, p.cellY)] = true }
   local queue = { { x = p.cellX, y = p.cellY } }
   local head = 1
@@ -606,7 +625,7 @@ local function bfs_to_edge(G, dir)
     local cur = queue[head]; head = head + 1
     for _, d in pairs(DIRS) do
       local nx, ny = cur.x + d[1], cur.y + d[2]
-      if not seen[key(nx, ny)] then
+      if not seen[key(nx, ny)] and not wblock[key(nx, ny)] then
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
                                    { __index = p })
         local dname = (d[1] == 0 and (d[2] < 0 and "up" or "down"))
@@ -619,7 +638,7 @@ local function bfs_to_edge(G, dir)
           queue[#queue + 1] = { x = nx, y = ny }
         else
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dname)
-          if lx and not seen[key(lx, ly)] then
+          if lx and not seen[key(lx, ly)] and not wblock[key(lx, ly)] then
             seen[key(lx, ly)] = true
             if hit(lx, ly) then return lx, ly end
             queue[#queue + 1] = { x = lx, y = ly }

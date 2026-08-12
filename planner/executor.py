@@ -740,6 +740,22 @@ class Executor:
             self._came_from = src
             self._reversals = 0
         node = self.explored.setdefault(src, {})
+        # A door's destination is deterministic, so a walk that lands
+        # somewhere CONTRADICTING the recorded edge means one of the two
+        # recordings is wrong (a mid-walk teleport recorded the intended
+        # tile with another ladder's landing, and the overwrite severed the
+        # route east of Route 3). A re-fingerprint of the same room arrives
+        # as an ALIAS and may overwrite; a true conflict voids the edge —
+        # honest ignorance beats a coin-flip assertion, and the door reads
+        # untried again so the next clean walk re-records it.
+        old = node.get(key)
+        if old and old.get("to") not in (dst,) \
+                and dst not in AREA_ALIASES.get(old.get("to"), ()):
+            self.log("edge_conflict", frm=src, via=str(key),
+                     was=old.get("to"), now=dst)
+            del node[key]
+            self._save_memory()
+            return
         e = node.setdefault(key, {"n": 0, "to": dst})
         e["n"] += 1
         e["to"] = dst
