@@ -370,6 +370,7 @@ def journal_text(path: Path, limit: int = 60) -> str:
     # battle means the attacking moves ran dry (PP may run out MID-fight —
     # the wipe battle opened with the last two Scratches).
     bt_tail = 0
+    last_fight = ""
     for r in seg:
         k = r.get("kind")
         if k == "battle_start":
@@ -385,12 +386,23 @@ def journal_text(path: Path, limit: int = 60) -> str:
                     f"move was out of PP. Long stretches of wild battles "
                     f"drain PP and only a Pokemon Center restores it")
             bt_tail = 0
+        if k == "battle_start" and r.get("foe"):
+            last_fight = f" (last fight: {r.get('foe')} vs your {r.get('me')})"
         if k == "subgoal_done" or k == "escalate_success":
-            events.append(f"  OK      {r.get('subgoal')}")
+            # A stop that was already satisfied DID nothing: the Cerulean
+            # heal kept instant-passing on a blackout-healed party, so the
+            # Center was never entered and every wipe teleported the run
+            # back to a centre several maps west. "OK" alone hid that.
+            idle = (r.get("via") == "pre-check"
+                    or (k == "escalate_success" and not r.get("distilled")))
+            events.append(f"  OK      {r.get('subgoal')}"
+                          + (" (already true on arrival — nothing was done,"
+                             " no building was entered)" if idle else ""))
         elif k == "subgoal_failed":
             events.append(f"  FAILED  {r.get('subgoal')}")
         elif k == "blackout":
-            events.append(f"  WIPED   during {r.get('subgoal')} — sent to "
+            events.append(f"  WIPED   during {r.get('subgoal')}"
+                          f"{last_fight} — sent to "
                           f"{r.get('respawn')}, and a blackout costs you "
                           f"HALF YOUR MONEY")
         elif k == "rerouted":

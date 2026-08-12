@@ -1419,7 +1419,15 @@ class Executor:
                     else "traversal")
             if name not in BATTLE_POLICIES:      # never crash on a bad key
                 name = "traversal"
-        self.log("battle_start", subgoal=subgoal["id"], policy=name)
+        # Name the combatants: three Misty wipes reached the re-author as
+        # bare FAILED lines, so every rewrite fixed the route and never the
+        # matchup — species and levels are on screen the whole fight.
+        b0 = (obs or {}).get("battle") or {}
+        foe, me = b0.get("foe") or {}, b0.get("me") or {}
+        self.log("battle_start", subgoal=subgoal["id"], policy=name,
+                 foe=f"{foe.get('species')} L{foe.get('level')}",
+                 me=f"{me.get('species')} L{me.get('level')} "
+                    f"{me.get('hp')}/{me.get('maxhp')}hp")
         self.status(doing=f"BATTLE ({name} policy)", obs=obs)
         obs = BATTLE_POLICIES[name](self.b, obs, self.log,
                                     self.max_battle_turns)
