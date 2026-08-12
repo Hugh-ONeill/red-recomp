@@ -1386,6 +1386,32 @@ Reply with ONLY a JSON array of ops, e.g.
                 break
             r = (obs or {}).get("result") or {}
             after = self._snapshot(obs)
+            # STATE-BASED blackout fallback. The battle-mode detector only
+            # fires when the executor sees mode=="battle" after an op — but
+            # grind/cross/walk_to fight their encounters INSIDE the Lua op,
+            # so a wipe during one of those lands at a Pokemon Center with
+            # the executor never having seen a battle. It then had no
+            # faint marker and the walk-back never armed (user: "party wipe
+            # in mt moon returned us to viridian pokecenter then its stuck").
+            # A gen1 blackout is unmistakable in state: you did not ask to go
+            # there, you are in a Center, and the whole party is suddenly at
+            # full HP.
+            if (not blackout and before[0] and after[0] and before[0] != after[0]
+                    and str(after[0]).endswith("POKECENTER")
+                    and op not in ("use_warp", "cross", "checkpoint_restore")):
+                mons = (obs or {}).get("party") or []
+                healed = bool(mons) and all(
+                    m.get("max_hp") and m.get("hp") == m["max_hp"] for m in mons)
+                if healed and after[6] > before[6]:
+                    blackout = after[0]
+                    self._faint_at = self._where(pre_obs)
+                    if self._cur_target:
+                        self._blackouts[self._cur_target] = \
+                            self._blackouts.get(self._cur_target, 0) + 1
+                    self.log("blackout", subgoal=sg["id"], op=op,
+                             respawn=after[0], detected="state")
+                    self.log("faint_marked", subgoal=sg["id"],
+                             at=self._faint_at)
             note = f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
             if not r.get("ok"):
                 self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
