@@ -289,6 +289,7 @@ class Executor:
         self._dead_ops: dict = {}           # (target, op, arg) -> failures
         self.save_each = False              # in-game SAVE after each subgoal
         self._tried_objs: dict = {}         # region -> objects interacted
+        self._inert_objs: dict = {}         # region -> objects that did nothing
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -1112,6 +1113,17 @@ Reply with ONLY a JSON array of ops, e.g.
                     continue
             if op == "interact":
                 here_r = self._where(obs)
+                # Talking again to something that did NOTHING last time is
+                # pure repetition — the Pewter Jigglypuff sings and changes
+                # no state, and the run kept greeting it. This is narrower
+                # than "never interact twice": the Pokemon Center nurse
+                # changes party HP, so she never lands here.
+                if step.get("name") in self._inert_objs.get(here_r, set()):
+                    trace.append(
+                        f"interact({step.get('name')}): REFUSED — you already "
+                        f"interacted with it here and NOTHING changed. It has "
+                        f"nothing more to give; spend the turn elsewhere.")
+                    continue
                 tried = self._tried_objs.setdefault(here_r, set())
                 objs = [o for o in ((obs.get("map") or {}).get("objects")
                                     or []) if o.get("reachable")]
@@ -1267,6 +1279,9 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"do not try this counter again.")
             elif before == after:
                 note += ": ran but had NO visible effect (nothing changed)"
+                if op == "interact" and step.get("name"):
+                    self._inert_objs.setdefault(
+                        self._where(pre_obs), set()).add(step["name"])
             else:
                 chg = []
                 if before[0] != after[0]:
