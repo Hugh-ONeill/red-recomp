@@ -375,6 +375,18 @@ class Executor:
             self.sightings = data.get("sightings", {})
             self.searched = data.get("searched", {})
             self.contested = data.get("contested", {})
+            # Money-dependent proofs do not survive a restart. "Fully
+            # worked" recorded in a shop with an empty wallet is a fact
+            # about the WALLET, not the room — it sealed the Pewter Mart
+            # door for item:POTION long after the money problem had
+            # passed, and the run hunted a clerk in the overworld it could
+            # never find there. Within a process the cant-afford ->
+            # contested rule keeps this honest; across processes, item
+            # proofs and their room seals expire.
+            anyd0 = self.searched.get("*", {})
+            for tgt in [t for t in self.searched if t.startswith("item:")]:
+                for r in self.searched.pop(tgt, {}):
+                    anyd0.pop(r, None)
             # every entry was recorded under the fully-worked condition, so
             # the union of all targets IS the set of worked rooms
             anyd = self.searched.setdefault("*", {})
@@ -1300,6 +1312,12 @@ Reply with ONLY a JSON array of ops, e.g.
                 contested = self.contested.get(tgt, {})
                 if (dest_region and worked.get(dest_region)
                         and not contested.get(dest_region)
+                        # A PURCHASE is not a search: the mart reads "fully
+                        # worked" from every pass-through, but an item goal
+                        # can only ever be satisfied at its counter. Only a
+                        # shop proof ("is not sold here", a dead end) may
+                        # shut a door against an item target.
+                        and not (tgt or "").startswith("item:")
                         and self._revisit_refusals.get(tgt, 0) < 3):
                     unsearched = [r for r in
                                   set(list(self.explored) + list(self.visits))
@@ -1559,6 +1577,19 @@ Reply with ONLY a JSON array of ops, e.g.
                     m = _re.search(r"it costs (\d+)", det)
                     if m:
                         self._cant_afford[step["item"]] = int(m.group(1))
+                    # A blocked purchase is unfinished business, exactly
+                    # like a lost battle: the WALLET is exhausted, not the
+                    # room. Without this, the mart got marked fully worked
+                    # and its door refused for item:POTION long after the
+                    # money problem had passed.
+                    if self._cur_target:
+                        reg = self._where(obs)
+                        c = self.contested.setdefault(self._cur_target, {})
+                        if reg and "None" not in reg and not c.get(reg):
+                            c[reg] = True
+                            self.searched.get(self._cur_target, {}).pop(reg, None)
+                            self.searched.get("*", {}).pop(reg, None)
+                            self._save_memory()
                 if ("couldn't reach the warp tile" in det
                         or "no path" in det):
                     near = [o.get("name") for o in
