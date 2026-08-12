@@ -2496,8 +2496,15 @@ Reply with ONLY a JSON array of ops, e.g.
             # Nothing new reachable from here? Walk back to somewhere that
             # still has unopened exits, rather than burning rounds re-reading
             # a finished room.
-            if not self._untried_exits(cur):
-                went = self._route_to_frontier(cur, sg, patient=rnd >= 3)
+            # After several rounds, a LOCAL untried exit stops being a
+            # reason to stay: 1F kept one door unopened (25,15, which only
+            # rejoins ground already walked) and that alone held the escort
+            # back while the run shuttled between two known warps. Same
+            # first-refusal rule as the object veto — local options get
+            # their turn, then navigation resumes.
+            patient = rnd >= 3
+            if patient or not self._untried_exits(cur):
+                went = self._route_to_frontier(cur, sg, patient=patient)
                 if went:
                     cur = self.settle() or cur
                     stuck_note += (
