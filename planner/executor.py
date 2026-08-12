@@ -2608,6 +2608,41 @@ Reply with ONLY a JSON array of ops, e.g.
             # its shopping goal — the harness deciding, not facilitating.
             # Escort only when the round left the party where it started:
             # that is being stuck, and being stuck is what it is for.
+            # CLEAR THE ROOM BEFORE LEAVING IT. When a room has gone
+            # unproductive the useful move is the dull one: press A on
+            # everything reachable that has not been touched. Listing them
+            # was not enough — rooms sat half-worked for whole attempts, so
+            # they never qualified as searched and the run kept coming back
+            # to reconsider them. Sweeping is cheap, cannot lose progress,
+            # and either finds the thing or proves the room empty.
+            if not progress and patient:
+                here_s = self._where(cur)
+                touched = self._tried_objs.setdefault(here_s, set())
+                loose = [o.get("name") for o in
+                         ((cur.get("map") or {}).get("objects") or [])
+                         if o.get("reachable") and o.get("name")
+                         and o.get("name") not in touched]
+                if loose:
+                    self.log("room_sweep", subgoal=sg["id"], region=here_s,
+                             objects=loose[:8])
+                    for name in loose[:8]:
+                        o2 = self._send_safe("interact", name=name)
+                        if o2 and o2.get("mode") == "battle":
+                            o2 = self.handle_battle(sg, o2)
+                            o2 = self.settle()
+                        touched.add(name)
+                        cur = o2 or cur
+                        if pred_holds(done, cur):
+                            break
+                    trace.append(
+                        f"(swept this area: pressed A on "
+                        f"{', '.join(loose[:8])} — everything reachable "
+                        f"here has now been tried)")
+                    if pred_holds(done, self.settle() or cur):
+                        self.log("escalate_success", subgoal=sg["id"],
+                                 round=rnd, proposed=0,
+                                 distilled=len(progress), verified=False)
+                        return True, progress
             moved_itself = bool(progress)
             if not moved_itself and (patient
                                      or not self._untried_exits(cur)):
