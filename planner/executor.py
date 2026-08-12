@@ -265,8 +265,13 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
                 if sc.get("scoreable"):
                     log("oracle_score", turn=turns, **sc)
             obs = bridge.obs()   # refresh (probe left a battle obs)
-        log("battle_turn", turn=turns, op=name, params=op, why=why)
         before_b = (obs or {}).get("battle") or {}
+        # HP alongside intent: six logged EMBERs vs a 41-HP Staryu ended in
+        # a wipe, which the damage math says is impossible — whether the
+        # presses deliver the scored move is only visible as an HP trace.
+        log("battle_turn", turn=turns, op=name, params=op, why=why,
+            foe_hp=(before_b.get("foe") or {}).get("hp"),
+            me_hp=(before_b.get("me") or {}).get("hp"))
         move_id = None
         if name == "battle_move":
             mv = next((m for m in ((before_b.get("me") or {}).get("moves")
