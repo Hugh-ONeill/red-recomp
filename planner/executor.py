@@ -282,12 +282,13 @@ class Executor:
         self._dead_visits = 0
         self._entered_map: dict = {}   # "target|map" -> entries for target
         self._revisit_refusals: dict = {}   # target -> refusals spent
-        self._battle_maps: set = set()      # "target|map" where a fight ran
+        self._battle_regions: set = set()   # "target|region" a fight ran in
         self._blackouts: dict = {}          # target -> party wipes
         self._faint_at = None               # region we were in when wiped
         self._ui_pending = 0                # rounds a prompt has sat open
         self._dead_ops: dict = {}           # (target, op, arg) -> failures
         self.save_each = False              # in-game SAVE after each subgoal
+        self._tried_objs: dict = {}         # region -> objects interacted
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -634,7 +635,7 @@ class Executor:
         # ONE door, so "no untried exits" is true there every time — without
         # these guards the router would drag the run out of the Brock fight
         # mid-goal, which is the same mistake the revisit guard made.
-        if f"{self._cur_target}|{cur_map}" in self._battle_maps:
+        if f"{self._cur_target}|{here}" in self._battle_regions:
             return None
         tried_here = self._tried_objs.get(here, set())
         if [o for o in ((obs.get("map") or {}).get("objects") or [])
@@ -669,6 +670,24 @@ class Executor:
                 return None
         self.log("rerouted", subgoal=sg["id"], to=region, hops=len(path))
         return region
+
+    def _fought_at(self, tgt: str, obs, step, dest_map: str) -> bool:
+        """Did a fight happen in the REGION this exit leads to?
+
+        Battle rooms are exempt from the revisit refusal, but keying that
+        exemption to the MAP meant one Rocket fight anywhere in Mt Moon B2F
+        exempted every region of B2F — so the run was free to keep dropping
+        back into the dead-end rooms instead of the ladder it had never
+        opened. The learned graph knows which region the door leads to; use
+        it when it does, and fall back to the coarse test when it does not.
+        """
+        known = (self.explored.get(self._where(obs), {}) or {}).get(
+            f"{step.get('x')},{step.get('y')}")
+        dest_region = (known or {}).get("to")
+        if dest_region:
+            return f"{tgt}|{dest_region}" in self._battle_regions
+        return any(k.startswith(f"{tgt}|{dest_map}|")
+                   for k in self._battle_regions)
 
     def _leave_ui(self, obs, sg, tries: int = 6):
         """Back out of a UI the goal never asked for.
@@ -1080,7 +1099,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 spent_r = self._revisit_refusals.get(tgt, 0)
                 if (dest_map and seen_n >= 2 and spent_r < 3
                         and tgt != f"map:{dest_map}"
-                        and f"{tgt}|{dest_map}" not in self._battle_maps
+                        and not self._fought_at(tgt, obs, step, dest_map)
                         and self._untried_exits(obs)):
                     self._revisit_refusals[tgt] = spent_r + 1
                     trace.append(
@@ -1171,7 +1190,8 @@ Reply with ONLY a JSON array of ops, e.g.
                     # wandering east out of town. Losing is a reason to come
                     # back stronger, not evidence of a wrong room.
                     if self._cur_target and pre_map:
-                        self._battle_maps.add(f"{self._cur_target}|{pre_map}")
+                        self._battle_regions.add(
+                            f"{self._cur_target}|{self._where(pre_obs)}")
                     obs = self.handle_battle(sg, obs)
                     obs = self.settle()
                     post_map = ((obs or {}).get("map") or {}).get("id")
@@ -1345,7 +1365,10 @@ Reply with ONLY a JSON array of ops, e.g.
         free_rounds = 0
         self._cur_target = self._target_key(sg)
         self._stuck_in: dict = {}
-        self._tried_objs: dict = {}   # region -> {object names interacted}
+        # NOT reset here: a fresh escalation forgetting what it already
+        # interacted with is why the run kept talking to the same Jigglypuff
+        # round after round. Same class as the op ledger and the revisit
+        # counter — evidence has to outlive the attempt that learned it.
         self.log("escalate_start", subgoal=sg["id"], goal=goal)
         cap = self._send_safe("checkpoint_capture", token="esc") or {}
         can_reset = bool((cap.get("result") or {}).get("ok"))
