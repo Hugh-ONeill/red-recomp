@@ -266,7 +266,6 @@ class Executor:
         self.plan_path = plan_path
         self.run_id = run_id
         self.escalations = 0
-        self._dead_ops: dict = {}   # (op,target) -> consecutive failures
         self._st: dict = {}         # live status (run/status.txt)
         # exploration memory: {"MAP|region": {(x,y): {"n": k, "to": "MAP|reg"}}}
         # Without it the run re-takes the same ladder forever (thin8 spent 12
@@ -287,6 +286,7 @@ class Executor:
         self._blackouts: dict = {}          # target -> party wipes
         self._faint_at = None               # region we were in when wiped
         self._ui_pending = 0                # rounds a prompt has sat open
+        self._dead_ops: dict = {}           # (target, op, arg) -> failures
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -975,7 +975,8 @@ Reply with ONLY a JSON array of ops, e.g.
                 # macro run_subgoal will): a misplaced op skips, not misfires
                 trace.append(f"{op}: skipped (when-guard)")
                 continue
-            sig = (op, step.get("name") or step.get("dir")
+            sig = (self._cur_target, op,
+                   step.get("name") or step.get("dir")
                    or (step.get("x"), step.get("y")))
             if op == "use_warp":
                 known = (self.explored.get(self._where(obs), {}) or {}).get(
@@ -1233,7 +1234,11 @@ Reply with ONLY a JSON array of ops, e.g.
         inert = []          # targets that ran but did nothing / failed
         backward = []       # ops that moved us to an already-visited map
         progress = []       # clean ops accumulated across rounds
-        self._dead_ops = {}
+        # NOT reset per escalation: an op that cannot work does not become
+        # possible because a new escalation started. use_warp(32,7) failed
+        # "couldn't reach the warp tile" once per escalation for 22 rounds
+        # because the ledger was wiped each time. Keyed by target, so a
+        # different goal still gets a clean slate.
         self._dead_visits = 0
         free_rounds = 0
         self._cur_target = self._target_key(sg)
