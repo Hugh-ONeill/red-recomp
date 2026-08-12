@@ -245,6 +245,13 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
             log("battle_turn", turn=turns, op="battle_run", params={},
                 why=f"flee wild ({intent})")
             obs = bridge.send("battle_run")
+            # An op that cannot even reach its menu entry is not a failed
+            # flee, it is a broken control path — and ignoring the result
+            # hid exactly that for 14422 attempts. Say so loudly once per
+            # battle rather than silently burning the turn budget.
+            r = (obs or {}).get("result") or {}
+            if r.get("ok") is False:
+                log("battle_run_failed", turn=turns, detail=r.get("detail"))
             continue
         op = battle_policy.choose(obs, spec, ctx)
         why = op.pop("_why", None)

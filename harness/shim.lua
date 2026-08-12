@@ -1270,12 +1270,25 @@ end
 -- Battle executors. Grid is row-major 2x2: FIGHT=1, PKMN=2, ITEM=3, RUN=4.
 -- These are decision-free: the MODEL picks the move index / target slot
 -- (CLAIM_RULES_v1 — battle policy is the model's).
+-- The battle menu is a 2x2 grid: FIGHT ITEM / PKMN RUN (1..4).
+-- This used to tap LEFT whenever the columns differed — but going from
+-- FIGHT (col 0) to RUN (col 1) needs RIGHT, and left at column 0 does
+-- nothing, so the cursor never moved and RUN was unreachable. Fleeing
+-- silently failed 14422 times across 6984 battles (exactly one battle
+-- ever ended on a run) while battle_move kept working, because it only
+-- ever asks for index 1, which is already selected. Move on the axis
+-- that is actually wrong, in the direction that actually closes it.
 local function battle_menu_to(G, battle, want)
-  for _ = 1, 6 do
+  for _ = 1, 8 do
     if battle.menuIndex == want then return true end
-    local col, wcol = (battle.menuIndex - 1) % 2, (want - 1) % 2
-    U.tap(G, col ~= wcol and "left" or (battle.menuIndex > want and "up"
-                                        or "down"))
+    local i, w = battle.menuIndex - 1, want - 1
+    local col, wcol = i % 2, w % 2
+    local row, wrow = math.floor(i / 2), math.floor(w / 2)
+    if col ~= wcol then
+      U.tap(G, wcol > col and "right" or "left")
+    elseif row ~= wrow then
+      U.tap(G, wrow > row and "down" or "up")
+    end
     U.wait(2)
   end
   return battle.menuIndex == want
