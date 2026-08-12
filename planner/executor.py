@@ -2210,6 +2210,29 @@ def bootstrap(b: Bridge, cont: bool = False):
         f"bootstrap failed (stuck in mode={(b.obs() or {}).get('mode')})")
 
 
+def _write_last_state(b):
+    """Snapshot where the run stands, for the campaign's re-author.
+
+    Called on the normal exit path AND from the crash handler: a snapshot
+    that is missing is worse than useless, because the loop then reads a
+    PREVIOUS campaign's file and plans against a game that no longer exists.
+    """
+    try:
+        o = b.obs() or {}
+        (RUN / "last_state.json").write_text(json.dumps({
+            "map": (o.get("map") or {}).get("id"),
+            "region": (o.get("map") or {}).get("region"),
+            "party": [{"species": m.get("species"), "level": m.get("level"),
+                       "hp": m.get("hp")} for m in (o.get("party") or [])],
+            "badges": o.get("badges") or [],
+            "bag": o.get("bag") or {},
+            "money": o.get("money"),
+            "flags": o.get("flags") or [],
+        }, indent=1))
+    except Exception as e:
+        print(f"[warn] could not write last_state.json: {e}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("plans", type=Path, nargs="+")
@@ -2287,19 +2310,7 @@ def main():
     # bridge and is gone once the game process dies, so the campaign's
     # re-author was reading "an unknown location" — throwing away the single
     # most useful piece of evidence it has about what to fix.
-    try:
-        (RUN / "last_state.json").write_text(json.dumps({
-            "map": (o.get("map") or {}).get("id"),
-            "region": (o.get("map") or {}).get("region"),
-            "party": [{"species": m.get("species"), "level": m.get("level"),
-                       "hp": m.get("hp")} for m in (o.get("party") or [])],
-            "badges": o.get("badges") or [],
-            "bag": o.get("bag") or {},
-            "money": o.get("money"),
-            "flags": o.get("flags") or [],
-        }, indent=1))
-    except Exception as e:
-        print(f"[warn] could not write last_state.json: {e}")
+    _write_last_state(b)
     print(f"\nRESULT: {'ALL PLANS COMPLETE' if ok else 'PLAN FAILED'} | "
           f"map={(o.get('map') or {}).get('id')} "
           f"party={[(m.get('species'), m.get('level')) for m in o.get('party') or []]} "
@@ -2308,4 +2319,15 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except SystemExit:
+        raise
+    except BaseException:
+        # a crashing attempt must still leave an honest snapshot, or the
+        # campaign plans its next leg against a stale one
+        try:
+            _write_last_state(Bridge())
+        except Exception:
+            pass
+        raise

@@ -69,6 +69,12 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   # attempt 1 starts a new game; every later attempt resumes the save the
   # last successful leg wrote (--save-after-each), so work already done is
   # never repeated
+  # last_state.json is written when an executor EXITS. If an attempt dies
+  # without writing one, a snapshot left by a PREVIOUS campaign is read as
+  # if it were this run — one claiming BOULDERBADGE made the loop decide the
+  # Brock leg was already done and start the mountain leg on a badgeless
+  # game. Delete it so it can only ever describe the attempt just finished.
+  rm -f run/last_state.json
   cont=()
   [ $first = 1 ] || cont=(--continue)
   set +e
