@@ -2457,7 +2457,14 @@ Reply with ONLY a JSON array of ops, e.g.
                 # back to it. (Distinct from "escalation rounds ran out",
                 # which is NOT evidence — this is about the room, not the
                 # budget.)
-                if not self._untried_exits(cur) and not live:
+                # A room you were DUMPED in proves nothing. After a wipe the
+                # party stands in a Pokemon Center it did not choose to
+                # enter and leaves immediately — that recorded the Center as
+                # "searched" for whatever the goal was, a proof about the
+                # blackout rather than the room.
+                if self._faint_at:
+                    pass
+                elif not self._untried_exits(cur) and not live:
                     # SEARCHED, not sealed. Every exit taken and everything
                     # touched proves the target is not IN this room — it does
                     # NOT prove the target is unreachable THROUGH it. Marking
