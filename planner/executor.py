@@ -324,7 +324,8 @@ class Executor:
         self.visits: dict = {}      # region -> times arrived
         self.frontier: dict = {}    # region -> every exit visible from it
         self.sightings: dict = {}   # region -> named objects seen there
-        self.searched: dict = {}    # target -> {region: fully worked}
+        self.searched: dict = {}    # "*" -> {region: fully worked};
+                                    # flag:/item: keys add per-target claims
         self.contested: dict = {}   # target -> {region: a fight ran here}
         self._arrived = None        # (region, (x,y)) — the door we came in by
         self._came_from = None      # the region we were in a moment ago
@@ -1143,21 +1144,24 @@ class Executor:
                     f"have already walked ({len(best)} legs total). Take it "
                     f"even if you have used it before; an untried exit that "
                     f"leads somewhere else is not progress toward this goal.")
-        # Rooms already worked for THIS goal: nothing left to find in them,
-        # but you may still walk through — that distinction is why they are
-        # not dead ends.
-        done_rooms = [r for r in (self.searched.get(target) or {})
-                      if r != here]
+        # Rooms already fully worked: nothing left to find in them, but you
+        # may still walk through — that distinction is why they are not
+        # dead ends. Read the ROOM-level ledger, not the per-target one:
+        # travel goals never earn per-target entries, so keying the advice
+        # by target meant the model was never told a room was finished
+        # during exactly the legs where it cycled through worked rooms.
+        worked = self._worked_for(target)
+        done_rooms = [r for r in worked if r != here]
         searched_line = ""
-        if self.searched.get(target, {}).get(here):
-            searched_line = ("\nYou have ALREADY fully searched this exact "
-                             "area for this goal — every exit taken, "
-                             "everything touched. Do not search it again; "
-                             "pass through or go somewhere new.")
+        if worked.get(here):
+            searched_line = ("\nYou have ALREADY fully worked this exact "
+                             "area — every exit taken, everything touched. "
+                             "Do not search it again; pass through or go "
+                             "somewhere new.")
         elif done_rooms:
-            searched_line = ("\nAlready fully searched for this goal (walk "
-                             "through if you must, but nothing is left in "
-                             "them): " + ", ".join(sorted(done_rooms)[:5]) + ".")
+            searched_line = ("\nAlready fully worked (walk through if you "
+                             "must, but nothing is left to find in them): "
+                             + ", ".join(sorted(done_rooms)[:5]) + ".")
         been = self.visits.get(here, 0)
         warned = ""
         if been >= 2:
@@ -3013,7 +3017,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         break
                     want = (c.get("done_when") or {}).get("map")
                     if want:
-                        done = self.searched.get(self._target_key(sg), {})
+                        done = self._worked_for(self._target_key(sg))
                         here_now = self._where(at)
                         elw = [r for r in
                                set(list(self.explored) + list(self.visits))
