@@ -1589,6 +1589,11 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"is still false. It is not in this room. LEAVE: "
                         f"take an exit you have not used.")
                     continue
+                # NOTE: marked provisionally, and RETRACTED below if the
+                # interact did not actually happen. Marking on intent alone
+                # let an unreachable item count as touched, so a floor with
+                # item balls still on it reported "everything reachable
+                # touched" and was recorded as fully searched.
                 if step.get("name"):
                     tried.add(step["name"])
             # A seam PROVEN uncrossable is refused, not retried. The trace
@@ -1825,6 +1830,14 @@ Reply with ONLY a JSON array of ops, e.g.
             if not r.get("ok"):
                 self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
                 note += f": FAILED — {r.get('detail')}"
+                # An interact that never happened leaves the thing UNTOUCHED.
+                # Without this the provisional mark stands, and a room whose
+                # items could not be reached this time counts as fully
+                # worked — a false searched proof that stops the run ever
+                # coming back for them.
+                if op == "interact" and step.get("name"):
+                    self._tried_objs.get(self._where(obs),
+                                         set()).discard(step["name"])
                 # Some failures are DEFINITIVE about this place, not about
                 # the attempt: a shop that does not stock the item will
                 # never stock it. Without recording that, shopping_for_potions
