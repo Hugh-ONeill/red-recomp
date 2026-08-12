@@ -2637,7 +2637,13 @@ Reply with ONLY a JSON array of ops, e.g.
             # they never qualified as searched and the run kept coming back
             # to reconsider them. Sweeping is cheap, cannot lose progress,
             # and either finds the thing or proves the room empty.
-            if not progress and patient:
+            # No patience gate on the SWEEP. Pressing A on things is cheap
+            # and cannot lose progress, so it should happen the first time
+            # a round achieves nothing — waiting for three rounds in one
+            # region meant it almost never qualified, because the run
+            # changes rooms between rounds. The ESCORT still waits: moving
+            # the party is disruptive, sweeping is not.
+            if not progress:
                 here_s = self._where(cur)
                 touched = self._tried_objs.setdefault(here_s, set())
                 loose = [o.get("name") for o in
