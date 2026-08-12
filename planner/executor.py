@@ -2362,6 +2362,20 @@ Reply with ONLY a JSON array of ops, e.g.
                     # conclusion.
                     ways = self._untried_exits(cur)
                     if not ways:
+                        # "Nothing here and no door left" is precisely when
+                        # to WALK somewhere that still has one — not when
+                        # to end the subgoal. This break fired on the Route
+                        # 4 stub every attempt, two rounds in, short-cutting
+                        # past the escort further down the loop and ending
+                        # the leg with the whole east side unvisited.
+                        moved = self._route_to_frontier(cur, sg, patient=True)
+                        if moved:
+                            cur = self.settle() or cur
+                            trace.append(
+                                f"Nothing here serves this goal and no exit "
+                                f"is unopened, so you were walked to {moved}, "
+                                f"which still has doors never taken. Take one.")
+                            continue
                         print(f"   (target unreachable from {here} — "
                               f"abandoning this area)")
                         break
