@@ -1056,9 +1056,36 @@ class Executor:
                           + ". A thing in a passage can BE the blockage — "
                           "going back and pressing A on it can open ground "
                           "no exit reaches.")
+        # A destination in NO walked region deserves saying so out loud.
+        # Silence here left the model hunting Cerulean on the west stub of
+        # Route 4 three attempts running: it had visit counts and dead
+        # ends, but nothing stating the atlas simply does not contain the
+        # place — so walking known ground cannot reach it, and only
+        # something never DONE (an untouched thing, a person, an obstacle)
+        # can open the way. Paired with the untouched-rooms list this
+        # makes the fossil inference one step instead of a leap.
+        if (want_map and not route_line
+                and not any(r.split("|")[0] == want_map for r in
+                            set(list(self.explored) + list(self.visits)))):
+            if elsewhere:
+                route_line = (
+                    f"\n{want_map} is NOWHERE in your atlas: no door you "
+                    f"have ever taken leads there. The only doors never "
+                    f"opened are listed here — one of them, or something "
+                    f"never touched, is how it opens.")
+            else:
+                route_line = (
+                    f"\n{want_map} is NOWHERE in your atlas, and EVERY "
+                    f"door of every room you know is mapped to somewhere "
+                    f"else. Walking known ground cannot reach it — "
+                    f"something you have never DONE must open the way: an "
+                    f"untouched thing, a person to talk to, an obstacle "
+                    f"to clear. Start with the rooms below still holding "
+                    f"things you have never touched.")
         if not (untried or tried):
             if elsewhere:
-                return (warned + "\nNothing here is new, but these places "
+                return (warned + route_line
+                        + "\nNothing here is new, but these places "
                         "you have already been still have ways you have "
                         "NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
                         + ". Go back to one and take it." + loot_line)
