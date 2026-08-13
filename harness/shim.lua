@@ -196,6 +196,37 @@ local last_text = nil
 -- Oracle probe result (battle_probe), surfaced once in the next observation.
 local last_probe = nil
 
+-- FIXTURES YOU CAN SEE BUT NO LIST NAMES. The engine keeps pressable
+-- machinery outside both the object and sign lists ("hidden events"
+-- internally): Pokemon Center PCs, slot machines, the Vermilion Gym trash
+-- cans, and Bill's cell separator. Every one of them is a sprite drawn on
+-- screen — a human player walks up BECAUSE they can see them — so naming
+-- them is on-screen tier, and the separator's name is the one Bill speaks
+-- out loud. The truly hidden things (items found by pressing A at a
+-- blank-looking tile) are deliberately NOT here: listing those would be
+-- x-ray vision, not eyesight.
+local function map_fixtures(G, map_id)
+  local out = {}
+  local fld = (G.data and G.data.field) or {}
+  local ex = fld.hiddenExtras or {}
+  for _, h in ipairs((ex.pcTiles or {})[map_id] or {}) do
+    out[#out + 1] = { x = h.x, y = h.y, name = "PC", facing = h.facing }
+  end
+  for i, h in ipairs((fld.slotMachines or {})[map_id] or {}) do
+    out[#out + 1] = { x = h.x, y = h.y, name = "SLOT_MACHINE_" .. i }
+  end
+  if map_id == "VERMILION_GYM" and ex.trashCans then
+    for _, h in ipairs(ex.trashCans.cans or {}) do
+      out[#out + 1] = { x = h.x, y = h.y, name = "TRASH_CAN_" .. h.can }
+    end
+  end
+  if map_id == "BILLS_HOUSE" then
+    out[#out + 1] = { x = 1, y = 4, name = "CELL_SEPARATION_SYSTEM",
+                      facing = "up" }
+  end
+  return out
+end
+
 local function observe(G, seq, result)
   local top = G.stack and G.stack:top()
   local o = { seq = seq, result = result, events = events, frame = U.frame() }
@@ -349,6 +380,15 @@ local function observe(G, seq, result)
       o.map.objects[#o.map.objects + 1] = {
         x = sg.x, y = sg.y, kind = "sign", name = nm,
         reachable = adjacent_reachable(sg.x, sg.y),
+      }
+    end
+    -- The comment above promised Bill's separator; md.signs never
+    -- contained it (it is a hidden_event, not a sign). These are the
+    -- machines the player can SEE — see map_fixtures.
+    for _, f in ipairs(map_fixtures(G, map.id)) do
+      o.map.objects[#o.map.objects + 1] = {
+        x = f.x, y = f.y, kind = "fixture", name = f.name,
+        reachable = adjacent_reachable(f.x, f.y),
       }
     end
   elseif top and (top.enemy or top.kind) then
@@ -1505,11 +1545,26 @@ function OPS.interact(G, c)
   end
   local ow = G.overworld
   local tx, ty = c.x, c.y
+  local want_facing
   if c.name and not tx then
     for _, npc in ipairs(ow.npcs or {}) do
       if (npc.def or {}).name == c.name then tx, ty = npc.cellX, npc.cellY end
     end
+    if not tx then
+      for _, f in ipairs(map_fixtures(G, ((ow.map or {}).id))) do
+        if f.name == c.name then
+          tx, ty, want_facing = f.x, f.y, f.facing
+        end
+      end
+    end
     if not tx then return false, "object '" .. c.name .. "' not visible" end
+  elseif tx then
+    -- an x,y press on a fixture that only answers from one side must
+    -- approach from that side (the separator ignores a press from the
+    -- east; only standing below it, facing up, runs it)
+    for _, f in ipairs(map_fixtures(G, ((ow.map or {}).id))) do
+      if f.x == tx and f.y == ty then want_facing = f.facing end
+    end
   end
   if not tx then return false, "interact needs x,y or name" end
   -- stand on an orthogonally adjacent walkable tile, then face the target.
@@ -1535,6 +1590,13 @@ function OPS.interact(G, c)
     if not occupied(o[4], o[5]) then
       adj[#adj + 1] = { o[1], o[2], o[3] }
     end
+  end
+  if want_facing then
+    local keep = {}
+    for _, a in ipairs(adj) do
+      if a[3] == want_facing then keep[#keep + 1] = a end
+    end
+    if #keep > 0 then adj = keep end
   end
   local p = ow.player
   local function press_from_adjacent()
