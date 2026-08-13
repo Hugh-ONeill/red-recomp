@@ -2011,13 +2011,21 @@ Reply with ONLY a JSON array of ops, e.g.
                 if self.contested.get(self._cur_target, {}).get(here_r):
                     spent = False
                 if spent and step.get("name") in tried:
+                    # WARN, don't refuse. The refusal was refusing the
+                    # WINNING move (same epitaph as the cross guard below):
+                    # Bill's script requires talking to him AGAIN in the
+                    # same visit that presses the separator, and `tried`
+                    # persists across attempts, so a fresh attempt arrived
+                    # pre-banned from the one interaction that arms the
+                    # machine. Repeat-interact spam costs the model its own
+                    # escalation budget, which is its trade to make.
                     trace.append(
-                        f"interact({step.get('name')}): REFUSED — you have "
-                        f"already interacted with everything reachable in "
-                        f"this area ({len(tried)} things) and the condition "
-                        f"is still false. It is not in this room. LEAVE: "
-                        f"take an exit you have not used.")
-                    continue
+                        f"interact({step.get('name')}): note — you have "
+                        f"interacted with everything reachable here "
+                        f"({len(tried)} things) before. Doing it AGAIN is "
+                        f"only worth it if something has changed or a "
+                        f"script needs repeating; otherwise take an exit "
+                        f"you have not used.")
                 # NOTE: marked provisionally, and RETRACTED below if the
                 # interact did not actually happen. Marking on intent alone
                 # let an unreachable item count as touched, so a floor with
