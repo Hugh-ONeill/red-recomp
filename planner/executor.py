@@ -3098,6 +3098,41 @@ Reply with ONLY a JSON array of ops, e.g.
                 free_rounds += 1
                 self.log("free_round", subgoal=sg["id"], round=rnd,
                          spent_free=free_rounds)
+                # A refused-only round used to STAND STILL — watched live:
+                # five refused norths in front of the Cerulean guard while
+                # the ledger held an untried south edge leading to the
+                # subgoal's own target map. The sweep precedent applies to
+                # doors: with every proposal proven futile and untried
+                # ways out of THIS region on the ledger, walking through
+                # one is mechanics — the model steers again from the next
+                # observation.
+                here_r = self._where(cur)
+                done_x = set((self.explored.get(here_r) or {}).keys())
+                untried = [e for e in (self.frontier.get(here_r) or [])
+                           if e not in done_x]
+                if untried and (cur or {}).get("mode") == "overworld":
+                    key = sorted(untried)[0]
+                    pre = cur
+                    if "," in key:
+                        x, y = key.split(",")
+                        self._send_safe("use_warp", x=int(x), y=int(y))
+                        step = {"x": int(x), "y": int(y)}
+                    else:
+                        self._send_safe("cross", dir=key)
+                        step = {"dir": key}
+                    o2 = self.settle()
+                    while o2 and o2.get("mode") == "battle":
+                        o2 = self.handle_battle(sg, o2)
+                        o2 = self.settle()
+                    if o2 and (pre.get("map") or {}).get("id") != \
+                            (o2.get("map") or {}).get("id"):
+                        self.note_transition(pre, step, o2)
+                    self.log("free_round_exit", subgoal=sg["id"],
+                             via=key, to=self._where(o2))
+                    trace.append(
+                        f"(every proposal was refused, so the free round "
+                        f"took an untried way out of the area: {key} led "
+                        f"to {self._where(o2)})")
             elif (sig1[0], sig1[4], sig1[5]) == (sig0[0], sig0[4], sig0[5]):
                 spent += 1   # round went nowhere (same map/party/flags)
             elif had_blackout or pardon:
