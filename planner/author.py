@@ -502,6 +502,13 @@ def journal_text(path: Path, limit: int = 60) -> str:
     # what kind of problem this is, and it never reached the author.
     dealt, taken = [], []
     prev_fh = prev_mh = None
+    # The executor's own could-not-get-it conclusions, counted over the
+    # whole run. These were the single most informative lines in the log —
+    # "item:POKE_BALL unreachable in VIRIDIAN_MART, clerk right there,
+    # 24 times" — and the tail window of wander lines pushed every one of
+    # them out, so three rewrites re-shipped an enter-and-buy plan that
+    # from the reviewer's seat had never been tested.
+    unreach = {}
     for r in seg:
         k = r.get("kind")
         if k == "battle_turn":
@@ -555,6 +562,10 @@ def journal_text(path: Path, limit: int = 60) -> str:
                           f"HALF YOUR MONEY")
         elif k == "rerouted":
             events.append(f"  walked back to {r.get('to')} looking for a way on")
+        elif k == "target_unreachable":
+            key = (r.get("subgoal"), r.get("target"), r.get("region"),
+                   tuple(r.get("objects") or []))
+            unreach[key] = unreach.get(key, 0) + 1
         for t in (r.get("trace") or []):
             if "cannot afford" in t:
                 events.append(f"  MONEY   {t.split('FAILED — ')[-1][:90]}")
@@ -571,14 +582,34 @@ def journal_text(path: Path, limit: int = 60) -> str:
                     events.append(wall)
             elif "party FAINTED" in t:
                 pass
-    if not events:
+    if not events and not unreach:
         return ""
-    # keep the tail: the end of the run is where it went wrong
-    shown = events[-limit:]
-    return ("\n\nWHAT HAPPENED ON THE LAST RUN, in order (this is the "
-            "causal story — if it ran out of money, or wiped, or failed the "
-            "same step repeatedly, fix the PLAN's ordering and amounts so "
-            "that cannot happen again):\n" + "\n".join(shown))
+    # Collapse consecutive repeats before taking the tail: 27 identical
+    # wander lines told the reviewer nothing 26 times, and cost the window
+    # 26 lines of story.
+    collapsed = []
+    for e in events:
+        if collapsed and collapsed[-1][0] == e:
+            collapsed[-1][1] += 1
+        else:
+            collapsed.append([e, 1])
+    shown = [e + (f"  (x{n})" if n > 1 else "")
+             for e, n in collapsed[-limit:]]
+    out = ("\n\nWHAT HAPPENED ON THE LAST RUN, in order (this is the "
+           "causal story — if it ran out of money, or wiped, or failed the "
+           "same step repeatedly, fix the PLAN's ordering and amounts so "
+           "that cannot happen again):\n" + "\n".join(shown))
+    if unreach:
+        out += ("\n\nWHAT WAS TRIED AND DID NOT WORK, counted over the "
+                "whole run. A deed that fails every time in the same place "
+                "is a GATE — something else has to happen first, and the "
+                "sentences under WHAT PEOPLE HAVE SAID often name it:\n")
+        for (sg, tgt, reg, objs), n in sorted(
+                unreach.items(), key=lambda kv: -kv[1])[:8]:
+            who = f", with {', '.join(objs)} right there" if objs else ""
+            out += (f"  during {sg}: could not get {tgt} in {reg} — "
+                    f"{n} attempts{who}\n")
+    return out
 
 
 def build_review(goal: str, plan: dict, start: str | None) -> str:
