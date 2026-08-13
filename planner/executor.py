@@ -370,6 +370,7 @@ class Executor:
         self._fight_region: str | None = None   # where the last trainer fought
         self.flag_sites: dict = {}          # flag -> area it fired in
         self.shut_doors: dict = {}   # region -> doors seen but unreachable
+        self._last_obs_dormant = 0   # objects this map has yet to reveal
         self.hints: dict = {}        # region -> things people said here
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
@@ -611,6 +612,7 @@ class Executor:
             self._save_memory()
 
     def note_frontier(self, obs):
+        self._last_obs_dormant = ((obs or {}).get("map") or {}).get("dormant")
         """Every exit visible from where we stand — the inventory that makes
         'all ways out are dead' a justified conclusion rather than a guess."""
         here = self._where(obs)
@@ -726,6 +728,13 @@ class Executor:
         # blocked the ladder leading back to him. A lost fight is unfinished
         # business, not an emptied room.
         if self.contested.get(target, {}).get(region):
+            return
+        # A ROOM THAT CAN STILL CHANGE IS NOT FINISHED. obs.map.dormant
+        # counts objects the map defines but has not shown yet — a script
+        # in here has more to reveal. Bill's house certified as worked with
+        # his errand unstarted, which took the one room that opens Cerulean
+        # out of the search entirely (user spotted it).
+        if (self._last_obs_dormant or 0) > 0:
             return
         # FULLY WORKED (every exit taken, every reachable object touched) is
         # a fact about the ROOM, not the goal, so it always lands in "*" —

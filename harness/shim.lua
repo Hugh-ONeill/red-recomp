@@ -316,6 +316,26 @@ local function observe(G, seq, result)
         reachable = adjacent_reachable(npc.cellX, npc.cellY),
       }
     end
+    -- OBJECTS THIS MAP DEFINES THAT ARE NOT PRESENT YET. G.overworld.npcs
+    -- is the LIVE list, filtered by objectVisible, so a room whose script
+    -- has more to reveal looks identical to one that is finished. Bill's
+    -- house defines three objects and shows one until his errand is done;
+    -- Cerulean defines the guard who replaces the one blocking the house.
+    -- Counting them lets the harness decline to certify a room as fully
+    -- worked when it KNOWS the room can still change. Count only, no names
+    -- and no positions: the model is not being told what is coming.
+    do
+      local live = {}
+      for _, npc in ipairs(G.overworld.npcs or {}) do
+        local n = (npc.def or {}).name
+        if n then live[n] = true end
+      end
+      local dormant = 0
+      for _, od in ipairs((md and md.objects) or {}) do
+        if od.name and not live[od.name] then dormant = dormant + 1 end
+      end
+      o.map.dormant = dormant
+    end
     -- SIGNS ARE THINGS YOU PRESS A ON. They live in a separate map list
     -- from objects and were never observed at all, so anything that is
     -- scenery rather than a person was invisible: notice boards, the
