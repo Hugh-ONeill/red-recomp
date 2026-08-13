@@ -562,9 +562,17 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
     """Second model pass over its own plan. Returns the revision only if it
     still validates; a broken revision is discarded in favour of the
     original, so review can improve a plan but never corrupt it."""
-    base = (build_prompt(goal, start)
-            + (observed_text(observed) if observed else "")
-            + (journal_text(journal) if journal else ""))
+    # EVIDENCE FIRST, VOCABULARY LAST. An oversized prompt loses its FRONT,
+    # and the graph and the journal both grow all run, so the cap comes back
+    # however high num_ctx is set. Ordering decides what dies when it does:
+    # with the predicates, map ids and guidance at the front they were the
+    # first casualty, which is how a review reached for a heal and invented
+    # `party_hp`. Put the droppable stuff — old walked edges, old journal
+    # lines — at the front, and keep the vocabulary next to the audit
+    # instructions at the tail where truncation cannot reach either.
+    base = ((observed_text(observed) if observed else "")
+            + (journal_text(journal) if journal else "")
+            + build_prompt(goal, start))
     for rnd in range(1, rounds + 1):
         reply = brock_probe.chat(
             [{"role": "system", "content": REVIEW_SYS},
