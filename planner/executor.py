@@ -1371,11 +1371,25 @@ class Executor:
         # frontier unexhausted and the super nerd's region never entered.
         elsewhere = []
         near_hint = ""
-        for region, exits in self.frontier.items():
+        # A DOOR SOMEONE IS STANDING ON belongs in this list too. It is
+        # built from untried EXITS, and a door nobody can reach is not one —
+        # so a city whose only way onward is held shut by a policeman reads
+        # as finished from everywhere else, and the run was told the places
+        # with ways never taken were Pallet Town and its own bedroom. It
+        # believed us and walked there.
+        held = {r: [f"{k}({who})" for k, _d, who in
+                    [(x.split("->")[0], None,
+                      x.split("(")[-1].rstrip(") ").replace(
+                          " is standing there", ""))
+                     for x in v]]
+                for r, v in (self.shut_doors or {}).items() if r != here}
+        for region, exits in list(self.frontier.items()) + \
+                [(r, []) for r in held if r not in self.frontier]:
             if region == here:
                 continue
             done_x = set((self.explored.get(region) or {}).keys())
             left = [e for e in exits if e not in done_x]
+            left += held.get(region, [])
             if not left:
                 continue
             # Naming a destination without its first leg loses to local
