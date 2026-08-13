@@ -664,10 +664,22 @@ def merge_plans(orig: dict, revised: dict) -> tuple:
     rev_ids = {x["id"] for x in revised["subgoals"]}
     out = list(revised["subgoals"])
     restored = []
+    # THE ESCAPE HATCH. Never-delete makes a gate IMMORTAL, and a gate that
+    # wandered in from a degenerate rewrite then rides every successor: a
+    # leg for one badge inherited `defeat_celadon_gym_leader {RAINBOWBADGE}`
+    # and carried it forever, three positions before the plan even reached
+    # that city. A badge the leg does not end on is not this leg's gate — it
+    # belongs to some other objective and the audit may drop it. The gate
+    # the leg DOES end on, and every event flag, keep their protection.
+    final = (revised.get("subgoals") or [{}])[-1].get("done_when") or {}
+    own_badge = final.get("badge") if isinstance(final, dict) else None
     for i, sg in enumerate(orig["subgoals"]):
         if sg["id"] in rev_ids:
             continue
         dw = sg.get("done_when") or {}
+        if (isinstance(dw, dict) and dw.get("badge")
+                and own_badge and dw["badge"] != own_badge):
+            continue
         if not (isinstance(dw, dict) and ("flag" in dw or "badge" in dw)):
             continue                      # non-gate: the audit may drop it
         restored.append(sg["id"])
