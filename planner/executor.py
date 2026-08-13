@@ -2801,7 +2801,15 @@ Reply with ONLY a JSON array of ops, e.g.
         # in earlier attempts keeps at least one round (the world may have
         # changed) but never again a full budget.
         prior_fails = self._prior_subgoal_fails.get(sg["id"], 0)
-        if prior_fails:
+        dw_kind = sg.get("done_when") or {}
+        is_gate = isinstance(dw_kind, dict) and (
+            "flag" in dw_kind or "badge" in dw_kind or "has_item" in dw_kind)
+        # The discount exists for doomed MARCHES. A gate is where the
+        # searching actually happens and already earns a deeper budget —
+        # discounting it strangled defeat_lt_surge to ONE round for a
+        # four-act siege the moment navigation stopped being the reason
+        # it had failed.
+        if prior_fails and not is_gate:
             rounds = max(1, rounds - prior_fails)
             print(f"   (failed {prior_fails}x in earlier attempts — "
                   f"budget {rounds} round(s))")
