@@ -20,8 +20,14 @@ ATTEMPTS="${1:-4}"
 MODEL="${RED_MODEL:-gemma4:31b-it-q4_K_M}"
 SAVE="$HOME/.local/share/love/pokemon-love2d/saves/red/slot1.lua"
 
-pgrep -f 'executor.py|love' >/dev/null && {
-  echo "a run is still live — stop it first" >&2; exit 1; }
+# Match real processes only: -f over full cmdlines also matches ANCESTOR
+# shells whose command text merely mentions these names (a launcher that
+# ran "git add planner/executor.py" earlier in the same compound command
+# blocked its own chain twice).
+if pgrep -x love >/dev/null \
+    || pgrep -f '^python[0-9.]* planner/executor\.py' >/dev/null; then
+  echo "a run is still live — stop it first" >&2; exit 1
+fi
 
 PROGRESS=run/outline_leg
 done_legs=$(cat "$PROGRESS" 2>/dev/null || echo 0)
