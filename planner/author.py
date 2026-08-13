@@ -401,8 +401,8 @@ def observed_text(path: Path) -> str:
     shut = d.get("shut_doors") or {}
     if shut:
         out += ("\n\nDOORS SEEN BUT NEVER OPENED (they exist on the map and "
-                "the party could not walk to them — a door does not move, so "
-                "something was in the way, usually a PERSON who steps aside "
+                "somebody was standing in the way — a door does not move, "
+                "so the person is what is shutting it, and people step aside "
                 "once talked to). On walked ground these are the openings "
                 "that can still lead somewhere new:\n"
                 + "\n".join(f"  in {r}: {', '.join(v)}"

@@ -623,9 +623,8 @@ class Executor:
         # to Pallet Town and round again — a brute-force search for a way
         # on, while the way on was a door with a policeman standing under
         # it, four tiles from where it was standing.
-        shut = sorted(f"{w.get('x')},{w.get('y')}->{w.get('dest')}"
-                      for w in (m.get("warps") or [])
-                      if not w.get("reachable"))
+        shut = sorted(f"{k}->{dest} ({who} is standing there)"
+                      for k, dest, who in self._unopened_doors(obs))
         if shut:
             if self.shut_doors.get(here) != shut:
                 self.shut_doors[here] = shut
@@ -842,23 +841,34 @@ class Executor:
         self._save_memory()
 
     def _unopened_doors(self, obs) -> list:
-        """Doors on this map never walked through, INCLUDING ones you cannot
-        reach right now.
+        """Doors never walked through that a PERSON is standing on.
 
-        A door you cannot currently path to is not a door you have tried —
-        and the reason is usually a person, not a wall. Cerulean certified
-        as fully worked with four doors unopened because a policeman stands
-        on the approach tile of one of them, so every unreachable warp was
-        skipped by _untried_exits and the room looked finished. The model
-        was then told nothing was left in the city and toured the houses it
-        had already cleared. People move; doors do not.
+        Returns (key, dest, blocker-name). Warps are listed per MAP, not per
+        region, so on a split map every region can see doors belonging to
+        another part — the badge-house back yard is one exit and a patch of
+        grass, and counting the whole city's shut doors against it means it
+        can never be called finished. The honest signal is on screen: a door
+        you cannot reach with a REACHABLE person beside it is a door someone
+        is standing in front of, here, now. Cerulean's trashed house has a
+        policeman one tile below it; its cave door has an unreachable NPC
+        beside it and belongs to ground the party has never stood on.
         """
-        taken = self.explored.get(self._where(obs), {}) or {}
+        here = self._where(obs)
+        taken = self.explored.get(here, {}) or {}
+        m = (obs or {}).get("map") or {}
+        folk = [o for o in (m.get("objects") or [])
+                if o.get("reachable") and o.get("x") is not None]
         out = []
-        for w in (((obs or {}).get("map") or {}).get("warps") or []):
+        for w in (m.get("warps") or []):
             k = f"{w.get('x')},{w.get('y')}"
-            if k not in taken:
-                out.append((k, w.get("dest"), bool(w.get("reachable"))))
+            if k in taken or w.get("reachable"):
+                continue
+            near = next((o.get("name") for o in folk
+                         if abs((o.get("x") or 0) - (w.get("x") or 0))
+                         + abs((o.get("y") or 0) - (w.get("y") or 0)) <= 1),
+                        None)
+            if near:
+                out.append((k, w.get("dest"), near))
         return out
 
     def _untried_exits(self, obs) -> list:
@@ -1321,16 +1331,16 @@ class Executor:
         # with someone standing on its approach silently vanishes from the
         # model's options — and the one place it needed to go stopped being
         # mentioned at all. Say it, and say why it might be shut.
-        shut = [(k, d) for k, d, ok in self._unopened_doors(obs) if not ok]
+        shut = self._unopened_doors(obs)
         shut_line = ""
         if shut:
             shut_line = (
-                "\nDOORS HERE YOU HAVE NEVER OPENED but cannot walk to from "
-                "where you stand: "
-                + ", ".join(f"({k})->{d}" for k, d in shut[:6])
-                + ". A door does not move, so something is in the way — "
-                "often a PERSON, and people step aside once you talk to "
-                "them. Interact with whoever is near it, then try the door.")
+                "\nDOORS HERE YOU HAVE NEVER OPENED, each with somebody "
+                "standing in the way: "
+                + ", ".join(f"({k})->{d} — {who} is beside it"
+                            for k, d, who in shut[:4])
+                + ". A door does not move, so the person is what is shutting "
+                "it. Talk to them, then try the door.")
         been = self.visits.get(here, 0)
         warned = ""
         # A ROOM YOU KEEP LOSING IN IS THE RIGHT ROOM. Coming back is the
