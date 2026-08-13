@@ -101,9 +101,13 @@ def chat(msgs, model):
                                  {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=300) as r:
         d = json.loads(r.read())
-    # Never let this go silent again: at the cap the count pins to num_ctx/2.
+    # Never let this go silent again. The signature is exact: an oversized
+    # prompt is cut to num_ctx/2 + 3 (measured 4099 / 8195 / 16387), so
+    # truncation is a narrow WINDOW at that value, not "large". A prompt
+    # bigger than the window simply fit and was evaluated in full — reading
+    # that as truncation cries wolf on every healthy long prompt.
     n = d.get("prompt_eval_count") or 0
-    if n >= (NUM_CTX // 2) - 8:
+    if (NUM_CTX // 2) <= n <= (NUM_CTX // 2) + 8:
         print(f"[prompt] TRUNCATED: {n} tokens evaluated at the "
               f"{NUM_CTX // 2} cap — the FRONT of the prompt was dropped "
               f"(vocabulary and guidance live there). Shorten the prompt or "
