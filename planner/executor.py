@@ -1990,6 +1990,10 @@ abandoned and the reply lists the moves),
 {"op":"field_move","move":"CUT","x":N,"y":N} (use a field move a party
 member KNOWS at the named tile — kind:"cut_tree" objects are the bushes
 CUT clears; a fence with a bush in it is a door once you have CUT),
+{"op":"toss","item":"TM_BIDE","count":N} (throw away bag items — count
+omitted tosses the whole stack. The bag holds 20 KINDS of item and a
+FULL bag makes every gift and pickup silently FAIL: "got X!" plays and
+nothing arrives. WHICH item to sacrifice is your call),
 {"op":"wait"}. Battles are auto-handled.
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
@@ -2845,6 +2849,18 @@ Reply with ONLY a JSON array of ops, e.g.
                     "also satisfies it — typically by going back the way you "
                     "came and taking another route. Standing still is failure.")
             memory = self.exploration_text(start, self._target_key(sg))
+            # A FULL BAG fails every gift silently: the captain's HM01
+            # played its "got it!" text into a 20-of-20 bag and vanished.
+            # The game normally says "no room" on screen; say it here.
+            if len((start or {}).get("bag") or {}) >= 20:
+                memory += (
+                    "\nYOUR BAG IS FULL (20 of 20 kinds). Every gift and "
+                    "pickup FAILS while it stays full — the 'got it!' "
+                    "text plays and NOTHING arrives. Toss something "
+                    "first ({\"op\":\"toss\",\"item\":...}); which item "
+                    "to sacrifice is your choice, and whoever tried to "
+                    "hand you a thing will hand it again once there is "
+                    "room.")
             # Log what the model was actually TOLD. Most of this session's
             # bugs were "the signal never reached the model" (dead ends only
             # in failure feedback, the too-weak note shadowed by an elif,

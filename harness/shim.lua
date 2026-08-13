@@ -1487,6 +1487,68 @@ function OPS.field_move(G, c)
   return true, "used " .. mv .. (said and (" — " .. said) or "")
 end
 
+-- Toss items from the bag. WHAT to toss is entirely the model's call
+-- (its treasure vs its junk); driving the TOSS row and the quantity
+-- wheel is mechanics. Born at the captain's cabin: a 20-of-20 bag ate
+-- HM01 silently.
+function OPS.toss(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  if not c.item then return false, "toss needs item" end
+  local have = bag_count(G, c.item)
+  if have < 1 then return false, "no " .. c.item .. " in the bag" end
+  local n = math.min(c.count or have, have)
+  U.tap(G, "start"); U.wait(8)
+  local menu = ui_top(G)
+  if not (menu and menu.screenId == "StartMenu") then
+    ui_back_out(G); return false, "start menu never opened"
+  end
+  local itemRow
+  for i, it in ipairs(menu.items or {}) do
+    if it.label == "ITEM" then itemRow = i break end
+  end
+  if not itemRow or not ui_cursor_to(G, "index", itemRow) then
+    ui_back_out(G); return false, "no ITEM row"
+  end
+  U.tap(G, "a"); U.wait(10)
+  local bag = ui_top(G)
+  if not (bag and bag.screenId == "BagMenu") then
+    ui_back_out(G); return false, "bag never opened"
+  end
+  local bagRow
+  for i, r in ipairs(bag.items or {}) do
+    if r.value == c.item then bagRow = i break end
+  end
+  if not bagRow or not ui_cursor_to(G, "index", bagRow) then
+    ui_back_out(G); return false, c.item .. " not in the bag list"
+  end
+  U.tap(G, "a"); U.wait(8)
+  if ui_is_menu(G) or ui_is_choice(G) then     -- USE/TOSS -> TOSS (row 2)
+    ui_cursor_to(G, "index", 2)
+    U.tap(G, "a"); U.wait(8)
+  end
+  for _ = 1, n - 1 do                          -- quantity wheel starts at 1
+    U.tap(G, "up"); U.wait(2)
+  end
+  U.tap(G, "a"); U.wait(8)
+  if ui_is_choice(G) then                      -- "is that OK?" -> yes
+    U.tap(G, "a"); U.wait(8)
+  end
+  for _ = 1, 10 do
+    local t = ui_top(G)
+    if not (t and t.pages) then break end
+    U.tap(G, "a"); U.wait(5)
+  end
+  ui_back_out(G)
+  local left = bag_count(G, c.item)
+  if left < have then
+    return true, "tossed " .. (have - left) .. " " .. c.item
+      .. (left > 0 and (", " .. left .. " left") or ", slot freed")
+  end
+  return false, "toss did not go through"
+end
+
 -- Level-grind primitive: stand in this map's wild grass and pace until an
 -- encounter interrupts (or the step budget runs out). The EXECUTOR fights
 -- each battle with the subgoal's policy and re-sends this op — the same
