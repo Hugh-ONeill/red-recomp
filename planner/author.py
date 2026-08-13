@@ -343,8 +343,30 @@ def author(goal: str, model: str, rounds: int = 3,
 # reading "WIPED OUT 19x, your hits dealt ~8/turn while theirs took ~15" had
 # never been told training was an option. Same knowledge, both passes: this
 # adds nothing the model was not already given elsewhere.
+# ONE PARAGRAPH, FOR THE REVIEWER ONLY. Measured across two worlds: the
+# AUTHOR invents training unprompted when planning forward (the clean-room
+# run wrote train_in_forest {lead_level:12} with no coaching at all, and
+# that is what beat Brock). The REVIEWER, revising after defeat, does not —
+# it re-pins coordinates and re-issues the same approach, four rewrites
+# running, against a fight the journal shows being lost six times. The
+# missing step is not knowledge of the game; it is noticing that a lost
+# fight is a question about what you ARRIVE WITH. This names the option
+# space the DSL already gives it and leaves every choice inside it open.
+REVISION_NOTE = (
+    "\n\nWHEN THE JOURNAL SHOWS THE SAME FIGHT LOST OVER AND OVER, the "
+    "plan's problem is not its route. A plan can be perfectly routed and "
+    "still fail every time because of what it arrives WITH. The predicates "
+    "can express that too: lead_level, slot_level and party_min_level raise "
+    "a Pokemon by battling in grass; party_size adds one to the party; "
+    "has_item buys supplies from a counter. Whether any of those is the "
+    "right answer here is your judgement and the evidence is above — but "
+    "re-issuing the same approach into a fight that has already been lost "
+    "repeatedly is not a revision of the plan, it is a repeat of it."
+)
+
 REVIEW_SYS = (
     SYS
+    + REVISION_NOTE
     + "\n\nYou are now REVIEWING a plan you just wrote, with EVIDENCE from "
       "runs that have already been played: the areas walked, and a journal "
       "of what actually happened. Look for subgoals that CANNOT do their "
