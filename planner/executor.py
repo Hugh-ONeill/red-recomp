@@ -2037,6 +2037,13 @@ Reply with ONLY a JSON array of ops, e.g.
                  sum(m.get("level") or 0
                      for m in (obs or {}).get("party") or [])),
                 len((obs or {}).get("flags") or []),
+                # the BAG is world state too: freeing a slot is exactly
+                # the change that makes re-talking a giver worthwhile,
+                # and a bag-blind snapshot kept the captain marked inert
+                # after the toss that made his gift landable
+                (len((obs or {}).get("bag") or {}),
+                 sum((obs or {}).get("bag", {}).values()
+                     if isinstance((obs or {}).get("bag"), dict) else [])),
                 # HP as its own element. Without it a full heal changed
                 # NOTHING in the snapshot, so talking to the nurse always
                 # read as "no visible effect" — which then marked her inert
