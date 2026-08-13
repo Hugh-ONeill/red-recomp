@@ -856,9 +856,21 @@ function OPS.use_warp(G, c)
     elseif x >= w - 1 then order = {"right","up","down","left"}
     else order = {"down","up","left","right"} end
     for _, dir in ipairs(order) do
+      -- a held direction whose neighbor was walkable DRIFTS the player
+      -- off the warp cell (the SS Anne bow's down/up/left are all open
+      -- deck), and the fire test only counts from the warp cell — the
+      -- right-press that actually exits the bow was being made two tiles
+      -- adrift with the frame budget already spent walking
+      if p.cellX ~= x or p.cellY ~= y then
+        OPS.walk_to(G, { x = x, y = y, max_steps = 12 })
+        if (ow.map and ow.map.id) ~= startMap
+           and (p.cellX ~= x or p.cellY ~= y) then
+          break
+        end
+      end
       table.insert(G.input.pressQueue, dir)
       G.input.state[dir] = true
-      for _ = 1, 30 do
+      for _ = 1, 40 do
         coroutine.yield()
         if (ow.map and ow.map.id) ~= startMap then
           G.input.state[dir] = false
@@ -1257,12 +1269,95 @@ function OPS.use_item(G, c)
     ui_cursor_to(G, "index", c.slot or 1)
     U.tap(G, "a"); U.wait(10)
   end
-  for _ = 1, 15 do                                 -- "recovered HP!" text
-    local t = ui_top(G)
-    if not (t and t.pages) then break end
-    U.tap(G, "a"); U.wait(6)
+  -- TM/HM teach flow. The MODEL owns every choice in it: which mon
+  -- (c.slot) and — when the mon already knows four — which move to write
+  -- over (c.forget). With no c.forget the teach is ABANDONED and the op
+  -- reports all four current moves, so the overwrite is chosen looking at
+  -- the whole moveset, never defaulted to whatever the cursor sat on.
+  local HM_MOVES = { CUT = true, FLY = true, SURF = true,
+                     STRENGTH = true, FLASH = true }
+  local slot = c.slot or 1
+  local mon = (G.save and G.save.party or {})[slot]
+  local monmoves = {}
+  for j, mv in ipairs((mon and mon.moves) or {}) do
+    monmoves[j] = tostring(type(mv) == "table" and mv.id or mv)
+  end
+  local function page_text()
+    local t = G.stack:top()
+    if t and t.pages and t.pageIndex then
+      local pg = t.pages[t.pageIndex]
+      if type(pg) == "table" then return table.concat(pg, " ") end
+      return tostring(pg or "")
+    end
+    return ""
+  end
+  if c.forget and HM_MOVES[c.forget] then
+    ui_back_out(G)
+    return false, "HM moves cannot be forgotten; pick a different forget="
+  end
+  local abandoned
+  for _ = 1, 50 do
+    local t = G.stack:top()
+    if t == G.overworld then break end
+    if t and t.newMoveId and t.selecting then
+      -- the forget list is live: pick the model's chosen move
+      local idx
+      for j, name in ipairs(monmoves) do
+        if name == c.forget then idx = j end
+      end
+      if not idx then
+        abandoned = (c.forget or "nothing")
+          .. " is not one of its moves; teach ABANDONED"
+        U.tap(G, "b"); U.wait(8)
+      else
+        for _ = 1, idx - 1 do U.tap(G, "down"); U.wait(3) end
+        U.tap(G, "a"); U.wait(10)
+      end
+    elseif ui_is_choice(G) then
+      local txt = page_text()
+      local learnq = txt:find("older") or txt:find("trying to learn")
+      if learnq and not (c.forget and not abandoned) then
+        U.tap(G, "b"); U.wait(8)     -- NO: don't delete, go to abandon
+      elseif txt:find("bandon") or txt:find("ive up") then
+        U.tap(G, "a"); U.wait(8)     -- YES: stop trying to learn
+      else
+        U.tap(G, "a"); U.wait(8)     -- teach?/use? prompts move along
+      end
+    else
+      U.tap(G, "a"); U.wait(5)
+    end
   end
   ui_back_out(G)
+  -- report from the party record, the only truth that matters
+  local after = {}
+  for j, mv in ipairs((mon and mon.moves) or {}) do
+    after[j] = tostring(type(mv) == "table" and mv.id or mv)
+  end
+  local gained
+  for _, name in ipairs(after) do
+    local old = false
+    for _, o in ipairs(monmoves) do if o == name then old = true end end
+    if not old then gained = name end
+  end
+  if gained then
+    return true, "used " .. c.item .. " — slot " .. slot
+      .. " learned " .. gained
+  end
+  if abandoned then
+    return false, abandoned .. ". It knows "
+      .. table.concat(monmoves, ", ")
+      .. ". Re-send use_item with forget= one of those (HM moves "
+      .. "cannot be forgotten)."
+  end
+  if c.item:find("^TM_") or c.item:find("^HM_") then
+    if #monmoves >= 4 then
+      return false, "it already knows four moves: "
+        .. table.concat(monmoves, ", ")
+        .. ". Choose which to write over and re-send use_item with "
+        .. "forget= that move (HM moves cannot be forgotten)."
+    end
+    return false, "the teach did not go through"
+  end
   return true, "used " .. c.item
 end
 
