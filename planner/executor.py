@@ -696,12 +696,20 @@ class Executor:
                 self._save_memory()
         elif self.shut_doors.pop(here, None) is not None:
             self._save_memory()
-        # a seam PROVEN uncrossable stays out: the frontier is rebuilt from
-        # obs on every visit, so the prune was silently undone each time we
-        # stood here again — and the walk-back then kept dragging the run
-        # back to this "untried exit" that can never open
-        keys = [k for k in keys
-                if k not in self._no_cross.get(here, set())]
+        # A seam proof HIDES the exit, but only where the town map says no
+        # connection exists. A proof is about the terrain under the party at
+        # one instant — a wanderer in the gap, a ledge, a bush not yet cut —
+        # and Route 9's east edge, the ONLY road to Rock Tunnel and the whole
+        # eastern half of Kanto, was struck from the frontier by one such
+        # proof. Every exploration mechanism reads the frontier, so the run
+        # had literally nothing east to elect and drifted west for hours.
+        # Where the printed map says a connection IS there, the exit stays
+        # listed (the edge line already marks it PROVEN uncrossable from
+        # here, which is advice the model can weigh) — proofs may discourage
+        # a direction, never delete a road the map says exists.
+        _nc = self._no_cross.get(here, set())
+        _real = MAP_EDGES.get(here.split("|")[0]) or {}
+        keys = [k for k in keys if k not in _nc or k in _real]
         if keys:
             fresh = sorted(set(keys))
             if self.frontier.get(here) != fresh:
