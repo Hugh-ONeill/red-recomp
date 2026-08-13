@@ -2226,7 +2226,16 @@ Reply with ONLY a JSON array of ops, e.g.
                 self._last_said = said
                 who = step.get("name") or op
                 reg = self._where(pre_obs)
-                if "None" not in reg and len(said) > 12:
+                # The harness's own noise is not a hint: saving, using an
+                # item and buying all print a line the game addressed to
+                # nobody. Keep what a NAMED thing said, and anything else
+                # only if it does not read as a system confirmation.
+                noise = any(w in said for w in
+                            ("saved the game", "SAVING", "Got ", "put it in",
+                             "Here you go!", "Thank you!"))
+                if (not step.get("name")) and noise:
+                    said = ""
+                if said and "None" not in reg and len(said) > 12:
                     lst = self.hints.setdefault(reg, [])
                     line = f"{who}: {said[:220]}"
                     if line not in lst:
