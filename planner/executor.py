@@ -501,6 +501,14 @@ class Executor:
             # first waypoint and marched the party from the captain's
             # doorstep all the way back to Cerulean.
             self._plan_done = data.get("plan_done") or {}
+            # PURGE MIRAGE REGIONS: a frontier entry with no walked edges
+            # and no counted visits is a label from a dead labeling era
+            # (the hop-free fragments); its phantom "untried exits" pull
+            # the reroute forever (ROUTE_25|12,2 was elected six times).
+            for _r in [r for r in list(self.frontier)
+                       if not (self.explored.get(r)
+                               or self.visits.get(r))]:
+                del self.frontier[_r]
             self._rebuild_area_aliases()
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
@@ -2868,34 +2876,43 @@ Reply with ONLY a JSON array of ops, e.g.
             # cannot (the nurse, the fight, the switch).
             tk0 = self._target_key(sg)
             # a BADGE lives in its gym, and which gym holds which badge
-            # is printed in the pamphlet — badge hunts route like travel
+            # is printed in the pamphlet — badge hunts route like travel.
+            # The gym itself may be unroutable on a fresh boot (its door
+            # bush REGROWS on reload), so its city's doorstep is the
+            # fallback: arrive there and let the model cut its way in.
+            cands = []
             if tk0.startswith("badge:"):
                 g = BADGE_GYMS.get(tk0.split(":", 1)[1])
                 if g:
-                    tk0 = "map:" + g
-            if tk0.startswith(("map:", "area:")):
-                dest0 = tk0.split(":", 1)[1]
-                here0 = self._where(start)
-                r0 = None
-                if not here0.startswith(dest0.split("|")[0]):
-                    if "|" in dest0:
-                        r0 = self._route(here0, dest0)
-                    else:
-                        for _reg in set(list(self.explored)
-                                        + list(self.visits)):
-                            if _reg.split("|")[0] != dest0:
-                                continue
-                            _p = self._route(here0, _reg)
-                            if _p and (r0 is None or len(_p) < len(r0)):
-                                r0 = _p
+                    cands = [g, g.replace("_GYM", "_CITY")]
+            elif tk0.startswith(("map:", "area:")):
+                cands = [tk0.split(":", 1)[1]]
+            here0 = self._where(start)
+            r0 = None
+            for dest0 in cands:
+                if here0.startswith(dest0.split("|")[0]):
+                    r0 = None
+                    break
+                if "|" in dest0:
+                    r0 = self._route(here0, dest0)
+                else:
+                    for _reg in set(list(self.explored)
+                                    + list(self.visits)):
+                        if _reg.split("|")[0] != dest0:
+                            continue
+                        _p = self._route(here0, _reg)
+                        if _p and (r0 is None or len(_p) < len(r0)):
+                            r0 = _p
                 if r0:
-                    self._walk_route(sg, r0)
-                    start = self.settle() or start
-                    if pred_holds(done, start):
-                        self.log("escalate_success", subgoal=sg["id"],
-                                 round=rnd, proposed=0,
-                                 distilled=len(progress), verified=False)
-                        return True, progress
+                    break
+            if r0:
+                self._walk_route(sg, r0)
+                start = self.settle() or start
+                if pred_holds(done, start):
+                    self.log("escalate_success", subgoal=sg["id"],
+                             round=rnd, proposed=0,
+                             distilled=len(progress), verified=False)
+                    return True, progress
             sig0 = self._snapshot(start)
             if rnd == 1 and sig0[0]:
                 visits[sig0[0]] = 1
