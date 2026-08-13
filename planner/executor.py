@@ -2850,6 +2850,38 @@ Reply with ONLY a JSON array of ops, e.g.
                     print(f"   (cannot afford {item0}: {money0} < {price0} "
                           f"— leaving this subgoal unfinished)")
                     return False, sg.get("macro", [])
+            # WALKED GROUND IS NEVER THE MODEL'S PROBLEM. When the target
+            # is a region this run has walked and a route exists from
+            # here, walk it before spending a model round: the wander
+            # machinery dragged heal_at_vermilion — a fully-walked target
+            # three rooms away — to the Route 5 daycare, because nothing
+            # made known navigation mechanical outside the unreachable
+            # branch. Arrive first; the model handles what arriving
+            # cannot (the nurse, the fight, the switch).
+            tk0 = self._target_key(sg)
+            if tk0.startswith(("map:", "area:")):
+                dest0 = tk0.split(":", 1)[1]
+                here0 = self._where(start)
+                r0 = None
+                if not here0.startswith(dest0.split("|")[0]):
+                    if "|" in dest0:
+                        r0 = self._route(here0, dest0)
+                    else:
+                        for _reg in set(list(self.explored)
+                                        + list(self.visits)):
+                            if _reg.split("|")[0] != dest0:
+                                continue
+                            _p = self._route(here0, _reg)
+                            if _p and (r0 is None or len(_p) < len(r0)):
+                                r0 = _p
+                if r0:
+                    self._walk_route(sg, r0)
+                    start = self.settle() or start
+                    if pred_holds(done, start):
+                        self.log("escalate_success", subgoal=sg["id"],
+                                 round=rnd, proposed=0,
+                                 distilled=len(progress), verified=False)
+                        return True, progress
             sig0 = self._snapshot(start)
             if rnd == 1 and sig0[0]:
                 visits[sig0[0]] = 1
