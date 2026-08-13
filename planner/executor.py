@@ -2856,9 +2856,13 @@ Reply with ONLY a JSON array of ops, e.g.
                 memory += (
                     "\nYOUR BAG IS FULL (20 of 20 kinds). Every gift and "
                     "pickup FAILS while it stays full — the 'got it!' "
-                    "text plays and NOTHING arrives. Toss something "
-                    "first ({\"op\":\"toss\",\"item\":...}); which item "
-                    "to sacrifice is your choice, and whoever tried to "
+                    "text plays and NOTHING arrives. Free a slot first, "
+                    "your choice how: USING an item consumes it — a TM "
+                    "taught to a party member is spent AND its move is "
+                    "gained ({\"op\":\"use_item\",\"item\":\"TM_...\","
+                    "\"slot\":N,\"forget\":\"MOVE\"} when it already "
+                    "knows four) — or TOSS dead weight "
+                    "({\"op\":\"toss\",\"item\":...}). Whoever tried to "
                     "hand you a thing will hand it again once there is "
                     "room.")
             # Log what the model was actually TOLD. Most of this session's
