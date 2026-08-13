@@ -272,10 +272,23 @@ def author(goal: str, model: str, rounds: int = 3,
     return None
 
 
+# THE GUIDANCE AND THE EVIDENCE HAD NEVER MET. author() runs under SYS,
+# which explains attrition, training, catching a backup and shopping — but
+# its user message is the goal alone, so it cannot see that anything has
+# gone wrong. review() is the pass handed the walked graph and the journal
+# (the wipe counts, the damage race, the money) and it ran under a
+# 192-character brief about structurally invalid subgoals. So the half that
+# knew training was expressible was blind to the losing, and the half
+# reading "WIPED OUT 19x, your hits dealt ~8/turn while theirs took ~15" had
+# never been told training was an option. Same knowledge, both passes: this
+# adds nothing the model was not already given elsewhere.
 REVIEW_SYS = (
-    "You are reviewing a Pokemon Red subgoal plan you just wrote, looking "
-    "for subgoals that CANNOT do their job. Reply with the corrected plan "
-    "as a JSON object in the same schema, and nothing else."
+    SYS
+    + "\n\nYou are now REVIEWING a plan you just wrote, with EVIDENCE from "
+      "runs that have already been played: the areas walked, and a journal "
+      "of what actually happened. Look for subgoals that CANNOT do their "
+      "job, and weigh them against that evidence. Reply with the corrected "
+      "plan as a JSON object in the same schema, and nothing else."
 )
 
 
@@ -505,7 +518,15 @@ def build_review(goal: str, plan: dict, start: str | None) -> str:
         "satisfied by climbing all the way back out and then descending "
         "again — a round trip that eats the whole attempt. Put supply "
         "stops BEFORE the descent, next to the last outdoor step.\n"
-        "8. ALREADY DONE. A subgoal whose outcome the START state already "
+        "8. A PLAN THAT HAS ALREADY FAILED THIS WAY. The journal above is "
+        "what happened on previous attempts. If it shows the same subgoal "
+        "failing over and over — the same fight lost, the same purchase "
+        "refused — then a plan that reaches that subgoal in the same state "
+        "will fail again for the same reason; re-running it is not a "
+        "second chance, it is the same attempt. Read what the journal says "
+        "went wrong and decide whether anything in the plan should change "
+        "before that step. Do NOT change a step the journal shows working.\n"
+        "9. ALREADY DONE. A subgoal whose outcome the START state already "
         "shows — an item already in the bag, a badge already worn, a flag "
         "already set — is a detour, not a step. REMOVE it (and any travel "
         "that exists only to serve it). Do not remove flag or badge "
