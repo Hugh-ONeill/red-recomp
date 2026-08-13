@@ -362,6 +362,16 @@ REVISION_NOTE = (
     "right answer here is your judgement and the evidence is above — but "
     "re-issuing the same approach into a fight that has already been lost "
     "repeatedly is not a revision of the plan, it is a repeat of it."
+    "\n\nWHEN NOTHING WALKS, THE ANSWER IS SOMETHING YOU DO. If the "
+    "evidence shows a place whose roads are all proven uncrossable and "
+    "whose doors are all either walked or held shut, then NO arrangement of "
+    "walking can get out of it, and another route plan will fail exactly "
+    "the way the last one did. A place is opened by an ACTION: talking to "
+    "somebody, finishing what somebody asked you to do, operating a machine "
+    "or a computer, pressing A on scenery that is not in the object list. "
+    "The evidence above records what people said and which doors are held "
+    "shut, and a subgoal can name an event flag as its condition. When the "
+    "walking is exhausted, plan the deed."
 )
 
 REVIEW_SYS = (
