@@ -333,6 +333,7 @@ class Executor:
         self.model = model
         self.plan = plan
         self.plan_path = plan_path
+        self.failed_subgoal = None      # set by run_plan, read at exit
         self.run_id = run_id
         self.escalations = 0
         self._st: dict = {}         # live status (run/status.txt)
@@ -3346,6 +3347,7 @@ Reply with ONLY a JSON array of ops, e.g.
             if not ok:
                 print(f"!! FAILED: subgoal {sg['id']}")
                 self.log("plan_failed_at", subgoal=sg["id"])
+                self.failed_subgoal = sg["id"]
                 return False
             print(f"   done: {sg['id']}")
             # Save after each completed SUBGOAL, not just each plan. A leg
@@ -3403,12 +3405,21 @@ def bootstrap(b: Bridge, cont: bool = False):
         f"bootstrap failed (stuck in mode={(b.obs() or {}).get('mode')})")
 
 
-def _write_last_state(b):
+def _write_last_state(b, failed_plan=None, failed_subgoal=None):
     """Snapshot where the run stands, for the campaign's re-author.
 
     Called on the normal exit path AND from the crash handler: a snapshot
     that is missing is worse than useless, because the loop then reads a
     PREVIOUS campaign's file and plans against a game that no longer exists.
+
+    WHICH LEG FAILED is recorded here rather than re-derived from world
+    state. A wipe at Misty teleports the party back to the Mt Moon centre,
+    which makes the MOUNTAIN leg's "be in Cerulean" condition false — so
+    the campaign blamed the mountain and re-authored it 17 times while the
+    badge leg, the only one that could gain a training subgoal, was never
+    reconsidered once. The leg that failed is a fact the executor holds;
+    guessing it from where the party ended up gets it wrong exactly when a
+    fight knocks the run backwards.
     """
     try:
         o = b.obs() or {}
@@ -3427,6 +3438,8 @@ def _write_last_state(b):
             "bag": o.get("bag") or {},
             "money": o.get("money"),
             "flags": o.get("flags") or [],
+            "failed_plan": failed_plan,
+            "failed_subgoal": failed_subgoal,
         }, indent=1))
     except Exception as e:
         print(f"[warn] could not write last_state.json: {e}")
@@ -3512,7 +3525,10 @@ def main():
     # Taken BEFORE the save below: save_game drives the START menu, and an
     # observation caught mid-menu carries no map at all, which is exactly
     # the "unknown location" the snapshot exists to prevent.
-    _write_last_state(b)
+    _write_last_state(b, failed_plan=(None if ok else
+                                      getattr(ex, "plan_path", None)
+                                      and ex.plan_path.name),
+                      failed_subgoal=(None if ok else ex.failed_subgoal))
     # SAVE WHAT WAS EARNED, even when the plan failed. The save above only
     # fires for a plan that fully succeeded — `if not ok: break` skips it —
     # so an attempt that crossed two maps, beat fifteen trainers and banked

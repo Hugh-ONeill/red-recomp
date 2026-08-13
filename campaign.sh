@@ -117,7 +117,7 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   # The chain runs in order, so the failed leg is the first one in PLANS
   # whose final condition is not satisfied.
   failed_plan=$(python - run/last_state.json "${PLANS[@]}" <<'PY'
-import json, sys
+import json, sys, os
 obs = {}
 for src in (sys.argv[1], "run/obs.json"):
     try:
@@ -127,6 +127,16 @@ for src in (sys.argv[1], "run/obs.json"):
             break
     except Exception:
         continue
+# THE EXECUTOR KNOWS WHICH LEG FAILED — believe it over the condition scan.
+# A wipe knocks the party BACKWARD, so an earlier leg's "be in Cerulean"
+# condition goes false and the scan below blames the leg that already
+# worked: 17 Misty wipes re-authored the mountain plan while the badge
+# plan, the only one that could gain a training subgoal, was never
+# reconsidered once.
+_fp = obs.get("failed_plan")
+if _fp and any(os.path.basename(p) == _fp for p in sys.argv[2:]):
+    print(_fp)
+    raise SystemExit
 def met(plan_path):
     try:
         plan = json.load(open(plan_path))
