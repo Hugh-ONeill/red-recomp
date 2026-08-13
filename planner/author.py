@@ -68,15 +68,87 @@ PREDICATES = {
                   "use for catch subgoals; set battle_policy \"catch\" on "
                   "them)",
 }
-ROUTE_MAPS = ["REDS_HOUSE_2F", "REDS_HOUSE_1F", "PALLET_TOWN", "OAKS_LAB",
-              "ROUTE_1", "VIRIDIAN_CITY", "VIRIDIAN_MART",
-              "VIRIDIAN_POKECENTER", "ROUTE_22", "ROUTE_2",
-              "VIRIDIAN_FOREST", "PEWTER_CITY", "PEWTER_MART",
-              "PEWTER_POKECENTER", "PEWTER_GYM",
-              "ROUTE_3", "MT_MOON_POKECENTER", "ROUTE_4",
-              "MT_MOON_1F", "MT_MOON_B1F", "MT_MOON_B2F", "CERULEAN_CITY",
-              "CERULEAN_POKECENTER", "CERULEAN_MART", "CERULEAN_GYM",
-              "ROUTE_24", "ROUTE_25", "BILLS_HOUSE"]
+# EVERY map id the engine defines, ALPHABETICAL. Two deliberate choices.
+# WHICH names appear is not curated: a hand-picked subset is a hint about
+# where to go next, and adding exactly the Cerulean maps the night the
+# Cerulean leg started was one. ORDER is not the route: this list used to
+# read bedroom -> Pallet -> Oak's lab -> Route 1 -> Viridian -> Forest ->
+# Pewter -> Mt Moon -> Cerulean, which is a walkthrough wearing a
+# vocabulary's clothes. Alphabetical carries no itinerary. What survives is
+# the pamphlet-tier fact the model cannot get from its own knowledge of the
+# game: how THIS engine spells the places (VERMILION with one L,
+# CASCADEBADGE as one word) so a plan can name them and validate.
+ROUTE_MAPS = [
+    "AGATHAS_ROOM", "BIKE_SHOP", "BILLS_HOUSE", "BLUES_HOUSE",
+    "BRUNOS_ROOM", "CELADON_CHIEF_HOUSE", "CELADON_CITY", "CELADON_DINER",
+    "CELADON_GYM", "CELADON_HOTEL", "CELADON_MANSION_1F",
+    "CELADON_MANSION_2F", "CELADON_MANSION_3F", "CELADON_MANSION_ROOF",
+    "CELADON_MANSION_ROOF_HOUSE", "CELADON_MART_1F", "CELADON_MART_2F",
+    "CELADON_MART_3F", "CELADON_MART_4F", "CELADON_MART_5F",
+    "CELADON_MART_ELEVATOR", "CELADON_MART_ROOF", "CELADON_POKECENTER",
+    "CERULEAN_BADGE_HOUSE", "CERULEAN_CAVE_1F", "CERULEAN_CAVE_2F",
+    "CERULEAN_CAVE_B1F", "CERULEAN_CITY", "CERULEAN_GYM", "CERULEAN_MART",
+    "CERULEAN_POKECENTER", "CERULEAN_TRADE_HOUSE",
+    "CERULEAN_TRASHED_HOUSE", "CHAMPIONS_ROOM", "CINNABAR_GYM",
+    "CINNABAR_ISLAND", "CINNABAR_LAB", "CINNABAR_LAB_FOSSIL_ROOM",
+    "CINNABAR_LAB_METRONOME_ROOM", "CINNABAR_LAB_TRADE_ROOM",
+    "CINNABAR_MART", "CINNABAR_POKECENTER", "COLOSSEUM",
+    "COPYCATS_HOUSE_1F", "COPYCATS_HOUSE_2F", "DAYCARE", "DIGLETTS_CAVE",
+    "DIGLETTS_CAVE_ROUTE_11", "DIGLETTS_CAVE_ROUTE_2", "FIGHTING_DOJO",
+    "FUCHSIA_BILLS_GRANDPAS_HOUSE", "FUCHSIA_CITY",
+    "FUCHSIA_GOOD_ROD_HOUSE", "FUCHSIA_GYM", "FUCHSIA_MART",
+    "FUCHSIA_MEETING_ROOM", "FUCHSIA_POKECENTER", "GAME_CORNER",
+    "GAME_CORNER_PRIZE_ROOM", "HALL_OF_FAME", "INDIGO_PLATEAU",
+    "INDIGO_PLATEAU_LOBBY", "LANCES_ROOM", "LAVENDER_CUBONE_HOUSE",
+    "LAVENDER_MART", "LAVENDER_POKECENTER", "LAVENDER_TOWN",
+    "LORELEIS_ROOM", "MR_FUJIS_HOUSE", "MR_PSYCHICS_HOUSE", "MT_MOON_1F",
+    "MT_MOON_B1F", "MT_MOON_B2F", "MT_MOON_POKECENTER", "MUSEUM_1F",
+    "MUSEUM_2F", "NAME_RATERS_HOUSE", "OAKS_LAB", "PALLET_TOWN",
+    "PEWTER_CITY", "PEWTER_GYM", "PEWTER_MART", "PEWTER_NIDORAN_HOUSE",
+    "PEWTER_POKECENTER", "PEWTER_SPEECH_HOUSE", "POKEMON_FAN_CLUB",
+    "POKEMON_MANSION_1F", "POKEMON_MANSION_2F", "POKEMON_MANSION_3F",
+    "POKEMON_MANSION_B1F", "POKEMON_TOWER_1F", "POKEMON_TOWER_2F",
+    "POKEMON_TOWER_3F", "POKEMON_TOWER_4F", "POKEMON_TOWER_5F",
+    "POKEMON_TOWER_6F", "POKEMON_TOWER_7F", "POWER_PLANT",
+    "REDS_HOUSE_1F", "REDS_HOUSE_2F", "ROCKET_HIDEOUT_B1F",
+    "ROCKET_HIDEOUT_B2F", "ROCKET_HIDEOUT_B3F", "ROCKET_HIDEOUT_B4F",
+    "ROCKET_HIDEOUT_ELEVATOR", "ROCK_TUNNEL_1F", "ROCK_TUNNEL_B1F",
+    "ROCK_TUNNEL_POKECENTER", "ROUTE_1", "ROUTE_10", "ROUTE_11",
+    "ROUTE_11_GATE_1F", "ROUTE_11_GATE_2F", "ROUTE_12",
+    "ROUTE_12_GATE_1F", "ROUTE_12_GATE_2F", "ROUTE_12_SUPER_ROD_HOUSE",
+    "ROUTE_13", "ROUTE_14", "ROUTE_15", "ROUTE_15_GATE_1F",
+    "ROUTE_15_GATE_2F", "ROUTE_16", "ROUTE_16_FLY_HOUSE",
+    "ROUTE_16_GATE_1F", "ROUTE_16_GATE_2F", "ROUTE_17", "ROUTE_18",
+    "ROUTE_18_GATE_1F", "ROUTE_18_GATE_2F", "ROUTE_19", "ROUTE_2",
+    "ROUTE_20", "ROUTE_21", "ROUTE_22", "ROUTE_22_GATE", "ROUTE_23",
+    "ROUTE_24", "ROUTE_25", "ROUTE_2_GATE", "ROUTE_2_TRADE_HOUSE",
+    "ROUTE_3", "ROUTE_4", "ROUTE_5", "ROUTE_5_GATE", "ROUTE_6",
+    "ROUTE_6_GATE", "ROUTE_7", "ROUTE_7_GATE", "ROUTE_8", "ROUTE_8_GATE",
+    "ROUTE_9", "SAFARI_ZONE_CENTER", "SAFARI_ZONE_CENTER_REST_HOUSE",
+    "SAFARI_ZONE_EAST", "SAFARI_ZONE_EAST_REST_HOUSE", "SAFARI_ZONE_GATE",
+    "SAFARI_ZONE_NORTH", "SAFARI_ZONE_NORTH_REST_HOUSE",
+    "SAFARI_ZONE_SECRET_HOUSE", "SAFARI_ZONE_WEST",
+    "SAFARI_ZONE_WEST_REST_HOUSE", "SAFFRON_CITY", "SAFFRON_GYM",
+    "SAFFRON_MART", "SAFFRON_PIDGEY_HOUSE", "SAFFRON_POKECENTER",
+    "SEAFOAM_ISLANDS_1F", "SEAFOAM_ISLANDS_B1F", "SEAFOAM_ISLANDS_B2F",
+    "SEAFOAM_ISLANDS_B3F", "SEAFOAM_ISLANDS_B4F", "SILPH_CO_10F",
+    "SILPH_CO_11F", "SILPH_CO_1F", "SILPH_CO_2F", "SILPH_CO_3F",
+    "SILPH_CO_4F", "SILPH_CO_5F", "SILPH_CO_6F", "SILPH_CO_7F",
+    "SILPH_CO_8F", "SILPH_CO_9F", "SILPH_CO_ELEVATOR", "SS_ANNE_1F",
+    "SS_ANNE_1F_ROOMS", "SS_ANNE_2F", "SS_ANNE_2F_ROOMS", "SS_ANNE_3F",
+    "SS_ANNE_B1F", "SS_ANNE_B1F_ROOMS", "SS_ANNE_BOW",
+    "SS_ANNE_CAPTAINS_ROOM", "SS_ANNE_KITCHEN", "TRADE_CENTER",
+    "UNDERGROUND_PATH_NORTH_SOUTH", "UNDERGROUND_PATH_ROUTE_5",
+    "UNDERGROUND_PATH_ROUTE_6", "UNDERGROUND_PATH_ROUTE_7",
+    "UNDERGROUND_PATH_ROUTE_8", "UNDERGROUND_PATH_WEST_EAST",
+    "VERMILION_CITY", "VERMILION_DOCK", "VERMILION_GYM", "VERMILION_MART",
+    "VERMILION_OLD_ROD_HOUSE", "VERMILION_PIDGEY_HOUSE",
+    "VERMILION_POKECENTER", "VERMILION_TRADE_HOUSE", "VICTORY_ROAD_1F",
+    "VICTORY_ROAD_2F", "VICTORY_ROAD_3F", "VIRIDIAN_CITY",
+    "VIRIDIAN_FOREST", "VIRIDIAN_FOREST_NORTH_GATE",
+    "VIRIDIAN_FOREST_SOUTH_GATE", "VIRIDIAN_GYM", "VIRIDIAN_MART",
+    "VIRIDIAN_NICKNAME_HOUSE", "VIRIDIAN_POKECENTER",
+    "VIRIDIAN_SCHOOL_HOUSE", "WARDENS_HOUSE"]
 # EXACT item ids, for the same reason the map/flag lists exist: the model
 # knows Poke Balls and Potions are things, it cannot know the engine spells
 # them POKE_BALL (underscore) and PARLYZ_HEAL. Left to guess it wrote
@@ -91,31 +163,33 @@ KEY_ITEMS = {
     "ESCAPE_ROPE": "warps you out of a cave",
     "REPEL": "keeps weak wild encounters away for a while",
 }
-# What each shop actually stocks. A has_item goal placed at a counter that
-# does not sell the item is unsatisfiable no matter how well it is played:
-# shop_for_potions at the VIRIDIAN mart failed every single run.
-SHOP_STOCK = {
-    "VIRIDIAN_MART": "POKE_BALL, ANTIDOTE, PARLYZ_HEAL, BURN_HEAL "
-                     "(NO Potions — do not put a POTION goal here)",
-    "PEWTER_MART": "POKE_BALL, POTION, ESCAPE_ROPE, ANTIDOTE, BURN_HEAL, "
-                   "AWAKENING",
-}
+# NO SHOP_STOCK TABLE. Which mart sells what is a fact about the WORLD, not
+# about how to spell things, and the run now learns it the honest way: the
+# journal reports "is not sold here" and "cannot afford POTION: it costs 300
+# and you have 83" from real counters it walked to. The table existed because
+# unsatisfiable shopping goals used to burn whole attempts; that evidence
+# channel replaced it.
 
+# WHAT each flag means, not what it UNLOCKS. These read as names so a plan
+# can reference an event; the consequences are the model's to discover.
+# "got the Pokedex (this unlocks the north exit of Viridian City)" was a
+# puzzle solution wearing a glossary entry's clothes.
 KEY_FLAGS = {
-    "EVENT_OAK_ASKED_TO_CHOOSE_MON": "Oak finished his intro and the starter "
-        "Poke Balls are now active to choose from (use this to mark 'reached "
-        "the lab AND it's ready' — a plain {map:OAKS_LAB} fires too early, "
-        "before Oak's speech arms the balls)",
+    "EVENT_OAK_ASKED_TO_CHOOSE_MON": "Oak has finished his intro and the "
+        "starter Poke Balls are active",
     "EVENT_GOT_STARTER": "obtained a starter Pokemon",
     "EVENT_BATTLED_RIVAL_IN_OAKS_LAB": "fought the rival in Oak's lab",
-    "EVENT_GOT_OAKS_PARCEL": "picked up Oak's Parcel at the Viridian mart",
-    "EVENT_GOT_POKEDEX": "delivered the parcel to Oak and got the Pokedex "
-                         "(this unlocks the north exit of Viridian City)",
-    "EVENT_BEAT_BROCK": "defeated Brock at Pewter Gym",
-    "EVENT_BEAT_MT_MOON_3_SUPER_NERD": "beat the Super Nerd guarding the "
-        "fossils on Mt Moon's bottom floor (B2F) — the fossil pick follows",
+    "EVENT_GOT_OAKS_PARCEL": "picked up Oak's Parcel",
+    "EVENT_GOT_POKEDEX": "got the Pokedex",
+    "EVENT_BEAT_BROCK": "defeated Brock",
+    "EVENT_BEAT_MT_MOON_3_SUPER_NERD": "beat the Super Nerd who guards the "
+        "fossils",
 }
-BADGES = ["BOULDERBADGE", "CASCADEBADGE"]
+# ALL EIGHT, for the same reason the map list is not curated: naming only
+# the next one is a hint about where the run is meant to go.
+BADGES = ["BOULDERBADGE", "CASCADEBADGE", "THUNDERBADGE",
+          "RAINBOWBADGE", "SOULBADGE", "MARSHBADGE", "VOLCANOBADGE",
+          "EARTHBADGE"]
 
 SYS = """You author a PLAN to accomplish a Pokemon Red goal: an ordered list
 of SUBGOALS. You write the decomposition and the success condition of each
@@ -125,7 +199,7 @@ give the milestones and how to know each is done.
 
 ATTRITION: battles chip your party's HP and there is no auto-healing —
 insert a Pokemon Center heal stop (done_when {"party_healthy": true}) before
-long wild-encounter stretches like Viridian Forest. If upcoming trainers
+long wild-encounter stretches. If upcoming trainers
 outlevel your party — or the SAME fight keeps wiping you even at a level
 advantage, which means the damage race is what you are losing, not the
 levels — add TRAINING subgoals on a grassy route
@@ -133,11 +207,11 @@ levels — add TRAINING subgoals on a grassy route
 subgoal with a Pokemon Center heal stop between stages. Fainting sends
 you home and HALVES YOUR MONEY, so wipes during long unhealed grinds
 bankrupt later shopping.
-Marts sell healing items (a POTION heals 20 HP, ~300 money; you start with
-3000): add a SHOPPING subgoal (done_when {"has_item": {...}}) before a
-trainer gauntlet with no Center inside it. Know your marts: VIRIDIAN_MART
-sells NO potions (Poke Balls, Antidotes, Parlyz Heals only); PEWTER_MART
-is the first that sells POTION.
+Marts sell healing items: add a SHOPPING subgoal
+(done_when {"has_item": {...}}) before a trainer gauntlet with no Center
+inside it. Not every mart stocks every item, and a counter that does not
+sell what you asked for says so — read the journal below for what previous
+attempts actually found on the shelves.
 A LONE Pokemon that faints means a blackout (money halved): CATCH A BACKUP
 early (a shopping stop for Poke Balls, then a catch subgoal with
 {"party_size": 2} on a grassy route) so a lead faint becomes a switch
@@ -193,9 +267,6 @@ def build_prompt(goal: str, start: str | None = None) -> str:
         + "\n".join(f"  {k}: {v}" for k, v in KEY_FLAGS.items())
         + "\n\nITEM IDs (use exact strings in has_item):\n"
         + "\n".join(f"  {k}: {v}" for k, v in KEY_ITEMS.items())
-        + "\n\nWHAT EACH SHOP SELLS — a has_item goal at a counter that "
-          "does not stock the item can never be satisfied:\n"
-        + "\n".join(f"  {k}: {v}" for k, v in SHOP_STOCK.items())
         + f"\n\nBADGES: {', '.join(BADGES)}\n\n"
         "Author the ordered subgoal list now. Remember the granularity rule.")
 
