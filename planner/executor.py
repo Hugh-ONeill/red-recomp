@@ -3161,6 +3161,17 @@ Reply with ONLY a JSON array of ops, e.g.
                         ((cur.get("map") or {}).get("objects") or [])
                         if (o.get("reachable") or o.get("kind") == "item")
                         and o.get("name") not in _tried]
+                # FIXTURES ARE SWITCHES: pressable AGAIN by nature, and
+                # some puzzles REQUIRE re-pressing (the gym's trash-can
+                # locks reset on a wrong guess). A room holding reachable
+                # fixtures is never provably barren — the abandon fired
+                # here with Surge unreachable behind his locked door and
+                # fifteen once-pressed cans standing right there.
+                live += [o.get("name") for o in
+                         ((cur.get("map") or {}).get("objects") or [])
+                         if o.get("kind") in ("fixture", "cut_tree")
+                         and o.get("reachable")
+                         and o.get("name") in _tried]
             # REDO suppresses the done-check on purpose (its job is to
             # relocate, not to satisfy the goal), so every redo round looks
             # like a failure even standing on the answer. Recording proofs
