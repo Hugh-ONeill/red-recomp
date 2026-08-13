@@ -2073,6 +2073,19 @@ Reply with ONLY a JSON array of ops, e.g.
                     self.log("faint_marked", subgoal=sg["id"],
                              at=self._faint_at)
             note = f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
+            # A DECLINED QUESTION IS NOT A TOUCH, however the state moved.
+            # This retraction used to live in the "nothing changed" branch,
+            # but reaching a fossil means WALKING to it, so the snapshot had
+            # moved and the branch never ran: both fossils came back
+            # "declined" and were still recorded as touched. The room then
+            # read as fully worked, the untouched-things line stopped naming
+            # them, and the one prompt that would have made the model try
+            # again with answer="yes" never appeared — leaving the corridor
+            # east shut behind a question nobody answered.
+            if ("asked a QUESTION" in str(r.get("detail") or "")
+                    and op == "interact" and step.get("name")):
+                self._tried_objs.get(self._where(pre_obs),
+                                     set()).discard(step["name"])
             if not r.get("ok"):
                 self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
                 note += f": FAILED — {r.get('detail')}"
@@ -2210,16 +2223,7 @@ Reply with ONLY a JSON array of ops, e.g.
             elif before == after:
                 det0 = str(r.get("detail") or "")
                 if "asked a QUESTION" in det0:
-                    # A DECLINED QUESTION is not an exhausted object. The
-                    # fossil take-prompt was auto-declined, and this branch
-                    # then marked the fossil inert (refusing every retry)
-                    # and left it "touched" (sealing the room as worked) —
-                    # with the corridor east gated on accepting. Surface
-                    # the question, retract the touch, keep it retryable.
                     note += f": {det0}"
-                    if op == "interact" and step.get("name"):
-                        self._tried_objs.get(self._where(pre_obs),
-                                             set()).discard(step["name"])
                 else:
                     note += ": ran but had NO visible effect (nothing changed)"
                     if op == "interact" and step.get("name"):
