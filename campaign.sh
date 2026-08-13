@@ -143,7 +143,11 @@ if "badge" in last:
 elif "map" in last:
     ok = last["map"] == (obs.get("map") or {}).get("id")
 elif "flag" in last:
-    ok = bool((obs.get("flags") or {}).get(last["flag"]))
+    # obs.json stores flags as a LIST of set names, not a dict — .get on
+    # it crashed this check after the Bill leg
+    fl = obs.get("flags") or []
+    ok = (last["flag"] in fl if isinstance(fl, list)
+          else bool(fl.get(last["flag"])))
 elif "has_item" in last and isinstance(last["has_item"], dict):
     bag = obs.get("bag") or {}
     ok = all((bag.get(k) or 0) >= v for k, v in last["has_item"].items())
