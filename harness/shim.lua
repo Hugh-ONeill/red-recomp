@@ -316,6 +316,21 @@ local function observe(G, seq, result)
         reachable = adjacent_reachable(npc.cellX, npc.cellY),
       }
     end
+    -- SIGNS ARE THINGS YOU PRESS A ON. They live in a separate map list
+    -- from objects and were never observed at all, so anything that is
+    -- scenery rather than a person was invisible: notice boards, the
+    -- Pokedex-rating PC, and BILL'S CELL SEPARATOR — the one interaction
+    -- that finishes his errand and, through it, unblocks Cerulean. The
+    -- model cannot name what it cannot see, and a room full of unpressed
+    -- signs was certifying itself as fully worked.
+    for _, sg in ipairs((md and md.signs) or {}) do
+      local nm = sg.name or sg.text or ("SIGN_" .. tostring(sg.x) .. "_"
+                                        .. tostring(sg.y))
+      o.map.objects[#o.map.objects + 1] = {
+        x = sg.x, y = sg.y, kind = "sign", name = nm,
+        reachable = adjacent_reachable(sg.x, sg.y),
+      }
+    end
   elseif top and (top.enemy or top.kind) then
     o.mode = "battle"
     o.battle = scalars(top, 0)
