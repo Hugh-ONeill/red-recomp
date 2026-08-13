@@ -40,6 +40,14 @@ from pathlib import Path
 
 from bridge import Bridge, RUN
 import battle_policy
+
+# The game's own outdoor-map adjacency (data/generated/maps.lua
+# connections), extracted once — the town map every player unfolds.
+try:
+    MAP_EDGES = json.loads(
+        (Path(__file__).with_name("map_edges.json")).read_text())
+except (OSError, ValueError):
+    MAP_EDGES = {}
 import battle_oracle
 import brock_probe   # reuse the live model driver (chat/parse) for escalation
 
@@ -1637,6 +1645,18 @@ class Executor:
                     f"untouched thing, a person to talk to, an obstacle "
                     f"to clear. Start with the rooms below still holding "
                     f"things you have never touched.")
+        # THE TOWN MAP knows what a place hangs off, and route NUMBERS lie
+        # about adjacency: plans wrote route_4 -> route_5 because the
+        # numbers are consecutive, but neither touches the other — both
+        # attach to Cerulean — and the walker paced the seam for cycles
+        # trying to make geography obey numbering. Static map connections
+        # are printed on the pamphlet's own map; say them.
+        if want_map and want_map in MAP_EDGES:
+            att = ", ".join(f"its {d} side touches {m}"
+                            for d, m in sorted(MAP_EDGES[want_map].items()))
+            route_line += (f"\nTHE TOWN MAP: {want_map} attaches to — "
+                           f"{att}. To arrive, stand in one of THOSE and "
+                           f"cross the matching edge.")
         if not (untried or tried):
             if elsewhere:
                 return (warned + route_line

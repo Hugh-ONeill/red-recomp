@@ -1,0 +1,152 @@
+{
+ "CELADON_CITY": {
+  "east": "ROUTE_7",
+  "west": "ROUTE_16"
+ },
+ "CERULEAN_CITY": {
+  "east": "ROUTE_9",
+  "north": "ROUTE_24",
+  "south": "ROUTE_5",
+  "west": "ROUTE_4"
+ },
+ "CINNABAR_ISLAND": {
+  "east": "ROUTE_20",
+  "north": "ROUTE_21"
+ },
+ "FUCHSIA_CITY": {
+  "east": "ROUTE_15",
+  "south": "ROUTE_19",
+  "west": "ROUTE_18"
+ },
+ "INDIGO_PLATEAU": {
+  "south": "ROUTE_23"
+ },
+ "LAVENDER_TOWN": {
+  "north": "ROUTE_10",
+  "south": "ROUTE_12",
+  "west": "ROUTE_8"
+ },
+ "PALLET_TOWN": {
+  "north": "ROUTE_1",
+  "south": "ROUTE_21"
+ },
+ "PEWTER_CITY": {
+  "east": "ROUTE_3",
+  "south": "ROUTE_2"
+ },
+ "ROUTE_1": {
+  "north": "VIRIDIAN_CITY",
+  "south": "PALLET_TOWN"
+ },
+ "ROUTE_10": {
+  "south": "LAVENDER_TOWN",
+  "west": "ROUTE_9"
+ },
+ "ROUTE_11": {
+  "east": "ROUTE_12",
+  "west": "VERMILION_CITY"
+ },
+ "ROUTE_12": {
+  "north": "LAVENDER_TOWN",
+  "south": "ROUTE_13",
+  "west": "ROUTE_11"
+ },
+ "ROUTE_13": {
+  "north": "ROUTE_12",
+  "west": "ROUTE_14"
+ },
+ "ROUTE_14": {
+  "east": "ROUTE_13",
+  "west": "ROUTE_15"
+ },
+ "ROUTE_15": {
+  "east": "ROUTE_14",
+  "west": "FUCHSIA_CITY"
+ },
+ "ROUTE_16": {
+  "east": "CELADON_CITY",
+  "south": "ROUTE_17"
+ },
+ "ROUTE_17": {
+  "north": "ROUTE_16",
+  "south": "ROUTE_18"
+ },
+ "ROUTE_18": {
+  "east": "FUCHSIA_CITY",
+  "north": "ROUTE_17"
+ },
+ "ROUTE_19": {
+  "north": "FUCHSIA_CITY",
+  "west": "ROUTE_20"
+ },
+ "ROUTE_2": {
+  "north": "PEWTER_CITY",
+  "south": "VIRIDIAN_CITY"
+ },
+ "ROUTE_20": {
+  "east": "ROUTE_19",
+  "west": "CINNABAR_ISLAND"
+ },
+ "ROUTE_21": {
+  "north": "PALLET_TOWN",
+  "south": "CINNABAR_ISLAND"
+ },
+ "ROUTE_22": {
+  "east": "VIRIDIAN_CITY",
+  "north": "ROUTE_23"
+ },
+ "ROUTE_23": {
+  "north": "INDIGO_PLATEAU",
+  "south": "ROUTE_22"
+ },
+ "ROUTE_24": {
+  "east": "ROUTE_25",
+  "south": "CERULEAN_CITY"
+ },
+ "ROUTE_25": {
+  "west": "ROUTE_24"
+ },
+ "ROUTE_3": {
+  "north": "ROUTE_4",
+  "west": "PEWTER_CITY"
+ },
+ "ROUTE_4": {
+  "east": "CERULEAN_CITY",
+  "south": "ROUTE_3"
+ },
+ "ROUTE_5": {
+  "north": "CERULEAN_CITY",
+  "south": "SAFFRON_CITY"
+ },
+ "ROUTE_6": {
+  "north": "SAFFRON_CITY",
+  "south": "VERMILION_CITY"
+ },
+ "ROUTE_7": {
+  "east": "SAFFRON_CITY",
+  "west": "CELADON_CITY"
+ },
+ "ROUTE_8": {
+  "east": "LAVENDER_TOWN",
+  "west": "SAFFRON_CITY"
+ },
+ "ROUTE_9": {
+  "east": "ROUTE_10",
+  "west": "CERULEAN_CITY"
+ },
+ "SAFFRON_CITY": {
+  "east": "ROUTE_8",
+  "north": "ROUTE_5",
+  "south": "ROUTE_6",
+  "west": "ROUTE_7"
+ },
+ "VERMILION_CITY": {
+  "east": "ROUTE_11",
+  "north": "ROUTE_6"
+ },
+ "VIRIDIAN_CITY": {
+  "north": "ROUTE_2",
+  "south": "ROUTE_1",
+  "west": "ROUTE_22"
+ }
+}
