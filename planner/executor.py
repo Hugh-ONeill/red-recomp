@@ -1238,6 +1238,15 @@ class Executor:
                 if self._where(o) == nxt or not fought:
                     break
             if self._where(o) != nxt:
+                # A hop that fails to land CONTRADICTS the recorded edge:
+                # void it, or the router re-picks the phantom forever (a
+                # blackout walk-back minted 20,0 --south--> ROUTE_5 and
+                # fifteen straight route walks died on it).
+                frm = self._where(pre)
+                rec = (self.explored.get(frm) or {}).get(key)
+                if rec and rec.get("to") == nxt:
+                    del self.explored[frm][key]
+                    self.log("edge_voided", frm=frm, via=key, to=nxt)
                 self.log("route_walk_lost", subgoal=sg["id"], wanted=nxt,
                          got=self._where(o))
                 return self._where(o)
