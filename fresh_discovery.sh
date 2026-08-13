@@ -86,6 +86,16 @@ for leg in "${LEGS[@]}"; do
   cont=0; [ "$i" -gt 1 ] && cont=1
   if ! env RED_HEADED="${RED_HEADED:-1}" RED_SPEED="${RED_SPEED:-200}" \
       RED_CONTINUE=$cont ./campaign.sh "$ATTEMPTS" "$plan" -- --escalate; then
+    # A leg can exhaust its attempts long after its aim was achieved (the
+    # fossil leg failed three rewrites HOLDING the fossil). Whether the
+    # objective is in fact done is the model's judgment to make; the chain
+    # only asks, and only moves on if the answer is yes.
+    if python planner/author.py --check-done --goal "$goal" \
+        --start "$(python planner/state_text.py)" --model "$MODEL"; then
+      echo "=== leg $i/${#LEGS[@]} judged already accomplished: $leg ==="
+      echo "$i" > "$PROGRESS"
+      continue
+    fi
     echo "=== chain stopped at leg $i/${#LEGS[@]}: $leg ===" >&2
     exit 1
   fi

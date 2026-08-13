@@ -112,6 +112,10 @@ def met(plan_path):
         return last["map"] == cur
     if "flag" in last:
         return last["flag"] in (obs.get("flags") or [])
+    if "has_item" in last and isinstance(last["has_item"], dict):
+        bag = obs.get("bag") or {}
+        return all((bag.get(k) or 0) >= v
+                   for k, v in last["has_item"].items())
     return False
 import os
 for p in sys.argv[2:]:
@@ -140,6 +144,9 @@ elif "map" in last:
     ok = last["map"] == (obs.get("map") or {}).get("id")
 elif "flag" in last:
     ok = bool((obs.get("flags") or {}).get(last["flag"]))
+elif "has_item" in last and isinstance(last["has_item"], dict):
+    bag = obs.get("bag") or {}
+    ok = all((bag.get(k) or 0) >= v for k, v in last["has_item"].items())
 sys.exit(0 if ok else 1)
 PY
   then

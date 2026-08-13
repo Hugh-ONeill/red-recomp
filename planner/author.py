@@ -1184,13 +1184,47 @@ def _outline_review(goal: str, legs: list, model: str) -> list | None:
     return out
 
 
+CHECKDONE_SYS = """You are judging whether a Pokemon Red objective is
+ALREADY accomplished, going by where the run now stands. Trust what is in
+hand and what has happened over what the wording seems to ask for next —
+an objective is about its outcome, not about ceremony after the outcome.
+Reply with ONLY {"done": true} or {"done": false}."""
+
+
+def check_done(goal: str, start: str, model: str) -> bool:
+    """The model judges whether a failed leg's objective is already met.
+
+    A leg can fail on a subgoal long after its aim is achieved: the fossil
+    leg walked out of Mt Moon HOLDING the fossil and then failed three
+    rewrites trying to condition on reviving it. No mechanical check can
+    know that "Retrieve the MT Moon fossil" is satisfied by HELIX_FOSSIL
+    x1 in the bag — which fact means which objective is exactly the
+    judgment this project leaves to the model. The harness only asks, and
+    only applies the answer.
+    """
+    reply = brock_probe.chat(
+        [{"role": "system", "content": CHECKDONE_SYS},
+         {"role": "user", "content": f"THE OBJECTIVE: {goal}\n\n"
+          f"WHERE THE RUN STANDS: {start}"}], model)
+    m = re.search(r"\{.*\}", reply, re.S)
+    if not m:
+        return False
+    try:
+        return bool(json.loads(m.group(0)).get("done"))
+    except (ValueError, AttributeError):
+        return False
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--goal", required=True)
-    ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--outline", action="store_true",
                     help="write the model's own list of objectives instead "
                          "of a subgoal plan (one line per leg)")
+    ap.add_argument("--check-done", action="store_true",
+                    help="ask the model whether --goal is already "
+                         "accomplished at --start; exit 0 yes, 3 no")
     ap.add_argument("--draws", type=int, default=3,
                     help="outline drafts to take before the model composes "
                          "the final list from them (default 3)")
@@ -1206,6 +1240,13 @@ def main():
                     help="executor_log.jsonl: what actually happened last "
                          "run (money, wipes, failed steps) for the audit")
     args = ap.parse_args()
+    if args.check_done:
+        done = check_done(args.goal, args.start or "a brand new game",
+                          args.model)
+        print("DONE" if done else "NOT_DONE")
+        sys.exit(0 if done else 3)
+    if args.out is None:
+        ap.error("--out is required except with --check-done")
     if args.outline:
         legs = outline(args.goal, args.model, draws=args.draws)
         if not legs:
