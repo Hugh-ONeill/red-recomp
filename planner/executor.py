@@ -509,6 +509,22 @@ class Executor:
                        if not (self.explored.get(r)
                                or self.visits.get(r))]:
                 del self.frontier[_r]
+            # REPAIR ROADS AN OLD PROOF STRUCK OUT. Ledgers written before
+            # the rule changed still hide printed connections (ROUTE_9
+            # east — the only road to Rock Tunnel and everything beyond —
+            # was missing while 28 western regions held untried exits), and
+            # the entry can only be rewritten by STANDING there, which the
+            # run will never choose to do while the exit is hidden. Repair
+            # at load so the fix is not hostage to the bug.
+            for _r, _ex in list(self.frontier.items()):
+                _real = MAP_EDGES.get(_r.split("|")[0]) or {}
+                _add = [d for d in _real
+                        if d in (self._no_cross.get(_r) or set())
+                        and d not in _ex]
+                if _add:
+                    self.frontier[_r] = sorted(set(list(_ex) + _add))
+                    self.log("frontier_road_restored", region=_r,
+                             dirs=_add)
             self._rebuild_area_aliases()
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
