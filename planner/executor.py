@@ -1111,7 +1111,10 @@ class Executor:
         # escort marched AWAY from the frontier that mattered. Fresh ground
         # is where new ground is; distance only breaks ties.
         tgt = self._target_key(sg)
-        want_map = tgt.split(":", 1)[1] if tgt.startswith("map:") else None
+        # area: targets steer the same as map: — the region suffix is
+        # dropped, the MAP is the compass
+        want_map = (tgt.split(":", 1)[1].split("|")[0]
+                    if tgt.startswith(("map:", "area:")) else None)
         best = None
         for region, exits in self.frontier.items():
             if region == here:
@@ -3192,8 +3195,9 @@ Reply with ONLY a JSON array of ops, e.g.
                 if untried and (cur or {}).get("mode") == "overworld":
                     # goal-ward edge first, same rule as the reroute rank
                     tgt_k = self._target_key(sg)
-                    want_m = (tgt_k.split(":", 1)[1]
-                              if tgt_k.startswith("map:") else None)
+                    want_m = (tgt_k.split(":", 1)[1].split("|")[0]
+                              if tgt_k.startswith(("map:", "area:"))
+                              else None)
                     key = None
                     if want_m:
                         redges = (self.atlas.get(
