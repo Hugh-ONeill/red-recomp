@@ -523,8 +523,9 @@ class Executor:
                         and d not in _ex]
                 if _add:
                     self.frontier[_r] = sorted(set(list(_ex) + _add))
-                    self.log("frontier_road_restored", region=_r,
-                             dirs=_add)
+                    # NOT self.log: _load_memory runs before logf opens
+                    print(f"[memory] restored printed road(s) "
+                          f"{','.join(_add)} in {_r}")
             self._rebuild_area_aliases()
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
