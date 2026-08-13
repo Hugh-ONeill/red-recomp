@@ -785,6 +785,12 @@ several into one and skipped the errands between the badges — unfold them.
 Reply with ONLY a JSON array of strings."""
 
 
+# Doubts the outline passes record about their own product, persisted next
+# to outline.txt so the leg author sees them when that leg comes up. The
+# note is the model's own words fed back to itself — not our knowledge.
+OUTLINE_NOTES = []
+
+
 def _outline_draw(goal: str, model: str, rounds: int = 3) -> list | None:
     for _ in range(rounds):
         reply = brock_probe.chat(
@@ -820,6 +826,7 @@ def outline(goal: str, model: str, rounds: int = 3,
     objectives one day and none the next — so we take several and let the
     model compose the final list from its own drafts (_outline_merge).
     """
+    OUTLINE_NOTES.clear()
     drafts = []
     for i in range(draws):
         d = _outline_draw(goal, model, rounds)
@@ -987,6 +994,9 @@ def _merge_confirm(goal: str, out: list, doubts: list, ndrafts: int,
     for c, d in zip(letters, doubts):
         if c not in restored:
             print(f"[outline] left out on purpose: {d!r}")
+            OUTLINE_NOTES.append(
+                (d, f"left out on purpose when composing the outline, "
+                    f"though {seen[d.lower()]} of {ndrafts} drafts had it"))
     return result
 
 
@@ -1086,6 +1096,8 @@ def _outline_review(goal: str, legs: list, model: str) -> list | None:
             why = s.get("why") or ""
             print(f"[outline] doubted, kept: {legs[i]!r}"
                   + (f" — {why}" if why else ""))
+            OUTLINE_NOTES.append(
+                (legs[i], why or "doubted at outline time"))
     order = list(range(n))
     if edges:
         order, remaining = [], list(range(n))
@@ -1155,6 +1167,15 @@ def main():
         if not legs:
             sys.exit("author failed to produce an outline")
         args.out.write_text("\n".join(legs) + "\n")
+        notes = args.out.with_suffix(".notes")
+        if OUTLINE_NOTES:
+            notes.write_text("".join(
+                f"{leg}\t{' '.join(note.split())}\n"
+                for leg, note in OUTLINE_NOTES))
+            print(f"wrote {notes} ({len(OUTLINE_NOTES)} notes)")
+        else:
+            # a stale sidecar must never attach old doubts to a new outline
+            notes.unlink(missing_ok=True)
         print(f"wrote {args.out} ({len(legs)} objectives)")
         for i, l in enumerate(legs, 1):
             print(f"  {i}. {l}")
