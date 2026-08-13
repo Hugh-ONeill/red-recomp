@@ -3543,6 +3543,20 @@ Reply with ONLY a JSON array of ops, e.g.
                          ((cur.get("map") or {}).get("objects") or [])
                          if o.get("reachable") and o.get("name")
                          and o.get("name") not in touched]
+                # A FLAG hunt re-asks the PEOPLE. `touched` is a lifetime
+                # ledger, so the captain read as spent and the run stood
+                # in his cabin and walked out — but people repeat their
+                # offers when the world changes (the freed bag slot), so
+                # for a flag target every reachable person joins the
+                # sweep once per attempt.
+                if self._target_key(sg).startswith("flag:"):
+                    loose += [o.get("name") for o in
+                              ((cur.get("map") or {}).get("objects") or [])
+                              if o.get("kind") in ("npc", "trainer")
+                              and o.get("reachable") and o.get("name")
+                              and o.get("name") in touched
+                              and o.get("name") not in self._retalked
+                              and not self._retalked.add(o.get("name"))]
                 if loose:
                     self.log("room_sweep", subgoal=sg["id"], region=here_s,
                              objects=loose[:8])
