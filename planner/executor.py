@@ -1208,6 +1208,40 @@ class Executor:
                         f"the near door and out the other side.")
         return out
 
+    def _walk_route(self, sg, path):
+        """Replay a fully-walked route hop by hop (the escort's pattern):
+        send the edge, settle, fight through interruptions, record the
+        transition. Returns where the walk ended."""
+        o = None
+        for key, nxt in path:
+            for _ in range(4):
+                pre = self.b.obs()
+                if "," in key:
+                    x, y = key.split(",")
+                    self._send_safe("use_warp", x=int(x), y=int(y))
+                    step = {"x": int(x), "y": int(y)}
+                else:
+                    self._send_safe("cross", dir=key)
+                    step = {"dir": key}
+                o = self.settle()
+                if o and pre and ((pre.get("map") or {}).get("id")
+                                  != (o.get("map") or {}).get("id")):
+                    self.note_transition(pre, step, o)
+                fought = False
+                while o and o.get("mode") == "battle":
+                    o = self.handle_battle(sg, o)
+                    o = self.settle()
+                    fought = True
+                if self._where(o) == nxt or not fought:
+                    break
+            if self._where(o) != nxt:
+                self.log("route_walk_lost", subgoal=sg["id"], wanted=nxt,
+                         got=self._where(o))
+                return self._where(o)
+        self.log("route_walked", subgoal=sg["id"], to=self._where(o),
+                 hops=len(path))
+        return self._where(o)
+
     def _fought_at(self, tgt: str, obs, step, dest_map: str) -> bool:
         """Did a fight happen in the REGION this exit leads to?
 
@@ -2982,15 +3016,20 @@ Reply with ONLY a JSON array of ops, e.g.
                             if p and (routed is None or len(p) < len(routed)):
                                 routed = p
                 if (objs or seam) and routed:
-                    first_key, first_dest = routed[0]
-                    leg = (f"walk {first_key}" if not first_key[0].isdigit()
-                           else f"the door at ({first_key})")
+                    # EXECUTE the route, never merely advise it. The
+                    # advice version was watched live: the run stood in
+                    # the fence house with the route computed, was told
+                    # "keep moving", proposed cross(south) from the wrong
+                    # side again, and left by the door it came in.
+                    # Walking edges the run itself walked before is
+                    # replay, not decision.
+                    walked_to = self._walk_route(sg, routed)
                     trace.append(
-                        f"Nothing in THIS room serves the goal — but the "
-                        f"goal is to GET SOMEWHERE, and the walked route "
-                        f"still exists: take {leg} to {first_dest} "
-                        f"({len(routed)} leg(s) to go). Keep moving; do "
-                        f"not search this room.")
+                        f"Nothing in THIS room serves the goal, so the "
+                        f"walked route toward {tk} was taken "
+                        f"({len(routed)} leg(s)): now at "
+                        f"{walked_to or 'an unexpected stop'} — continue "
+                        f"from here.")
                 elif objs or seam:
                     self.log("target_unreachable", subgoal=sg["id"],
                              target=self._target_key(sg), region=here,
