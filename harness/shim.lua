@@ -187,6 +187,12 @@ end
 -- yes/no; carry the prompt into the observation so the choice has meaning.
 local warp_reach            -- assigned after DIRS/ledge_landing
 local recent_text = nil
+-- The LAST thing anybody said, kept after the box closes. recent_text is
+-- wiped the moment control returns, which is correct for "is a prompt open
+-- right now" and useless for learning: this game explains its own gates out
+-- loud ("I'm too sleepy to move", "you need the POKEDEX"), and every word
+-- of it was being dropped before the model could read it.
+local last_text = nil
 -- Oracle probe result (battle_probe), surfaced once in the next observation.
 local last_probe = nil
 
@@ -195,6 +201,7 @@ local function observe(G, seq, result)
   local o = { seq = seq, result = result, events = events, frame = U.frame() }
   events = {}
   if recent_text then o.recent_text = recent_text end
+  if last_text then o.last_text = last_text end
   if G.overworld and top == G.overworld then
     recent_text = nil          -- free roam: stale prompt no longer applies
     o.recent_text = nil
@@ -1969,7 +1976,10 @@ local function advance_to_decision(G, maxn)
       local sid = top and tostring(top.screenId or "") or ""
       if top and top.pages and top.pageIndex then
         local pg = top.pages[top.pageIndex]
-        if type(pg) == "table" then recent_text = table.concat(pg, " ") end
+        if type(pg) == "table" then
+          recent_text = table.concat(pg, " ")
+          if #recent_text > 0 then last_text = recent_text end
+        end
         U.tap(G, "a"); U.wait(2)                          -- plain text
       elseif top and (top.enemy or top.kind) then
         U.tap(G, "a"); U.wait(2)                          -- battle message text

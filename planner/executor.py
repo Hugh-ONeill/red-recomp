@@ -370,7 +370,9 @@ class Executor:
         self._fight_region: str | None = None   # where the last trainer fought
         self.flag_sites: dict = {}          # flag -> area it fired in
         self.shut_doors: dict = {}   # region -> doors seen but unreachable
+        self.hints: dict = {}        # region -> things people said here
         self._known_flags = None            # None until the first obs
+        self._last_said = ""                # dedupe repeated dialogue
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -449,6 +451,7 @@ class Executor:
                               (data.get("no_cross") or {}).items()}
             self.flag_sites = data.get("flag_sites") or {}
             self.shut_doors = data.get("shut_doors") or {}
+            self.hints = data.get("hints") or {}
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
             # reset before ever reaching 2 — the TOO-WEAK note was aimed at
@@ -484,6 +487,7 @@ class Executor:
                               for r, s in self._no_cross.items()},
                  "flag_sites": self.flag_sites,
                  "shut_doors": self.shut_doors,
+                 "hints": self.hints,
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead},
                 indent=1))
@@ -1341,6 +1345,17 @@ class Executor:
                             for k, d, who in shut[:4])
                 + ". A door does not move, so the person is what is shutting "
                 "it. Talk to them, then try the door.")
+        # WHAT YOU HAVE BEEN TOLD HERE. Grouped as hints and shown when the
+        # room is not yielding — the answer to "why can I not get past" is
+        # usually a sentence somebody already said out loud.
+        said_here = self.hints.get(here) or []
+        hint_line = ""
+        if said_here and self.visits.get(here, 0) >= 2:
+            hint_line = ("\nWHAT PEOPLE HERE HAVE TOLD YOU (their words, in "
+                         "the order you heard them — a gate in this game is "
+                         "usually explained out loud by whoever is standing "
+                         "at it):\n  "
+                         + "\n  ".join(said_here[-6:]))
         been = self.visits.get(here, 0)
         warned = ""
         # A ROOM YOU KEEP LOSING IN IS THE RIGHT ROOM. Coming back is the
@@ -1512,7 +1527,7 @@ class Executor:
                         + ". Go back to one and take it." + near_hint
                         + loot_line)
             return (warned + route_line + searched_line + shut_line
-                    + loot_line)
+                    + hint_line + loot_line)
         out = warned + "\nEXITS FROM HERE — "
         out += ("UNTRIED (prefer these, they are the only way to find "
                 f"anything new): {', '.join(untried)}. " if untried
@@ -1526,7 +1541,7 @@ class Executor:
             out += ("\nPlaces you have already been that still have ways "
                     "you have NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
                     + "." + near_hint)
-        out += route_line + searched_line + shut_line + loot_line
+        out += route_line + searched_line + shut_line + hint_line + loot_line
         return out
 
     def _atlas_text(self) -> str:
@@ -2201,6 +2216,23 @@ Reply with ONLY a JSON array of ops, e.g.
                              respawn=after[0], detected="state")
                     self.log("faint_marked", subgoal=sg["id"],
                              at=self._faint_at)
+            # WHAT PEOPLE SAID IS EVIDENCE. This game explains its own
+            # gates in dialogue — the guard who wants a drink, the man who
+            # is too sleepy to move — and the words were being dropped the
+            # instant the box closed. Keep them against the region so a
+            # later round, or a later attempt, can read why it is stuck.
+            said = ((obs or {}).get("last_text") or "").strip()
+            if said and said != self._last_said:
+                self._last_said = said
+                who = step.get("name") or op
+                reg = self._where(pre_obs)
+                if "None" not in reg and len(said) > 12:
+                    lst = self.hints.setdefault(reg, [])
+                    line = f"{who}: {said[:220]}"
+                    if line not in lst:
+                        lst.append(line)
+                        del lst[:-8]
+                        self._save_memory()
             note = f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
             # A DECLINED QUESTION IS NOT A TOUCH, however the state moved.
             # This retraction used to live in the "nothing changed" branch,

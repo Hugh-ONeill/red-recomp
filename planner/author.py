@@ -398,6 +398,13 @@ def observed_text(path: Path) -> str:
                 "thing you need):\n" + "\n".join(seen))
     fired = [f"  {f} fired in {region}"
              for f, region in sorted((d.get("flag_sites") or {}).items())]
+    hints = d.get("hints") or {}
+    if hints:
+        out += ("\n\nWHAT PEOPLE HAVE SAID, and where they said it. This "
+                "game explains its own gates out loud, so a sentence here is "
+                "often the reason a route did not work:\n"
+                + "\n".join(f"  in {r}:\n    " + "\n    ".join(v[-4:])
+                             for r, v in sorted(hints.items())))
     shut = d.get("shut_doors") or {}
     if shut:
         out += ("\n\nDOORS SEEN BUT NEVER OPENED (they exist on the map and "
