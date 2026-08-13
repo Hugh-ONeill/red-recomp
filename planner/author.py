@@ -193,6 +193,21 @@ ENGINE_FLAGS = _engine_names("engine_flags.txt")
 # may name any real item; validation only checks the string is real.
 ENGINE_ITEMS = _engine_names("engine_items.txt")
 
+# The bag SCREEN says "HM01", never "HM_CUT" — the model's spelling is the
+# game's own on-screen spelling, and five feedback rounds could not talk it
+# out of the name every player reads. Accept the screen's names; the
+# numbering is Gen 1 canon.
+ITEM_ALIASES = {"HM01": "HM_CUT", "HM02": "HM_FLY", "HM03": "HM_SURF",
+                "HM04": "HM_STRENGTH", "HM05": "HM_FLASH"}
+
+
+def normalize_items(plan: dict):
+    for s in plan.get("subgoals") or []:
+        dw = s.get("done_when")
+        if isinstance(dw, dict) and isinstance(dw.get("has_item"), dict):
+            dw["has_item"] = {ITEM_ALIASES.get(k, k): v
+                              for k, v in dw["has_item"].items()}
+
 BADGES = ["BOULDERBADGE", "CASCADEBADGE", "THUNDERBADGE",
           "RAINBOWBADGE", "SOULBADGE", "MARSHBADGE", "VOLCANOBADGE",
           "EARTHBADGE"]
@@ -346,6 +361,7 @@ def author(goal: str, model: str, rounds: int = 5,
             plan = json.loads(m.group(0))
         except json.JSONDecodeError as e:
             fb = f"invalid JSON: {e}"; continue
+        normalize_items(plan)
         probs = validate(plan)
         if not probs:
             # tag each subgoal so escalation/distillation runs it macro-less
@@ -793,6 +809,7 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
             revised = json.loads(m.group(0))
         except json.JSONDecodeError:
             continue
+        normalize_items(revised)
         probs = validate(revised)
         if probs:
             print(f"[review] round {rnd} produced an invalid plan, keeping "
