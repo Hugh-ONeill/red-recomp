@@ -920,26 +920,40 @@ class Executor:
                 self._faint_at = None
                 return None
             for key, nxt in path:
-                pre_hop = self.b.obs()
-                if "," in key:
-                    x, y = key.split(",")
-                    self.b.send("use_warp", x=int(x), y=int(y))
-                else:
-                    self.b.send("cross", dir=key)
-                o = self.settle()
-                if o and o.get("mode") == "battle":
-                    o = self.handle_battle(sg, o)
+                # A wild encounter EATS a hop: the walk stops where the
+                # battle started, and counting that as a mis-landing made
+                # every replan retry the same first hop into the same
+                # encounter rate until the four attempts were gone. The
+                # escort re-sends an eaten hop (46dba87); so does this now.
+                got = None
+                for _resend in range(4):
+                    pre_hop = self.b.obs()
+                    if "," in key:
+                        x, y = key.split(",")
+                        self.b.send("use_warp", x=int(x), y=int(y))
+                    else:
+                        self.b.send("cross", dir=key)
                     o = self.settle()
-                # the walk back is real walking: record the doors it used
-                if o and pre_hop and ((pre_hop.get("map") or {}).get("id")
-                                      != (o.get("map") or {}).get("id")):
-                    self.note_transition(
-                        pre_hop,
-                        {"x": int(key.split(",")[0]),
-                         "y": int(key.split(",")[1])} if "," in key
-                        else {"dir": key}, o)
-                total += 1
-                got = self._where(o)
+                    fought = False
+                    if o and o.get("mode") == "battle":
+                        fought = True
+                        o = self.handle_battle(sg, o)
+                        o = self.settle()
+                    # the walk back is real walking: record the doors used
+                    if o and pre_hop and ((pre_hop.get("map") or {}).get("id")
+                                          != (o.get("map") or {}).get("id")):
+                        self.note_transition(
+                            pre_hop,
+                            {"x": int(key.split(",")[0]),
+                             "y": int(key.split(",")[1])} if "," in key
+                            else {"dir": key}, o)
+                    total += 1
+                    got = self._where(o)
+                    if got == nxt or got in AREA_ALIASES.get(nxt, ()):
+                        break
+                    if fought and got == self._where(pre_hop):
+                        continue      # battle ate the hop: same room, retry
+                    break             # a real mis-landing: leave the loop
                 if got != nxt and got not in AREA_ALIASES.get(nxt, ()):
                     self.log("blackout_return_replan", subgoal=sg.get("id"),
                              wanted=nxt, got=got, attempt=attempt)
@@ -960,6 +974,12 @@ class Executor:
         what to do on arrival."""
         here = self._where(obs)
         cur_map = (obs.get("map") or {}).get("id")
+        # The walk-back OWNS the journey home. With a faint marker pending
+        # the escort stole the trip — dragged the party two hops into the
+        # mountain, the round then sat through a full inference mid-march,
+        # and the walk-back finally armed from the wrong room. Defer.
+        if self._faint_at:
+            return None
         # Never walk out of a room that is still doing something. A gym has
         # ONE door, so "no untried exits" is true there every time — without
         # these guards the router would drag the run out of the Brock fight
