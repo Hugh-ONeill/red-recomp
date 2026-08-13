@@ -1525,14 +1525,22 @@ function OPS.interact(G, c)
         elseif c.answer ~= nil then
           U.tap(G, "b"); U.wait(6)
         else
+          -- QUOTE THE QUESTION. Saying only that one was asked left the
+          -- model inferring what it had declined from whatever it touched,
+          -- and recent_text is cleared on return to free roam so the words
+          -- were gone by the next observation too. The text is on screen;
+          -- an honest choice needs to know what is being chosen.
+          local asked = recent_text
           U.tap(G, "b"); U.wait(6)
           for _ = 1, 30 do
             if G.stack:top() == ow then break end
             U.tap(G, "a"); U.wait(4)
           end
-          return true, "it asked a QUESTION and no answer was given — " ..
-                        "declined; interact again with answer=\"yes\" " ..
-                        "to accept"
+          return true, "it asked a QUESTION"
+                        .. (asked and (" — \"" .. asked .. "\"") or "")
+                        .. " and no answer was given, so it was DECLINED. "
+                        .. "Interact again with answer=\"yes\" to accept "
+                        .. "or answer=\"no\" to decline on purpose."
         end
       else
         U.tap(G, "a"); U.wait(4)
