@@ -762,10 +762,62 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
     return plan
 
 
+
+OUTLINE_SYS = """You are laying out a PLAYTHROUGH of Pokemon Red as an
+ordered list of OBJECTIVES. Each objective becomes its own plan, written
+later and played separately, so each one must be a thing that is either done
+or not done — a milestone you could tell someone you had reached.
+
+Write them as short phrases in the player's own terms. Do NOT number them,
+do not explain them, and do not write the steps inside them — the steps are
+authored later, from the objective alone.
+
+What counts as an objective is YOURS to decide. Badges are the obvious ones;
+they are not the only ones. Anything the game will not let you past until it
+is done, anything you must be given before somewhere opens, and anything you
+must do for somebody, are all objectives in their own right — a playthrough
+that lists only the badges is missing the reasons you were able to reach
+them.
+
+Reply with ONLY a JSON array of strings."""
+
+
+def outline(goal: str, model: str, rounds: int = 3) -> list | None:
+    """The MODEL decides what the legs are.
+
+    Handing it "win your first/second/third badge" is our decomposition of
+    the game, not its own, and it quietly rules out the objectives that are
+    not badges — deliver the parcel, help Bill, get the ticket, learn a
+    field move. Those are exactly the ones a run gets stuck behind, and a
+    leg it never names is a plan it never writes.
+    """
+    for _ in range(rounds):
+        reply = brock_probe.chat(
+            [{"role": "system", "content": OUTLINE_SYS},
+             {"role": "user", "content": f"THE GOAL: {goal}\n\n"
+              f"List the objectives, in the order you would do them."}],
+            model)
+        m = re.search(r"\[.*\]", reply, re.S)
+        if not m:
+            continue
+        try:
+            legs = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            continue
+        legs = [str(x).strip() for x in legs
+                if isinstance(x, (str, int, float)) and str(x).strip()]
+        if len(legs) >= 3:
+            return legs
+    return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--goal", required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--outline", action="store_true",
+                    help="write the model's own list of objectives instead "
+                         "of a subgoal plan (one line per leg)")
     ap.add_argument("--model", default="gemma4:26b-a4b-it-q4_K_M")
     ap.add_argument("--start", default=None,
                     help="starting-state description (default: new game)")
@@ -778,6 +830,15 @@ def main():
                     help="executor_log.jsonl: what actually happened last "
                          "run (money, wipes, failed steps) for the audit")
     args = ap.parse_args()
+    if args.outline:
+        legs = outline(args.goal, args.model)
+        if not legs:
+            sys.exit("author failed to produce an outline")
+        args.out.write_text("\n".join(legs) + "\n")
+        print(f"wrote {args.out} ({len(legs)} objectives)")
+        for i, l in enumerate(legs, 1):
+            print(f"  {i}. {l}")
+        return
     plan = author(args.goal, args.model, start=args.start)
     if not plan:
         sys.exit("author failed to produce a valid plan")
