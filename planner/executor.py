@@ -822,6 +822,26 @@ class Executor:
         self.log("explored", frm=src, via=str(key), to=dst, times=e["n"])
         self._save_memory()
 
+    def _unopened_doors(self, obs) -> list:
+        """Doors on this map never walked through, INCLUDING ones you cannot
+        reach right now.
+
+        A door you cannot currently path to is not a door you have tried —
+        and the reason is usually a person, not a wall. Cerulean certified
+        as fully worked with four doors unopened because a policeman stands
+        on the approach tile of one of them, so every unreachable warp was
+        skipped by _untried_exits and the room looked finished. The model
+        was then told nothing was left in the city and toured the houses it
+        had already cleared. People move; doors do not.
+        """
+        taken = self.explored.get(self._where(obs), {}) or {}
+        out = []
+        for w in (((obs or {}).get("map") or {}).get("warps") or []):
+            k = f"{w.get('x')},{w.get('y')}"
+            if k not in taken:
+                out.append((k, w.get("dest"), bool(w.get("reachable"))))
+        return out
+
     def _untried_exits(self, obs) -> list:
         """Ways out of here never taken — doors and roads alike. Map edges
         count: a town's road out is the exit an event most often hides on."""
@@ -1277,6 +1297,21 @@ class Executor:
             searched_line = ("\nAlready fully worked (walk through if you "
                              "must, but nothing is left to find in them): "
                              + ", ".join(sorted(done_rooms)[:5]) + ".")
+        # DOORS YOU HAVE NEVER OPENED AND CANNOT REACH RIGHT NOW. The exits
+        # list above only offers warps you can currently walk to, so a door
+        # with someone standing on its approach silently vanishes from the
+        # model's options — and the one place it needed to go stopped being
+        # mentioned at all. Say it, and say why it might be shut.
+        shut = [(k, d) for k, d, ok in self._unopened_doors(obs) if not ok]
+        shut_line = ""
+        if shut:
+            shut_line = (
+                "\nDOORS HERE YOU HAVE NEVER OPENED but cannot walk to from "
+                "where you stand: "
+                + ", ".join(f"({k})->{d}" for k, d in shut[:6])
+                + ". A door does not move, so something is in the way — "
+                "often a PERSON, and people step aside once you talk to "
+                "them. Interact with whoever is near it, then try the door.")
         been = self.visits.get(here, 0)
         warned = ""
         # A ROOM YOU KEEP LOSING IN IS THE RIGHT ROOM. Coming back is the
@@ -1433,7 +1468,8 @@ class Executor:
                         "NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
                         + ". Go back to one and take it." + near_hint
                         + loot_line)
-            return warned + route_line + searched_line + loot_line
+            return (warned + route_line + searched_line + shut_line
+                    + loot_line)
         out = warned + "\nEXITS FROM HERE — "
         out += ("UNTRIED (prefer these, they are the only way to find "
                 f"anything new): {', '.join(untried)}. " if untried
@@ -1447,7 +1483,7 @@ class Executor:
             out += ("\nPlaces you have already been that still have ways "
                     "you have NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
                     + "." + near_hint)
-        out += route_line + searched_line + loot_line
+        out += route_line + searched_line + shut_line + loot_line
         return out
 
     def _atlas_text(self) -> str:
@@ -2655,7 +2691,8 @@ Reply with ONLY a JSON array of ops, e.g.
                     f"picking an item up or moving it can open a way that is "
                     f"shut. Interact with all of them before leaving.")
             elif cur and (unreachable
-                          or (not self._untried_exits(cur) and not live)):
+                          or (not self._untried_exits(cur) and not live
+                              and not self._unopened_doors(cur))):
                 # entry condition covers BOTH shapes: a reachability failure,
                 # or a room that is simply finished (no untried exit, nothing
                 # untouched). The latter produces no failure trace at all,
@@ -2703,7 +2740,8 @@ Reply with ONLY a JSON array of ops, e.g.
                 # blackout rather than the room.
                 if self._faint_at:
                     pass
-                elif not self._untried_exits(cur) and not live:
+                elif (not self._untried_exits(cur) and not live
+                      and not self._unopened_doors(cur)):
                     # SEARCHED, not sealed. Every exit taken and everything
                     # touched proves the target is not IN this room — it does
                     # NOT prove the target is unreachable THROUGH it. Marking
