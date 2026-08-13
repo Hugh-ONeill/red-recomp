@@ -3597,19 +3597,24 @@ def bootstrap(b: Bridge, cont: bool = False):
         r = (b.send("new_game") or {}).get("result") or {}
         if not r.get("ok"):
             raise RuntimeError(f"new game failed: {r.get('detail')}")
-    # Mash A to get through the title/info box, but CHECK AFTER SETTLING and
-    # back out of anything A opened by accident. A save inside a Pokemon
-    # Center resumes standing at the nurse, so a blind 30-press burst talks
-    # to her (the log even shows "saved game") and the mode at check time is
-    # dialog, never overworld — every --continue attempt died here with
-    # "bootstrap failed" before playing a single step.
-    for i in range(12):
-        o = b.send("mash_a", times=6) or {}
-        mode = o.get("mode")
-        if mode == "overworld":
+    # Mash A through the title/info box, then STOP: a save resumes exactly
+    # where it was written, and if that spot faces an NPC every further A
+    # talks to them. The Pokemon Center save died on the nurse this way;
+    # the mart save died deeper — six A's per round opened the SHOP MENU
+    # and dug into it faster than the one B per round could close it, so
+    # every --continue crashed on a restored ShopMenu without playing a
+    # step. Two A-rounds clear the ceremony; after that B is the workhorse
+    # (cancel menus, close text) with a rare A to advance anything only A
+    # can, at odds B always wins.
+    for i in range(24):
+        if i < 2:
+            o = b.send("mash_a", times=6) or {}
+        elif i % 6 == 5:
+            o = b.send("mash_a", times=2) or {}
+        else:
+            o = b.send("tap", btn="b") or {}
+        if (o or {}).get("mode") == "overworld":
             return
-        if mode in ("ui", "dialog") and i >= 3:
-            b.send("tap", btn="b")          # close what A opened
         o = b.obs() or {}
         if o.get("mode") == "overworld":
             return
