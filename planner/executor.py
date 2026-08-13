@@ -390,6 +390,26 @@ class Executor:
         # leg routing uses seen geography instead of its shaky world prior
         # (brock9: it kept hunting for Pallet WEST of Viridian, on ROUTE_22).
         self.atlas: dict = {}
+        # How often each subgoal id has ALREADY failed, read from the
+        # persisted journal: the cross-attempt rap sheet that shrinks a
+        # repeat offender's escalation budget.
+        self._prior_subgoal_fails: dict = {}
+        try:
+            for line in (RUN / "executor_log.jsonl").read_text() \
+                    .splitlines():
+                if ('"subgoal_failed"' in line
+                        or '"subgoal_failed_continuing"' in line
+                        or '"plan_failed_at"' in line):
+                    try:
+                        d = json.loads(line)
+                    except ValueError:
+                        continue
+                    sid = d.get("subgoal")
+                    if sid:
+                        self._prior_subgoal_fails[sid] = \
+                            self._prior_subgoal_fails.get(sid, 0) + 1
+        except OSError:
+            pass
         self.logf = open(RUN / "executor_log.jsonl", "a")
         self.t0 = time.time()
 
@@ -2721,6 +2741,17 @@ Reply with ONLY a JSON array of ops, e.g.
         goal = sg.get("goal_text", sg["id"])
         done = sg.get("done_when")
         rounds = sg.get("escalation_rounds", 4)
+        # A REPEAT OFFENDER earns a shorter leash. The rap sheet used to
+        # reset every attempt: go_to_route_3 burned 167 journal entries on
+        # its THIRD identical failure while the untested subgoals at the
+        # plan's tail never ran at all. A subgoal id that already failed
+        # in earlier attempts keeps at least one round (the world may have
+        # changed) but never again a full budget.
+        prior_fails = self._prior_subgoal_fails.get(sg["id"], 0)
+        if prior_fails:
+            rounds = max(1, rounds - prior_fails)
+            print(f"   (failed {prior_fails}x in earlier attempts — "
+                  f"budget {rounds} round(s))")
         # An EVENT GATE is load-bearing: failing it now ENDS the plan (a
         # missed event cannot be walked past), so giving it the same budget
         # as a trivial map hop meant whole attempts died in ~60s on the one
