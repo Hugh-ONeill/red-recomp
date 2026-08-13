@@ -324,12 +324,18 @@ def validate(plan: dict) -> list:
     return probs
 
 
-def author(goal: str, model: str, rounds: int = 3,
+def author(goal: str, model: str, rounds: int = 5,
            start: str | None = None) -> dict | None:
+    # 5 rounds, not 3: with correct suggestions in the feedback the author
+    # still re-minted a DIFFERENT wrong id each round (HM01 -> flag guess
+    # -> HM01 again) and three rounds died before the oscillation settled.
     fb = ""
     for rnd in range(1, rounds + 1):
-        user = build_prompt(goal, start) + (f"\n\nFIX THESE PROBLEMS from your last "
-                                     f"attempt:\n{fb}" if fb else "")
+        user = build_prompt(goal, start) + (
+            f"\n\nFIX THESE PROBLEMS from your last attempt — where a "
+            f"problem offers a 'did you mean' suggestion, use that exact "
+            f"id verbatim, and change NOTHING else about your plan:\n{fb}"
+            if fb else "")
         reply = brock_probe.chat(
             [{"role": "system", "content": SYS},
              {"role": "user", "content": user}], model)
