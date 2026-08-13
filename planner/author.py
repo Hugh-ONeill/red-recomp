@@ -782,15 +782,7 @@ them.
 Reply with ONLY a JSON array of strings."""
 
 
-def outline(goal: str, model: str, rounds: int = 3) -> list | None:
-    """The MODEL decides what the legs are.
-
-    Handing it "win your first/second/third badge" is our decomposition of
-    the game, not its own, and it quietly rules out the objectives that are
-    not badges — deliver the parcel, help Bill, get the ticket, learn a
-    field move. Those are exactly the ones a run gets stuck behind, and a
-    leg it never names is a plan it never writes.
-    """
+def _outline_draw(goal: str, model: str, rounds: int = 3) -> list | None:
     for _ in range(rounds):
         reply = brock_probe.chat(
             [{"role": "system", "content": OUTLINE_SYS},
@@ -807,8 +799,113 @@ def outline(goal: str, model: str, rounds: int = 3) -> list | None:
         legs = [str(x).strip() for x in legs
                 if isinstance(x, (str, int, float)) and str(x).strip()]
         if len(legs) >= 3:
-            return _outline_review(goal, legs, model) or legs
+            return legs
     return None
+
+
+def outline(goal: str, model: str, rounds: int = 3,
+            draws: int = 3) -> list | None:
+    """The MODEL decides what the legs are.
+
+    Handing it "win your first/second/third badge" is our decomposition of
+    the game, not its own, and it quietly rules out the objectives that are
+    not badges — deliver the parcel, help Bill, get the ticket, learn a
+    field move. Those are exactly the ones a run gets stuck behind, and a
+    leg it never names is a plan it never writes.
+
+    One draw is high-variance — the same prompt gave nine non-badge
+    objectives one day and none the next — so we take several and let the
+    model compose the final list from its own drafts (_outline_merge).
+    """
+    drafts = []
+    for i in range(draws):
+        d = _outline_draw(goal, model, rounds)
+        if d:
+            print(f"[outline] draft {len(drafts) + 1}: {len(d)} objectives")
+            drafts.append(d)
+    if not drafts:
+        return None
+    if len(drafts) == 1:
+        legs = drafts[0]
+    else:
+        legs = _outline_merge(goal, drafts, model)
+        if not legs:
+            print("[outline] merge unusable, keeping draft 1")
+            legs = drafts[0]
+    return _outline_review(goal, legs, model) or legs
+
+
+OUTLINE_MERGE_SYS = """You wrote several drafts of a Pokemon Red
+playthrough outline, in separate sittings. Different sittings remembered
+different things; no single draft is the whole of what you know.
+
+Below is every objective from every draft, numbered, with how many drafts
+it appeared in. Compose the final outline by CHOOSING from that list —
+reply with ONLY a JSON array of numbers, in the order the objectives
+should be played.
+
+Keep what you believe, whichever draft it came from. Something only one
+draft remembered can still be the thing the game will not let you past —
+count is how often you said it, not how true it is. Leave out what names
+the same thing twice, and what you no longer believe."""
+
+
+def _outline_merge(goal: str, drafts: list, model: str) -> list | None:
+    """The model composes the final outline from its own drafts.
+
+    Choose-only, same hands-tying as _outline_review: the reply is a list
+    of menu numbers, mapped back to verbatim draft text by the harness, so
+    the merge can select and order but never invent or reword. The
+    review's insertion channel, which runs after this, stays the only way
+    anything new enters — and it logs.
+    """
+    menu, seen = [], {}
+    for d in drafts:
+        for leg in d:
+            k = leg.lower()
+            if k in seen:
+                seen[k] += 1
+            else:
+                seen[k] = 1
+                menu.append(leg)
+    lines = "\n".join(
+        f"  {i}. {leg}   (in {seen[leg.lower()]} of {len(drafts)} drafts)"
+        for i, leg in enumerate(menu, 1))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": OUTLINE_MERGE_SYS},
+             {"role": "user", "content": f"THE GOAL: {goal}\n\n"
+              f"EVERY OBJECTIVE YOU WROTE:\n{lines}"}],
+            model)
+        m = re.search(r"\[.*\]", reply, re.S)
+        if not m:
+            return None
+        picks = json.loads(m.group(0))
+    except (ValueError, KeyError, OSError):
+        return None
+    by_text = {leg.lower(): leg for leg in menu}
+    out = []
+    for p in picks:
+        leg = None
+        if isinstance(p, str) and p.strip().isdigit():
+            p = int(p)
+        if isinstance(p, (int, float)) and 1 <= int(p) <= len(menu):
+            leg = menu[int(p) - 1]
+        elif isinstance(p, str):
+            leg = by_text.get(p.strip().lower())
+            if leg is None:
+                print(f"[outline] merge pick not on the menu, "
+                      f"dropped: {p.strip()!r}")
+        if leg and leg not in out:
+            out.append(leg)
+    if len(out) < 3:
+        return None
+    dropped = [leg for leg in menu if leg not in out]
+    print(f"[outline] merged {len(drafts)} drafts: "
+          f"{len(menu)} distinct -> kept {len(out)}")
+    for leg in dropped:
+        print(f"[outline]   left out: {leg!r}")
+    return out
 
 
 OUTLINE_REVIEW_SYS = """You are checking the ORDER of a Pokemon Red
@@ -956,6 +1053,9 @@ def main():
     ap.add_argument("--outline", action="store_true",
                     help="write the model's own list of objectives instead "
                          "of a subgoal plan (one line per leg)")
+    ap.add_argument("--draws", type=int, default=3,
+                    help="outline drafts to take before the model composes "
+                         "the final list from them (default 3)")
     ap.add_argument("--model", default="gemma4:26b-a4b-it-q4_K_M")
     ap.add_argument("--start", default=None,
                     help="starting-state description (default: new game)")
@@ -969,7 +1069,7 @@ def main():
                          "run (money, wipes, failed steps) for the audit")
     args = ap.parse_args()
     if args.outline:
-        legs = outline(args.goal, args.model)
+        legs = outline(args.goal, args.model, draws=args.draws)
         if not legs:
             sys.exit("author failed to produce an outline")
         args.out.write_text("\n".join(legs) + "\n")
