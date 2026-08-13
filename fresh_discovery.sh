@@ -55,13 +55,18 @@ else
       --out plans/outline.txt --model "$MODEL"
 fi
 
-mapfile -t LEGS < plans/outline.txt
-echo "=== outline: ${#LEGS[@]} legs, starting at leg $((done_legs + 1)) ==="
-
-i=0
-for leg in "${LEGS[@]}"; do
-  i=$((i + 1))
-  [ "$i" -le "$done_legs" ] && continue
+# The outline is re-read EVERY iteration: a stuck leg may pull a later
+# leg forward (the model reordering its own outline on play evidence), and
+# the loop must see the new order at once.
+while :; do
+  mapfile -t LEGS < plans/outline.txt
+  done_legs=$(cat "$PROGRESS" 2>/dev/null || echo 0)
+  i=$((done_legs + 1))
+  if [ "$i" -gt "${#LEGS[@]}" ]; then
+    echo "=== OUTLINE CHAIN COMPLETE: all ${#LEGS[@]} legs ==="
+    exit 0
+  fi
+  leg="${LEGS[$((i - 1))]}"
   plan=$(printf 'plans/leg_%02d.json' "$i")
 
   # the outline's own doubt about this leg rides along in the goal string
@@ -96,11 +101,38 @@ for leg in "${LEGS[@]}"; do
       echo "$i" > "$PROGRESS"
       continue
     fi
+    # Or the leg is stuck because a LATER leg of the model's own outline
+    # has to happen first (Surge's gym behind a CUT bush, with "Obtain
+    # the HM for Cut" two legs later). The model names the blocking leg
+    # and the harness pulls it forward — choose-only, bounded.
+    if [ "$(cat run/outline_reorders 2>/dev/null | wc -l)" -lt 8 ] \
+        && blocker=$(python planner/author.py --check-blocker \
+            --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
+            --start "$(python planner/state_text.py)" \
+            --journal run/executor_log.jsonl --model "$MODEL"); then
+      echo "=== leg $i stuck behind leg $blocker: pulling it forward ==="
+      python - "$i" "$blocker" <<'PY'
+import sys
+i, b = int(sys.argv[1]), int(sys.argv[2])
+lines = [l for l in open('plans/outline.txt').read().splitlines()
+         if l.strip()]
+mv = lines.pop(b - 1)
+lines.insert(i - 1, mv)
+open('plans/outline.txt', 'w').write('\n'.join(lines) + '\n')
+print('pulled forward:', mv)
+PY
+      echo "$i<-$blocker" >> run/outline_reorders
+      n=$i
+      while [ "$n" -le "${#LEGS[@]}" ]; do
+        rm -f "$(printf 'plans/leg_%02d' "$n")".json \
+              "$(printf 'plans/leg_%02d' "$n")".v*.json
+        n=$((n + 1))
+      done
+      continue
+    fi
     echo "=== chain stopped at leg $i/${#LEGS[@]}: $leg ===" >&2
     exit 1
   fi
   echo "$i" > "$PROGRESS"
   echo "=== leg $i/${#LEGS[@]} complete: $leg ==="
 done
-
-echo "=== OUTLINE CHAIN COMPLETE: all ${#LEGS[@]} legs ==="
