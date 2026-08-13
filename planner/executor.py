@@ -1774,8 +1774,17 @@ never produce an encounter),
 {"op":"buy","item":"POTION","count":N} (own N total of the item, buying
 the difference from THIS map's mart clerk — it talks to the clerk ITSELF,
 no interact needed first; obs.money is your budget),
-{"op":"use_item","item":"POTION"} (use a bag item on your lead in the
-field), {"op":"wait"}. Battles are auto-handled.
+{"op":"use_item","item":"POTION","slot":N} (use a bag item on party slot
+N, lead if omitted — this is ALSO how a TM or HM is TAUGHT: the item
+boots and the chosen slot learns the move. A mon that already knows four
+moves needs {"op":"use_item","item":"TM_...","slot":N,"forget":"MOVE"}
+naming which of ITS OWN four moves to write over — the choice is yours,
+made from its move list in obs.party; with no forget the teach is
+abandoned and the reply lists the moves),
+{"op":"field_move","move":"CUT","x":N,"y":N} (use a field move a party
+member KNOWS at the named tile — kind:"cut_tree" objects are the bushes
+CUT clears; a fence with a bush in it is a door once you have CUT),
+{"op":"wait"}. Battles are auto-handled.
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
 and MAY BE IMPERFECT — if it names a target that isn't in obs.map.objects /

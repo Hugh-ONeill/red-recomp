@@ -391,6 +391,32 @@ local function observe(G, seq, result)
         reachable = adjacent_reachable(f.x, f.y),
       }
     end
+    -- CUT TREES are drawn bushes — the most on-screen thing there is —
+    -- and the only way through several fences (Vermilion Gym's door
+    -- among them). Listed so the model can aim field_move at one.
+    do
+      local lm = G.overworld and G.overworld.map
+      local swaps = (G.data and G.data.field
+                     and G.data.field.cutTreeSwaps) or {}
+      local trees = {}
+      for _, sw in ipairs(swaps) do trees[sw.before] = true end
+      -- lm.widthCells directly: map_dims_cells is declared further down
+      -- the file and is nil inside observe (the DIRS scoping trap again)
+      if lm and lm.cellTile and next(trees) then
+        local w = lm.widthCells or 0
+        local h = lm.heightCells or 0
+        for cy = 0, math.min(h - 1, 71) do
+          for cx = 0, math.min(w - 1, 71) do
+            if trees[lm:cellTile(cx, cy)] then
+              o.map.objects[#o.map.objects + 1] = {
+                x = cx, y = cy, kind = "cut_tree", name = "CUT_TREE",
+                reachable = adjacent_reachable(cx, cy),
+              }
+            end
+          end
+        end
+      end
+    end
   elseif top and (top.enemy or top.kind) then
     o.mode = "battle"
     o.battle = scalars(top, 0)
@@ -1359,6 +1385,95 @@ function OPS.use_item(G, c)
     return false, "the teach did not go through"
   end
   return true, "used " .. c.item
+end
+
+-- Use a FIELD MOVE (CUT and kin) at a target tile: stand orthogonally
+-- adjacent to (x,y) facing it, then drive START -> POKeMON -> the mon
+-- that knows the move -> the move in its submenu. WHICH party member
+-- knows it is a party-list fact (mechanics); WHETHER and WHERE to use it
+-- was the model's decision when it named the tile.
+function OPS.field_move(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  local mv = c.move
+  if not mv then return false, "field_move needs move" end
+  local slot
+  for i, mon in ipairs((G.save and G.save.party) or {}) do
+    for _, m in ipairs(mon.moves or {}) do
+      local id = tostring(type(m) == "table" and m.id or m)
+      if id == mv then slot = i break end
+    end
+    if slot then break end
+  end
+  if not slot then
+    return false, "no party Pokemon knows " .. mv
+      .. " — teach it first (use_item with the TM/HM)"
+  end
+  local ow = G.overworld
+  local p = ow.player
+  if c.x and c.y then
+    local adj = { {c.x, c.y + 1, "up"}, {c.x, c.y - 1, "down"},
+                  {c.x - 1, c.y, "right"}, {c.x + 1, c.y, "left"} }
+    local placed
+    for _, a in ipairs(adj) do
+      if p.cellX == a[1] and p.cellY == a[2] then placed = a break end
+    end
+    if not placed then
+      for _, a in ipairs(adj) do
+        OPS.walk_to(G, { x = a[1], y = a[2], max_steps = 60 })
+        if p.cellX == a[1] and p.cellY == a[2] then placed = a break end
+      end
+    end
+    if not placed then
+      return false, "no reachable tile adjacent to the target"
+    end
+    if p.facing ~= placed[3] then U.tap(G, placed[3]); U.wait(4) end
+  end
+  U.tap(G, "start"); U.wait(8)
+  local menu = ui_top(G)
+  if not (menu and menu.screenId == "StartMenu") then
+    ui_back_out(G); return false, "start menu never opened"
+  end
+  local row
+  for i, it in ipairs(menu.items or {}) do
+    local l = it.label or ""
+    if l:find("POK") and l:find("MON") then row = i break end
+  end
+  if not row or not ui_cursor_to(G, "index", row) then
+    ui_back_out(G); return false, "no POKeMON row"
+  end
+  U.tap(G, "a"); U.wait(10)
+  local pm = ui_top(G)
+  if not (pm and pm.screenId == "PartyMenu") then
+    ui_back_out(G); return false, "party menu never opened"
+  end
+  ui_cursor_to(G, "index", slot)
+  U.tap(G, "a"); U.wait(8)
+  local sub = ui_top(G)
+  local mrow
+  for i, it in ipairs((sub and sub.items) or {}) do
+    if (it.label or "") == mv then mrow = i break end
+  end
+  if not mrow then
+    ui_back_out(G)
+    return false, mv .. " was not offered in the menu"
+  end
+  ui_cursor_to(G, "index", mrow)
+  U.tap(G, "a"); U.wait(10)
+  local said
+  for _ = 1, 30 do
+    local t = G.stack:top()
+    if t == ow then break end
+    if t and t.pages and t.pageIndex then
+      local pg = t.pages[t.pageIndex]
+      if type(pg) == "table" then said = table.concat(pg, " ")
+      else said = tostring(pg or "") end
+    end
+    U.tap(G, "a"); U.wait(5)
+  end
+  U.wait(24)   -- the cut animation finishes after the text closes
+  return true, "used " .. mv .. (said and (" — " .. said) or "")
 end
 
 -- Level-grind primitive: stand in this map's wild grass and pace until an
