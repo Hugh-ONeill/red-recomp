@@ -807,8 +807,53 @@ def outline(goal: str, model: str, rounds: int = 3) -> list | None:
         legs = [str(x).strip() for x in legs
                 if isinstance(x, (str, int, float)) and str(x).strip()]
         if len(legs) >= 3:
-            return legs
+            return _outline_review(goal, legs, model) or legs
     return None
+
+
+OUTLINE_REVIEW_SYS = """You are checking an outline of a Pokemon Red
+playthrough that you just wrote, before any of it is played.
+
+Look for these and fix them:
+1. SOMETHING NEEDED LATER THAN IT IS USED. If an objective can only be done
+   once an EARLIER one has given you a thing, a move or a permission, it has
+   to come after it. An objective that hands you what a previous objective
+   already required is the same mistake read backwards.
+2. THE DIRECTION IS WRONG. "Give X to Y" when it is Y who gives you X is not
+   the same objective, and no plan can be written for it.
+3. NOT IN THIS GAME. Places and events from other Pokemon games do not exist
+   here and can never be reached.
+4. THE SAME THING TWICE, under two names.
+
+Keep everything that is right, keep the wording short and in the player's
+terms, and do not add explanations. Reply with ONLY the corrected JSON array
+of strings."""
+
+
+def _outline_review(goal: str, legs: list, model: str) -> list | None:
+    """A second pass over the model's own outline.
+
+    The plan author has had a self-audit since the beginning; the outline
+    had none, and it shipped "Deliver the S.S. Ticket to Bill" BEFORE
+    "Obtain the S.S. Ticket" — a leg whose plan cannot be written at all,
+    because Bill is the one who gives it to you. Same idea as review():
+    ask it to read back what it wrote before anyone tries to play it.
+    """
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": OUTLINE_REVIEW_SYS},
+             {"role": "user", "content": f"THE GOAL: {goal}\n\n"
+              f"THE OUTLINE YOU WROTE:\n"
+              + "\n".join(f"  {i}. {l}" for i, l in enumerate(legs, 1))}],
+            model)
+        m = re.search(r"\[.*\]", reply, re.S)
+        if not m:
+            return None
+        out = [str(x).strip() for x in json.loads(m.group(0))
+               if str(x).strip()]
+        return out if len(out) >= 3 else None
+    except (ValueError, KeyError, OSError):
+        return None
 
 
 def main():
