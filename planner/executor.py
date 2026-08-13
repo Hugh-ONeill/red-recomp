@@ -1772,6 +1772,33 @@ class Executor:
             route_line += (f"\nTHE TOWN MAP: {want_map} attaches to — "
                            f"{att}. To arrive, stand in one of THOSE and "
                            f"cross the matching edge.")
+            # ...and the town map can be READ ALL THE WAY: a static BFS
+            # over its printed adjacencies gives the map-by-map itinerary
+            # (interiors like tunnels don't appear on it — a leg that
+            # cannot be crossed outdoors goes through one).
+            here_map = self._where(
+                self.b.obs() or {}).split("|")[0]
+            if here_map in MAP_EDGES or any(
+                    here_map in v.values() for v in MAP_EDGES.values()):
+                import collections
+                q = collections.deque([[here_map]])
+                seen_m = {here_map}
+                path_m = None
+                while q:
+                    p = q.popleft()
+                    if p[-1] == want_map:
+                        path_m = p
+                        break
+                    for _d, m2 in (MAP_EDGES.get(p[-1]) or {}).items():
+                        if m2 not in seen_m:
+                            seen_m.add(m2)
+                            q.append(p + [m2])
+                if path_m and len(path_m) > 1:
+                    route_line += (
+                        f"\nTOWN-MAP ITINERARY from {here_map}: "
+                        + " -> ".join(path_m)
+                        + ". Legs the evidence has proven blocked need a "
+                          "tunnel, a building or a deed at that step.")
         if not (untried or tried):
             if elsewhere:
                 return (warned + route_line
