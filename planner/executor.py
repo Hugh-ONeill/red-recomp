@@ -667,6 +667,22 @@ class Executor:
             return self.searched.get(target) or {}
         return self.searched.get("*") or {}
 
+    @staticmethod
+    def _untaken(cmap: dict, tried: set) -> set:
+        """The touched set, minus items STILL LYING ON THE MAP.
+
+        Picking an item up removes it from the world, so an item ball you
+        can still see was not taken however the ledger reads — and the
+        ledger can be wrong: a take-prompt answered with no, or declined by
+        default, marked the Mt Moon fossils touched while both sat there in
+        plain sight. That silenced the untouched-things line, so nothing
+        ever prompted a retry, and the corridor east stayed gated on a
+        question nobody answered. Presence on screen outranks the ledger.
+        """
+        present = {o.get("name") for o in (cmap.get("objects") or [])
+                   if o.get("kind") == "item" and o.get("name")}
+        return tried - present if present else tried
+
     def note_searched(self, target: str, region: str):
         """This area has been fully worked: every exit taken, everything
         reachable touched. Distinct from a dead end — it stops the room
@@ -1330,7 +1346,7 @@ class Executor:
                                    for mv in moves)
                        + ". A move at 0 cannot be used; only a Pokemon "
                          "Center restores PP.")
-        taken_objs = self._tried_objs.get(here, set())
+        taken_objs = self._untaken(m, self._tried_objs.get(here, set()))
         loot = [o.get("name") for o in (m.get("objects") or [])
                 if o.get("reachable") and o.get("name")
                 and o.get("name") not in taken_objs]
@@ -1810,7 +1826,8 @@ Reply with ONLY a JSON array of ops, e.g.
                 objs = [o for o in ((obs.get("map") or {}).get("objects")
                                     or []) if o.get("reachable")]
                 names = {o.get("name") for o in objs}
-                spent = bool(names) and names.issubset(tried)
+                spent = bool(names) and names.issubset(
+                    self._untaken(obs.get("map") or {}, tried))
                 # A ROOM YOU LOST A FIGHT IN IS NOT EXHAUSTED. Talking to
                 # Brock IS the fight; losing it leaves him talked-to, so
                 # "everything reachable is touched" became true and this
@@ -2584,6 +2601,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # list and the floor signed off as fully worked with items
                 # still on it. People move; items do not, so an untouched
                 # item is unfinished business either way.
+                _tried = self._untaken(cur.get("map") or {}, _tried)
                 live = [o.get("name") for o in
                         ((cur.get("map") or {}).get("objects") or [])
                         if (o.get("reachable") or o.get("kind") == "item")
