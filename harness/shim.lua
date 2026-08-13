@@ -1521,9 +1521,24 @@ function OPS.interact(G, c)
   -- touched the UI next meant the fossil take-prompt was confirmed by an
   -- A-mash in one world and cancelled by the B-dismisser in the next —
   -- and the declined fossil left the corridor east shut.
+  -- READ WHAT IS BEING SAID. The page reader lives in the outer settle
+  -- loop, so dialogue advanced here — which is most of what an interact
+  -- ever produces — was consumed without a word of it being recorded. The
+  -- run talked to the sleepy old man blocking the road and kept nothing.
+  local function note_page()
+    local t = G.stack:top()
+    if t and t.pages and t.pageIndex then
+      local pg = t.pages[t.pageIndex]
+      if type(pg) == "table" then
+        local txt = table.concat(pg, " ")
+        if #txt > 0 then recent_text = txt; last_text = txt end
+      end
+    end
+  end
   local function settle_dialog()
     for _ = 1, 60 do
       local t = G.stack:top()
+      note_page()
       if t == ow then return true end
       if t and (t.enemy or t.kind) then return true, "battle started" end
       if ui_is_choice(G) then

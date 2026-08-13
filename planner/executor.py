@@ -2246,9 +2246,11 @@ Reply with ONLY a JSON array of ops, e.g.
                 # item and buying all print a line the game addressed to
                 # nobody. Keep what a NAMED thing said, and anything else
                 # only if it does not read as a system confirmation.
-                noise = any(w in said for w in
-                            ("saved the game", "SAVING", "Got ", "put it in",
-                             "Here you go!", "Thank you!"))
+                low = said.lower()
+                noise = any(w in low for w in
+                            ("saved the game", "saving", "got potion",
+                             "put it in", "found ", " learned ",
+                             "grew to lv", "gained ", "exp. points"))
                 # unconditional: last_text SURVIVES the box closing, so an
                 # interact that produced no dialogue of its own inherits
                 # whatever was said last — the save banner got filed under
