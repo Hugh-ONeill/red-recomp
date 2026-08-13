@@ -81,14 +81,34 @@ Read obs.result; if an op failed or nothing changed, do something DIFFERENT
 rather than repeating it. Output only the JSON object."""
 
 
+# Ollama gives the PROMPT only HALF of num_ctx (measured: 8192 -> 4099 tokens
+# evaluated, 16384 -> 8195, 32768 -> 16387) and silently drops the FRONT of an
+# oversized prompt — a marker planted at the top of a long prompt is invisible
+# to the model while one at the bottom survives. Authoring prompts run 6-7k
+# tokens, so at the old 8192 every one of them lost its opening ~2500 tokens:
+# the predicate vocabulary, the map-id list and the training guidance, while
+# the journal and audit checks at the tail always survived. 16384 leaves 8192
+# usable and still loads 100% on the 3090 (20GB); 32768 spills to CPU.
+NUM_CTX = 16384
+
+
 def chat(msgs, model):
     body = json.dumps({"model": model, "messages": msgs, "stream": False,
                        "think": False, "keep_alive": "30m",
-                       "options": {"temperature": 0.3, "num_ctx": 8192}}).encode()
+                       "options": {"temperature": 0.3,
+                                   "num_ctx": NUM_CTX}}).encode()
     req = urllib.request.Request(OLLAMA, body,
                                  {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=300) as r:
-        return json.loads(r.read())["message"]["content"]
+        d = json.loads(r.read())
+    # Never let this go silent again: at the cap the count pins to num_ctx/2.
+    n = d.get("prompt_eval_count") or 0
+    if n >= (NUM_CTX // 2) - 8:
+        print(f"[prompt] TRUNCATED: {n} tokens evaluated at the "
+              f"{NUM_CTX // 2} cap — the FRONT of the prompt was dropped "
+              f"(vocabulary and guidance live there). Shorten the prompt or "
+              f"raise NUM_CTX.")
+    return d["message"]["content"]
 
 
 def parse(text):
