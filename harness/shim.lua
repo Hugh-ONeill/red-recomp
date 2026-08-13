@@ -1537,16 +1537,30 @@ function OPS.field_move(G, c)
   end
   ui_cursor_to(G, "index", slot)
   U.tap(G, "a"); U.wait(8)
-  local sub = ui_top(G)
+  -- the field-move submenu is PartyMenu-INTERNAL state (subItems /
+  -- subIndex), not a pushed screen: ui_top kept reporting the party list
+  -- and the label lookup read mon rows, failing "CUT was not offered"
+  -- with Cut sitting right there
+  local pm2 = G.stack:top()
+  local subs = pm2 and pm2.subItems
   local mrow
-  for i, it in ipairs((sub and sub.items) or {}) do
-    if (it.label or "") == mv then mrow = i break end
+  for i, it in ipairs(subs or {}) do
+    local lab = ((it.label or it.text or it.action or "") .. ""):upper()
+    if lab:find(mv, 1, true) then mrow = i break end
   end
   if not mrow then
+    local seen = {}
+    for _, it in ipairs(subs or {}) do
+      seen[#seen + 1] = tostring(it.label or it.text or it.action or "?")
+    end
     ui_back_out(G)
-    return false, mv .. " was not offered in the menu"
+    return false, mv .. " was not offered in the menu (it lists: "
+      .. table.concat(seen, ", ") .. ")"
   end
-  ui_cursor_to(G, "index", mrow)
+  for _ = 1, 40 do
+    if not pm2.subIndex or pm2.subIndex == mrow then break end
+    U.tap(G, pm2.subIndex > mrow and "up" or "down"); U.wait(3)
+  end
   U.tap(G, "a"); U.wait(10)
   local said
   for _ = 1, 30 do
