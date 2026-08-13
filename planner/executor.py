@@ -1278,7 +1278,16 @@ class Executor:
                              + ", ".join(sorted(done_rooms)[:5]) + ".")
         been = self.visits.get(here, 0)
         warned = ""
-        if been >= 2:
+        # A ROOM YOU KEEP LOSING IN IS THE RIGHT ROOM. Coming back is the
+        # only way to win a fight, so the revisit nag is exactly backwards
+        # here — and it was the loudest line in the prompt: standing in
+        # Misty's gym the model read "you have been in this exact area 19
+        # times, take a different exit" with the only untried exits being
+        # the doors OUT, while the wipe note below told it to come back
+        # stronger. It obeyed the concrete instruction and left, 19 times.
+        # The law is already written for the stuck note: a party wipe
+        # outranks an exhausted room.
+        if been >= 2 and not self.contested.get(target, {}).get(here):
             warned = (f"\nYOU HAVE BEEN IN THIS EXACT AREA {been} TIMES "
                       f"ALREADY ({here}). Arriving here again is not "
                       f"progress — if the last thing you did brought you "
