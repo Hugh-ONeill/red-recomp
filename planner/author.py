@@ -170,23 +170,24 @@ KEY_ITEMS = {
 # unsatisfiable shopping goals used to burn whole attempts; that evidence
 # channel replaced it.
 
-# WHAT each flag means, not what it UNLOCKS. These read as names so a plan
-# can reference an event; the consequences are the model's to discover.
-# "got the Pokedex (this unlocks the north exit of Viridian City)" was a
-# puzzle solution wearing a glossary entry's clothes.
-KEY_FLAGS = {
-    "EVENT_OAK_ASKED_TO_CHOOSE_MON": "Oak has finished his intro and the "
-        "starter Poke Balls are active",
-    "EVENT_GOT_STARTER": "obtained a starter Pokemon",
-    "EVENT_BATTLED_RIVAL_IN_OAKS_LAB": "fought the rival in Oak's lab",
-    "EVENT_GOT_OAKS_PARCEL": "picked up Oak's Parcel",
-    "EVENT_GOT_POKEDEX": "got the Pokedex",
-    "EVENT_BEAT_BROCK": "defeated Brock",
-    "EVENT_BEAT_MT_MOON_3_SUPER_NERD": "beat the Super Nerd who guards the "
-        "fossils",
-}
-# ALL EIGHT, for the same reason the map list is not curated: naming only
-# the next one is a hint about where the run is meant to go.
+# NO CURATED MILESTONE LIST. Which events "matter" is exactly the judgement
+# this project leaves to the model, and a hand-picked seven said the Super
+# Nerd counts while Nugget Bridge and Bill do not — a claim we had no right
+# to make, and one we only knew to make because an earlier run discovered
+# it. So: the model may name ANY flag the engine defines (its own knowledge
+# of Red picks which), validation only checks the string is real, and the
+# only flags the PROMPT volunteers are the ones this run has watched fire,
+# which observed_text already reports under WHERE EVENTS ACTUALLY FIRED.
+def _engine_flags() -> set:
+    try:
+        p = Path(__file__).with_name("engine_flags.txt")
+        return {l.strip() for l in p.read_text().splitlines() if l.strip()}
+    except OSError:
+        return set()
+
+
+ENGINE_FLAGS = _engine_flags()
+
 BADGES = ["BOULDERBADGE", "CASCADEBADGE", "THUNDERBADGE",
           "RAINBOWBADGE", "SOULBADGE", "MARSHBADGE", "VOLCANOBADGE",
           "EARTHBADGE"]
@@ -261,10 +262,12 @@ def build_prompt(goal: str, start: str | None = None) -> str:
         + "\n".join(f"  {k}: {v}" for k, v in PREDICATES.items())
         + "\n\nMAP IDs on this route (use exact strings):\n  "
         + ", ".join(ROUTE_MAPS)
-        + "\n\nKEY EVENT FLAGS (use exact strings; prefer a map/party/badge "
-        "predicate when one fits, but these mark events that are not just a "
-        "map change):\n"
-        + "\n".join(f"  {k}: {v}" for k, v in KEY_FLAGS.items())
+        + "\n\nEVENT FLAGS: you may use {\"flag\": \"EVENT_...\"} for a "
+          "milestone that is not just a map change, spelled the way this "
+          "game spells it. Which events matter is YOUR call — the evidence "
+          "below lists the ones this run has actually watched fire, and "
+          "your own knowledge of the game covers the rest. A flag name that "
+          "the game does not define will be rejected."
         + "\n\nITEM IDs (use exact strings in has_item):\n"
         + "\n".join(f"  {k}: {v}" for k, v in KEY_ITEMS.items())
         + f"\n\nBADGES: {', '.join(BADGES)}\n\n"
@@ -307,8 +310,9 @@ def validate(plan: dict) -> list:
                     if item not in KEY_ITEMS:
                         probs.append(f"{sg.get('id')}: unknown item {item!r} "
                                      f"(valid: {', '.join(KEY_ITEMS)})")
-            elif k == "flag" and v not in KEY_FLAGS:
-                probs.append(f"{tag} ({sid}) flag '{v}' not in the vocabulary")
+            elif k == "flag" and ENGINE_FLAGS and v not in ENGINE_FLAGS:
+                probs.append(f"{tag} ({sid}) flag '{v}' is not an event this "
+                             f"game defines")
             elif k == "badge" and v not in BADGES:
                 probs.append(f"{tag} ({sid}) badge '{v}' unknown")
     return probs
