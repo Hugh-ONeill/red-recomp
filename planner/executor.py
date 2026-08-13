@@ -41,6 +41,14 @@ from pathlib import Path
 from bridge import Bridge, RUN
 import battle_policy
 
+# Which gym holds which badge — the pamphlet's leader page.
+BADGE_GYMS = {
+    "BOULDERBADGE": "PEWTER_GYM", "CASCADEBADGE": "CERULEAN_GYM",
+    "THUNDERBADGE": "VERMILION_GYM", "RAINBOWBADGE": "CELADON_GYM",
+    "SOULBADGE": "FUCHSIA_GYM", "MARSHBADGE": "SAFFRON_GYM",
+    "VOLCANOBADGE": "CINNABAR_GYM", "EARTHBADGE": "VIRIDIAN_GYM",
+}
+
 # The game's own outdoor-map adjacency (data/generated/maps.lua
 # connections), extracted once — the town map every player unfolds.
 try:
@@ -2859,6 +2867,12 @@ Reply with ONLY a JSON array of ops, e.g.
             # branch. Arrive first; the model handles what arriving
             # cannot (the nurse, the fight, the switch).
             tk0 = self._target_key(sg)
+            # a BADGE lives in its gym, and which gym holds which badge
+            # is printed in the pamphlet — badge hunts route like travel
+            if tk0.startswith("badge:"):
+                g = BADGE_GYMS.get(tk0.split(":", 1)[1])
+                if g:
+                    tk0 = "map:" + g
             if tk0.startswith(("map:", "area:")):
                 dest0 = tk0.split(":", 1)[1]
                 here0 = self._where(start)
