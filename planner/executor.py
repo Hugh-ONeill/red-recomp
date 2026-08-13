@@ -1788,6 +1788,15 @@ Reply with ONLY a JSON array of ops, e.g.
                                     or []) if o.get("reachable")]
                 names = {o.get("name") for o in objs}
                 spent = bool(names) and names.issubset(tried)
+                # A ROOM YOU LOST A FIGHT IN IS NOT EXHAUSTED. Talking to
+                # Brock IS the fight; losing it leaves him talked-to, so
+                # "everything reachable is touched" became true and this
+                # refusal evicted the run from the one room the badge is in
+                # — gym, backtrack, wander to the forest, gym again, on a
+                # loop. Same law note_searched already obeys: a fight that
+                # beat us is unfinished business, not an emptied room.
+                if self.contested.get(self._cur_target, {}).get(here_r):
+                    spent = False
                 if spent and step.get("name") in tried:
                     trace.append(
                         f"interact({step.get('name')}): REFUSED — you have "
