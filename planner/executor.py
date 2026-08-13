@@ -2233,7 +2233,11 @@ Reply with ONLY a JSON array of ops, e.g.
                 noise = any(w in said for w in
                             ("saved the game", "SAVING", "Got ", "put it in",
                              "Here you go!", "Thank you!"))
-                if (not step.get("name")) and noise:
+                # unconditional: last_text SURVIVES the box closing, so an
+                # interact that produced no dialogue of its own inherits
+                # whatever was said last — the save banner got filed under
+                # the Charmander ball that way.
+                if noise:
                     said = ""
                 if said and "None" not in reg and len(said) > 12:
                     lst = self.hints.setdefault(reg, [])
