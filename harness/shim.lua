@@ -272,16 +272,9 @@ local function observe(G, seq, result)
       -- smallest reachable cell. "Did I actually get somewhere else?" is a
       -- question about the COMPONENT, not about distance (coming out the
       -- same cave door lands tiles away but in the same region — thin7).
-      -- HOP-FREE: ledge hops are one-way, and a hop-aware flood let north
-      -- Cerulean ANNEX the strip south of its ledges — one label for two
-      -- places you cannot walk between, which made the trashed-house
-      -- passage unrepresentable (house "led back to" the region it left)
-      -- and poisoned every ledger keyed on the label. Region identity is
-      -- the MUTUALLY walkable component; one-way reach stays in `reach`.
-      local region_reach = warp_reach(G, true) or reach
       do
         local bx, by
-        for k in pairs(region_reach) do
+        for k in pairs(reach) do
           local cx, cy = k:match("^(-?%d+),(-?%d+)$")
           if cx then
             cx, cy = tonumber(cx), tonumber(cy)
@@ -576,7 +569,7 @@ end
 -- Moon B1F) the right warp can be visible but walled off, and without this
 -- the model re-proposes it forever. Defined here because it needs DIRS and
 -- ledge_landing; observe() calls it through a forward-declared local.
-function warp_reach(G, no_hops)
+function warp_reach(G)
   local okc, Collision = pcall(require, "src.world.Collision")
   local ow, p = G.overworld, G.overworld and G.overworld.player
   if not (okc and ow and p and ow.map) then return nil end
@@ -605,7 +598,7 @@ function warp_reach(G, no_hops)
         if Collision.canMove(ow.map, NOBODY, probe, dn) then
           seen[key(nx, ny)] = true
           q[#q + 1] = { x = nx, y = ny }
-        elseif not no_hops then
+        else
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dn)
           if lx and not seen[key(lx, ly)] then
             seen[key(lx, ly)] = true
