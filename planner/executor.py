@@ -3823,7 +3823,14 @@ Reply with ONLY a JSON array of ops, e.g.
             # hand is an inserted signal a record run cannot contain; this
             # decides it at runtime instead.
             if not ok and not sg.get("optional"):
-                fails += 1
+                # A KNOWN repeat offender failing again is expected, not
+                # news: its budget was shrunk precisely so the plan could
+                # get PAST it. Counting those toward the consecutive-fail
+                # abort meant a three-march doomed prefix killed the plan
+                # before its untested tail ever ran — fast-failing just
+                # aborted faster.
+                if self._prior_subgoal_fails.get(sg["id"], 0) == 0:
+                    fails += 1
                 last = sg is plan["subgoals"][-1]
                 # An EVENT is a gate, not a step you can walk past. When
                 # defeat_mt_moon_nerd failed, the plan carried on and
