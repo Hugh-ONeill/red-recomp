@@ -42,11 +42,10 @@ PREDICATES = {
     "no_battle": "true = not currently in a battle",
     "party_healthy": "true = every party Pokemon at full HP with no status "
                      "(use for Pokemon Center heal stops)",
-    "lead_level": "lead Pokemon is at least level N (e.g. {\"lead_level\":12} "
-                  "— use for training subgoals on a grassy route)",
+    "lead_level": "the LEAD Pokemon (slot 1) is at least level N "
+                  "(e.g. {\"lead_level\":12})",
     "has_item": "bag holds at least N of each listed item (e.g. "
-                "{\"has_item\":{\"POTION\":4}} — use for shopping subgoals "
-                "at a mart)",
+                "{\"has_item\":{\"POTION\":4}})",
     "player_at": "standing within radius R of a tile, e.g. "
                  "{\"player_at\":{\"x\":27,\"y\":3,\"radius\":4}}. Combine it "
                  "with map when a map predicate alone cannot say WHERE",
@@ -56,17 +55,16 @@ PREDICATES = {
         "is satisfied by landing in ANY of them — use this when the thing "
         "you need is in one particular room. Only use area codes that appear "
         "in the observed evidence below; do not invent one",
-    "party_min_level": "EVERY party member is at least VALUE "
-        "(e.g. {\"party_min_level\":15}). Use this to TRAIN A BACKUP: "
-        "lead_level only looks at slot 1, so it is already true when your "
-        "lead is strong and trains nothing. NOTE a Pokemon only gains "
-        "experience while it is the LEAD, so a subgoal like this needs a "
-        "pick_party op to put the weak one in front first",
-    "slot_level": "a particular party slot reaches a level "
-        "(e.g. {\"slot_level\":{\"slot\":2,\"min\":15}}), 1-based",
-    "party_size": "party has at least N Pokemon (e.g. {\"party_size\":2} — "
-                  "use for catch subgoals; set battle_policy \"catch\" on "
-                  "them)",
+    "party_min_level": "EVERY party member is at least VALUE (e.g. "
+        "{\"party_min_level\":15}). Note lead_level only reads slot 1, so it "
+        "is already true whenever the lead alone is strong enough",
+    "slot_level": "a particular party slot reaches a level (e.g. "
+        "{\"slot_level\":{\"slot\":2,\"min\":15}}), 1-based. While such a "
+        "subgoal runs the harness sends THAT slot into each battle, so the "
+        "one you name is the one that earns",
+    "party_size": "party has at least N Pokemon (e.g. {\"party_size\":2}); "
+                  "set battle_policy \"catch\" on such a subgoal so wild "
+                  "battles throw balls instead of knocking the target out",
 }
 # EVERY map id the engine defines, ALPHABETICAL. Two deliberate choices.
 # WHICH names appear is not curated: a hand-picked subset is a hint about
@@ -198,25 +196,11 @@ step; a separate system will later figure out the exact button/op sequence
 for each subgoal by playing. So you do NOT give coordinates or ops here — you
 give the milestones and how to know each is done.
 
-ATTRITION: battles chip your party's HP and there is no auto-healing —
-insert a Pokemon Center heal stop (done_when {"party_healthy": true}) before
-long wild-encounter stretches. If upcoming trainers
-outlevel your party — or the SAME fight keeps wiping you even at a level
-advantage, which means the damage race is what you are losing, not the
-levels — add TRAINING subgoals on a grassy route
-(done_when {"lead_level": N}) — and STAGE long grinds: a few levels per
-subgoal with a Pokemon Center heal stop between stages. Fainting sends
-you home and HALVES YOUR MONEY, so wipes during long unhealed grinds
-bankrupt later shopping.
-Marts sell healing items: add a SHOPPING subgoal
-(done_when {"has_item": {...}}) before a trainer gauntlet with no Center
-inside it. Not every mart stocks every item, and a counter that does not
-sell what you asked for says so — read the journal below for what previous
-attempts actually found on the shelves.
-A LONE Pokemon that faints means a blackout (money halved): CATCH A BACKUP
-early (a shopping stop for Poke Balls, then a catch subgoal with
-{"party_size": 2} on a grassy route) so a lead faint becomes a switch
-instead.
+WHAT GOES IN THE PLAN IS YOURS. Nothing here tells you the route, which
+places matter, what to buy, when to heal, when to train, or what order to
+do any of it in — you know this game. The evidence below is only what THIS
+run has actually walked and what happened when it did. Author the plan you
+think wins, and revise it from that evidence when it does not.
 
 AMBIGUOUS MAPS: a {"map": X} done_when is satisfied ANYWHERE on that map,
 and some maps are split into disconnected areas you cannot walk between
@@ -234,9 +218,9 @@ stood on is a guess, while an area code is a place you have been.
 
 Hard rule on GRANULARITY: each subgoal must be ONE map transition, OR one
 event/interaction that happens within a single map. Do not bundle multiple
-map changes into one subgoal. (e.g. leaving the house is TWO subgoals: go
-downstairs, then out the front door. Getting the starter is TWO: trigger
-Oak's escort to the lab, then take a Poke Ball.)
+map changes into one subgoal: walking through three maps to reach a town is
+three subgoals, and "go to the shop and buy potions" is two — arrive, then
+buy.
 
 Each subgoal is an object:
   {"id":"snake_case_name",
@@ -246,11 +230,13 @@ Each subgoal is an object:
 Reply with ONLY a JSON object: {"goal":"...","subgoals":[ ... ]}."""
 
 
+# WHERE the player is, not what to do about it. "Your FIRST subgoals must
+# get them out of the house (downstairs, then out the front door)" was the
+# opening of a walkthrough — the one part of the route the model was never
+# allowed to work out. The map id and the empty party are on screen.
 NEW_GAME_START = (
-    "a brand-new game — the player begins UPSTAIRS in their own bedroom "
-    "(map REDS_HOUSE_2F) with no Pokemon. Your FIRST subgoals must get "
-    "them out of the house (downstairs, then out the front door) before "
-    "anything else.")
+    "a brand-new game — the player is upstairs in a house "
+    "(map REDS_HOUSE_2F) with no Pokemon and nothing in the bag.")
 
 
 def build_prompt(goal: str, start: str | None = None) -> str:
