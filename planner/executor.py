@@ -1533,6 +1533,29 @@ class Executor:
                  foe=f"{foe.get('species')} L{foe.get('level')}",
                  me=f"{me.get('species')} L{me.get('level')} "
                     f"{me.get('hp')}/{me.get('maxhp')}hp")
+        # LEAD WITH THE POKEMON THE PLAN IS TRAINING. A slot_level goal is
+        # unsatisfiable otherwise: only the mon that FIGHTS earns, battles
+        # always opened with slot 1, and nothing outside a faint prompt can
+        # reorder the party — so train_backup_rattata sent a L32 Charmeleon
+        # to every battle and the L11 Rattata it was written for gained two
+        # levels in an hour, most of them from being thrown in after a
+        # faint. Switching the trainee in executes the plan's stated intent;
+        # whether it survives where the model chose to train is the model's
+        # problem, and the journal will say.
+        dw0 = subgoal.get("done_when") or {}
+        want_slot = (dw0.get("slot_level") or {}).get("slot")
+        if want_slot and (obs or {}).get("mode") == "battle":
+            party = (obs or {}).get("party") or []
+            act = ((obs or {}).get("battle") or {}).get("me") or {}
+            alive = (len(party) >= want_slot
+                     and (party[want_slot - 1].get("hp") or 0) > 0)
+            if alive and act.get("species") != party[want_slot - 1].get("species"):
+                r = (self._send_safe("battle_switch", slot=want_slot) or {})
+                self.log("train_switch_in", subgoal=subgoal["id"],
+                         slot=want_slot,
+                         ok=(r.get("result") or {}).get("ok"),
+                         detail=(r.get("result") or {}).get("detail"))
+                obs = self.settle() or obs
         self.status(doing=f"BATTLE ({name} policy)", obs=obs)
         obs = BATTLE_POLICIES[name](self.b, obs, self.log,
                                     self.max_battle_turns)
