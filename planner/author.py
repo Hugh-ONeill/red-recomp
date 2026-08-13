@@ -1193,11 +1193,54 @@ def _outline_review(goal: str, legs: list, model: str) -> list | None:
     return out
 
 
+BLOCKER_SYS = """A Pokemon Red playthrough leg is STUCK, and the question
+is whether it is stuck because a LATER leg of your own outline has to
+happen FIRST. Read what the run hit, look at the legs still ahead, and
+answer with ONLY {"why": "<one sentence weighing the evidence>",
+"pull_forward": N} — the number of the one later leg whose objective the
+stuck leg cannot do without — or {"why": "...", "pull_forward": null} if
+the stuck leg fails for some other reason. Write the why FIRST: the
+bare-verdict schema was tested and it suppressed a one-hop inference the
+sentence of reasoning recovered. You are choosing from your own outline,
+not writing new legs."""
+
+
+def check_blocker(goal: str, ahead: list, start: str, journal: str,
+                  model: str):
+    """The model reorders its own outline when play proves it misordered.
+
+    The Surge leg walled on a bush only CUT clears while the model's own
+    outline held "Obtain the HM for Cut" two legs later — four rewrites
+    marched back to the gym because a leg cannot reach outside itself.
+    The outline is where that knowledge lives, so the outline is what has
+    to move, and the model authored it, so the model moves it: the
+    harness asks one question and applies a pull-forward, choose-only.
+    """
+    body = (f"THE STUCK LEG: {goal}\n\n"
+            f"WHERE THE RUN STANDS: {start}\n"
+            f"{journal}\n\nTHE LEGS STILL AHEAD:\n"
+            + "\n".join(f"  {n}. {t}" for n, t in ahead))
+    reply = brock_probe.chat(
+        [{"role": "system", "content": BLOCKER_SYS},
+         {"role": "user", "content": body}], model)
+    m = re.search(r"\{.*\}", reply, re.S)
+    if not m:
+        return None
+    try:
+        n = json.loads(m.group(0)).get("pull_forward")
+    except (ValueError, AttributeError):
+        return None
+    if isinstance(n, (int, float)) and any(int(n) == a for a, _ in ahead):
+        return int(n)
+    return None
+
+
 CHECKDONE_SYS = """You are judging whether a Pokemon Red objective is
 ALREADY accomplished, going by where the run now stands. Trust what is in
 hand and what has happened over what the wording seems to ask for next —
 an objective is about its outcome, not about ceremony after the outcome.
-Reply with ONLY {"done": true} or {"done": false}."""
+Reply with ONLY {"why": "<one sentence>", "done": true} or
+{"why": "<one sentence>", "done": false} — the why comes first."""
 
 
 def check_done(goal: str, start: str, model: str) -> bool:
@@ -1234,6 +1277,13 @@ def main():
     ap.add_argument("--check-done", action="store_true",
                     help="ask the model whether --goal is already "
                          "accomplished at --start; exit 0 yes, 3 no")
+    ap.add_argument("--check-blocker", action="store_true",
+                    help="ask the model whether a later outline leg must "
+                         "come before the stuck --goal; prints the leg "
+                         "number and exits 0, or exits 3")
+    ap.add_argument("--outline-path", type=Path, default=None)
+    ap.add_argument("--leg", type=int, default=None,
+                    help="1-based outline position of the stuck leg")
     ap.add_argument("--draws", type=int, default=3,
                     help="outline drafts to take before the model composes "
                          "the final list from them (default 3)")
@@ -1254,6 +1304,22 @@ def main():
                           args.model)
         print("DONE" if done else "NOT_DONE")
         sys.exit(0 if done else 3)
+    if args.check_blocker:
+        if not (args.outline_path and args.leg):
+            ap.error("--check-blocker needs --outline-path and --leg")
+        lines = [l.strip() for l in args.outline_path.read_text()
+                 .splitlines() if l.strip()]
+        ahead = [(n, lines[n - 1])
+                 for n in range(args.leg + 1, len(lines) + 1)]
+        if not ahead:
+            sys.exit(3)
+        jt = journal_text(args.journal) if args.journal else ""
+        n = check_blocker(args.goal, ahead, args.start or "", jt,
+                          args.model)
+        if n:
+            print(n)
+            sys.exit(0)
+        sys.exit(3)
     if args.out is None:
         ap.error("--out is required except with --check-done")
     if args.outline:
