@@ -811,33 +811,47 @@ def outline(goal: str, model: str, rounds: int = 3) -> list | None:
     return None
 
 
-OUTLINE_REVIEW_SYS = """You are checking an outline of a Pokemon Red
-playthrough that you just wrote, before any of it is played.
+OUTLINE_REVIEW_SYS = """You are checking the ORDER of a Pokemon Red
+playthrough outline that you just wrote, before any of it is played.
 
-Look for these and fix them:
-1. SOMETHING NEEDED LATER THAN IT IS USED. If an objective can only be done
-   once an EARLIER one has given you a thing, a move or a permission, it has
-   to come after it. An objective that hands you what a previous objective
-   already required is the same mistake read backwards.
-2. THE DIRECTION IS WRONG. "Give X to Y" when it is Y who gives you X is not
-   the same objective, and no plan can be written for it.
-3. NOT IN THIS GAME. Places and events from other Pokemon games do not exist
-   here and can never be reached.
-4. THE SAME THING TWICE, under two names.
+You cannot rewrite the outline. Objectives in the wrong order you may move,
+and objectives you doubt you may flag, and that is all — if the outline is
+wrong in a way only playing would reveal, playing is allowed to reveal it.
 
-Keep everything that is right, keep the wording short and in the player's
-terms, and do not add explanations. Reply with ONLY the corrected JSON array
-of strings."""
+Reply with ONLY a JSON object:
+{"before": [{"first": N, "then": M, "why": "..."}],
+ "missing": [{"after": N, "objective": "...", "why": "..."}],
+ "suspect": [{"n": N, "why": "..."}]}
+
+"before" lists pairs where objective number N must be FINISHED before
+number M can be done — because N hands you the thing, the move, or the
+permission that M needs. Only list pairs the current order gets wrong or
+leaves to luck; empty means the order stands.
+
+"missing" names objectives the outline skipped: things the game will not
+let you past until they are done, that no listed objective covers — a
+person who must be helped, a thing that must be fetched, a way that must
+be opened. Each is inserted after objective number N (0 = before
+everything). Name gates you know are there, not padding.
+
+"suspect" flags objectives you no longer believe: not in this game, the
+direction backwards ("give X to Y" when it is Y who gives you X), or the
+same thing twice under two names. Flagged objectives are KEPT and tried
+anyway — the flag is a note to whoever writes that plan, not a deletion."""
 
 
 def _outline_review(goal: str, legs: list, model: str) -> list | None:
-    """A second pass over the model's own outline.
+    """A second pass that can REORDER the outline but never rewrite it.
 
-    The plan author has had a self-audit since the beginning; the outline
-    had none, and it shipped "Deliver the S.S. Ticket to Bill" BEFORE
-    "Obtain the S.S. Ticket" — a leg whose plan cannot be written at all,
-    because Bill is the one who gives it to you. Same idea as review():
-    ask it to read back what it wrote before anyone tries to play it.
+    The free-rewrite audit was measured net-negative on a cold outline:
+    with no play evidence to check against, the rewrite is a second guess
+    at recall, and it deleted the one objective (Bill) the badge
+    decomposition had been suppressing. So the reviewer's hands are tied
+    structurally — it emits ordering claims and doubts, the harness
+    applies a stable topological sort, and every objective survives with
+    its wording intact. A wrong leg discovered in play is recoverable
+    (the campaign rewrites failed legs); a right leg deleted before play
+    is just gone.
     """
     try:
         reply = brock_probe.chat(
@@ -846,14 +860,93 @@ def _outline_review(goal: str, legs: list, model: str) -> list | None:
               f"THE OUTLINE YOU WROTE:\n"
               + "\n".join(f"  {i}. {l}" for i, l in enumerate(legs, 1))}],
             model)
-        m = re.search(r"\[.*\]", reply, re.S)
+        m = re.search(r"\{.*\}", reply, re.S)
         if not m:
             return None
-        out = [str(x).strip() for x in json.loads(m.group(0))
-               if str(x).strip()]
-        return out if len(out) >= 3 else None
+        verdict = json.loads(m.group(0))
     except (ValueError, KeyError, OSError):
         return None
+    if not isinstance(verdict, dict):
+        return None
+    n = len(legs)
+    edges = []
+
+    def _reaches(a: int, b: int) -> bool:
+        seen, stack = set(), [a]
+        while stack:
+            x = stack.pop()
+            if x == b:
+                return True
+            if x in seen:
+                continue
+            seen.add(x)
+            stack.extend(t for f, t in edges if f == x)
+        return False
+
+    for c in verdict.get("before") or []:
+        try:
+            f, t = int(c["first"]) - 1, int(c["then"]) - 1
+        except (TypeError, KeyError, ValueError):
+            continue
+        if not (0 <= f < n and 0 <= t < n) or f == t:
+            continue
+        if _reaches(t, f):
+            print(f"[outline] dropped a constraint that loops: "
+                  f"{legs[f]!r} before {legs[t]!r}")
+            continue
+        edges.append((f, t))
+        why = c.get("why") or ""
+        print(f"[outline] {legs[f]!r} before {legs[t]!r}"
+              + (f" — {why}" if why else ""))
+    for s in verdict.get("suspect") or []:
+        try:
+            i = int(s["n"]) - 1
+        except (TypeError, KeyError, ValueError):
+            continue
+        if 0 <= i < n:
+            why = s.get("why") or ""
+            print(f"[outline] doubted, kept: {legs[i]!r}"
+                  + (f" — {why}" if why else ""))
+    order = list(range(n))
+    if edges:
+        order, remaining = [], list(range(n))
+        while remaining:
+            i = next(i for i in remaining
+                     if not any(f in remaining for f, t in edges if t == i))
+            remaining.remove(i)
+            order.append(i)
+        if order != list(range(n)):
+            print("[outline] reordered:")
+            for pos, i in enumerate(order):
+                print(f"  {'*' if pos != i else ' '} {legs[i]}")
+    out = [legs[i] for i in order]
+    added, bumped = 0, {}
+    for a in verdict.get("missing") or []:
+        if not isinstance(a, dict):
+            continue
+        txt = str(a.get("objective") or "").strip()
+        if not txt or any(txt.lower() == x.lower() for x in out):
+            continue
+        if added >= 6:
+            print(f"[outline] insertion cap hit, dropped: {txt!r}")
+            continue
+        try:
+            after = int(a.get("after") or 0)
+        except (TypeError, ValueError):
+            after = 0
+        if 1 <= after <= n:
+            pos = out.index(legs[after - 1]) + 1 + bumped.get(after, 0)
+            bumped[after] = bumped.get(after, 0) + 1
+            where = f"after {legs[after - 1]!r}"
+        else:
+            pos = 0 if after <= 0 else len(out)
+            where = "at the start" if after <= 0 else "at the end"
+        out.insert(pos, txt)
+        added += 1
+        why = a.get("why") or ""
+        print(f"[outline] inserted {txt!r} {where}"
+              + (f" — {why}" if why else ""))
+    return out
 
 
 def main():
