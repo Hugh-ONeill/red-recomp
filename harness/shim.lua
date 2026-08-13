@@ -1413,8 +1413,13 @@ function OPS.field_move(G, c)
     if slot then break end
   end
   if not slot then
+    if bag_count(G, "HM_" .. mv) > 0 or bag_count(G, "TM_" .. mv) > 0 then
+      return false, "no party Pokemon knows " .. mv
+        .. " — teach it first (use_item with the TM/HM in your bag)"
+    end
     return false, "no party Pokemon knows " .. mv
-      .. " — teach it first (use_item with the TM/HM)"
+      .. " and NO TM/HM for it is in the bag — someone in the world has "
+      .. "to hand that machine over before " .. mv .. " can ever be used"
   end
   local ow = G.overworld
   local p = ow.player

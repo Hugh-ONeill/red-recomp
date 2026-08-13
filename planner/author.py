@@ -596,9 +596,11 @@ def journal_text(path: Path, limit: int = 60) -> str:
             # A capability lock is a plan-shaped fact: "no party Pokemon
             # knows CUT — teach it first" says exactly what the next plan
             # must arrange, and it lived only in escalation feedback.
+            # Once is enough — seven interleaved copies survived the
+            # consecutive-collapse and buried the rest of the story.
             elif "no party Pokemon knows" in t:
-                lock = f"  LOCKED  {t.split('FAILED — ')[-1][:130]}"
-                if not events or events[-1] != lock:
+                lock = f"  LOCKED  {t.split('FAILED — ')[-1][:150]}"
+                if lock not in events:
                     events.append(lock)
             elif "party FAINTED" in t:
                 pass
