@@ -3441,6 +3441,15 @@ def main():
         if args.save_after_each:
             r = (ex._send_safe("save_game") or {}).get("result") or {}
             print(f"[save] {r.get('detail') or 'save failed'}")
+    o = b.obs() or {}
+    # Durable snapshot of where the run ENDED. obs.json belongs to the live
+    # bridge and is gone once the game process dies, so the campaign's
+    # re-author was reading "an unknown location" — throwing away the single
+    # most useful piece of evidence it has about what to fix.
+    # Taken BEFORE the save below: save_game drives the START menu, and an
+    # observation caught mid-menu carries no map at all, which is exactly
+    # the "unknown location" the snapshot exists to prevent.
+    _write_last_state(b)
     # SAVE WHAT WAS EARNED, even when the plan failed. The save above only
     # fires for a plan that fully succeeded — `if not ok: break` skips it —
     # so an attempt that crossed two maps, beat fifteen trainers and banked
@@ -3454,12 +3463,6 @@ def main():
         r = (ex._send_safe("save_game") or {}).get("result") or {}
         print(f"[save] (after a failed plan, to keep what it earned) "
               f"{r.get('detail') or 'save failed'}")
-    o = b.obs() or {}
-    # Durable snapshot of where the run ENDED. obs.json belongs to the live
-    # bridge and is gone once the game process dies, so the campaign's
-    # re-author was reading "an unknown location" — throwing away the single
-    # most useful piece of evidence it has about what to fix.
-    _write_last_state(b)
     print(f"\nRESULT: {'ALL PLANS COMPLETE' if ok else 'PLAN FAILED'} | "
           f"map={(o.get('map') or {}).get('id')} "
           f"party={[(m.get('species'), m.get('level')) for m in o.get('party') or []]} "
