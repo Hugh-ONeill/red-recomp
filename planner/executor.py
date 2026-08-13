@@ -1654,6 +1654,15 @@ class Executor:
         # problem, and the journal will say.
         dw0 = subgoal.get("done_when") or {}
         want_slot = (dw0.get("slot_level") or {}).get("slot")
+        # WILD BATTLES ONLY. Training is something you do to weak wild
+        # Pokemon; a trainer fight is not an opportunity you control, and
+        # you cannot flee it. A plan that put the grind inside the gym sent
+        # a L7 MAGIKARP in against MISTY's STARMIE, where it used SPLASH
+        # twice and died — a free knockout handed over, and the lead came
+        # back to finish the fight at half HP. The plan said "in the wild";
+        # this makes the switch obey it.
+        if want_slot and ((obs or {}).get("battle") or {}).get("kind") != "wild":
+            want_slot = None
         if want_slot and (obs or {}).get("mode") == "battle":
             party = (obs or {}).get("party") or []
             act = ((obs or {}).get("battle") or {}).get("me") or {}
