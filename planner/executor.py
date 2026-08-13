@@ -1319,31 +1319,47 @@ class Executor:
                 gate = r[0]
                 break
         if not gate:
+            self.log("passage_retry", subgoal=sg["id"], result="no gate")
             return o
+        self.log("passage_retry", subgoal=sg["id"], gate=gate.get("dest"),
+                 door=f"{gate['x']},{gate['y']}", result="trying")
+        outer = m.get("id")
         self._send_safe("use_warp", x=gate["x"], y=gate["y"])
         o2 = self.settle()
         inner = ((o2 or {}).get("map") or {})
-        if inner.get("id") == m.get("id"):
+        if inner.get("id") == outer:
+            self.log("passage_retry", subgoal=sg["id"],
+                     result="never entered")
             return o2
-        for w in inner.get("warps") or []:
-            if not w.get("reachable"):
-                continue
+        doors = [w for w in inner.get("warps") or [] if w.get("reachable")]
+        for w in doors:
+            # every test exits the building, so RE-ENTER before trying the
+            # next interior door — the first version pressed interior
+            # coordinates while standing outside and silently did nothing
+            cur = ((self.b.obs() or {}).get("map") or {}).get("id")
+            if cur == outer:
+                self._send_safe("use_warp", x=gate["x"], y=gate["y"])
+                o2 = self.settle()
+                if (((o2 or {}).get("map") or {}).get("id")) == outer:
+                    break
             self._send_safe("use_warp", x=w["x"], y=w["y"])
             o3 = self.settle()
-            if ((o3 or {}).get("map") or {}).get("id") == m.get("id"):
+            if ((o3 or {}).get("map") or {}).get("id") == outer:
                 pre2 = o3
                 self._send_safe("cross", dir=key)
                 o4 = self.settle()
                 while o4 and o4.get("mode") == "battle":
                     o4 = self.handle_battle(sg, o4)
                     o4 = self.settle()
-                if ((o4 or {}).get("map") or {}).get("id") != m.get("id"):
+                if ((o4 or {}).get("map") or {}).get("id") != outer:
                     self.log("passage_crossed", subgoal=sg["id"],
                              via=f"{gate['dest']}+{key}",
                              to=self._where(o4))
                     self.note_transition(pre2, {"dir": key}, o4)
                     return o4
                 o2 = o4 or o2
+        self.log("passage_retry", subgoal=sg["id"],
+                 result="no far side worked")
         return o2
 
     def _fought_at(self, tgt: str, obs, step, dest_map: str) -> bool:
