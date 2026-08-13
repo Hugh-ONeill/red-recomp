@@ -1253,11 +1253,21 @@ class Executor:
                     fought = True
                 if self._where(o) == nxt or not fought:
                     break
+            if self._where(o) != nxt and "," not in key:
+                # A directional edge can be TRUE from one part of a region
+                # and unwalkable from another (Cerulean's south is crossed
+                # from the strip beyond the fence, not from the north
+                # city). Before declaring the hop lost, walk THROUGH a
+                # passage building — one with a door we can reach and a
+                # door we cannot — and press the cross again from its far
+                # side. Same eye-fact as the through-building note, made
+                # into legs.
+                o = self._passage_retry(sg, key, o)
             if self._where(o) != nxt:
-                # A hop that fails to land CONTRADICTS the recorded edge:
-                # void it, or the router re-picks the phantom forever (a
-                # blackout walk-back minted 20,0 --south--> ROUTE_5 and
-                # fifteen straight route walks died on it).
+                # A hop that fails to land even after the passage retry
+                # CONTRADICTS the recorded edge: void it, or the router
+                # re-picks the phantom forever (a blackout walk-back
+                # minted a phantom and fifteen straight walks died on it).
                 frm = self._where(pre)
                 rec = (self.explored.get(frm) or {}).get(key)
                 if rec and rec.get("to") == nxt:
@@ -1269,6 +1279,52 @@ class Executor:
         self.log("route_walked", subgoal=sg["id"], to=self._where(o),
                  hops=len(path))
         return self._where(o)
+
+    def _passage_retry(self, sg, key, o):
+        """Walk through a passage building (reachable door + unreachable
+        door, same destination) and press the failed directional cross
+        again from the far side. Mechanics only: the building and its
+        doors are in the observation; which cross to press was already
+        decided by the route being walked."""
+        m = (o or {}).get("map") or {}
+        by_dest = {}
+        for w in m.get("warps") or []:
+            if w.get("dest"):
+                by_dest.setdefault(w["dest"], []).append(w)
+        gate = None
+        for dest, ws in by_dest.items():
+            r = [w for w in ws if w.get("reachable")]
+            u = [w for w in ws if not w.get("reachable")]
+            if r and u:
+                gate = r[0]
+                break
+        if not gate:
+            return o
+        self._send_safe("use_warp", x=gate["x"], y=gate["y"])
+        o2 = self.settle()
+        inner = ((o2 or {}).get("map") or {})
+        if inner.get("id") == m.get("id"):
+            return o2
+        for w in inner.get("warps") or []:
+            if not w.get("reachable"):
+                continue
+            self._send_safe("use_warp", x=w["x"], y=w["y"])
+            o3 = self.settle()
+            if ((o3 or {}).get("map") or {}).get("id") == m.get("id"):
+                pre2 = o3
+                self._send_safe("cross", dir=key)
+                o4 = self.settle()
+                while o4 and o4.get("mode") == "battle":
+                    o4 = self.handle_battle(sg, o4)
+                    o4 = self.settle()
+                if ((o4 or {}).get("map") or {}).get("id") != m.get("id"):
+                    self.log("passage_crossed", subgoal=sg["id"],
+                             via=f"{gate['dest']}+{key}",
+                             to=self._where(o4))
+                    self.note_transition(pre2, {"dir": key}, o4)
+                    return o4
+                o2 = o4 or o2
+        return o2
 
     def _fought_at(self, tgt: str, obs, step, dest_map: str) -> bool:
         """Did a fight happen in the REGION this exit leads to?
