@@ -2000,6 +2000,9 @@ CUT clears; a fence with a bush in it is a door once you have CUT),
 omitted tosses the whole stack. The bag holds 20 KINDS of item and a
 FULL bag makes every gift and pickup silently FAIL: "got X!" plays and
 nothing arrives. WHICH item to sacrifice is your call),
+{"op":"sell","item":"NUGGET","count":N} (sell to THIS map's mart clerk:
+raises money AND frees the slot — a NUGGET exists to be sold; key items
+are refused. What to part with is your call),
 {"op":"wait"}. Battles are auto-handled.
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
@@ -2865,19 +2868,24 @@ Reply with ONLY a JSON array of ops, e.g.
             # A FULL BAG fails every gift silently: the captain's HM01
             # played its "got it!" text into a 20-of-20 bag and vanished.
             # The game normally says "no room" on screen; say it here.
-            if len((start or {}).get("bag") or {}) >= 20:
+            nkinds = len((start or {}).get("bag") or {})
+            if nkinds >= 18:
+                state = ("FULL — every gift and pickup now FAILS: the "
+                         "'got it!' text plays and NOTHING arrives"
+                         if nkinds >= 20 else
+                         "NEARLY FULL — a gift needing a fresh slot is "
+                         "about to fail silently")
                 memory += (
-                    "\nYOUR BAG IS FULL (20 of 20 kinds). Every gift and "
-                    "pickup FAILS while it stays full — the 'got it!' "
-                    "text plays and NOTHING arrives. Free a slot first, "
-                    "your choice how — USING a consumable spends it and "
-                    "keeps its value: a TM teaches its move "
-                    "({\"op\":\"use_item\",\"item\":\"TM_...\","
+                    f"\nYOUR BAG holds {nkinds} of 20 kinds: {state}. "
+                    "Free slots on YOUR judgment — USING a consumable "
+                    "spends it and keeps its value: a TM teaches its "
+                    "move ({\"op\":\"use_item\",\"item\":\"TM_...\","
                     "\"slot\":N,\"forget\":\"MOVE\"} when four moves are "
                     "known), a RARE_CANDY raises a level, HP_UP and its "
-                    "kin permanently boost a stat, heals heal "
-                    "({\"op\":\"use_item\",\"item\":...,\"slot\":N}) — "
-                    "or TOSS what you judge dead weight "
+                    "kin permanently boost a stat, heals heal. SELLING "
+                    "at a mart clerk raises money AND frees the slot "
+                    "({\"op\":\"sell\",\"item\":...} — a NUGGET exists "
+                    "to be sold). TOSSING dumps dead weight "
                     "({\"op\":\"toss\",\"item\":...}). Whoever tried to "
                     "hand you a thing will hand it again once there is "
                     "room.")

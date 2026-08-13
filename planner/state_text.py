@@ -43,12 +43,26 @@ def party_text(mons):
     return txt
 
 
+def bag_text(bagd):
+    txt = (", ".join(f"{k} x{v}" for k, v in (bagd or {}).items())
+           or "an empty bag")
+    n = len(bagd or {})
+    # the 20-kind cap is a wall the plan must plan around: a full bag
+    # eats every gift silently, so its fullness belongs in the one line
+    # every author and reviewer reads
+    if n >= 20:
+        txt += (" — the bag is FULL (20 of 20 kinds; gifts and pickups "
+                "FAIL until something is used, sold or tossed)")
+    elif n >= 18:
+        txt += f" — the bag is NEARLY FULL ({n} of 20 kinds)"
+    return txt
+
+
 if "region" in o:                    # last_state.json is already flattened
     m = o.get("map")
     party = party_text(o.get("party") or [])
     badges = ", ".join(o.get("badges") or []) or "no badges"
-    bag = ", ".join(f"{k} x{v}" for k, v in (o.get("bag") or {}).items()) \
-        or "an empty bag"
+    bag = bag_text(o.get("bag"))
     print(f"standing in {m or 'an unknown location'} with "
           f"{party or 'no party'}, {badges}, and {bag}")
     raise SystemExit
@@ -58,6 +72,5 @@ if not m:                      # stale/missing obs: say so rather than
     raise SystemExit
 party = party_text(o.get("party") or [])
 badges = ", ".join(o.get("badges") or []) or "no badges"
-bag = ", ".join(f"{k} x{v}" for k, v in (o.get("bag") or {}).items()) \
-    or "an empty bag"
+bag = bag_text(o.get("bag"))
 print(f"standing in {m} with {party or 'no party'}, {badges}, and {bag}")

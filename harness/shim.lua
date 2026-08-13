@@ -1158,7 +1158,9 @@ function OPS.buy(G, c)
   if price and price > 0 then
     local afford = math.floor(money / price)
     if afford < 1 then
-      return false, ("cannot afford %s: it costs %d and you have %d")
+      return false, ("cannot afford %s: it costs %d and you have %d — "
+        .. "the clerk also BUYS: sell spares "
+        .. "({\"op\":\"sell\",\"item\":...}) to raise money")
         :format(c.item, price, money)
     end
     if afford < (c.count - have0) then
@@ -1249,6 +1251,80 @@ function OPS.buy(G, c)
   end
   return true, ("bought: %s x%d in bag, %d money left"):format(
     c.item, have, (G.save and G.save.money) or 0)
+end
+
+-- Sell c.count of c.item to this mart's clerk (count omitted = the whole
+-- stack). WHAT to part with is the model's judgment; the counter is
+-- mechanics. Selling both raises money and frees bag slots — a NUGGET
+-- exists for exactly this.
+function OPS.sell(G, c)
+  if not c.item then return false, "sell needs item" end
+  local have0 = bag_count(G, c.item)
+  if have0 < 1 then return false, "no " .. c.item .. " in the bag" end
+  local want = math.min(c.count or have0, have0)
+  if G.overworld and G.stack:top() ~= G.overworld then
+    if not ui_shop_up(G) then ui_press_until(G, ui_shop_up, "a", 20) end
+    if not ui_shop_up(G) then ui_back_out(G) end
+  end
+  if G.overworld and G.stack:top() == G.overworld then
+    local ow = G.overworld
+    local clerk
+    for _, npc in ipairs(ow.npcs or {}) do
+      local nm = ((npc.def or {}).name or ""):upper()
+      if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
+    end
+    if not clerk then return false, "no shop clerk on this map" end
+    if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
+      return false, "couldn't reach the clerk"
+    end
+    if not ui_press_until(G, ui_is_menu, "a", 60) then
+      ui_back_out(G)
+      return false, "shop menu never opened"
+    end
+  end
+  if ui_is_menu(G) then
+    ui_cursor_to(G, "index", 2)                   -- SELL
+    U.tap(G, "a"); U.wait(10)
+  end
+  if not ui_press_until(G, ui_is_list, "a", 30) then
+    ui_close_shop(G); ui_back_out(G)
+    return false, "sell list never opened"
+  end
+  local idx
+  for i, row in ipairs(ui_rows(G)) do
+    if row.value == c.item then idx = i break end
+  end
+  if not idx then
+    ui_close_shop(G); ui_back_out(G)
+    return false, c.item .. " is not in the sell list (key items "
+      .. "cannot be sold)"
+  end
+  if not ui_cursor_to(G, "index", idx) then
+    ui_close_shop(G); ui_back_out(G)
+    return false, "cursor stuck on the sell list"
+  end
+  U.tap(G, "a"); U.wait(6)
+  if ui_press_until(G, ui_is_qty, "a", 20) then
+    if not ui_qty_to(G, want) then
+      ui_close_shop(G); ui_back_out(G)
+      return false, "couldn't set the quantity"
+    end
+    U.tap(G, "a"); U.wait(6)
+  end
+  if ui_is_choice(G) then                          -- "I can pay N. OK?"
+    ui_cursor_to(G, "index", 1)
+    U.tap(G, "a"); U.wait(10)
+  end
+  ui_press_until(G, ui_is_list, "a", 20)
+  local have = bag_count(G, c.item)
+  ui_close_shop(G)
+  ui_back_out(G)
+  if have >= have0 then
+    return false, "the sale did not go through"
+  end
+  return true, ("sold %s x%d — money now %d%s"):format(
+    c.item, have0 - have, (G.save and G.save.money) or 0,
+    have == 0 and ", slot freed" or "")
 end
 
 -- Use a bag item in the field (START -> ITEM -> item -> USE -> party
