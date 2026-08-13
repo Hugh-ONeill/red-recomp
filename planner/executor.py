@@ -369,6 +369,7 @@ class Executor:
         self._rounds_here: dict = {}        # target|region -> rounds spent
         self._fight_region: str | None = None   # where the last trainer fought
         self.flag_sites: dict = {}          # flag -> area it fired in
+        self.shut_doors: dict = {}   # region -> doors seen but unreachable
         self._known_flags = None            # None until the first obs
         self._cur_target = ""
         self._load_memory()
@@ -447,6 +448,7 @@ class Executor:
             self._no_cross = {r: set(v) for r, v in
                               (data.get("no_cross") or {}).items()}
             self.flag_sites = data.get("flag_sites") or {}
+            self.shut_doors = data.get("shut_doors") or {}
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
             # reset before ever reaching 2 — the TOO-WEAK note was aimed at
@@ -481,6 +483,7 @@ class Executor:
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
                  "flag_sites": self.flag_sites,
+                 "shut_doors": self.shut_doors,
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead},
                 indent=1))
@@ -613,6 +616,22 @@ class Executor:
         keys = [f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])
                 if w.get("reachable")]
         keys += list((m.get("connections") or {}).keys())
+        # DOORS THAT EXIST BUT CANNOT BE WALKED TO stay out of the frontier
+        # (you cannot take them now) and are recorded separately, because
+        # the PLAN AUTHOR reads this ledger and had no way to learn they
+        # existed. Blocked out of Cerulean, it authored a 24-leg march back
+        # to Pallet Town and round again — a brute-force search for a way
+        # on, while the way on was a door with a policeman standing under
+        # it, four tiles from where it was standing.
+        shut = sorted(f"{w.get('x')},{w.get('y')}->{w.get('dest')}"
+                      for w in (m.get("warps") or [])
+                      if not w.get("reachable"))
+        if shut:
+            if self.shut_doors.get(here) != shut:
+                self.shut_doors[here] = shut
+                self._save_memory()
+        elif self.shut_doors.pop(here, None) is not None:
+            self._save_memory()
         # a seam PROVEN uncrossable stays out: the frontier is rebuilt from
         # obs on every visit, so the prune was silently undone each time we
         # stood here again — and the walk-back then kept dragging the run

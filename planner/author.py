@@ -398,6 +398,15 @@ def observed_text(path: Path) -> str:
                 "thing you need):\n" + "\n".join(seen))
     fired = [f"  {f} fired in {region}"
              for f, region in sorted((d.get("flag_sites") or {}).items())]
+    shut = d.get("shut_doors") or {}
+    if shut:
+        out += ("\n\nDOORS SEEN BUT NEVER OPENED (they exist on the map and "
+                "the party could not walk to them — a door does not move, so "
+                "something was in the way, usually a PERSON who steps aside "
+                "once talked to). On walked ground these are the openings "
+                "that can still lead somewhere new:\n"
+                + "\n".join(f"  in {r}: {', '.join(v)}"
+                             for r, v in sorted(shut.items())))
     if fired:
         out += ("\n\nWHERE EVENTS ACTUALLY FIRED (an event happens in ONE "
                 "place, so a subgoal for it must come AFTER the subgoal "
