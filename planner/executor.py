@@ -1659,6 +1659,12 @@ class Executor:
             act = ((obs or {}).get("battle") or {}).get("me") or {}
             alive = (len(party) >= want_slot
                      and (party[want_slot - 1].get("hp") or 0) > 0)
+            if not alive:
+                # A FAINTED TRAINEE EARNS NOTHING. Silently skipping the
+                # switch left the lead soaking every battle while the goal
+                # waited on a Pokemon that could not be sent out at all.
+                self.log("train_switch_blocked", subgoal=subgoal["id"],
+                         slot=want_slot, reason="fainted")
             if alive and act.get("species") != party[want_slot - 1].get("species"):
                 r = (self._send_safe("battle_switch", slot=want_slot) or {})
                 self.log("train_switch_in", subgoal=subgoal["id"],
@@ -2999,6 +3005,21 @@ Reply with ONLY a JSON array of ops, e.g.
                     f"end the fight, buy and use healing items, or all "
                     f"three. Note that each blackout also costs you half "
                     f"your money.")
+            # TRAINING A FAINTED POKEMON IS NOT TRAINING. It cannot be sent
+            # out, so it earns nothing and the lead soaks every battle while
+            # the condition never moves. The party screen says so; say it
+            # here too, before the round is spent.
+            want2 = ((sg.get("done_when") or {}).get("slot_level") or {}
+                     ).get("slot")
+            if want2:
+                pty = (cur or {}).get("party") or []
+                if len(pty) >= want2 and (pty[want2 - 1].get("hp") or 0) <= 0:
+                    stuck_note += (
+                        f"\nSLOT {want2} "
+                        f"({pty[want2 - 1].get('species')}) IS FAINTED. A "
+                        f"fainted Pokemon cannot be sent into battle and "
+                        f"earns no experience, so this goal cannot move "
+                        f"until it is healed at a Pokemon Center.")
             spent_here = self._tried_objs.get(here_now, set())
             here_objs = {o.get("name") for o in
                          ((cur.get("map") or {}).get("objects") or [])
