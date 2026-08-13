@@ -431,6 +431,10 @@ class Executor:
                         if t != "*" and not t.startswith("flag:")]:
                 for r in self.searched.pop(tgt, {}):
                     anyd.pop(r, None)
+            # service buildings recorded as worked by older runs expire too
+            for r in [r for r in anyd
+                      if r.split("|")[0].endswith(("POKECENTER", "MART"))]:
+                anyd.pop(r, None)
             # every surviving entry was recorded under the fully-worked
             # condition, so the union of targets joins the worked rooms
             for tgt, rooms in list(self.searched.items()):
@@ -668,6 +672,15 @@ class Executor:
         reachable touched. Distinct from a dead end — it stops the room
         being SEARCHED again without stopping the run PASSING through."""
         if not region or "None" in region or not target:
+            return
+        # A SERVICE is never exhausted. "Fully worked" means nothing is left
+        # to FIND here, which is trivially true of a Pokemon Center or a
+        # mart — and useless, because their value is a nurse and a counter
+        # that keep working however many times you come back. Marked, they
+        # read as "done with this place" to every consumer of the ledger,
+        # which is why the door seal needed item:/party_healthy patches
+        # downstream. Do not make the claim in the first place.
+        if region.split("|")[0].endswith(("POKECENTER", "MART")):
             return
         # A room where a FIGHT ran for this goal is not exhausted — losing
         # to the Mt Moon nerd marked his room worked, and the refusal then
