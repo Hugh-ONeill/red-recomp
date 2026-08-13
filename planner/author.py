@@ -780,9 +780,72 @@ def merge_plans(orig: dict, revised: dict) -> tuple:
     return merged, restored
 
 
+DRAFTS_DIR = Path("plans/drafts")
+
+
+def _goal_slug(goal: str) -> str:
+    return (re.sub(r"[^a-z0-9]+", "_", goal.lower()).strip("_")[:48]
+            or "goal")
+
+
+def _skel(plan: dict) -> list:
+    return [(s.get("id"), json.dumps(s.get("done_when"), sort_keys=True))
+            for s in plan.get("subgoals") or []]
+
+
+def archive_draft(goal: str, plan: dict):
+    """Anti-variance memory: every plan authored for a goal is banked and
+    survives restarts. The donor lore re-rolled on every fresh authoring
+    (captain -> rooftop -> Bill -> Rocket) and the one CORRECT draw was
+    deleted with its campaign cycle — a dice roll paid and thrown away."""
+    try:
+        d = DRAFTS_DIR / _goal_slug(goal)
+        d.mkdir(parents=True, exist_ok=True)
+        skel = _skel(plan)
+        for f in sorted(d.glob("*.json")):
+            try:
+                if _skel(json.loads(f.read_text())) == skel:
+                    return
+            except (ValueError, OSError):
+                continue
+        n = len(list(d.glob("*.json"))) + 1
+        (d / f"{n:03d}.json").write_text(json.dumps(plan, indent=1))
+    except OSError:
+        pass
+
+
+def load_drafts(goal: str, limit: int = 6) -> list:
+    out = []
+    try:
+        for f in sorted((DRAFTS_DIR / _goal_slug(goal)).glob("*.json"))[-limit:]:
+            try:
+                out.append(json.loads(f.read_text()))
+            except (ValueError, OSError):
+                continue
+    except OSError:
+        pass
+    return out
+
+
+def drafts_text(drafts: list) -> str:
+    if not drafts:
+        return ""
+    lines = ["\n\nPLANS YOU WROTE FOR THIS SAME GOAL IN EARLIER ATTEMPTS. "
+             "Different attempts remembered different things; none is "
+             "binding, but a subgoal from an earlier draft that the "
+             "evidence supports may be ADDED under the same rules as any "
+             "other addition:"]
+    for i, p in enumerate(drafts, 1):
+        skel = "; ".join(
+            f"{s.get('id')} {json.dumps(s.get('done_when'))}"
+            for s in (p.get("subgoals") or [])[:20])
+        lines.append(f"  draft {i}: {skel}")
+    return "\n".join(lines)
+
+
 def review(goal: str, plan: dict, model: str, start: str | None = None,
            rounds: int = 2, observed: Path | None = None,
-           journal: Path | None = None) -> dict:
+           journal: Path | None = None, drafts: list | None = None) -> dict:
     """Second model pass over its own plan. Returns the revision only if it
     still validates; a broken revision is discarded in favour of the
     original, so review can improve a plan but never corrupt it."""
@@ -796,6 +859,7 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
     # instructions at the tail where truncation cannot reach either.
     base = ((observed_text(observed) if observed else "")
             + (journal_text(journal) if journal else "")
+            + drafts_text(drafts or [])
             + build_prompt(goal, start))
     for rnd in range(1, rounds + 1):
         reply = brock_probe.chat(
@@ -1374,10 +1438,16 @@ def main():
     if not plan:
         sys.exit("author failed to produce a valid plan")
     if not args.no_review:
+        prior = load_drafts(args.goal)
+        if prior:
+            print(f"[drafts] {len(prior)} earlier draft(s) for this goal "
+                  f"shown to the review")
         plan = review(args.goal, plan, args.model, start=args.start,
-                      observed=args.observed, journal=args.journal)
+                      observed=args.observed, journal=args.journal,
+                      drafts=prior)
     plan.setdefault("goal", args.goal)
     plan["authored_by"] = args.model
+    archive_draft(args.goal, plan)
     args.out.write_text(json.dumps(plan, indent=2))
     print(f"wrote {args.out}")
     for s in plan["subgoals"]:
