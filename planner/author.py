@@ -779,6 +779,9 @@ must do for somebody, are all objectives in their own right — a playthrough
 that lists only the badges is missing the reasons you were able to reach
 them.
 
+Expect about TWENTY objectives. If you have far fewer, you have folded
+several into one and skipped the errands between the badges — unfold them.
+
 Reply with ONLY a JSON array of strings."""
 
 
@@ -846,8 +849,12 @@ should be played.
 
 Keep what you believe, whichever draft it came from. Something only one
 draft remembered can still be the thing the game will not let you past —
-count is how often you said it, not how true it is. Leave out what names
-the same thing twice, and what you no longer believe."""
+count is how often you said it, not how true it is.
+
+When several entries name the SAME thing in different words, keep exactly
+one of them — dropping the whole cluster loses the thing itself. Leave a
+thing out only when you no longer believe the thing. Expect to keep about
+twenty."""
 
 
 def _outline_merge(goal: str, drafts: list, model: str) -> list | None:
@@ -905,7 +912,82 @@ def _outline_merge(goal: str, drafts: list, model: str) -> list | None:
           f"{len(menu)} distinct -> kept {len(out)}")
     for leg in dropped:
         print(f"[outline]   left out: {leg!r}")
+    majority = len(drafts) // 2 + 1
+    doubts = [d for d in dropped if seen[d.lower()] >= majority]
+    if doubts:
+        out = _merge_confirm(goal, out, doubts, len(drafts), seen,
+                             model) or out
     return out
+
+
+MERGE_CONFIRM_SYS = """You composed a final Pokemon Red playthrough
+outline from your own drafts, and in doing so you left out objectives that
+MOST of your drafts had included. Leaving them out may be right — a thing
+said three ways only needs saying once — but it must be on purpose.
+
+For each left-out objective, either put it back or let it go. Reply with
+ONLY a JSON array; each element is {"item": "A", "after": N} to put that
+item back after outline position N (0 = before everything). Any item you
+do not mention stays out, for good."""
+
+
+def _merge_confirm(goal: str, out: list, doubts: list, ndrafts: int,
+                   seen: dict, model: str) -> list | None:
+    """Consensus items can be dropped, but never silently.
+
+    The merge under count pressure dropped "Defeat Erika" whole — an
+    objective all three drafts agreed on — while keeping duplicate badge
+    entries. Dupes are near-free (an already-done leg completes
+    instantly); a lost consensus leg walls the campaign. So the harness
+    asks one pointed question and applies the answer verbatim: it never
+    restores anything itself.
+    """
+    letters = [chr(ord("A") + i) for i in range(len(doubts))]
+    body = (f"THE GOAL: {goal}\n\nYOUR FINAL OUTLINE:\n"
+            + "\n".join(f"  {i}. {leg}" for i, leg in enumerate(out, 1))
+            + "\n\nLEFT OUT, though most drafts had them:\n"
+            + "\n".join(
+                f"  {c}. {d}   (in {seen[d.lower()]} of {ndrafts} drafts)"
+                for c, d in zip(letters, doubts)))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": MERGE_CONFIRM_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\[.*\]", reply, re.S)
+        if not m:
+            return None
+        answers = json.loads(m.group(0))
+    except (ValueError, KeyError, OSError):
+        return None
+    if not isinstance(answers, list):
+        return None
+    result = list(out)
+    restored = set()
+    for a in answers:
+        if not isinstance(a, dict):
+            continue
+        c = str(a.get("item") or "").strip().upper()
+        if c not in letters or c in restored:
+            continue
+        leg = doubts[letters.index(c)]
+        try:
+            after = int(a.get("after") or 0)
+        except (TypeError, ValueError):
+            after = 0
+        if after < 1:
+            pos, where = 0, "at the start"
+        elif after > len(out):
+            pos, where = len(result), "at the end"
+        else:
+            pos = result.index(out[after - 1]) + 1
+            where = f"after {out[after - 1]!r}"
+        result.insert(pos, leg)
+        restored.add(c)
+        print(f"[outline] restored {leg!r} {where}")
+    for c, d in zip(letters, doubts):
+        if c not in restored:
+            print(f"[outline] left out on purpose: {d!r}")
+    return result
 
 
 OUTLINE_REVIEW_SYS = """You are checking the ORDER of a Pokemon Red
