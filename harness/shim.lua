@@ -396,18 +396,24 @@ local function observe(G, seq, result)
     -- among them). Listed so the model can aim field_move at one.
     do
       local lm = G.overworld and G.overworld.map
-      local swaps = (G.data and G.data.field
-                     and G.data.field.cutTreeSwaps) or {}
-      local trees = {}
-      for _, sw in ipairs(swaps) do trees[sw.before] = true end
+      -- tile ids are only meaningful within ONE tileset (tryCut's own
+      -- rule, learned when raw block matching chain-cut "ornamental
+      -- bushes" and crashed PLATEAU): a cuttable OBSTACLE is OVERWORLD
+      -- tree $3d or GYM plant $50, standing on a non-walkable cell.
+      -- Grass ($52) is cuttable too but cosmetic — listing every tussock
+      -- would drown the object list.
+      local ts = lm and lm.def and lm.def.tileset
+      local want = (ts == "OVERWORLD" and 0x3d)
+                   or (ts == "GYM" and 0x50) or nil
       -- lm.widthCells directly: map_dims_cells is declared further down
       -- the file and is nil inside observe (the DIRS scoping trap again)
-      if lm and lm.cellTile and next(trees) then
+      if lm and lm.cellTile and want then
         local w = lm.widthCells or 0
         local h = lm.heightCells or 0
         for cy = 0, math.min(h - 1, 71) do
           for cx = 0, math.min(w - 1, 71) do
-            if trees[lm:cellTile(cx, cy)] then
+            if lm:cellTile(cx, cy) == want
+               and not lm:isWalkableCell(cx, cy) then
               o.map.objects[#o.map.objects + 1] = {
                 x = cx, y = cy, kind = "cut_tree", name = "CUT_TREE",
                 reachable = adjacent_reachable(cx, cy),

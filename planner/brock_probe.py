@@ -89,7 +89,7 @@ rather than repeating it. Output only the JSON object."""
 # the predicate vocabulary, the map-id list and the training guidance, while
 # the journal and audit checks at the tail always survived. 16384 leaves 8192
 # usable and still loads 100% on the 3090 (20GB); 32768 spills to CPU.
-NUM_CTX = 16384
+NUM_CTX = 24576
 
 
 def chat(msgs, model):
