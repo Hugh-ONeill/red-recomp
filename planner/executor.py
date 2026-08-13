@@ -2725,6 +2725,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 cur = self._leave_ui(cur, sg) or cur
             else:
                 self._ui_pending = 0
+            stuck_note = ""      # per-round; the walk-back note appends below
             if self._faint_at and cur.get("mode") == "overworld":
                 back = self._return_from_blackout(cur, sg)
                 if back:
@@ -2738,7 +2739,11 @@ Reply with ONLY a JSON array of ops, e.g.
             sig1 = self._snapshot(cur)
             here_now = self._where(cur)
             self._stuck_in[here_now] = self._stuck_in.get(here_now, 0) + 1
-            stuck_note = ""
+            # NB: do not reset stuck_note here — the blackout walk-back note
+            # is appended above and a reset at this point deleted it before
+            # it was ever sent, so the round after a wipe never learned it
+            # had been walked home or that the thing that beat it is still
+            # standing there.
             if self._blackouts.get(self._target_key(sg), 0) >= 2:
                 # Being LOST and being TOO WEAK fail the same way from the
                 # executor's side (condition still false), but the remedies
@@ -2753,7 +2758,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 now_lv = ((cur or {}).get("party") or [{}])[0].get("level")
                 dated = (f" (last wipe: lead L{last_lv}; your lead now: "
                          f"L{now_lv})" if last_lv and now_lv else "")
-                stuck_note = (
+                stuck_note += (
                     f"\nYour party has been WIPED OUT "
                     f"{self._blackouts[self._target_key(sg)]}x pursuing this "
                     f"goal{dated}. You are not lost — you are TOO WEAK to "
