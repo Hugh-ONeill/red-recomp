@@ -1110,17 +1110,34 @@ class Executor:
         # CITY (six of them, two hops, and visited a dozen times), so the
         # escort marched AWAY from the frontier that mattered. Fresh ground
         # is where new ground is; distance only breaks ties.
+        tgt = self._target_key(sg)
+        want_map = tgt.split(":", 1)[1] if tgt.startswith("map:") else None
         best = None
         for region, exits in self.frontier.items():
             if region == here:
                 continue
             done_x = set((self.explored.get(region) or {}).keys())
-            if not [e for e in exits if e not in done_x]:
+            fresh = [e for e in exits if e not in done_x]
+            if not fresh:
                 continue
             path = self._route(here, region)
             if path is None:
                 continue
-            rank = (self.visits.get(region, 0), len(path))
+            # GOAL-WARD OUTRANKS FRESH. Least-visited alone drifts to the
+            # periphery once the graph is dense: Route 25 read "fresh"
+            # while the south pocket of Cerulean — visited constantly,
+            # holding an untried south edge whose map connection IS the
+            # target — read "stale", and the run walked to Bill's house
+            # instead of Route 5. When a region's untried directional
+            # edge leads to the target map per the atlas (geography this
+            # run has itself observed), it comes first.
+            goalward = 1
+            if want_map:
+                redges = (self.atlas.get(region.split("|")[0]) or {}) \
+                    .get("edges") or {}
+                if any(redges.get(e) == want_map for e in fresh):
+                    goalward = 0
+            rank = (goalward, self.visits.get(region, 0), len(path))
             if best is None or rank < best[2]:
                 best = (region, path, rank)
         if not best or not best[1]:
@@ -3111,7 +3128,21 @@ Reply with ONLY a JSON array of ops, e.g.
                 untried = [e for e in (self.frontier.get(here_r) or [])
                            if e not in done_x]
                 if untried and (cur or {}).get("mode") == "overworld":
-                    key = sorted(untried)[0]
+                    # goal-ward edge first, same rule as the reroute rank
+                    tgt_k = self._target_key(sg)
+                    want_m = (tgt_k.split(":", 1)[1]
+                              if tgt_k.startswith("map:") else None)
+                    key = None
+                    if want_m:
+                        redges = (self.atlas.get(
+                            (cur.get("map") or {}).get("id")) or {}) \
+                            .get("edges") or {}
+                        for e in sorted(untried):
+                            if redges.get(e) == want_m:
+                                key = e
+                                break
+                    if key is None:
+                        key = sorted(untried)[0]
                     pre = cur
                     if "," in key:
                         x, y = key.split(",")
