@@ -3397,7 +3397,14 @@ Reply with ONLY a JSON array of ops, e.g.
                             + self._through_buildings(cur))
                            if (cur.get("map") or {}).get("warps") else "")
                         + (f"\nEdges from this map (cross that dir to reach): "
-                           + ", ".join(f"{d}->{m}" for d, m in conns.items())
+                           + ", ".join(
+                               f"{d}->{m}"
+                               + (" (PROVEN uncrossable from THIS part of "
+                                  "the map — the connection exists on the "
+                                  "far side of a barrier)"
+                                  if d in self._no_cross.get(
+                                      self._where(cur), set()) else "")
+                               for d, m in conns.items())
                            if conns else "")
                         + (f"\nObjects here you can interact: {objs}" if objs
                            else "")
