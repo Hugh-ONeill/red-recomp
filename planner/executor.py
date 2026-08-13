@@ -1460,6 +1460,22 @@ class Executor:
                          f"you leave — it is free, and a thing sitting in a "
                          f"passage can be exactly what is blocking it, so "
                          f"interacting with it may open the way.")
+        # ASK SOMEBODY. When a room stops yielding, the cheapest move left is
+        # the one a person makes: talk to whoever is standing around. This
+        # game states its own rules in dialogue, every line gets kept (see
+        # WHAT PEOPLE HERE HAVE TOLD YOU), and the run has walked past the
+        # same unspoken-to NPCs for whole attempts while re-taking doors.
+        folk = [o.get("name") for o in (m.get("objects") or [])
+                if o.get("reachable") and o.get("name")
+                and o.get("kind") in ("npc", "trainer")
+                and o.get("name") not in taken_objs]
+        if folk and self.visits.get(here, 0) >= 2:
+            loot_line += (f"\nPEOPLE HERE YOU HAVE NEVER SPOKEN TO: "
+                          f"{', '.join(folk[:6])}. You have been in this area "
+                          f"before and it has not opened up. Talk to them — "
+                          f"in this game a locked way is normally explained "
+                          f"out loud by somebody standing near it, and what "
+                          f"they say is written down for you.")
         # ...and the same fact about ROOMS YOU ARE NOT IN. When every
         # frontier exit is taken, the only thing that still changes the
         # geometry is an untouched object (the Mt Moon fossils are the door
