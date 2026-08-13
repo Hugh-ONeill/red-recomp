@@ -1747,7 +1747,13 @@ coordinates. Read:
     obs.map.warps), or cross an edge.
 Ops: {"op":"walk_to","x":N,"y":N} (within-map), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
-door/stairs), {"op":"interact","name":"OBJECT_NAME","answer":"yes"} (answer
+door/stairs), {"op":"interact","name":"OBJECT_NAME","answer":"yes"} OR
+{"op":"interact","x":N,"y":N,"answer":"yes"} — press A on a TILE rather than
+a listed object. Not everything you can press A on is in obs.map.objects:
+machines, computers, statues, bookshelves and trash cans are part of the
+scenery and are never listed, so a coordinate is the only way to reach one.
+If a room's listed objects are exhausted and something in it must still be
+operated, press A at the tile it occupies. (answer
 accepts a yes/no question the thing asks — taking an item it offers needs
 "yes"; with no answer given the question is DECLINED), {"op":"menu","index":N}
 (1-based: 1=YES/first, 2=NO/second), {"op":"grind"} (pace this map's wild
