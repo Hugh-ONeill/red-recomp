@@ -22,6 +22,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import difflib
 import json
 import re
 import sys
@@ -176,15 +177,21 @@ KEY_ITEMS = {
 # of Red picks which), validation only checks the string is real, and the
 # only flags the PROMPT volunteers are the ones this run has watched fire,
 # which observed_text already reports under WHERE EVENTS ACTUALLY FIRED.
-def _engine_flags() -> set:
+def _engine_names(fname: str) -> set:
     try:
-        p = Path(__file__).with_name("engine_flags.txt")
+        p = Path(__file__).with_name(fname)
         return {l.strip() for l in p.read_text().splitlines() if l.strip()}
     except OSError:
         return set()
 
 
-ENGINE_FLAGS = _engine_flags()
+ENGINE_FLAGS = _engine_names("engine_flags.txt")
+# Every item id the engine defines (data/generated/items.lua), for the same
+# reason ENGINE_FLAGS exists: KEY_ITEMS is a seven-entry spelling aid, and
+# using it as the whole has_item universe made "I have the fossil" — the
+# RIGHT condition for a fossil leg — unwritable in any spelling. The model
+# may name any real item; validation only checks the string is real.
+ENGINE_ITEMS = _engine_names("engine_items.txt")
 
 BADGES = ["BOULDERBADGE", "CASCADEBADGE", "THUNDERBADGE",
           "RAINBOWBADGE", "SOULBADGE", "MARSHBADGE", "VOLCANOBADGE",
@@ -254,7 +261,9 @@ def build_prompt(goal: str, start: str | None = None) -> str:
           "below lists the ones this run has actually watched fire, and "
           "your own knowledge of the game covers the rest. A flag name that "
           "the game does not define will be rejected."
-        + "\n\nITEM IDs (use exact strings in has_item):\n"
+        + "\n\nITEM IDs: has_item takes ANY item this game defines, spelled "
+          "the way it spells it — a wrong spelling is rejected with close "
+          "matches to pick from. The spelling traps among the common ones:\n"
         + "\n".join(f"  {k}: {v}" for k, v in KEY_ITEMS.items())
         + f"\n\nBADGES: {', '.join(BADGES)}\n\n"
         "Author the ordered subgoal list now. Remember the granularity rule.")
@@ -293,9 +302,13 @@ def validate(plan: dict) -> list:
                 probs.append(f"{tag} ({sid}) map '{v}' not in the route list")
             elif k == "has_item" and isinstance(v, dict):
                 for item in v:
-                    if item not in KEY_ITEMS:
-                        probs.append(f"{tag} ({sid}) unknown item {item!r} "
-                                     f"(valid: {', '.join(KEY_ITEMS)})")
+                    if ENGINE_ITEMS and item not in ENGINE_ITEMS:
+                        near = difflib.get_close_matches(
+                            item, ENGINE_ITEMS, n=3, cutoff=0.5)
+                        hint = (f" — did you mean {', '.join(near)}?"
+                                if near else "")
+                        probs.append(f"{tag} ({sid}) '{item}' is not an item "
+                                     f"id this game defines{hint}")
             elif k == "flag" and ENGINE_FLAGS and v not in ENGINE_FLAGS:
                 probs.append(f"{tag} ({sid}) flag '{v}' is not an event this "
                              f"game defines")
