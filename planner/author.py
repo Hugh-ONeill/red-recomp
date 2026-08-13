@@ -294,7 +294,7 @@ def validate(plan: dict) -> list:
             elif k == "has_item" and isinstance(v, dict):
                 for item in v:
                     if item not in KEY_ITEMS:
-                        probs.append(f"{sg.get('id')}: unknown item {item!r} "
+                        probs.append(f"{tag} ({sid}) unknown item {item!r} "
                                      f"(valid: {', '.join(KEY_ITEMS)})")
             elif k == "flag" and ENGINE_FLAGS and v not in ENGINE_FLAGS:
                 probs.append(f"{tag} ({sid}) flag '{v}' is not an event this "
