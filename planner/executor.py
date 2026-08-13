@@ -487,6 +487,11 @@ class Executor:
             # Misty and structurally could not fire on her.
             self._blackouts = data.get("blackouts") or {}
             self._blackout_lead = data.get("blackout_lead") or {}
+            # Waypoints COMPLETED this campaign stay completed across
+            # attempt resumes: a resumed journey-plan re-litigated its
+            # first waypoint and marched the party from the captain's
+            # doorstep all the way back to Cerulean.
+            self._plan_done = data.get("plan_done") or {}
             self._rebuild_area_aliases()
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
@@ -518,7 +523,8 @@ class Executor:
                  "shut_doors": self.shut_doors,
                  "hints": self.hints,
                  "blackouts": self._blackouts,
-                 "blackout_lead": self._blackout_lead},
+                 "blackout_lead": self._blackout_lead,
+                 "plan_done": getattr(self, "_plan_done", {})},
                 indent=1))
         except OSError:
             pass
@@ -3744,10 +3750,30 @@ Reply with ONLY a JSON array of ops, e.g.
         fails = 0
         backtracks = 0
         subgoals = plan["subgoals"]
+        # WAYPOINTS ALREADY WALKED THIS CAMPAIGN STAY WALKED. A resumed
+        # journey-plan re-litigated go_to_cerulean_city from its first
+        # line and marched the party from the captain's doorstep back
+        # north. A subgoal id completed under this goal in an earlier
+        # attempt is honored — except the final one, which is the leg's
+        # objective and must hold NOW.
+        goal_key = str(plan.get("goal") or "")
+        if not hasattr(self, "_plan_done"):
+            self._plan_done = {}
+        prior_done = set(self._plan_done.get(goal_key) or [])
         for idx, sg in enumerate(subgoals):
+            if (sg["id"] in prior_done and idx < len(subgoals) - 1):
+                print(f"== subgoal: {sg['id']} (done in an earlier "
+                      f"attempt — honored)")
+                self.log("subgoal_prior_done", subgoal=sg["id"])
+                continue
             has_macro = bool(sg.get("macro"))
             print(f"== subgoal: {sg['id']}" + ("" if has_macro else " (no macro)"))
             ok = self._attempt(sg)
+            if ok:
+                self._plan_done.setdefault(goal_key, [])
+                if sg["id"] not in self._plan_done[goal_key]:
+                    self._plan_done[goal_key].append(sg["id"])
+                    self._save_memory()
             # BACKTRACK: a subgoal that cannot be done may not be the broken
             # one. A done_when like {map:X} is satisfied ANYWHERE on X, so the
             # PREVIOUS subgoal can "succeed" in a place this one is impossible
@@ -3915,6 +3941,10 @@ Reply with ONLY a JSON array of ops, e.g.
                 if not r.get("ok"):
                     self.log("subgoal_save_failed", subgoal=sg["id"],
                              detail=r.get("detail"))
+        # a finished leg's sticky waypoints must not leak into a future
+        # campaign that happens to reuse the goal wording
+        self._plan_done.pop(goal_key, None)
+        self._save_memory()
         self.log("plan_complete", goal=plan.get("goal"),
                  escalations=self.escalations)
         return True
