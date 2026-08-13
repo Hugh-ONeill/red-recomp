@@ -356,6 +356,7 @@ class Executor:
         self._revisit_refusals: dict = {}   # target -> refusals spent
         self._battle_regions: set = set()   # "target|region" a fight ran in
         self._blackouts: dict = {}          # target -> party wipes
+        self._blackout_lead: dict = {}      # target -> lead level, last wipe
         self._faint_at = None               # region we were in when wiped
         self._ui_pending = 0                # rounds a prompt has sat open
         self._dead_ops: dict = {}           # (target, op, arg) -> failures
@@ -441,6 +442,12 @@ class Executor:
             self._no_cross = {r: set(v) for r, v in
                               (data.get("no_cross") or {}).items()}
             self.flag_sites = data.get("flag_sites") or {}
+            # Wipe counts persist: each campaign attempt is a fresh process
+            # and the badge gate is one-strike, so the in-memory counter
+            # reset before ever reaching 2 — the TOO-WEAK note was aimed at
+            # Misty and structurally could not fire on her.
+            self._blackouts = data.get("blackouts") or {}
+            self._blackout_lead = data.get("blackout_lead") or {}
             self._rebuild_area_aliases()
             self._prune_dead_ends()
             edges = sum(len(v) for v in self.explored.values())
@@ -468,7 +475,9 @@ class Executor:
                              for r, s in self._tried_objs.items()},
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
-                 "flag_sites": self.flag_sites},
+                 "flag_sites": self.flag_sites,
+                 "blackouts": self._blackouts,
+                 "blackout_lead": self._blackout_lead},
                 indent=1))
         except OSError:
             pass
@@ -1940,6 +1949,10 @@ Reply with ONLY a JSON array of ops, e.g.
                         if self._cur_target:
                             self._blackouts[self._cur_target] = \
                                 self._blackouts.get(self._cur_target, 0) + 1
+                            lv = ((obs or {}).get("party") or [{}])[0]
+                            self._blackout_lead[self._cur_target] = \
+                                lv.get("level")
+                            self._save_memory()
                             # A room is contested when a fight here BEAT US:
                             # that is the unfinished business worth coming
                             # back for. A trainer you defeated leaves the
@@ -2000,6 +2013,9 @@ Reply with ONLY a JSON array of ops, e.g.
                     if self._cur_target:
                         self._blackouts[self._cur_target] = \
                             self._blackouts.get(self._cur_target, 0) + 1
+                        self._blackout_lead[self._cur_target] = \
+                            ((obs or {}).get("party") or [{}])[0].get("level")
+                        self._save_memory()
                     self.log("blackout", subgoal=sg["id"], op=op,
                              respawn=after[0], detected="state")
                     self.log("faint_marked", subgoal=sg["id"],
@@ -2709,15 +2725,24 @@ Reply with ONLY a JSON array of ops, e.g.
                 # are opposite: one says leave, the other says come back
                 # stronger. Naming which one this is lets the model author
                 # the fix instead of re-entering the same fight unchanged.
+                # date the evidence: a count carried across attempts can
+                # predate training, and the lead-level pair lets the model
+                # see whether anything has actually changed since it last
+                # lost (wiped at L19, still L19 = walking back in unchanged)
+                last_lv = self._blackout_lead.get(self._target_key(sg))
+                now_lv = ((cur or {}).get("party") or [{}])[0].get("level")
+                dated = (f" (last wipe: lead L{last_lv}; your lead now: "
+                         f"L{now_lv})" if last_lv and now_lv else "")
                 stuck_note = (
                     f"\nYour party has been WIPED OUT "
                     f"{self._blackouts[self._target_key(sg)]}x pursuing this "
-                    f"goal. You are not lost — you are TOO WEAK to win this "
-                    f"fight as you are. Do not walk back in unchanged. Get "
-                    f"stronger first: grind levels, add another Pokemon to "
-                    f"the party so one faint does not end the fight, buy and "
-                    f"use healing items, or all three. Note that each "
-                    f"blackout also costs you half your money.")
+                    f"goal{dated}. You are not lost — you are TOO WEAK to "
+                    f"win this fight as you are. Do not walk back in "
+                    f"unchanged. Get stronger first: grind levels, add "
+                    f"another Pokemon to the party so one faint does not "
+                    f"end the fight, buy and use healing items, or all "
+                    f"three. Note that each blackout also costs you half "
+                    f"your money.")
             spent_here = self._tried_objs.get(here_now, set())
             here_objs = {o.get("name") for o in
                          ((cur.get("map") or {}).get("objects") or [])
@@ -3035,6 +3060,12 @@ Reply with ONLY a JSON array of ops, e.g.
                             for m in mons)
                         if healed and tot(obs) > tot(pre_obs):
                             self._faint_at = self._where(pre_obs)
+                            tk0 = self._target_key(sg)
+                            self._blackouts[tk0] = \
+                                self._blackouts.get(tk0, 0) + 1
+                            self._blackout_lead[tk0] = \
+                                (mons or [{}])[0].get("level")
+                            self._save_memory()
                             self.log("blackout", subgoal=sg["id"], op=op,
                                      respawn=post_map, detected="macro")
                             self.log("faint_marked", subgoal=sg["id"],
