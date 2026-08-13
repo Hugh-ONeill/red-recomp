@@ -303,15 +303,22 @@ def validate(plan: dict) -> list:
             elif k == "has_item" and isinstance(v, dict):
                 for item in v:
                     if ENGINE_ITEMS and item not in ENGINE_ITEMS:
+                        # cutoff 0.4: "HM01" rates only 0.4 against
+                        # "HM_CUT" and the bare error left the author
+                        # guessing three rounds to death
                         near = difflib.get_close_matches(
-                            item, ENGINE_ITEMS, n=3, cutoff=0.5)
+                            item, ENGINE_ITEMS, n=4, cutoff=0.4)
                         hint = (f" — did you mean {', '.join(near)}?"
                                 if near else "")
                         probs.append(f"{tag} ({sid}) '{item}' is not an item "
                                      f"id this game defines{hint}")
             elif k == "flag" and ENGINE_FLAGS and v not in ENGINE_FLAGS:
+                near = difflib.get_close_matches(v, ENGINE_FLAGS,
+                                                 n=3, cutoff=0.6)
+                hint = (f" — did you mean {', '.join(near)}?"
+                        if near else "")
                 probs.append(f"{tag} ({sid}) flag '{v}' is not an event this "
-                             f"game defines")
+                             f"game defines{hint}")
             elif k == "badge" and v not in BADGES:
                 probs.append(f"{tag} ({sid}) badge '{v}' unknown")
     return probs
