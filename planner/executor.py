@@ -3798,11 +3798,27 @@ Reply with ONLY a JSON array of ops, e.g.
         goal_key = str(plan.get("goal") or "")
         if not hasattr(self, "_plan_done"):
             self._plan_done = {}
-        prior_done = set(self._plan_done.get(goal_key) or [])
+        # RESUME FROM WHERE THE PARTY STANDS, not from the union of
+        # everything ever done: the union version skipped the navigation
+        # scaffold (those waypoints WERE walked once) and stranded a bare
+        # flag target in Cerulean while its giver waited on the ship. The
+        # furthest subgoal whose condition holds RIGHT NOW is the honest
+        # resume point; everything after it re-runs even if some earlier
+        # attempt once completed it — position is not an achievement.
+        resume = 0
+        at0 = self.settle()
+        for i in range(len(subgoals) - 1, -1, -1):
+            dw = subgoals[i].get("done_when")
+            try:
+                if dw and pred_holds(dw, at0):
+                    resume = min(i + 1, len(subgoals) - 1)
+                    break
+            except Exception:
+                continue
         for idx, sg in enumerate(subgoals):
-            if (sg["id"] in prior_done and idx < len(subgoals) - 1):
-                print(f"== subgoal: {sg['id']} (done in an earlier "
-                      f"attempt — honored)")
+            if idx < resume:
+                print(f"== subgoal: {sg['id']} (holds from where the "
+                      f"party stands — honored)")
                 self.log("subgoal_prior_done", subgoal=sg["id"])
                 continue
             has_macro = bool(sg.get("macro"))
