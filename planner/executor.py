@@ -1185,6 +1185,29 @@ class Executor:
         self.log("rerouted", subgoal=sg["id"], to=region, hops=len(path))
         return region
 
+    @staticmethod
+    def _through_buildings(cur) -> str:
+        """A building with a door you can reach and a door you cannot IS
+        a passage — the eye-fact a human reads off the screen (the
+        trashed house straddling Cerulean's fence) stated from data the
+        observation already carries: two warp tiles, same destination,
+        different sides. No route knowledge, just the warp table."""
+        by_dest: dict = {}
+        for w in ((cur or {}).get("map") or {}).get("warps") or []:
+            if w.get("dest"):
+                by_dest.setdefault(w["dest"], []).append(w)
+        out = ""
+        for dest, ws in by_dest.items():
+            r = [w for w in ws if w.get("reachable")]
+            u = [w for w in ws if not w.get("reachable")]
+            if r and u:
+                out += (f"\nNOTE: {dest} has a door you can walk to "
+                        f"({r[0].get('x')},{r[0].get('y')}) AND a door you "
+                        f"cannot ({u[0].get('x')},{u[0].get('y')}) — a "
+                        f"building with a far door is a way THROUGH: go in "
+                        f"the near door and out the other side.")
+        return out
+
     def _fought_at(self, tgt: str, obs, step, dest_map: str) -> bool:
         """Did a fight happen in the REGION this exit leads to?
 
@@ -3318,7 +3341,8 @@ Reply with ONLY a JSON array of ops, e.g.
                                           or []) if not w.get("reachable"))
                                or "none")
                             + ". If the way onward is blocked, LEAVE through a "
-                              "reachable warp and come back another way.")
+                              "reachable warp and come back another way."
+                            + self._through_buildings(cur))
                            if (cur.get("map") or {}).get("warps") else "")
                         + (f"\nEdges from this map (cross that dir to reach): "
                            + ", ".join(f"{d}->{m}" for d, m in conns.items())
