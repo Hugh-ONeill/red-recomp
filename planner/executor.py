@@ -1751,8 +1751,18 @@ Reply with ONLY a JSON array of ops, e.g.
                         continue
                 seen_n = self._entered_map.get(f"{tgt}|{dest_map}", 0)
                 spent_r = self._revisit_refusals.get(tgt, 0)
+                # A SERVICE goal is satisfied by GOING BACK. "You have been
+                # there twice and it is still false, so it is not there" is
+                # sound for finding a thing and exactly backwards for using
+                # one: a hurt party heals at the Center it already knows,
+                # and a shopping list is filled at the counter it already
+                # walked to. Refused re-entry to Pewter, a heal goal toured
+                # the museum, then crossed the forest back to Viridian, and
+                # the gym leg after it wandered to Route 22.
                 if (dest_map and seen_n >= 2 and spent_r < 3
                         and tgt != f"map:{dest_map}"
+                        and not (tgt or "").startswith(("party_healthy",
+                                                        "item:"))
                         and not self._fought_at(tgt, obs, step, dest_map)
                         and self._untried_exits(obs)):
                     self._revisit_refusals[tgt] = spent_r + 1
