@@ -618,6 +618,14 @@ class Executor:
         here = self._where(obs)
         if "None" in here:
             return
+        # A visit is a VISIT, counted on arrival — not only on a recorded
+        # transition. Regions whose transitions landed under other labels
+        # (the hop-free relabeling) collected zero visits however often
+        # the escort delivered the party there, so they ranked "freshest"
+        # forever and the reroute elected the same mirage six times.
+        if here != getattr(self, "_last_visit_region", None):
+            self.visits[here] = self.visits.get(here, 0) + 1
+            self._last_visit_region = here
         m = (obs or {}).get("map") or {}
         keys = [f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])
                 if w.get("reachable")]
