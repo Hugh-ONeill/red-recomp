@@ -3441,6 +3441,19 @@ def main():
         if args.save_after_each:
             r = (ex._send_safe("save_game") or {}).get("result") or {}
             print(f"[save] {r.get('detail') or 'save failed'}")
+    # SAVE WHAT WAS EARNED, even when the plan failed. The save above only
+    # fires for a plan that fully succeeded — `if not ok: break` skips it —
+    # so an attempt that crossed two maps, beat fifteen trainers and banked
+    # 3277 money threw ALL of it away because its last subgoal failed, and
+    # the next attempt replayed from a stale save. A whole campaign ran
+    # without writing one save. Levels, items and event flags only ever go
+    # UP in gen1, so persisting a failed attempt's state cannot lose
+    # progress; position is the one thing that can be worse, and walking is
+    # what this harness is best at.
+    if args.save_after_each and not ok:
+        r = (ex._send_safe("save_game") or {}).get("result") or {}
+        print(f"[save] (after a failed plan, to keep what it earned) "
+              f"{r.get('detail') or 'save failed'}")
     o = b.obs() or {}
     # Durable snapshot of where the run ENDED. obs.json belongs to the live
     # bridge and is gone once the game process dies, so the campaign's
