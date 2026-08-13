@@ -414,6 +414,14 @@ REVISION_NOTE = (
     "The evidence above records what people said and which doors are held "
     "shut, and a subgoal can name an event flag as its condition. When the "
     "walking is exhausted, plan the deed."
+    "\n\nWHEN THE JOURNAL PROVES A MARCH UNREACHABLE, DO NOT RE-MARCH IT. "
+    "A line like 'could not get map:X — N attempts' or a direction marked "
+    "PROVEN uncrossable is the run reporting that this exact sequence of "
+    "maps does not connect from where it stands, however right it looks "
+    "from memory. Re-issuing those same map subgoals is not a revision. "
+    "If the destination still matters, the way there is a DIFFERENT "
+    "sequence — through maps and doors the evidence has never condemned, "
+    "even ones that feel like a detour."
 )
 
 REVIEW_SYS = (
