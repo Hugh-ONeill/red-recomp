@@ -394,6 +394,7 @@ class Executor:
         # persisted journal: the cross-attempt rap sheet that shrinks a
         # repeat offender's escalation budget.
         self._prior_subgoal_fails: dict = {}
+        self._retalked: set = set()     # people re-talked this attempt
         try:
             for line in (RUN / "executor_log.jsonl").read_text() \
                     .splitlines():
@@ -3372,11 +3373,41 @@ Reply with ONLY a JSON array of ops, e.g.
                 # ways out of THIS region on the ledger, walking through
                 # one is mechanics — the model steers again from the next
                 # observation.
+                # A FLAG target usually needs a PERSON, and people repeat
+                # their offers when the world has changed — the captain
+                # re-offers HM01 forever, but the lifetime touched ledger
+                # certified his room "exhausted" and the stuck note walked
+                # the run out of it. On a dead round, re-talk each
+                # reachable person once per attempt before wandering off.
+                retalked_now = False
+                tgt_flag = self._target_key(sg).startswith("flag:")
+                if tgt_flag and (cur or {}).get("mode") == "overworld":
+                    npcs = [ob for ob in ((cur.get("map") or {})
+                                          .get("objects") or [])
+                            if ob.get("kind") in ("npc", "trainer")
+                            and ob.get("reachable")
+                            and ob.get("name") not in self._retalked]
+                    if npcs:
+                        nm = npcs[0].get("name")
+                        self._retalked.add(nm)
+                        self._send_safe("interact", name=nm, answer="yes")
+                        o2 = self.settle()
+                        while o2 and o2.get("mode") == "battle":
+                            o2 = self.handle_battle(sg, o2)
+                            o2 = self.settle()
+                        self.log("free_round_retalk", subgoal=sg["id"],
+                                 name=nm)
+                        trace.append(
+                            f"(free round: spoke to {nm} AGAIN — people "
+                            f"repeat their offers once the world has "
+                            f"changed, a freed bag slot included)")
+                        retalked_now = True
                 here_r = self._where(cur)
                 done_x = set((self.explored.get(here_r) or {}).keys())
                 untried = [e for e in (self.frontier.get(here_r) or [])
                            if e not in done_x]
-                if untried and (cur or {}).get("mode") == "overworld":
+                if (not retalked_now and untried
+                        and (cur or {}).get("mode") == "overworld"):
                     # goal-ward edge first, same rule as the reroute rank
                     tgt_k = self._target_key(sg)
                     want_m = (tgt_k.split(":", 1)[1].split("|")[0]
