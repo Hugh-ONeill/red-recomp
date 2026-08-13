@@ -3823,8 +3823,16 @@ Reply with ONLY a JSON array of ops, e.g.
         at0 = self.settle()
         for i in range(len(subgoals) - 1, -1, -1):
             dw = subgoals[i].get("done_when")
+            # ONLY positional conditions are resume evidence. A flag or
+            # badge holds forever once earned, so a stale-true flag late
+            # in the plan teleported the resume past everything: v8 ended
+            # on talk_to_bill {EVENT_GOT_SS_TICKET} — true since morning
+            # — and the whole leg "completed" without the HM it was for.
+            if not (isinstance(dw, dict)
+                    and ("map" in dw or "area" in dw)):
+                continue
             try:
-                if dw and pred_holds(dw, at0):
+                if pred_holds(dw, at0):
                     resume = min(i + 1, len(subgoals) - 1)
                     break
             except Exception:
