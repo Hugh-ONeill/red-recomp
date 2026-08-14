@@ -238,11 +238,15 @@ def doors_text() -> str:
     return ("\n\nPLACES THE PRINTED MAP NAMES, and the road each one opens "
             "off. This is the map's own labelling, not scouting: what lies "
             "BEYOND any of these doors is not here. The listing is COMPLETE "
-            "— every road with a door into a named place is above — so a "
-            "place appearing under ONE road is entered and left on that "
-            "same road (a mountain or tunnel joining two halves of it, "
-            "which the road's own name cannot tell apart), and a place "
-            "appearing under TWO roads joins those two.\n" + rows)
+            "— every road with a door into a named place is above — so go "
+            "by the ID IN BRACKETS, which is the place itself: an id "
+            "appearing under ONE road is entered and left on that same road "
+            "(a mountain or tunnel joining two halves of it, which the "
+            "road's own name cannot tell apart), and an id appearing under "
+            "TWO roads joins those two. Two DIFFERENT places can share a "
+            "printed name — the map draws more than one UNDERGROUND PATH "
+            "and they do not meet — so a name under four roads is two "
+            "tunnels, not one.\n" + rows)
 
 
 def edges_text() -> str:
