@@ -2223,11 +2223,16 @@ class Executor:
         # The law is already written for the stuck note: a party wipe
         # outranks an exhausted room.
         if been >= 2 and not self.contested.get(target, {}).get(here):
+            # COUNT IT, DO NOT COMMAND. "Take a different exit" is a
+            # strategy claim the harness cannot support, and it is loudest
+            # in exactly the rooms that matter: it fired ten times over in
+            # Mt Moon's fossil room, three tiles from the Super Nerd and
+            # both fossils this run needs, telling the party to leave. The
+            # battle-region guard was written for this after Misty's gym
+            # cost 19 attempts; a room can matter without a fight in it.
+            # The count is the evidence — what it means is the model's.
             warned = (f"\nYOU HAVE BEEN IN THIS EXACT AREA {been} TIMES "
-                      f"ALREADY ({here}). Arriving here again is not "
-                      f"progress — if the last thing you did brought you "
-                      f"back here, undo that choice and take a different "
-                      f"exit.")
+                      f"ALREADY ({here}).")
         for tgt, regions in self.dead_ends.items():
             if here in regions:
                 warned = (f"\nNOTE: earlier attempts failed to reach "
