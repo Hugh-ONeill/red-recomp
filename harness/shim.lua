@@ -857,6 +857,36 @@ function OPS.walk_to(G, c)
   return false, "step budget exhausted"
 end
 
+-- Give the ground back. An NPC standing where you want to be is a DEADLOCK,
+-- not a wall: a pacing NPC cannot step aside while the player occupies the
+-- one square it would step into, so waiting in place waits forever — the run
+-- asked for the same SS Anne stairwell six times running and was told
+-- "couldn't reach the warp tile" every time, because its own body was what
+-- pinned the NPC. Step off, let it take its turn, then come back.
+-- Never yield ONTO a warp: leaving by the wrong door reports success.
+local function yield_ground(G)
+  local ow = G.overworld
+  local p = ow.player
+  local md = G.data and G.data.maps and G.data.maps[ow.map and ow.map.id]
+  local function is_warp(x, y)
+    for _, w in ipairs((md or {}).warps or {}) do
+      if w.x == x and w.y == y then return true end
+    end
+    return false
+  end
+  for _, dir in ipairs({ "down", "up", "left", "right" }) do
+    local d = DIRS[dir]
+    if d and not is_warp(p.cellX + d[1], p.cellY + d[2]) then
+      if walk(G, dir, 1) then
+        U.wait(45)          -- NPCs pace on their own timer, not ours
+        return true
+      end
+    end
+  end
+  U.wait(45)
+  return false
+end
+
 -- Take a warp/door/stairs. Walk onto the warp tile, then step THROUGH it
 -- (door mats and edge warps fire on the step off the tile, not on arrival),
 -- trying the map-edge direction first. Decision-free: the model picks which
@@ -872,8 +902,17 @@ function OPS.use_warp(G, c)
   if not (c.x and c.y) then return false, "use_warp needs x,y" end
 
   local function attempt(x, y)
-    if p.cellX ~= x or p.cellY ~= y then
-      OPS.walk_to(G, { x = x, y = y, max_steps = c.max_steps or 120 })
+    -- Three passes, yielding ground between them: pass 1 is the plain
+    -- walk, and each retry backs off a tile first so an NPC pinned by the
+    -- player has somewhere to go. cross() is already NPC-robust this way
+    -- (it re-BFSes across rounds); a door needs the same patience.
+    for pass = 1, 3 do
+      if p.cellX ~= x or p.cellY ~= y then
+        OPS.walk_to(G, { x = x, y = y, max_steps = c.max_steps or 120 })
+        if (ow.map and ow.map.id) ~= startMap then return true end
+      end
+      if p.cellX == x and p.cellY == y then break end
+      if pass < 3 then yield_ground(G) end
       if (ow.map and ow.map.id) ~= startMap then return true end
     end
     if p.cellX ~= x or p.cellY ~= y then return false, "unreachable" end
