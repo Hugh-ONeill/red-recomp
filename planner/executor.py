@@ -3826,11 +3826,39 @@ Reply with ONLY a JSON array of ops, e.g.
                               and o.get("name") in touched
                               and o.get("name") not in self._retalked
                               and not self._retalked.add(o.get("name"))]
+                # A BUSH IS NOT PRESSED, IT IS CUT. The sweep pressed A on
+                # CUT_TREE and nothing happened — with CUT known for hours
+                # and the harness itself naming the tree as the untouched
+                # thing in the room, Cerulean's east bush (the road to Rock
+                # Tunnel and everything beyond) stayed standing. Clearing a
+                # named obstacle with a move the party already knows is
+                # execution, not judgment.
+                kinds = {o.get("name"): o.get("kind")
+                         for o in ((cur.get("map") or {}).get("objects") or [])}
+                coords = {o.get("name"): (o.get("x"), o.get("y"))
+                          for o in ((cur.get("map") or {}).get("objects") or [])}
+                knows_cut = any(
+                    "CUT" in [str(mv.get("id") if isinstance(mv, dict) else mv)
+                              for mv in (mon.get("moves") or [])]
+                    for mon in (cur.get("party") or []))
+                if knows_cut:
+                    loose += [o.get("name") for o in
+                              ((cur.get("map") or {}).get("objects") or [])
+                              if o.get("kind") == "cut_tree"
+                              and o.get("reachable")
+                              and o.get("name") not in loose]
                 if loose:
                     self.log("room_sweep", subgoal=sg["id"], region=here_s,
                              objects=loose[:8])
                     for name in loose[:8]:
-                        o2 = self._send_safe("interact", name=name)
+                        if kinds.get(name) == "cut_tree" and knows_cut:
+                            x, y = coords.get(name, (None, None))
+                            o2 = self._send_safe("field_move", move="CUT",
+                                                 x=x, y=y)
+                            self.log("sweep_cut", subgoal=sg["id"],
+                                     at=f"{x},{y}")
+                        else:
+                            o2 = self._send_safe("interact", name=name)
                         if o2 and o2.get("mode") == "battle":
                             o2 = self.handle_battle(sg, o2)
                             o2 = self.settle()
