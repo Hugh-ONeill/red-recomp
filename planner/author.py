@@ -613,6 +613,37 @@ def observed_text(path: Path) -> str:
                 "reaching that road from somewhere else, or doing the deed "
                 "that opens it. WHICH, is yours to say:\n"
                 + "\n".join(blocked))
+        # EVERY WAY IN, GROUPED BY THE PLACE. The lines above are one leg
+        # each, so "both the roads I have tried into Saffron are shut, and
+        # the map draws two more I have never stood on" had to be
+        # reassembled from scattered facts every time. The printed map
+        # knows all four approaches and the ledger knows which have been
+        # walked; putting them side by side is bookkeeping. Which untried
+        # approach to go and find, or whether to open one of the shut ones
+        # instead, is not.
+        into: dict = {}
+        for m, edges in MAP_EDGES.items():
+            for dirn, nb in edges.items():
+                into.setdefault(nb, []).append((m, dirn))
+        hammered = {nb for m, edges in MAP_EDGES.items()
+                    for nb in edges.values()
+                    if vis.get(m, 0) >= 8 and not vis.get(nb)}
+        walls = []
+        for dest in sorted(hammered):
+            rows = []
+            for src, dirn in sorted(into.get(dest, [])):
+                n = vis.get(src, 0)
+                rows.append(
+                    f"    from {src} heading {dirn}: "
+                    + (f"stood there {n}x and never once got through"
+                       if n else "you have never stood in that place"))
+            if rows:
+                walls.append(f"  {dest} — {len(rows)} way(s) in on the "
+                             f"printed map:\n" + "\n".join(rows))
+        if walls:
+            out += ("\n\nEVERY PRINTED WAY INTO A PLACE YOU HAVE NEVER "
+                    "REACHED, and what has happened at each:\n"
+                    + "\n".join(walls))
     if seen:
         out += ("\n\nWHAT WAS SEEN IN EACH AREA (so you can aim a subgoal "
                 "at the RIGHT part of a map — the same map id can have "
