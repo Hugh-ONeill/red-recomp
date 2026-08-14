@@ -1165,12 +1165,22 @@ class Executor:
             k = f"{w.get('x')},{w.get('y')}"
             if k in taken or w.get("reachable"):
                 continue
-            near = next((o.get("name") for o in folk
-                         if abs((o.get("x") or 0) - (w.get("x") or 0))
-                         + abs((o.get("y") or 0) - (w.get("y") or 0)) <= 1),
-                        None)
-            if near:
-                out.append((k, w.get("dest"), near))
+            # A DOORWAY YOU CANNOT WALK TO IS STILL A DOORWAY YOU CAN SEE.
+            # This used to report one only when a reachable person stood
+            # within a single tile of it, so a trainer holding a corridor
+            # further back left the door unmentioned entirely — Mt Moon's
+            # ladder to the east exit never once appeared, in any round, in
+            # any attempt. Report the door, and name the nearest person as
+            # CONTEXT rather than as the cause: what is between you and it
+            # is not something this can know.
+            near = min(
+                ((abs((o.get("x") or 0) - (w.get("x") or 0))
+                  + abs((o.get("y") or 0) - (w.get("y") or 0)),
+                  o.get("name")) for o in folk if o.get("name")),
+                default=(None, None))
+            out.append((k, w.get("dest"),
+                        near[1] if near[0] is not None and near[0] <= 8
+                        else None))
         return out
 
     def _untried_exits(self, obs) -> list:
@@ -1185,8 +1195,6 @@ class Executor:
         seen_maps = {a.split("|")[0] for a in self.visits}
         out = []
         for w in (m.get("warps") or []):
-            if not w.get("reachable"):
-                continue
             k = f"{w.get('x')},{w.get('y')}"
             # A SHUT DOOR IS NEITHER EXPLORED NOR UNTRIED. It stays out of
             # this list — it monopolised the "prefer a door nobody has
@@ -1199,8 +1207,20 @@ class Executor:
             reopened = (was.get("shut")
                         and was.get("shut_at") != self._world_mark(obs))
             if (k not in taken or reopened) and k not in blocked:
-                out.append((w.get("dest") in seen_maps,
-                            f"({k})->{w.get('dest')}"))
+                # INCLUDE THE ONES PATHFINDING CANNOT CURRENTLY REACH. They
+                # were filtered out entirely, so a ladder the map shows but
+                # a trainer stands between you and was never proposed, never
+                # attempted, and never learned about — Mt Moon's (5,7) in
+                # every round of every attempt. Trying costs one op, the
+                # failure now names who is in the way, and a doorway that
+                # refuses is recorded shut and drops out until the world
+                # changes. A player tries the ladder they can see.
+                if not w.get("reachable"):
+                    out.append((True, f"({k})->{w.get('dest')} "
+                                      f"[cannot walk to it from here yet]"))
+                else:
+                    out.append((w.get("dest") in seen_maps,
+                                f"({k})->{w.get('dest')}"))
         for d, t in (m.get("connections") or {}).items():
             if d not in taken and d not in blocked:
                 out.append((t in seen_maps, f"walk {d} -> {t}"))
@@ -1992,12 +2012,17 @@ class Executor:
         shut_line = ""
         if shut:
             shut_line = (
-                "\nDOORS HERE YOU HAVE NEVER OPENED, each with somebody "
-                "standing in the way: "
-                + ", ".join(f"({k})->{d} — {who} is beside it"
-                            for k, d, who in shut[:4])
-                + ". A door does not move, so the person is what is shutting "
-                "it. Talk to them, then try the door.")
+                "\nDOORWAYS ON THIS MAP YOU HAVE NEVER OPENED AND CANNOT "
+                "WALK TO FROM HERE: "
+                + ", ".join(
+                    f"({k})->{d or 'somewhere'}"
+                    + (f", nearest person {who}" if who else "")
+                    for k, d, who in shut[:4])
+                + ". A doorway does not move, so something between you and "
+                "it does not want you through yet — a person to talk to or "
+                "fight, a thing to shift, a way round. WHAT is not recorded. "
+                "Doing whatever there is to do nearby, and then trying the "
+                "doorway again, is how that is found out.")
         # WHAT YOU HAVE BEEN TOLD HERE. Grouped as hints and shown when the
         # room is not yielding — the answer to "why can I not get past" is
         # usually a sentence somebody already said out loud.
