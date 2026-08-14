@@ -721,8 +721,49 @@ def observed_text(path: Path) -> str:
         vis_r = d.get("visits") or {}
         ranked = sorted(hints, key=lambda r: -vis_r.get(r, 0))
         keep = sorted(ranked[:14])
-        body = "\n".join(f"  in {r}:\n    " + "\n    ".join(hints[r][-4:])
-                         for r in keep)
+        # WHAT A PERSON SAID, ONCE. Three things clutter this ledger: the
+        # harness's own feedback filed under whatever op was running
+        # ("field_move: AAAAA hacked away with CUT!", six times), the same
+        # sentence heard in several places, and a speech recorded at two
+        # lengths from before whole-page capture — so the guard's truncated
+        # "Oh wait there, the road's closed." now sits beside his full
+        # line. Keep the longest telling of each, drop what no NAMED thing
+        # said, and never repeat a sentence the model has already read.
+        # NOT by speaker: the Saffron guard's line is filed under use_warp,
+        # because he speaks when you walk into his gate and no NPC name is
+        # attached. Filtering on the op name deleted the one sentence this
+        # run most needs. What marks harness noise is the CONTENT — a line
+        # narrating the player's own action rather than addressing them.
+        _noise = ("hacked away with", "there are no pok", "saved the game",
+                  "got away safely", "was thrown", "used ")
+        def _speeches(lines):
+            best: dict = {}
+            for ln in lines:
+                who, _, said = ln.partition(": ")
+                said = said.strip()
+                low = said.lower()
+                if not said or any(w in low for w in _noise):
+                    continue            # the harness narrating, not speech
+                k = said[:40]
+                if len(said) > len(best.get(k, "")):
+                    best[k] = ln
+            return list(best.values())
+        shown, said_before = [], set()
+        for r in keep:
+            # A shorter telling of a speech already shown is the same
+            # speech: the guard's pre-fix "Oh wait there, the road's
+            # closed." is the tail of his full "I'm on guard duty. Gee,
+            # I'm thirsty, though! Oh wait there, the road's closed.",
+            # recorded in another region before whole-page capture landed.
+            def _new(ln):
+                said = ln.partition(": ")[2].strip()
+                return not any(said in prev or prev in said
+                               for prev in said_before)
+            fresh = [ln for ln in _speeches(hints[r]) if _new(ln)]
+            said_before.update(ln.partition(": ")[2].strip() for ln in fresh)
+            if fresh:
+                shown.append(f"  in {r}:\n    " + "\n    ".join(fresh[-4:]))
+        body = "\n".join(shown)
         more = len(hints) - len(keep)
         out += ("\n\nWHAT PEOPLE HAVE SAID, and where they said it. This "
                 "game explains its own gates out loud, so a sentence here is "
