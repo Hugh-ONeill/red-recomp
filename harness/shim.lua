@@ -260,6 +260,15 @@ local function map_fixtures(G, map_id)
       out[#out + 1] = { x = h.x, y = h.y, name = "TRASH_CAN_" .. h.can }
     end
   end
+  -- The Game Corner poster. It hangs on the wall in plain sight and it is
+  -- the door to the Rocket hideout, but it lives in its OWN field table
+  -- (gameCornerPoster) rather than in hiddenExtras, so nothing here listed
+  -- it and the room read as nothing but slot machines. A press the model
+  -- cannot name is a press it cannot make.
+  local gcp = fld.gameCornerPoster
+  if gcp and gcp.map == map_id and gcp.poster then
+    out[#out + 1] = { x = gcp.poster.x, y = gcp.poster.y, name = "POSTER" }
+  end
   if map_id == "BILLS_HOUSE" then
     out[#out + 1] = { x = 1, y = 4, name = "CELL_SEPARATION_SYSTEM",
                       facing = "up" }
