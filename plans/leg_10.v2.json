@@ -1,0 +1,99 @@
+{
+  "goal": "Defeat Erika for the Rainbow Badge",
+  "subgoals": [
+    {
+      "id": "clear_bag_space",
+      "goal_text": "Sell or discard an item to make room in the bag, as it is currently full.",
+      "done_when": {
+        "has_item": {
+          "POTION": 3
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "teach_cut",
+      "goal_text": "Teach CUT to a compatible Pokemon in the party using the HM in the bag.",
+      "done_when": {
+        "knows_move": "CUT"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_celadon",
+      "goal_text": "Travel from Cerulean City to Celadon City.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_celadon_center",
+      "goal_text": "Heal the party at the Celadon Pokemon Center before proceeding.",
+      "done_when": {
+        "map": "CELADON_POKECENTER",
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_department_store",
+      "goal_text": "Enter the Celadon Department Store.",
+      "done_when": {
+        "map": "CELADON_MART_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_top_floor",
+      "goal_text": "Go to the top floor of the department store using the elevator.",
+      "done_when": {
+        "map": "CELADON_MART_ROOF"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_tea_from_clerk",
+      "goal_text": "Talk to the clerk on the roof to receive the tea.",
+      "done_when": {
+        "flag": "EVENT_GOT_TM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_department_store",
+      "goal_text": "Leave the department store and return to Celadon City.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_erikas_gym",
+      "goal_text": "Enter Erika's Gym.",
+      "done_when": {
+        "map": "CELADON_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_erika",
+      "goal_text": "Battle and defeat Gym Leader Erika to earn the Rainbow Badge.",
+      "done_when": {
+        "badge": "RAINBOWBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

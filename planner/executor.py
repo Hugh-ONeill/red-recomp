@@ -5168,13 +5168,23 @@ def _write_last_state(b, failed_plan=None, failed_subgoal=None):
             # anything against max_hp, and a start state that cannot say
             # "already healthy" leaves the re-author keeping every heal leg
             # defensively while it prunes shopping the visible bag settles
+            # MOVES TRAVEL WITH THE PARTY. This whitelist silently dropped
+            # them, so the start line said "CHARMELEON L32 88/88hp" and the
+            # author could not see two of its four slots were GROWL and
+            # LEER. state_text learned to print movesets hours ago and the
+            # sentence never changed, because last_state is what a re-author
+            # actually reads — obs.json belongs to a game process that has
+            # already exited.
             "party": [{"species": m.get("species"), "level": m.get("level"),
                        "hp": m.get("hp"), "max_hp": m.get("max_hp"),
-                       "status": m.get("status")}
+                       "status": m.get("status"), "moves": m.get("moves")}
                       for m in (o.get("party") or [])],
             "badges": o.get("badges") or [],
             "bag": o.get("bag") or {},
             "money": o.get("money"),
+            # a party member that is NOT in the party — without this the
+            # re-author sees one Magikarp and no reason for it
+            "daycare": o.get("daycare"),
             "flags": o.get("flags") or [],
             "failed_plan": failed_plan,
             "failed_subgoal": failed_subgoal,
