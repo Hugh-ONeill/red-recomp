@@ -222,7 +222,13 @@ local text_run = nil
 function note_text(txt)        -- forward-declared above the yield hook
   if not txt or #txt == 0 then return end
   recent_text = txt
-  if not (text_run and text_run:sub(-#txt) == txt) then
+  if text_run and text_run:sub(1, #txt) == txt then
+    -- the speech is starting over: a fresh telling, not more of the last
+    -- one. Without this a guard who refuses you five times accumulates
+    -- five copies of himself, since bouncing off a blocked door never
+    -- yields the clean free-roam frame that ends a speech.
+    text_run = txt
+  elseif not (text_run and text_run:sub(-#txt) == txt) then
     text_run = text_run and (text_run .. " " .. txt) or txt
   end
   last_text = text_run
