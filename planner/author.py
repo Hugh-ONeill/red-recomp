@@ -988,6 +988,93 @@ def drafts_text(drafts: list) -> str:
     return "\n".join(lines)
 
 
+PLAN_PICK_SYS = """You wrote several PLANS for the same Pokemon Red goal,
+in separate sittings. Different sittings remembered different things about
+the game, and one of these is your best account of how to do it.
+
+Read them and pick ONE, whole. You are choosing between accounts, not
+editing them: nothing you write here is kept except the number.
+
+Judge them on whether the ROUTE is one the game allows and whether the
+final condition is really the goal. A plan that names places this run has
+proven it cannot reach is worse than a shorter one that starts somewhere
+it can stand right now.
+
+Reply with ONLY a JSON object, the reason FIRST:
+{"why": "one sentence", "pick": N}"""
+
+
+def _plan_digest(plan: dict) -> str:
+    return " -> ".join(
+        f"{s.get('id')}{json.dumps(s.get('done_when'), sort_keys=True)}"
+        for s in (plan.get("subgoals") or []))
+
+
+def pick_plan(goal: str, plans: list, model: str,
+              start: str | None = None) -> dict:
+    """The model chooses among its OWN drafts; the harness only counts.
+
+    Same lever that took the variance out of the outline, one level down.
+    A single leg draw is high-variance in exactly the way the outline was:
+    six plans for "Retrieve the Silph Scope" named four different buildings
+    and never converged, and each one was played to exhaustion before the
+    next was written. Drawing several at once and choosing between them
+    spends the same tokens on comparison rather than on walking.
+
+    Choose-only, like the outline merge: the reply is an index, and what
+    comes back is that draft VERBATIM. Nothing here composes a plan.
+    """
+    if len(plans) == 1:
+        return plans[0]
+    body = (f"THE GOAL: {goal}\n"
+            + (f"WHERE THE PARTY STANDS NOW: {start}\n" if start else "")
+            + "\nYOUR PLANS:\n"
+            + "\n\n".join(
+                f"  {i}. " + "\n     ".join(
+                    f"{s.get('id')}: {json.dumps(s.get('done_when'))}"
+                    for s in (p.get("subgoals") or []))
+                for i, p in enumerate(plans, 1)))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": PLAN_PICK_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\{.*\}", reply, re.S)
+        ans = json.loads(m.group(0)) if m else {}
+        n = ans.get("pick")
+        n = int(n) if str(n).strip().lstrip("-").isdigit() else 0
+    except (ValueError, KeyError, OSError, AttributeError, TypeError):
+        n = 0
+    if not 1 <= n <= len(plans):
+        print(f"[draws] no usable pick; keeping draft 1 of {len(plans)}")
+        return plans[0]
+    print(f"[draws] picked draft {n} of {len(plans)}: "
+          f"{str(ans.get('why') or '')[:160]}")
+    return plans[n - 1]
+
+
+def author_best_of(goal: str, model: str, draws: int = 3,
+                   start: str | None = None) -> dict | None:
+    """Several independent plans for one goal, then the model picks one."""
+    plans, seen = [], {}
+    for _ in range(max(1, draws)):
+        p = author(goal, model, start=start)
+        if not p:
+            continue
+        key = _plan_digest(p)
+        if key in seen:                      # same account written twice
+            seen[key] += 1
+            continue
+        seen[key] = 1
+        plans.append(p)
+        print(f"[draws] draft {len(plans)}: {len(p['subgoals'])} subgoals")
+    if not plans:
+        return None
+    for k, n in seen.items():
+        if n > 1:
+            print(f"[draws] one shape was written {n}x")
+    return pick_plan(goal, plans, model, start=start)
+
+
 def review(goal: str, plan: dict, model: str, start: str | None = None,
            rounds: int = 2, observed: Path | None = None,
            journal: Path | None = None, drafts: list | None = None) -> dict:
@@ -1524,8 +1611,9 @@ def main():
     ap.add_argument("--leg", type=int, default=None,
                     help="1-based outline position of the stuck leg")
     ap.add_argument("--draws", type=int, default=3,
-                    help="outline drafts to take before the model composes "
-                         "the final list from them (default 3)")
+                    help="drafts to take before the model chooses among "
+                         "them — outline objectives when --outline, "
+                         "otherwise plans for the goal (default 3)")
     ap.add_argument("--model", default="gemma4:26b-a4b-it-q4_K_M")
     ap.add_argument("--start", default=None,
                     help="starting-state description (default: new game)")
@@ -1579,7 +1667,8 @@ def main():
         for i, l in enumerate(legs, 1):
             print(f"  {i}. {l}")
         return
-    plan = author(args.goal, args.model, start=args.start)
+    plan = author_best_of(args.goal, args.model, draws=args.draws,
+                          start=args.start)
     if not plan:
         sys.exit("author failed to produce a valid plan")
     if not args.no_review:
