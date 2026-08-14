@@ -1029,6 +1029,32 @@ function OPS.use_warp(G, c)
   if reached_any then
     return false, "stepped through but no warp fired"
   end
+  -- SAY WHO IS IN THE WAY. Pathfinding treats a person as terrain and
+  -- refuses to route through them, so a door with somebody planted in
+  -- front of it reports only "couldn't reach" — and this game puts its
+  -- gatekeepers exactly there. The Saffron gate guard explains the whole
+  -- gate out loud, but only to someone who walks up to him, and the run
+  -- could not even learn he existed from this message.
+  local blockers = {}
+  for _, npc in ipairs(ow.npcs or {}) do
+    for _, t in ipairs(tiles) do
+      if math.abs((npc.cellX or -99) - t.x)
+         + math.abs((npc.cellY or -99) - t.y) <= 2 then
+        local nm = (npc.def or {}).name
+        if nm and not blockers[nm] then
+          blockers[#blockers + 1] = ("%s at (%d,%d)")
+            :format(nm, npc.cellX, npc.cellY)
+          blockers[nm] = true
+        end
+      end
+    end
+  end
+  if #blockers > 0 then
+    return false, "couldn't reach the warp tile — somebody is standing by "
+      .. "it: " .. table.concat(blockers, ", ")
+      .. ". People who stand in front of doors in this game usually say "
+      .. "why; interact with them to hear it."
+  end
   return false, "couldn't reach the warp tile"
 end
 

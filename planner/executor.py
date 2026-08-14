@@ -2989,15 +2989,6 @@ Reply with ONLY a JSON array of ops, e.g.
                 if det:
                     chg.append(str(det))
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
-                # WHAT IT SAID, IN THE ROUND THAT SAID IT. The words were
-                # filed to the region ledger and nowhere else, deduplicated,
-                # so a line could be recorded once and never again — and the
-                # round's own feedback read "ok (moved)" whether the press
-                # had opened a lock or turned up trash. In the Vermilion gym
-                # that is the entire game: 143 presses, and not one of them
-                # told the model what it had just heard.
-                if heard:
-                    note += f' — it said: "{heard[:160]}"'
             if blackout:
                 note += (f" — your party FAINTED mid-op (blackout): you "
                          f"respawned at {blackout}, party healed, position "
@@ -3021,6 +3012,19 @@ Reply with ONLY a JSON array of ops, e.g.
                     self.log("arrived_dead_end", subgoal=sg["id"],
                              region=land, times=bad)
                     break
+            # WHAT IT SAID, IN THE ROUND THAT SAID IT — WHETHER OR NOT THE
+            # OP WORKED. The words used to be filed to the region ledger
+            # and nowhere else, deduplicated, so a line could be recorded
+            # once and never again while the round's own feedback read "ok
+            # (moved)" whether a press had opened a lock or turned up
+            # trash. Attaching them only to SUCCESS was the same mistake
+            # one level up: the Saffron guard speaks precisely because you
+            # could not get past him, so the op reports "couldn't reach the
+            # warp tile" and his explanation — the one that says the gate
+            # wants a drink — was dropped every time. A failed op is
+            # exactly when this game explains itself.
+            if heard:
+                note += f' — it said: "{heard[:160]}"'
             trace.append(note)
             self.status(last=note, obs=obs, doing=f"{op} {json.dumps(step)}")
             # distill an op if it ran OK *or* changed the state — cross via the
