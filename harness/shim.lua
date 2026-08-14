@@ -211,6 +211,16 @@ local recent_text = nil
 -- loud ("I'm too sleepy to move", "you need the POKEDEX"), and every word
 -- of it was being dropped before the model could read it.
 local last_text = nil
+-- QUESTIONS THIS RUN HAS ACTUALLY BEEN SHOWN, keyed by who asked. An
+-- `answer` is only honoured for a question already quoted back to the
+-- model, because `answer="yes"` turned out to be boilerplate rather than
+-- consent: it rode along on 302 of 560 interacts, including with signposts
+-- and a PC and a CUT_TREE, none of which can ask anything. On the one NPC
+-- in Kanto who takes a Pokemon for a yes, that reflex boarded a level 40
+-- CHARIZARD and left a level 6 MAGIKARP to fight a gym. Unread questions
+-- are declined and quoted (that path already existed); the next interact
+-- can answer them for real. Signposts are unaffected — they never ask.
+local seen_question = {}
 -- ...and ALL of it, not just the last page. A speech breaks into pages on
 -- \f, and keeping only the page showing when the box closed threw away
 -- everything said before it. The Saffron gate guard says "I'm on guard
@@ -1996,6 +2006,108 @@ function OPS.retrieve_item(G, c)
   return pc_move(G, c, "WITHDRAW ITEM", false)
 end
 
+-- THE DAY CARE, AS A BOX. Boarding a Pokemon was reachable only by saying
+-- "yes" to the DAY-CARE MAN, and the party picker that follows takes an
+-- A-press — so the same reflex that answers signposts handed over a level
+-- 40 CHARIZARD and picked slot 1 to do it. These name the deed and the
+-- slot the way store_item/retrieve_item do for the PC: the model says WHO
+-- and WHETHER, the harness drives the menus. Everything they refuse is a
+-- fact the game would refuse on anyway, reported before any button moves.
+local function daycare_talk(G)
+  local ok, why = OPS.interact(G, { name = "DAYCARE_GENTLEMAN",
+                                    answer = "yes", read_question = true })
+  if not ok then return false, why or "could not talk to the day care man" end
+  return true
+end
+
+function OPS.daycare_deposit(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  local save = G.save or {}
+  local dc = save.daycare
+  if dc and dc.mon then
+    return false, "the day care is already raising "
+      .. tostring(dc.mon.species) .. " — it only takes one at a time, so "
+      .. "collect that one first"
+  end
+  local party = save.party or {}
+  local slot = math.floor(tonumber(c.slot) or 0)
+  if slot < 1 or slot > #party then
+    return false, ("no party slot %d — the party has %d")
+      :format(slot, #party)
+  end
+  if #party < 2 then
+    return false, "that is your only Pokemon and the day care will not "
+      .. "leave you with none"
+  end
+  local giving = party[slot]
+  local ok, why = daycare_talk(G)
+  if not ok then return false, why end
+  local pm
+  for _ = 1, 20 do
+    pm = ui_top(G)
+    if pm and pm.screenId == "PartyMenu" then break end
+    U.tap(G, "a"); U.wait(6)
+  end
+  pm = ui_top(G)
+  if not (pm and pm.screenId == "PartyMenu") then
+    ui_back_out(G)
+    return false, "the day care man never asked which Pokemon"
+  end
+  ui_cursor_to(G, "index", slot)
+  U.tap(G, "a"); U.wait(10)
+  for _ = 1, 30 do
+    if G.stack:top() == G.overworld then break end
+    U.tap(G, "a"); U.wait(5)
+  end
+  ui_back_out(G)
+  local now = (G.save or {}).daycare
+  if now and now.mon then
+    return true, ("left %s L%s at the day care; it gains 1 exp per step "
+      .. "you walk"):format(tostring(now.mon.species),
+                            tostring(now.mon.level))
+  end
+  return false, "the hand-over did not go through; "
+    .. tostring(giving and giving.species or "it") .. " is still with you"
+end
+
+function OPS.daycare_withdraw(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  local save = G.save or {}
+  local dc = save.daycare
+  if not (dc and dc.mon) then
+    return false, "the day care is not holding anything"
+  end
+  local party = save.party or {}
+  if #party >= 6 then
+    return false, "the party is full (6) — there is nowhere to put "
+      .. tostring(dc.mon.species) .. " until one is deposited in the PC"
+  end
+  local cost = 100 * math.max(1, (tonumber(dc.mon.level) or 0)
+                                 - (tonumber(dc.depositLevel) or 0) + 1)
+  local money = tonumber(save.money) or 0
+  if money < cost then
+    return false, ("taking %s back costs %d and you have %d")
+      :format(tostring(dc.mon.species), cost, money)
+  end
+  local want = dc.mon.species
+  local ok, why = daycare_talk(G)
+  if not ok then return false, why end
+  for _ = 1, 40 do
+    if G.stack:top() == G.overworld then break end
+    U.tap(G, "a"); U.wait(5)
+  end
+  ui_back_out(G)
+  local now = (G.save or {}).daycare
+  if not (now and now.mon) then
+    return true, ("took %s back for %d"):format(tostring(want), cost)
+  end
+  return false, tostring(want) .. " is still at the day care"
+end
+
 -- Level-grind primitive: stand in this map's wild grass and pace until an
 -- encounter interrupts (or the step budget runs out). The EXECUTOR fights
 -- each battle with the subgoal's policy and re-sends this op — the same
@@ -2369,6 +2481,29 @@ function OPS.interact(G, c)
       if t == ow then return true end
       if t and (t.enemy or t.kind) then return true, "battle started" end
       if ui_is_choice(G) then
+        -- who is being asked: the named target, else the tile pressed
+        local who = c.name or (c.x and ("%s,%s"):format(tostring(c.x),
+                                                        tostring(c.y)))
+                    or "?"
+        if c.answer ~= nil and not seen_question[who] then
+          -- an answer to a question this run has never read. Record it,
+          -- decline, and quote it — the very next interact may answer.
+          seen_question[who] = recent_text or true
+          local asked = recent_text
+          U.tap(G, "b"); U.wait(6)
+          for _ = 1, 30 do
+            if G.stack:top() == ow then break end
+            U.tap(G, "a"); U.wait(4)
+          end
+          return true, ("%s asked a QUESTION you had not read yet"):format(who)
+                        .. (asked and (" — \"" .. asked .. "\"") or "")
+                        .. (", so answer=\"" .. tostring(c.answer)
+                            .. "\" was NOT used and the question was "
+                            .. "DECLINED. Now that you can see what is "
+                            .. "being asked, interact again with the same "
+                            .. "answer to go through with it, or a "
+                            .. "different one.")
+        end
         if c.answer == "yes" then
           U.tap(G, "a"); U.wait(6)
         elseif c.answer ~= nil then
@@ -2380,6 +2515,7 @@ function OPS.interact(G, c)
           -- were gone by the next observation too. The text is on screen;
           -- an honest choice needs to know what is being chosen.
           local asked = recent_text
+          seen_question[who] = asked or true
           U.tap(G, "b"); U.wait(6)
           for _ = 1, 30 do
             if G.stack:top() == ow then break end

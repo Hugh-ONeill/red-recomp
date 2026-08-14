@@ -2794,6 +2794,13 @@ THIS map's PC — every Pokemon Center has one. Frees a bag slot and
 DESTROYS NOTHING; obs.pc_items lists what is already in there),
 {"op":"retrieve_item","item":"HM_CUT","count":N} (take one back out of
 the PC; it fails if the bag is already at 20 kinds),
+{"op":"daycare_deposit","slot":N} (board party member N with the DAY-CARE
+MAN on ROUTE_5. It gains 1 exp for EVERY STEP you walk anywhere in Kanto
+and cannot faint, be used, or be switched in while it is there. It takes
+one at a time and will not leave you with an empty party. obs.daycare says
+who is in and what taking them back costs),
+{"op":"daycare_withdraw"} (collect the boarded Pokemon and pay the fee;
+needs a free party slot and the money),
 {"op":"wait"}. Battles are auto-handled.
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
