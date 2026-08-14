@@ -139,13 +139,42 @@ def model_view(obs: dict) -> dict:
 AREA_ALIASES: dict = {}
 
 
+def pred_keys(pred: dict | None) -> set:
+    """Every predicate key in play, INCLUDING inside any_of branches.
+
+    The gate checks ask literally "is 'flag' in this predicate". An
+    either/or gate keeps its own kind one level down, so it would read as a
+    trivial map hop: shallow round budget, and walked past on failure —
+    exactly the treatment a load-bearing event must never get.
+    """
+    out = set()
+    for k, v in (pred or {}).items():
+        if k == "any_of":
+            for alt in (v or []):
+                out |= pred_keys(alt)
+        else:
+            out.add(k)
+    return out
+
+
 def pred_holds(pred: dict | None, obs: dict) -> bool:
     if not pred:
         return True
     if not obs:
         return False
     for key, want in pred.items():
-        if key == "map":
+        if key == "any_of":
+            # THE GAME OFFERS CHOICES; THE PREDICATE LANGUAGE DID NOT.
+            # Mt Moon hands over ONE fossil, and the plan said so in plain
+            # English twice ("pick up either the Helix Fossil or Dome
+            # Fossil") — but with no OR to write it in, the alternative had
+            # to become two sequential subgoals, and the second one can
+            # never be satisfied by a game that already gave you the first.
+            # This is expressiveness, not judgment: which branch to take is
+            # still entirely the plan's to name.
+            if not any(pred_holds(alt, obs) for alt in (want or [])):
+                return False
+        elif key == "map":
             if (obs.get("map") or {}).get("id") != want:
                 return False
         elif key == "mode":
@@ -2974,9 +3003,8 @@ Reply with ONLY a JSON array of ops, e.g.
         # in earlier attempts keeps at least one round (the world may have
         # changed) but never again a full budget.
         prior_fails = self._prior_subgoal_fails.get(sg["id"], 0)
-        dw_kind = sg.get("done_when") or {}
-        is_gate = isinstance(dw_kind, dict) and (
-            "flag" in dw_kind or "badge" in dw_kind or "has_item" in dw_kind)
+        dw_kind = pred_keys(sg.get("done_when") or {})
+        is_gate = bool(dw_kind & {"flag", "badge", "has_item"})
         # The discount exists for doomed MARCHES. A gate is where the
         # searching actually happens and already earns a deeper budget —
         # discounting it strangled defeat_lt_surge to ONE round for a
@@ -2990,8 +3018,8 @@ Reply with ONLY a JSON array of ops, e.g.
         # missed event cannot be walked past), so giving it the same budget
         # as a trivial map hop meant whole attempts died in ~60s on the one
         # subgoal that actually needed searching. Gates get a deeper budget.
-        _dw = sg.get("done_when") or {}
-        if "flag" in _dw or "badge" in _dw:
+        _dw = pred_keys(sg.get("done_when") or {})
+        if _dw & {"flag", "badge"}:
             rounds = max(rounds * 3, 12)
         if redo:
             # relocating across a dungeon takes many legs; the round budget
@@ -4125,8 +4153,16 @@ Reply with ONLY a JSON array of ops, e.g.
             # in the plan teleported the resume past everything: v8 ended
             # on talk_to_bill {EVENT_GOT_SS_TICKET} — true since morning
             # — and the whole leg "completed" without the HM it was for.
-            if not (isinstance(dw, dict)
-                    and ("map" in dw or "area" in dw)):
+            if not isinstance(dw, dict):
+                continue
+            if "any_of" in dw:
+                # An either/or is resume evidence only if EVERY branch is
+                # positional. One flag branch would satisfy the whole
+                # predicate from an achievement earned hours ago, which is
+                # the teleport this block exists to prevent.
+                if not pred_keys(dw) <= {"map", "area", "player_at"}:
+                    continue
+            elif not ("map" in dw or "area" in dw):
                 continue
             try:
                 if pred_holds(dw, at0):
@@ -4269,8 +4305,8 @@ Reply with ONLY a JSON array of ops, e.g.
                 # the end having achieved nothing and only noticing at
                 # Cerulean. A missed map hop can be carried; a missed event
                 # cannot, because everything after it assumes it happened.
-                gate = "flag" in (sg.get("done_when") or {}) or \
-                       "badge" in (sg.get("done_when") or {})
+                gate = bool(pred_keys(sg.get("done_when") or {})
+                            & {"flag", "badge"})
                 if gate:
                     print(f"   !! {sg['id']} failed and it is an EVENT gate "
                           f"— not continuing past it")

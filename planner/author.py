@@ -66,6 +66,13 @@ PREDICATES = {
     "party_size": "party has at least N Pokemon (e.g. {\"party_size\":2}); "
                   "set battle_policy \"catch\" on such a subgoal so wild "
                   "battles throw balls instead of knocking the target out",
+    "any_of": "EITHER/OR: a LIST of predicates, satisfied as soon as ANY "
+        "one of them holds (e.g. {\"any_of\":[{\"has_item\":"
+        "{\"HELIX_FOSSIL\":1}},{\"has_item\":{\"DOME_FOSSIL\":1}}]}). Use "
+        "this whenever the game offers a CHOICE and taking one option means "
+        "you can never have the other. Writing the alternatives as two "
+        "subgoals instead is a trap: the second one can never come true, so "
+        "the plan hunts forever for a thing it already chose not to take",
 }
 # EVERY map id the engine defines, ALPHABETICAL. Two deliberate choices.
 # WHICH names appear is not curated: a hand-picked subset is a hint about
@@ -319,9 +326,27 @@ def validate(plan: dict) -> list:
         if not isinstance(dw, dict) or not dw:
             probs.append(f"{tag} ({sid}) missing/empty done_when")
             continue
-        for k, v in dw.items():
+        _check_pred(dw, tag, sid, probs)
+    return probs
+
+
+def _check_pred(dw: dict, tag: str, sid, probs: list):
+    """Validate one predicate — recursively, so an any_of branch gets the
+    same item/map/flag scrutiny as a top-level one. Without the recursion an
+    alternative could name a misspelled item and sail through."""
+    if not isinstance(dw, dict):
+        probs.append(f"{tag} ({sid}) predicate is not an object")
+        return
+    for k, v in dw.items():
             if k not in VALID_KEYS:
                 probs.append(f"{tag} ({sid}) unknown predicate '{k}'")
+            elif k == "any_of":
+                if not isinstance(v, list) or len(v) < 2:
+                    probs.append(f"{tag} ({sid}) any_of needs a LIST of at "
+                                 f"least two alternative predicates")
+                else:
+                    for alt in v:
+                        _check_pred(alt, tag, sid, probs)
             elif k == "map" and v not in ROUTE_MAPS:
                 probs.append(f"{tag} ({sid}) map '{v}' not in the route list")
             elif k == "has_item" and isinstance(v, dict):
@@ -345,7 +370,6 @@ def validate(plan: dict) -> list:
                              f"game defines{hint}")
             elif k == "badge" and v not in BADGES:
                 probs.append(f"{tag} ({sid}) badge '{v}' unknown")
-    return probs
 
 
 def author(goal: str, model: str, rounds: int = 5,
