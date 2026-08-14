@@ -645,19 +645,40 @@ def observed_text(path: Path) -> str:
                     "REACHED, and what has happened at each:\n"
                     + "\n".join(walls))
     if seen:
+        # Same cliff, same remedy: bounded, and it says what it dropped.
+        shown_seen, cut = seen[:40], max(0, len(seen) - 40)
         out += ("\n\nWHAT WAS SEEN IN EACH AREA (so you can aim a subgoal "
                 "at the RIGHT part of a map — the same map id can have "
                 "several unconnected parts, and only one of them holds the "
-                "thing you need):\n" + "\n".join(seen))
+                "thing you need)"
+                + (f", first {len(shown_seen)} of {len(seen)} areas"
+                   if cut else "")
+                + ":\n" + "\n".join(shown_seen))
     fired = [f"  {f} fired in {region}"
              for f, region in sorted((d.get("flag_sites") or {}).items())]
     hints = d.get("hints") or {}
     if hints:
+        # THE PROMPT HAS A CLIFF AND IT EATS THE FRONT. Ollama evaluates at
+        # half of num_ctx and drops the START of an over-long prompt, which
+        # is where the goal, the predicates and the map vocabulary live —
+        # so an evidence block that grows without bound does not merely
+        # crowd the rest, it silently deletes the instructions. This block
+        # doubled the day the dialogue capture started keeping whole
+        # speeches instead of final pages. Keep the places the run has
+        # spent the most time in, which are the places it is stuck, and SAY
+        # what was left out rather than quietly dropping it.
+        vis_r = d.get("visits") or {}
+        ranked = sorted(hints, key=lambda r: -vis_r.get(r, 0))
+        keep = sorted(ranked[:14])
+        body = "\n".join(f"  in {r}:\n    " + "\n    ".join(hints[r][-4:])
+                         for r in keep)
+        more = len(hints) - len(keep)
         out += ("\n\nWHAT PEOPLE HAVE SAID, and where they said it. This "
                 "game explains its own gates out loud, so a sentence here is "
-                "often the reason a route did not work:\n"
-                + "\n".join(f"  in {r}:\n    " + "\n    ".join(v[-4:])
-                             for r, v in sorted(hints.items())))
+                "often the reason a route did not work"
+                + (f" (the {len(keep)} places you have stood in most; "
+                   f"{more} quieter place(s) not shown)" if more else "")
+                + ":\n" + body)
     shut = d.get("shut_doors") or {}
     if shut:
         out += ("\n\nDOORS SEEN BUT NEVER OPENED (they exist on the map and "
