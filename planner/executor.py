@@ -972,9 +972,27 @@ class Executor:
         worked room can still SATISFY — a mart's counter still sells and a
         Center still heals however many times the party has been inside —
         which consult only their own per-target proofs."""
-        if (target or "").startswith(("item:", "party_healthy")):
-            return self.searched.get(target) or {}
-        return self.searched.get("*") or {}
+        rooms = dict(self.searched.get(target) or {}
+                     if (target or "").startswith(("item:", "party_healthy"))
+                     else self.searched.get("*") or {})
+        # A ROOM ON AN UNFINISHED FLOOR IS NOT FINISHED EITHER. "Fully
+        # worked" counted a REGION's exits while the line above it counts a
+        # MAP's doorways, so Mt Moon B1F|4,4 was announced as having ways
+        # never taken AND as having nothing left to find, in the same
+        # breath — and the second reading is what stopped the run going
+        # back down to the fossils. Same test both places.
+        for r in list(rooms):
+            mid = r.split("|")[0]
+            walked = set()
+            for r2, ex2 in (self.explored or {}).items():
+                if r2.split("|")[0] != mid:
+                    continue
+                walked |= {k for k, e in ex2.items()
+                           if not (e or {}).get("shut")
+                           and (e or {}).get("to") != r2}
+            if set(self.map_doors.get(mid, ())) - walked:
+                del rooms[r]
+        return rooms
 
     @staticmethod
     def _untaken(cmap: dict, tried: set) -> set:
