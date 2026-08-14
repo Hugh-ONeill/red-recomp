@@ -53,6 +53,18 @@ def carry(old: dict, new: dict) -> tuple:
             continue
         sg = dict(sg)
         sg["carried_forward"] = int(sg.get("carried_forward") or 0) + 1
+        # Matching is by CONDITION, so a gate can arrive beside a subgoal
+        # that already answers to its name: v2 wrote defeat_giovanni
+        # {no_battle} and v1's defeat_giovanni {flag: EVENT_BEAT_GIOVANNI}
+        # was carried in next to it. Ids key the failure rap sheet and the
+        # status line, and validate() has already run by the time we merge,
+        # so a collision here is never caught. Rename rather than collide.
+        taken = {s.get("id") for s in new.get("subgoals") or []}
+        if sg.get("id") in taken:
+            base, n = sg["id"], 2
+            while f"{base}_{n}" in taken:
+                n += 1
+            sg["id"] = f"{base}_{n}"
         missing.append(sg)
     if spent:
         print(f"[gates] leaving {len(spent)} gate(s) dropped — carried "

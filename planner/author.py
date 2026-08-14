@@ -397,6 +397,15 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
     if not isinstance(dw, dict):
         probs.append(f"{tag} ({sid}) predicate is not an object")
         return
+    # A subgoal whose ONLY condition is no_battle is already satisfied the
+    # moment it starts — you author plans out of battle — so it marks
+    # nothing and the run walks straight past it. It came up as the finish
+    # line for "defeat the Rocket boss" and for Giovanni: two fights that
+    # would have counted as won without being fought.
+    if set(dw) == {"no_battle"}:
+        probs.append(f"{tag} ({sid}) no_battle alone is true whenever you "
+                     f"are not fighting, so it marks nothing — name what "
+                     f"the fight CHANGES (a flag, a badge, an item)")
     for k, v in dw.items():
             if k not in VALID_KEYS:
                 probs.append(f"{tag} ({sid}) unknown predicate '{k}'")
