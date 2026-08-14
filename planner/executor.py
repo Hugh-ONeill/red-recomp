@@ -1459,7 +1459,20 @@ class Executor:
                         goalward = min(
                             goalward,
                             self._goal_score(dest_m, want_map, blocked))
-            rank = (goalward, self.visits.get(region, 0), len(path))
+            # WHEN THE GOAL IS SEALED, EVERY CANDIDATE SCORES THE SAME.
+            # goalward is the primary key, but with Saffron unreachable
+            # _goal_score returns its fallback for every region alike, so
+            # the ranking collapsed to least-visited and the run toured
+            # Route 22 and Route 23 while the goal sat east. Break that tie
+            # with the tolled cost from HERE to the region: ground on the
+            # way to the goal beats ground in the opposite corner, and
+            # a shut door on the path is priced, not forbidden.
+            toll = {b2: 4 + min(self._map_visits().get(b2[0], 0) // 8, 40)
+                    for b2 in blocked}
+            reach = static_cost(here.split("|")[0], region.split("|")[0],
+                                toll, self._walked_map_links())
+            rank = (goalward, reach if reach is not None else 99,
+                    self.visits.get(region, 0), len(path))
             if best is None or rank < best[2]:
                 best = (region, path, rank)
         if not best or not best[1]:
