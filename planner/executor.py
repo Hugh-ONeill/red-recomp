@@ -1670,6 +1670,36 @@ class Executor:
         _prev = _seen.get(region)
         _seen[region] = (_left, (_prev[1] + 1) if _prev
                          and _prev[0] == _left else 1)
+        # AND OPEN THE DOOR IT WAS BROUGHT FOR. Delivering the party to a
+        # room with untried exits and stopping there achieved nothing: the
+        # model's next macro walked straight back out to the road, nothing
+        # was refused so no free round fired, and the walk-back simply did
+        # it again. Choosing WHICH room to walk to is already the harness's
+        # call; taking the exit that was the whole reason for the trip is
+        # the same act finished, not a new decision.
+        o_arr = self.settle()
+        left = [e for e in (self.frontier.get(region) or [])
+                if e not in set((self.explored.get(region) or {}).keys())
+                and e not in self._no_cross.get(region, set())]
+        if left and o_arr:
+            key = sorted(left)[0]
+            pre = o_arr
+            if "," in key:
+                x, y = key.split(",")
+                self._send_safe("use_warp", x=int(x), y=int(y))
+                step = {"x": int(x), "y": int(y)}
+            else:
+                self._send_safe("cross", dir=key)
+                step = {"dir": key}
+            o2 = self.settle()
+            while o2 and o2.get("mode") == "battle":
+                o2 = self.handle_battle(sg, o2)
+                o2 = self.settle()
+            if o2:
+                self.note_transition(pre, step, o2)
+            self.log("reroute_opened", subgoal=sg["id"], via=key,
+                     to=self._where(o2))
+            region = self._where(o2) or region
         self.log("rerouted", subgoal=sg["id"], to=region, hops=len(path))
         return region
 
