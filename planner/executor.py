@@ -3699,25 +3699,45 @@ Reply with ONLY a JSON array of ops, e.g.
                               else BADGE_GYMS.get(tgt_k.split(":", 1)[1])
                               if tgt_k.startswith("badge:") else None)
                     want_m = _doorstep(want_m) if want_m else None
-                    key = None
+                    hmap = (cur.get("map") or {}).get("id")
+                    redges = dict((self.atlas.get(hmap) or {})
+                                  .get("edges") or {})
+                    for d, m2 in (MAP_EDGES.get(hmap) or {}).items():
+                        redges.setdefault(d, m2)
+                    # A DOOR NOBODY HAS OPENED CANNOT BE SCORED, and the
+                    # scorer below only ever ranked exits it could score —
+                    # so the free round, whose whole purpose is to try
+                    # something new, systematically elected ground it had
+                    # already walked. In the Cerulean trashed house the two
+                    # ways out were the front door (known: back to a city
+                    # visited 11x, refused one line earlier for exactly
+                    # that) and the hole in the back wall (never opened).
+                    # It took the front door, because the last-resort
+                    # tiebreak was alphabetical and "2,7" sorts before
+                    # "3,0". Prefer the exit we know least about.
+                    unopened = [e for e in sorted(untried)
+                                if not redges.get(e)]
+                    key, scored = None, []
                     if want_m:
-                        hmap = (cur.get("map") or {}).get("id")
-                        redges = dict((self.atlas.get(hmap) or {})
-                                      .get("edges") or {})
-                        for d, m2 in (MAP_EDGES.get(hmap) or {}).items():
-                            redges.setdefault(d, m2)
                         blocked = self._impassable()
-                        scored = [(self._goal_score(redges[e], want_m,
-                                                    blocked), e)
-                                  for e in sorted(untried) if redges.get(e)]
-                        if scored:
-                            key = min(scored)[1]
+                        scored = sorted(
+                            (self._goal_score(redges[e], want_m, blocked), e)
+                            for e in sorted(untried) if redges.get(e))
+                        # A known exit still wins outright when it IS the
+                        # door to the target; short of that, an unopened
+                        # door beats another lap through walked ground.
+                        if scored and (scored[0][0] == 0 or not unopened):
+                            key = scored[0][1]
                             self.log("free_round_goalward", subgoal=sg["id"],
-                                     via=key, score=min(scored)[0],
+                                     via=key, score=scored[0][0],
                                      toward=want_m,
                                      blocked=sorted(blocked)[:4])
+                    if key is None and unopened:
+                        key = unopened[0]
+                        self.log("free_round_unopened", subgoal=sg["id"],
+                                 via=key, untried=len(untried))
                     if key is None:
-                        key = sorted(untried)[0]
+                        key = scored[0][1] if scored else sorted(untried)[0]
                     pre = cur
                     if "," in key:
                         x, y = key.split(",")
