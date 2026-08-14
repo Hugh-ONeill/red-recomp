@@ -1,0 +1,64 @@
+{
+ "goal": "Defeat Erika for the Rainbow Badge",
+ "subgoals": [
+  {
+   "id": "go_to_daycare",
+   "goal_text": "Travel to the Day Care.",
+   "done_when": {
+    "area": "DAYCARE|2,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "retrieve_charizard",
+   "goal_text": "Talk to the man at the Day Care and pay 100 to get Charizard back.",
+   "done_when": {
+    "party_size": 2
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_tea_from_clerk",
+   "goal_text": "Talk to the clerk on the roof to receive the tea.",
+   "done_when": {
+    "flag": "EVENT_GOT_TM"
+   },
+   "escalation_rounds": 4,
+   "carried_forward": 2
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Visit the Pokemon Center in Celadon City to heal Charizard and Magikarp.",
+   "done_when": {
+    "map": "CELADON_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_gym",
+   "goal_text": "Enter the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Erika to earn the Rainbow Badge.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

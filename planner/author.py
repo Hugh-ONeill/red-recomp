@@ -2066,6 +2066,12 @@ def main():
     ap.add_argument("--check-done", action="store_true",
                     help="ask the model whether --goal is already "
                          "accomplished at --start; exit 0 yes, 3 no")
+    # the third rung of the ladder. It was written, wired into the shell,
+    # and never declared here — so it only ever ran when a leg exhausted
+    # all four attempts, and when Erika finally did, argparse killed the
+    # whole chain instead of asking what was missing.
+    ap.add_argument("--check-missing", action="store_true",
+                    help="ask what deed the outline never listed")
     ap.add_argument("--check-blocker", action="store_true",
                     help="ask the model whether a later outline leg must "
                          "come before the stuck --goal; prints the leg "
@@ -2109,6 +2115,22 @@ def main():
                           args.model)
         if n:
             print(n)
+            sys.exit(0)
+        sys.exit(3)
+    if args.check_missing:
+        if not (args.outline_path and args.leg):
+            ap.error("--check-missing needs --outline-path and --leg")
+        lines = [l.strip() for l in args.outline_path.read_text()
+                 .splitlines() if l.strip()]
+        # what is still AHEAD, this leg included: the missing deed is a
+        # prerequisite of the leg that just failed, not of the ones after it
+        ahead = [(n, lines[n - 1])
+                 for n in range(args.leg, len(lines) + 1)]
+        if not ahead:
+            sys.exit(3)
+        deed = check_missing(args.goal, ahead, args.start or "", args.model)
+        if deed:
+            print(deed)
             sys.exit(0)
         sys.exit(3)
     if args.out is None:
