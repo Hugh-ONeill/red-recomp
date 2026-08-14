@@ -1546,10 +1546,17 @@ class Executor:
                                   and (e or {}).get("to") != r2}
                 if not (set(self.map_doors.get(rmap0, ())) - seen_keys):
                     continue
+            # ONE WASTED TRIP IS NOT A VERDICT. Excluding a region the
+            # moment a single delivery went unused was too strong: the
+            # harness ferried the run into Mt Moon, the model's next macro
+            # walked it straight back out, and the cave — the best-scoring
+            # candidate, with two ladders never taken — was then refused
+            # for ever. Give it a second and third go before writing the
+            # ground off; the count still stops the six-trip loop.
             been = (self._ferried.get(self._cur_target) or {}).get(region)
-            if been is not None and been == frozenset(
-                    e for e in exits if e not in done_x):
-                continue      # already brought here; nothing was used
+            if been and been[0] == frozenset(
+                    e for e in exits if e not in done_x) and been[1] >= 3:
+                continue      # brought here 3x and nothing was ever used
             path = self._route(here, region)
             if path is None:
                 continue
@@ -1644,9 +1651,13 @@ class Executor:
         # keyed by what was untried when we arrived: if that set is
         # unchanged next time, the trip taught nothing and the region is
         # not a candidate again.
-        self._ferried.setdefault(self._cur_target, {})[region] = frozenset(
+        _left = frozenset(
             e for e in (self.frontier.get(region) or [])
             if e not in set((self.explored.get(region) or {}).keys()))
+        _seen = self._ferried.setdefault(self._cur_target, {})
+        _prev = _seen.get(region)
+        _seen[region] = (_left, (_prev[1] + 1) if _prev
+                         and _prev[0] == _left else 1)
         self.log("rerouted", subgoal=sg["id"], to=region, hops=len(path))
         return region
 
