@@ -1851,16 +1851,38 @@ class Executor:
                        + ". A move at 0 cannot be used; only a Pokemon "
                          "Center restores PP.")
         taken_objs = self._untaken(m, self._tried_objs.get(here, set()))
-        loot = [o.get("name") for o in (m.get("objects") or [])
+        # WITH COORDINATES. A player sees where things sit relative to each
+        # other; the list said only their names, so anything whose solution
+        # is about ARRANGEMENT was unanswerable from what we showed. The
+        # Vermilion gym is the pure case: its own text tells you when the
+        # first electric lock opens and when a wrong guess resets both, and
+        # the second switch is always in a can beside the first — but
+        # "beside" cannot be reasoned about from a bare list of fifteen
+        # names. Where they are is on screen; the deduction stays the
+        # model's.
+        def _named(o):
+            n, x, y = o.get("name"), o.get("x"), o.get("y")
+            return f"{n} ({x},{y})" if x is not None and y is not None else n
+        loot = [_named(o) for o in (m.get("objects") or [])
                 if o.get("reachable") and o.get("name")
                 and o.get("name") not in taken_objs]
+        reach = [_named(o) for o in (m.get("objects") or [])
+                 if o.get("reachable") and o.get("name")]
         loot_line = pp_line
         if loot:
             loot_line += (f"\nTHINGS within reach here you have NOT touched "
-                         f"yet: {', '.join(loot[:6])}. Press A on them before "
+                         f"yet: {', '.join(loot[:12])}. Press A on them before "
                          f"you leave — it is free, and a thing sitting in a "
                          f"passage can be exactly what is blocking it, so "
                          f"interacting with it may open the way.")
+        elif reach:
+            # A room where everything has been pressed once used to say only
+            # that — a dead end in words. But WHERE the things are is still
+            # on screen and still unsaid, and some rooms are puzzles about
+            # arrangement rather than about finding one more thing. State
+            # the layout and stop; what to make of it is the model's.
+            loot_line += (f"\nWHAT IS HERE AND WHERE, all of it pressed at "
+                          f"least once: {', '.join(reach[:16])}.")
         # ASK SOMEBODY. When a room stops yielding, the cheapest move left is
         # the one a person makes: talk to whoever is standing around. This
         # game states its own rules in dialogue, every line gets kept (see
