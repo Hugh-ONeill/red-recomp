@@ -1425,6 +1425,17 @@ must do for somebody, are all objectives in their own right — a playthrough
 that lists only the badges is missing the reasons you were able to reach
 them.
 
+HOW THESE GET PLAYED, so you can write them to fit. The list is worked
+through IN ORDER, one objective at a time, and nothing is pursued outside
+its own turn — there is no working on something quietly in the background
+while another objective runs. So an objective naming an ACCUMULATED state
+(a full team, a pile of money, a set of items) is not gathered along the
+way: it is begun from wherever things stand at its place in the list, with
+everything before it already finished and nothing after it started yet. If
+you want something built up gradually, write the separate acquisitions
+where they each actually happen, instead of one objective at the end that
+names the total.
+
 Expect about TWENTY objectives. If you have far fewer, you have folded
 several into one and skipped the errands between the badges — unfold them.
 
