@@ -239,6 +239,29 @@ def doors_text() -> str:
             "off. This is the map's own labelling, not scouting: what lies "
             "BEYOND any of these doors is not here.\n" + rows)
 
+
+def edges_text() -> str:
+    """The printed map's outdoor connections.
+
+    The same sheet the doors come off. It was already being quoted at the
+    author, but ONLY where the run had failed — "roads you have stood
+    beside and never crossed" names printed connections too — so the model
+    saw the map exclusively as a list of its own defeats, and nothing ever
+    told it which roads simply touch. A player has the Town Map open.
+
+    Adjacency only: which roads meet. Not where anything is, not what is
+    on them, not which way to go.
+    """
+    if not MAP_EDGES:
+        return ""
+    rows = "\n".join(
+        f"  {m}: " + ", ".join(f"{d} to {nb}"
+                               for d, nb in sorted(edges.items()))
+        for m, edges in sorted(MAP_EDGES.items()))
+    return ("\n\nHOW THE PRINTED MAP JOINS UP outdoors — which roads and "
+            "towns touch, and in which direction. A pair not listed here "
+            "does not meet on the map:\n" + rows)
+
 # The bag SCREEN says "HM01", never "HM_CUT" — the model's spelling is the
 # game's own on-screen spelling, and five feedback rounds could not talk it
 # out of the name every player reads. Accept the screen's names; the
@@ -316,6 +339,7 @@ def build_prompt(goal: str, start: str | None = None) -> str:
         + "\n".join(f"  {k}: {v}" for k, v in PREDICATES.items())
         + "\n\nMAP IDs on this route (use exact strings):\n  "
         + ", ".join(ROUTE_MAPS)
+        + edges_text()
         + doors_text()
         + "\n\nEVENT FLAGS: you may use {\"flag\": \"EVENT_...\"} for a "
           "milestone that is not just a map change, spelled the way this "
@@ -564,10 +588,13 @@ def observed_text(path: Path) -> str:
     if blocked:
         out += ("\n\nROADS YOU HAVE STOOD BESIDE AND NEVER CROSSED. Each of "
                 "these is a printed connection the run has had many chances "
-                "to take and never has — something holds it shut (a person "
-                "wanting something, a sleeping Pokemon, a barrier). A plan "
-                "whose route uses one of these legs WILL fail on it, so "
-                "route around it or plan the deed that opens it:\n"
+                "to take and has not taken. WHY is not recorded and is not "
+                "always the same: someone may want something, something may "
+                "be asleep on it, or the road may leave from a part of that "
+                "map the run has never stood in — Route 10's south end is "
+                "past Rock Tunnel, so standing at its north end forever "
+                "would earn it a line here. Read it as a leg that has not "
+                "worked yet, and decide what it means:\n"
                 + "\n".join(blocked))
     if seen:
         out += ("\n\nWHAT WAS SEEN IN EACH AREA (so you can aim a subgoal "
