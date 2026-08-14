@@ -2767,6 +2767,7 @@ Reply with ONLY a JSON array of ops, e.g.
             # instant the box closed. Keep them against the region so a
             # later round, or a later attempt, can read why it is stuck.
             said = ((obs or {}).get("last_text") or "").strip()
+            heard = ""
             if said and said != self._last_said:
                 self._last_said = said
                 who = step.get("name") or op
@@ -2786,6 +2787,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # the Charmander ball that way.
                 if noise:
                     said = ""
+                heard = said
                 if said and "None" not in reg and len(said) > 12:
                     lst = self.hints.setdefault(reg, [])
                     line = f"{who}: {said[:220]}"
@@ -2965,6 +2967,15 @@ Reply with ONLY a JSON array of ops, e.g.
                 if det:
                     chg.append(str(det))
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
+                # WHAT IT SAID, IN THE ROUND THAT SAID IT. The words were
+                # filed to the region ledger and nowhere else, deduplicated,
+                # so a line could be recorded once and never again — and the
+                # round's own feedback read "ok (moved)" whether the press
+                # had opened a lock or turned up trash. In the Vermilion gym
+                # that is the entire game: 143 presses, and not one of them
+                # told the model what it had just heard.
+                if heard:
+                    note += f' — it said: "{heard[:160]}"'
             if blackout:
                 note += (f" — your party FAINTED mid-op (blackout): you "
                          f"respawned at {blackout}, party healed, position "
