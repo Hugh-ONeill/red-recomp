@@ -1847,7 +1847,36 @@ Reply with ONLY {"why": "<one sentence>", "done": true} or
 {"why": "<one sentence>", "done": false} — the why comes first."""
 
 
-def check_done(goal: str, start: str, model: str) -> bool:
+def _never_stood_in(goal: str, observed) -> str | None:
+    """A map this objective names that the run has NEVER once been on.
+
+    The model's judgment decides which facts satisfy which objective — a
+    fossil in the bag settles "Retrieve the MT Moon fossil" and no
+    mechanical rule could know that. But "Reach Cerulean City" was judged
+    DONE while standing on Route 4 with Cerulean at zero visits, and the
+    harness held the record that contradicted it. Refusing a claim its own
+    ledger disproves is not judgment; it is not lying to itself.
+    """
+    if not observed:
+        return None
+    try:
+        d = json.loads(Path(observed).read_text() or "{}")
+    except (OSError, ValueError):
+        return None
+    seen = {r.split("|")[0] for r in (d.get("visits") or {})}
+    words = re.sub(r"[^A-Z0-9]+", " ", goal.upper()).split()
+    for m in ROUTE_MAPS:
+        parts = m.split("_")
+        # name it the way a person would: "Cerulean City", "Rock Tunnel"
+        if len(parts) < 2 or m in seen:
+            continue
+        if all(w in words for w in parts):
+            return m
+    return None
+
+
+def check_done(goal: str, start: str, model: str,
+               observed=None) -> bool:
     """The model judges whether a failed leg's objective is already met.
 
     A leg can fail on a subgoal long after its aim is achieved: the fossil
@@ -1858,6 +1887,11 @@ def check_done(goal: str, start: str, model: str) -> bool:
     judgment this project leaves to the model. The harness only asks, and
     only applies the answer.
     """
+    never = _never_stood_in(goal, observed)
+    if never:
+        print(f"[check-done] refused: this objective names {never} and the "
+              f"run has never once stood on it")
+        return False
     reply = brock_probe.chat(
         [{"role": "system", "content": CHECKDONE_SYS},
          {"role": "user", "content": f"THE OBJECTIVE: {goal}\n\n"
@@ -1906,7 +1940,7 @@ def main():
     args = ap.parse_args()
     if args.check_done:
         done = check_done(args.goal, args.start or "a brand new game",
-                          args.model)
+                          args.model, observed=args.observed)
         print("DONE" if done else "NOT_DONE")
         sys.exit(0 if done else 3)
     if args.check_blocker:

@@ -118,7 +118,8 @@ while :; do
     # objective is in fact done is the model's judgment to make; the chain
     # only asks, and only moves on if the answer is yes.
     if python planner/author.py --check-done --goal "$goal" \
-        --start "$(python planner/state_text.py)" --model "$MODEL"; then
+        --start "$(python planner/state_text.py)" \
+        --observed run/explored.json --model "$MODEL"; then
       echo "=== leg $i/${#LEGS[@]} judged already accomplished: $leg ==="
       echo "$i" > "$PROGRESS"
       continue
