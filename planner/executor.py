@@ -1849,9 +1849,12 @@ class Executor:
                 f"\nTHIS FLOOR IS NOT FINISHED. {mid} has {len(allw)} "
                 f"doorway(s) in total and {len(unseen)} of them "
                 f"({', '.join(sorted(unseen))}) are on part of it you have "
-                f"never stood on — you cannot walk there from any spot you "
-                f"have been, so the way in is a DIFFERENT doorway from "
-                f"somewhere else. Every region you know here can report "
+                f"never stood on — not reachable on foot from any spot "
+                f"you have stood in SO FAR. How to get there is not known: "
+                f"it may be further walking on this floor from a corner you "
+                f"have not tried, or another doorway from somewhere else. "
+                f"What is certain is that this floor has more to it than "
+                f"you have seen, so every region you know here can report "
                 f"nothing left to try and this still be true.")
         # A seam PROVEN uncrossable from this region is not an exit. A map
         # connection belongs to the whole map, so the stub side of a split
