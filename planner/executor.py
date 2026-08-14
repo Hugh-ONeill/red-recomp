@@ -3533,7 +3533,15 @@ Reply with ONLY a JSON array of ops, e.g.
         # four-act siege the moment navigation stopped being the reason
         # it had failed.
         if prior_fails and not is_gate:
-            rounds = max(1, rounds - prior_fails)
+            # ...BUT NEVER BELOW WHAT IT TAKES TO TRY. Subtracting one
+            # round per past failure took a much-failed map hop down to a
+            # SINGLE round — and one round cannot walk into a cave, never
+            # mind cross it. Mt Moon was being attempted 1 round at a time
+            # after the first few losses, which reads as "failing really
+            # quickly" and guarantees it never gets further. The discount
+            # is meant to stop a doomed march wasting a deep budget, not
+            # to make the attempt impossible.
+            rounds = max(3, rounds - prior_fails)
             print(f"   (failed {prior_fails}x in earlier attempts — "
                   f"budget {rounds} round(s))")
         # An EVENT GATE is load-bearing: failing it now ENDS the plan (a
