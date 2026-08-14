@@ -1,0 +1,479 @@
+{
+  "goal": "Defeat Lt. Surge for the Thunder Badge",
+  "subgoals": [
+    {
+      "id": "heal_at_center",
+      "goal_text": "Go to the Vermilion City Pokemon Center and heal the party.",
+      "done_when": {
+        "map": "VERMILION_POKECENTER",
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VERMILIONPOKECENTER_NURSE",
+          "answer": "yes",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "enter_gym",
+      "goal_text": "Enter the Vermilion Gym.",
+      "done_when": {
+        "map": "VERMILION_GYM"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VERMILIONTRADEHOUSE_LITTLE_GIRL",
+          "answer": "yes",
+          "when": {
+            "map": "VERMILION_TRADE_HOUSE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 19,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "use_item",
+          "item": "HM_CUT",
+          "slot": 1,
+          "forget": "LEER",
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 15,
+          "y": 18,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 19,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "defeat_lt_surge",
+      "goal_text": "Defeat Lt. Surge in battle to earn the Thunder Badge.",
+      "done_when": {
+        "badge": "THUNDERBADGE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VERMILIONGYM_GYM_GUIDE",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VERMILIONGYM_SAILOR",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VERMILIONGYM_SUPER_NERD",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VERMILIONGYM_GENTLEMAN",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_0",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_1",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_2",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_3",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_4",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_5",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_6",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_7",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_8",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_9",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_10",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_11",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_12",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_13",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_14",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VERMILIONGYM_GENTLEMAN",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VERMILIONGYM_SUPER_NERD",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VERMILIONGYM_SAILOR",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_6",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_7",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_6",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_12",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_12",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_14",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_2",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_3",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_4",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_7",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_8",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_9",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_11",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_14",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_0",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_1",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_2",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_3",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_4",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_5",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_6",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_7",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_9",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_10",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_11",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_12",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_13",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TRASH_CAN_14",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VERMILIONGYM_LT_SURGE",
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 51
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,47 @@
+{
+ "goal": "Defeat Erika for the Rainbow Badge",
+ "subgoals": [
+  {
+   "id": "teach_cut",
+   "goal_text": "Teach CUT to a Pokemon in the party using HM01.",
+   "done_when": {
+    "knows_move": "CUT"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_city",
+   "goal_text": "Travel from Route 11 to Celadon City. This may require passing through Lavender Town or using the Underground Path.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_celadon_center",
+   "goal_text": "Visit the Pokemon Center in Celadon City to fully heal the party.",
+   "done_when": {
+    "map": "CELADON_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_gym",
+   "goal_text": "Enter the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Gym Leader Erika to earn the Rainbow Badge.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

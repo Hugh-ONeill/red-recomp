@@ -1148,9 +1148,18 @@ function OPS.cross(G, c)
     -- to the seam: blocked terrain splits the map (ROUTE_2's north half is
     -- only reachable through Viridian Forest)
     local dest = md and md.connections and md.connections[cmap[dir]]
+    -- DO NOT NAME THE CAUSE. BFS knows only that no walkable path reached
+    -- the seam; it cannot tell rock from a sleeping Snorlax from a bush
+    -- the party could cut down this minute. Claiming "terrain blocks it,
+    -- the way goes through another map" sent the run around three sides of
+    -- Kanto twice: north of Route 12 that is Snorlax and the answer is the
+    -- Poke Flute, and east of Cerulean it is a CUT_TREE the party has
+    -- known CUT for hours. Both are on screen. State the fact, and let
+    -- what is standing there be read from the objects like anything else.
     return false, ("the %s seam of %s (to %s) cannot be walked to from "
-      .. "here — terrain blocks it; the way there goes through a door or "
-      .. "another map"):format(cmap[dir], tostring(startMap),
+      .. "here — no walkable path reaches it; something in between could "
+      .. "not be walked through, and whatever that is can be seen from "
+      .. "where you are standing"):format(cmap[dir], tostring(startMap),
                                tostring(dest and dest.map or "?"))
   end
   if p.cellX ~= ex or p.cellY ~= ey then

@@ -633,10 +633,39 @@ def observed_text(path: Path) -> str:
             lines.append(f"  {region}  --{keys}-->  {dest}"
                          + ("  (SHUT: walked into it and turned back every "
                             "time)" if shut and dest == region else ""))
+    # WHAT GETS CUT MATTERS MORE THAN HOW MANY. This was an alphabetical
+    # names[:8], so CERULEAN_CITY showed eight COOLTRAINERs and GUARDs and
+    # dropped CUT_TREE — the one object in that city the party could act
+    # on, and the only thing standing between it and Route 9. The run stood
+    # in Cerulean 321 times without going east while the answer sat in the
+    # ledger, trimmed out of the evidence by sort order.
+    # Names carry their own kind: people are <MAPID>_<ROLE>, signposts are
+    # TEXT_*, and terrain you can DO something to is bare (CUT_TREE, PC,
+    # TRASH_CAN_n). Order by that, collapse numbered families, and say what
+    # was dropped rather than truncating in silence.
     seen = []
     for region, names in sorted((d.get("sightings") or {}).items()):
-        if names:
-            seen.append(f"  {region}: {', '.join(names[:8])}")
+        if not names:
+            continue
+        pre = region.split("|")[0].replace("_", "")
+
+        def _rank(n, _p=pre):
+            if n.startswith("TEXT_"):
+                return 2            # a signpost; its words are recorded
+            if n.startswith(_p):
+                return 1            # a person standing there
+            return 0                # terrain — the actionable kind
+
+        fam: dict = {}
+        for n in names:
+            base = re.sub(r"_\d+$", "", n)
+            fam.setdefault(base, []).append(n)
+        collapsed = [b if len(g) == 1 else f"{b} x{len(g)}"
+                     for b, g in fam.items()]
+        collapsed.sort(key=lambda n: (_rank(n.split(" x")[0]), n))
+        shown, extra = collapsed[:8], len(collapsed) - 8
+        seen.append(f"  {region}: {', '.join(shown)}"
+                    + (f" (+{extra} more)" if extra > 0 else ""))
     dead = []
     for tgt, regions in (d.get("dead_ends") or {}).items():
         for region, n in regions.items():

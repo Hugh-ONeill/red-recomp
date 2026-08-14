@@ -23,7 +23,26 @@
       "done_when": {
         "map": "SS_ANNE_3F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 12,
+          "when": {
+            "map": "SS_ANNE_2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "enter_captains_room",
@@ -41,7 +60,57 @@
           "HM_CUT": 1
         }
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 3,
+          "when": {
+            "map": "SS_ANNE_3F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SSANNE2F_WAITER",
+          "answer": "yes",
+          "when": {
+            "map": "SS_ANNE_2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 36,
+          "y": 4,
+          "when": {
+            "map": "SS_ANNE_2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SSANNECAPTAINSROOM_CAPTAIN",
+          "answer": "yes",
+          "when": {
+            "map": "SS_ANNE_CAPTAINS_ROOM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TEXT_SSANNECAPTAINSROOM_SEASICK_BOOK",
+          "when": {
+            "map": "SS_ANNE_CAPTAINS_ROOM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 5
+      }
     },
     {
       "id": "exit_ss_anne",
@@ -49,7 +118,74 @@
       "done_when": {
         "map": "VERMILION_CITY"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "SSANNE2FROOMS_MAX_ETHER",
+          "answer": "yes",
+          "when": {
+            "map": "SS_ANNE_2F_ROOMS"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SSANNE2FROOMS_GENTLEMAN1",
+          "answer": "yes",
+          "when": {
+            "map": "SS_ANNE_2F_ROOMS"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SSANNE2FROOMS_FISHER",
+          "answer": "yes",
+          "when": {
+            "map": "SS_ANNE_2F_ROOMS"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 5,
+          "when": {
+            "map": "SS_ANNE_2F_ROOMS"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 4,
+          "when": {
+            "map": "SS_ANNE_2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 4,
+          "when": {
+            "map": "SS_ANNE_2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 26,
+          "y": 0,
+          "when": {
+            "map": "SS_ANNE_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 7
+      }
     }
   ],
   "authored_by": "gemma4:31b-it-q4_K_M"
