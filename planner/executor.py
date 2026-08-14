@@ -97,6 +97,48 @@ def static_hops(a: str, b: str, avoid=frozenset()):
     return None
 
 
+def static_cost(a: str, b: str, toll: dict, extra: dict | None = None):
+    """Cheapest printed-map route from A to B when some edges carry a TOLL.
+
+    Plain hop-counting cannot choose between two shut doors, and Lavender
+    has exactly two: Route 12 (one hop from where the run stands, leaned on
+    328 times) and Route 10 (seven hops, tried 22). Every path from the
+    south crosses the Snorlax, so distance always picked it, and the run
+    went back to the same sleeping Pokemon for hundreds of arrivals.
+
+    Pricing a shut edge by how hard it has ALREADY been leaned on makes
+    the long road cheaper than the near wall, without anyone deciding
+    which wall is real. Dijkstra rather than BFS because the edges now
+    have weights; an untolled graph gives exactly the old hop count.
+    """
+    if not a or not b:
+        return None
+    if a == b:
+        return 0
+    import heapq
+    best = {a: 0}
+    q = [(0, a)]
+    while q:
+        cost, m = heapq.heappop(q)
+        if m == b:
+            return cost
+        if cost > best.get(m, 1 << 30):
+            continue
+        # Printed roads AND roads this run has actually walked. The town
+        # map has no line for an underground path, so Vermilion could only
+        # reach Cerulean THROUGH Saffron — a tolled wall — while the run
+        # had gone Route 5 to Route 6 underground 110 times. A connection
+        # you have personally walked is the strongest evidence there is,
+        # and leaving it out priced the open road above the shut one.
+        for m2 in set((MAP_EDGES.get(m) or {}).values()) \
+                | set((extra or {}).get(m) or ()):
+            c = cost + 1 + toll.get((m, m2), 0)
+            if c < best.get(m2, 1 << 30):
+                best[m2] = c
+                heapq.heappush(q, (c, m2))
+    return None
+
+
 def _doorstep(map_id: str) -> str:
     """The printed-map place a target sits in: itself if the town map
     draws it, else the city its name carries (CELADON_GYM -> CELADON_CITY,
@@ -1604,17 +1646,40 @@ class Executor:
         # the Snorlax was closer. Distance is the wrong question once every
         # answer is "no"; how hard you have already leaned on this one is
         # the only thing left that distinguishes them.
-        worn = min(vis.get(from_map, 0) // 20, 12)
-        h = static_hops(from_map, want)
+        # Price each shut edge by how hard its near side has already been
+        # leaned on, then take the cheapest route rather than the shortest.
+        # A door tried 22 times from Route 10 costs a fraction of the one
+        # tried 328 times from Route 12, so the long eastern road finally
+        # outranks the Snorlax sitting one hop away.
+        toll = {e: 4 + min(vis.get(e[0], 0) // 8, 40) for e in blocked}
+        walked = self._walked_map_links()
+        h = static_cost(from_map, want, toll, walked)
         if h is not None:
-            return 80 + h + worn
+            return 80 + h
         for m in MAP_EDGES:
             if vis.get(m):
                 continue
-            hh = static_hops(from_map, m)
+            hh = static_cost(from_map, m, toll, walked)
             if hh is not None and (best is None or hh < best):
                 best = hh
-        return 80 + best + worn if best is not None else 99
+        return 80 + best if best is not None else 99
+
+    def _walked_map_links(self) -> dict:
+        """Map-to-map connections this run has personally walked.
+
+        The learned graph is region-to-region and includes every door;
+        collapsed to map level it is the printed map PLUS the tunnels the
+        town map does not draw — which is how the underground path reaches
+        the ranking at all.
+        """
+        out: dict = {}
+        for region, exits in (self.explored or {}).items():
+            src = region.split("|")[0]
+            for e in (exits or {}).values():
+                dst = str((e or {}).get("to") or "").split("|")[0]
+                if dst and dst != src:
+                    out.setdefault(src, set()).add(dst)
+        return out
 
     def _fought_at(self, tgt: str, obs, step, dest_map: str) -> bool:
         """Did a fight happen in the REGION this exit leads to?
