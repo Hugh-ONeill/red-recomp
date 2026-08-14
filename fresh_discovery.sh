@@ -110,6 +110,13 @@ while :; do
     python planner/author.py "${aargs[@]}"
   fi
 
+  # WHAT THIS LEG GAINS IS THE EVIDENCE FOR WHETHER IT IS DONE. Snapshot
+  # before it runs so a failed leg can still be judged on what it actually
+  # achieved — the fossil leg walked out of Mt Moon HOLDING the fossil and
+  # failed three rewrites anyway, and a fused objective ("the parcel from
+  # Bill", two errands welded together) can only be settled this way.
+  python planner/leg_delta.py snap run/leg_start.json 2>/dev/null || true
+
   cont=0; [ "$i" -gt 1 ] && cont=1
   if ! env RED_HEADED="${RED_HEADED:-1}" RED_SPEED="${RED_SPEED:-200}" \
       RED_CONTINUE=$cont ./campaign.sh "$ATTEMPTS" "$plan" -- --escalate; then
@@ -117,8 +124,12 @@ while :; do
     # fossil leg failed three rewrites HOLDING the fossil). Whether the
     # objective is in fact done is the model's judgment to make; the chain
     # only asks, and only moves on if the answer is yes.
+    gained=$(python planner/leg_delta.py diff run/leg_start.json \
+        2>/dev/null || true)
+    [ -n "$gained" ] && echo "    gained: $gained"
     if python planner/author.py --check-done --goal "$goal" \
         --start "$(python planner/state_text.py)" \
+        --gained "$gained" \
         --observed run/explored.json --model "$MODEL"; then
       echo "=== leg $i/${#LEGS[@]} judged already accomplished: $leg ==="
       echo "$i" > "$PROGRESS"

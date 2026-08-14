@@ -1876,7 +1876,7 @@ def _never_stood_in(goal: str, observed) -> str | None:
 
 
 def check_done(goal: str, start: str, model: str,
-               observed=None) -> bool:
+               observed=None, gained: str = "") -> bool:
     """The model judges whether a failed leg's objective is already met.
 
     A leg can fail on a subgoal long after its aim is achieved: the fossil
@@ -1895,7 +1895,12 @@ def check_done(goal: str, start: str, model: str,
     reply = brock_probe.chat(
         [{"role": "system", "content": CHECKDONE_SYS},
          {"role": "user", "content": f"THE OBJECTIVE: {goal}\n\n"
-          f"WHERE THE RUN STANDS: {start}"}], model)
+          f"WHERE THE RUN STANDS: {start}"
+          # WHAT THE LEG ACHIEVED, not just where it ended. A leg can fail
+          # every subgoal and still have done the thing — and a FUSED
+          # objective ("deliver the parcel from Bill", two errands welded
+          # into one) can only be judged against what actually changed.
+          + (f"\n\n{gained}" if gained else "")}], model)
     m = re.search(r"\{.*\}", reply, re.S)
     if not m:
         return False
@@ -1912,6 +1917,9 @@ def main():
     ap.add_argument("--outline", action="store_true",
                     help="write the model's own list of objectives instead "
                          "of a subgoal plan (one line per leg)")
+    ap.add_argument("--gained", help="what changed while the leg ran "
+                    "(planner/leg_delta.py diff), as evidence for judging "
+                    "whether a partly-successful leg is in fact done")
     ap.add_argument("--check-done", action="store_true",
                     help="ask the model whether --goal is already "
                          "accomplished at --start; exit 0 yes, 3 no")
@@ -1940,7 +1948,8 @@ def main():
     args = ap.parse_args()
     if args.check_done:
         done = check_done(args.goal, args.start or "a brand new game",
-                          args.model, observed=args.observed)
+                          args.model, observed=args.observed,
+                          gained=args.gained or "")
         print("DONE" if done else "NOT_DONE")
         sys.exit(0 if done else 3)
     if args.check_blocker:
