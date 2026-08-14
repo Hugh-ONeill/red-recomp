@@ -1232,7 +1232,22 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
         # past that is a plan the pick never selected, so keep the pick.
         added = [x["id"] for x in revised["subgoals"]
                  if x["id"] not in {y["id"] for y in plan["subgoals"]}]
-        if len(added) > MAX_REVIEW_ADDS:
+        # THE CAP DEFENDS A SOUND PICK, NOT A BROKEN ONE. It was added to
+        # stop an audit discarding the draft the model had just chosen —
+        # but the very next pass it refused a review that was inserting the
+        # eastern road into a plan hopping ROUTE_5 -> ROUTE_6 -> ROUTE_7,
+        # two pairs the printed map does not join at all. A plan with a
+        # hole in its route has not earned that protection: filling a hole
+        # IS the audit's job, and doing it properly can take more than a
+        # couple of steps. Sound plans keep the tight cap.
+        hops = [ (a.get("done_when") or {}).get("map")
+                 for a in plan["subgoals"] ]
+        hops = [h for h in hops if h]
+        gap = any(b not in (MAP_EDGES.get(a) or {}).values() and a != b
+                  for a, b in zip(hops, hops[1:])
+                  if a in MAP_EDGES and b in MAP_EDGES)
+        cap = MAX_REVIEW_ADDS * 4 if gap else MAX_REVIEW_ADDS
+        if len(added) > cap:
             print(f"[review] round {rnd} added {len(added)} subgoals "
                   f"(cap {MAX_REVIEW_ADDS}) — that is a rewrite, not an "
                   f"audit; keeping the plan as chosen: "
