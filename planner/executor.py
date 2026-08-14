@@ -151,6 +151,18 @@ try:
         Path(__file__).with_name("map_doors.json").read_text())
     INTERIOR_ROAD = {mid: road for road, places in _DOORS.items()
                      for ids in places.values() for mid in ids}
+    # ROADS A PLACE CUTS IN HALF. A named place listed under exactly ONE
+    # road is entered and left on that road — Mt Moon on Route 4, Rock
+    # Tunnel on Route 10 — so the road has two halves that cannot be walked
+    # between. One listed under SEVERAL roads joins those roads instead
+    # (the underground paths). The difference decides whether "stood here
+    # often, never got across" means a wall or the wrong side.
+    _roads_of = {}
+    for _road, _places in _DOORS.items():
+        for _label in _places:
+            _roads_of.setdefault(_label, set()).add(_road)
+    SPLIT_ROADS = {next(iter(rs)) for lbl, rs in _roads_of.items()
+                   if len(rs) == 1}
     # Deeper floors too. The table names only what a road warps into
     # DIRECTLY, so Mt Moon's B2F was still nowhere — and rating the bottom
     # of a cave worse than its middle pushes a run upward out of it. A
@@ -1827,7 +1839,13 @@ class Executor:
         return frozenset(
             (m, nb) for m, edges in MAP_EDGES.items()
             for nb in edges.values()
-            if vis.get(m, 0) >= 8 and not vis.get(nb))
+            # A ROAD SPLIT BY A CAVE CANNOT BE JUDGED THIS WAY. Standing on
+            # Route 4's west side a hundred times says nothing about its
+            # east seam, which is past Mt Moon — and calling that edge shut
+            # tolled the whole area so heavily that Pewter's shop doors
+            # outranked the cave the run was trying to cross.
+            if m not in SPLIT_ROADS
+            and vis.get(m, 0) >= 8 and not vis.get(nb))
 
     def _goal_score(self, from_map: str, want: str, blocked) -> int:
         """What it COSTS to get to the goal from here — one number, always.
