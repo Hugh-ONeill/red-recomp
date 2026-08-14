@@ -607,8 +607,11 @@ def observed_text(path: Path) -> str:
                 "be asleep on it, or the road may leave from a part of that "
                 "map the run has never stood in — Route 10's south end is "
                 "past Rock Tunnel, so standing at its north end forever "
-                "would earn it a line here. Read it as a leg that has not "
-                "worked yet, and decide what it means:\n"
+                "would earn it a line here. What is true of every one of "
+                "them is that a route using it HAS NOT WORKED YET, so a "
+                "plan built on one needs something to change first — "
+                "reaching that road from somewhere else, or doing the deed "
+                "that opens it. WHICH, is yours to say:\n"
                 + "\n".join(blocked))
     if seen:
         out += ("\n\nWHAT WAS SEEN IN EACH AREA (so you can aim a subgoal "
