@@ -2505,13 +2505,18 @@ Reply with ONLY a JSON array of ops, e.g.
                     # pre-banned from the one interaction that arms the
                     # machine. Repeat-interact spam costs the model its own
                     # escalation budget, which is its trade to make.
+                    # State the fact; do not counsel against the repeat.
+                    # "Doing it AGAIN is only worth it if something has
+                    # changed... otherwise take an exit you have not used"
+                    # is a strategy claim, and in the Vermilion gym it is
+                    # the wrong one: the room IS the puzzle, its locks
+                    # re-randomise on every miss, and pressing again is the
+                    # only way through. 143 presses went in under a note
+                    # telling the run to leave.
                     trace.append(
-                        f"interact({step.get('name')}): note — you have "
-                        f"interacted with everything reachable here "
-                        f"({len(tried)} things) before. Doing it AGAIN is "
-                        f"only worth it if something has changed or a "
-                        f"script needs repeating; otherwise take an exit "
-                        f"you have not used.")
+                        f"interact({step.get('name')}): note — everything "
+                        f"reachable here ({len(tried)} things) has been "
+                        f"pressed at least once already.")
                 # NOTE: marked provisionally, and RETRACTED below if the
                 # interact did not actually happen. Marking on intent alone
                 # let an unreachable item count as touched, so a floor with
