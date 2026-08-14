@@ -4206,6 +4206,28 @@ Reply with ONLY a JSON array of ops, e.g.
                     f"{self._blackouts[self._target_key(sg)]}x pursuing this "
                     f"goal{dated}. Each blackout also costs you half your "
                     f"money.")
+                # WHAT IS IN THE BAG AND WHAT THE PARTY CAN ACTUALLY DO.
+                # The wipe note reported the count and the levels and
+                # nothing about the tools: Charmeleon lost to Misty ten
+                # times swinging RAGE (20 power) with GROWL and LEER filling
+                # two of its four slots, while TM_MEGA_PUNCH sat unused in
+                # the bag the whole time. Inventory beside the problem —
+                # what to do with it, if anything, is not stated here.
+                _bag = (cur or {}).get("bag") or {}
+                if _bag:
+                    stuck_note += ("\nWHAT YOU ARE CARRYING: "
+                                   + ", ".join(f"{k} x{v}"
+                                               for k, v in sorted(_bag.items()))
+                                   + ".")
+                _mv = []
+                for _m in (cur or {}).get("party") or []:
+                    _names = ", ".join(
+                        str(x.get("id") if isinstance(x, dict) else x)
+                        for x in (_m.get("moves") or []))
+                    _mv.append(f"{_m.get('species')} L{_m.get('level')}"
+                               f" knows {_names or 'nothing'}")
+                if _mv:
+                    stuck_note += "\nWHAT YOUR PARTY CAN DO: " + "; ".join(_mv) + "."
             # TRAINING A FAINTED POKEMON IS NOT TRAINING. It cannot be sent
             # out, so it earns nothing and the lead soaks every battle while
             # the condition never moves. The party screen says so; say it
