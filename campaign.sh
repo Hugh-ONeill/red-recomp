@@ -65,6 +65,17 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
     exit 0
   fi
 
+  # A BOOTSTRAP failure is not a failed leg. Nothing was walked, so there is
+  # no evidence to audit, and the rewrite ends up describing a world that
+  # was never established: a leftover save made new_game hit CONTINUE and
+  # the "fresh" chain calmly authored a route from Route 6 to Pallet Town to
+  # go and collect a starter it had already evolved twice. Stop instead.
+  if grep -q "new game failed" "$LOG"; then
+    echo "!! bootstrap never established the world — refusing to re-author" \
+        | tee -a "$LOG"
+    exit 2
+  fi
+
   # Which leg died. Do NOT parse stdout for this: python block-buffers when
   # redirected, so the last "===== PLAN:" line can still be the PREVIOUS
   # attempt's, and the loop then rewrites a plan it is not even running.

@@ -41,6 +41,12 @@ if [ "$done_legs" = 0 ]; then
   [ -f run/explored.json ] && cp run/explored.json "run/explored.${ts}.pre-discovery.bak.json"
   [ -f run/executor_log.jsonl ] && mv run/executor_log.jsonl "run/executor_log.${ts}.pre-discovery.jsonl"
   [ -f "$SAVE" ] && cp "$SAVE" "run/slot1.${ts}.pre-discovery.lua"
+  # ...and RETIRE it. Copying alone left the save in place, so the game
+  # auto-loaded it and bootstrap's new_game hit CONTINUE instead: a "fresh"
+  # chain woke up on Route 6 wearing three badges and set about authoring
+  # "Obtain a starter Pokemon" for a party holding an L43 Venusaur. The
+  # copy above is the only thing that makes this safe — take it first.
+  rm -f "$SAVE" "$SAVE.bak"
   # obs.json is the LIVE world snapshot and outlives the process that wrote
   # it. Left in place it lies twice about a world that no longer exists:
   # fresh_run.sh takes its existence as "the game is up" (so the wait for
