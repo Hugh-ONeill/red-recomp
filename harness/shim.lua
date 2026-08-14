@@ -545,6 +545,27 @@ local function observe(G, seq, result)
       o.pc_items[k] = v
     end
   end
+  -- WHO IS AT THE DAY CARE. Same reason as pc_items: the run answered
+  -- "yes" to the DAYCARE_GENTLEMAN while hunting for a way to Celadon and
+  -- handed over a level 40 CHARIZARD, leaving a level 6 MAGIKARP to beat
+  -- Erika with. Nothing in the observation said where it went, so the loss
+  -- was unexplainable AND the fix — walk back in and pay to take it out —
+  -- was unthinkable. The Day Care Man says all of this out loud when you
+  -- talk to him, and the party screen shows the hole.
+  do
+    local dc = G.save and G.save.daycare
+    local mon = dc and dc.mon
+    if mon and mon.species then
+      o.daycare = {
+        species = mon.species,
+        level = mon.level,
+        deposit_level = dc.depositLevel,
+        -- what it costs to take back: 100 per level gained, minimum 100
+        cost = 100 * math.max(1, (tonumber(mon.level) or 0)
+                                 - (tonumber(dc.depositLevel) or 0) + 1),
+      }
+    end
+  end
   o.money = G.save and G.save.money
   -- Set event flags, for the EXECUTOR's done_when predicates (SPD tier 0).
   -- Instrumentation, not model eyes: the model-facing obs builder must strip

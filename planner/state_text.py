@@ -68,13 +68,31 @@ def bag_text(bagd):
     return txt
 
 
+def daycare_text(dc):
+    """The Pokemon that is NOT in the party because it is being raised.
+
+    A missing party member is otherwise invisible: the start line simply
+    reads one Pokemon shorter and nothing says why or how to undo it. The
+    run handed a level 40 CHARIZARD to the Day Care Man and went on trying
+    to win a grass gym with a level 6 MAGIKARP.
+    """
+    if not dc or not dc.get("species"):
+        return ""
+    lvl = f" L{dc['level']}" if dc.get("level") else ""
+    cost = f" for {dc['cost']}" if dc.get("cost") else ""
+    return (f" — your {dc['species']}{lvl} is NOT with you: it is at the "
+            f"DAY CARE and can be taken back{cost} by talking to the man "
+            f"there")
+
+
 if "region" in o:                    # last_state.json is already flattened
     m = o.get("map")
     party = party_text(o.get("party") or [])
     badges = ", ".join(o.get("badges") or []) or "no badges"
     bag = bag_text(o.get("bag"))
     print(f"standing in {m or 'an unknown location'} with "
-          f"{party or 'no party'}, {badges}, and {bag}")
+          f"{party or 'no party'}, {badges}, and {bag}"
+          + daycare_text(o.get("daycare")))
     raise SystemExit
 m = (o.get("map") or {}).get("id")
 if not m:                      # stale/missing obs: say so rather than
@@ -83,4 +101,5 @@ if not m:                      # stale/missing obs: say so rather than
 party = party_text(o.get("party") or [])
 badges = ", ".join(o.get("badges") or []) or "no badges"
 bag = bag_text(o.get("bag"))
-print(f"standing in {m} with {party or 'no party'}, {badges}, and {bag}")
+print(f"standing in {m} with {party or 'no party'}, {badges}, and {bag}"
+      + daycare_text(o.get("daycare")))
