@@ -1510,11 +1510,21 @@ class Executor:
                 # into the cave the run was trying to cross. Compare the
                 # map's whole doorway list against every key taken anywhere
                 # on it; the ferry ledger stops this being a loop.
+                # A DOORWAY THAT REFUSED YOU IS NOT A DOORWAY YOU WALKED.
+                # Attempts that went nowhere are recorded so they stop being
+                # re-elected, but counting them here marked Mt Moon's east
+                # EXIT (27,3, attempted once, went nowhere) as walked — the
+                # one doorway that matters, hidden by the record of having
+                # failed at it. Only a doorway that actually led somewhere
+                # else counts as used.
                 rmap0 = region.split("|")[0]
                 seen_keys = set()
                 for r2, ex2 in (self.explored or {}).items():
-                    if r2.split("|")[0] == rmap0:
-                        seen_keys |= set(ex2.keys())
+                    if r2.split("|")[0] != rmap0:
+                        continue
+                    seen_keys |= {k for k, e in ex2.items()
+                                  if not (e or {}).get("shut")
+                                  and (e or {}).get("to") != r2}
                 if not (set(self.map_doors.get(rmap0, ())) - seen_keys):
                     continue
             been = (self._ferried.get(self._cur_target) or {}).get(region)
