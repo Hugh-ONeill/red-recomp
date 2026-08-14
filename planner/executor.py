@@ -526,6 +526,7 @@ class Executor:
         # precedes the first op, so nothing may be attributed to it.
         self._said_ready = False
         self._cur_target = ""
+        self._idle_rounds = 0
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
         # Pure memory of past observations (the obs already showed each map's
@@ -3309,6 +3310,7 @@ Reply with ONLY a JSON array of ops, e.g.
         self._dead_visits = 0
         free_rounds = 0
         self._cur_target = self._target_key(sg)
+        self._idle_rounds = 0     # laps count per subgoal, not per run
         self._stuck_in: dict = {}
         # NOT reset here: a fresh escalation forgetting what it already
         # interacted with is why the run kept talking to the same Jigglypuff
@@ -4234,7 +4236,21 @@ Reply with ONLY a JSON array of ops, e.g.
                                  round=rnd, proposed=0,
                                  distilled=len(progress), verified=False)
                         return True, progress
+            # MOTION IS NOT PROGRESS. This asked only whether the round did
+            # ANYTHING, and crossing a route boundary always works — so a
+            # run bouncing ROUTE_11 <-> ROUTE_12 chasing a sealed Saffron
+            # counted every lap as progress and the walk-back to unexplored
+            # ground was never even considered, with 38 regions still
+            # holding untried exits. Rounds that move the party without
+            # moving the CONDITION are the definition of stuck; after a few
+            # of them, go somewhere new instead.
             moved_itself = bool(progress)
+            if moved_itself and not pred_holds(done, cur):
+                self._idle_rounds = getattr(self, "_idle_rounds", 0) + 1
+                if self._idle_rounds >= 3:
+                    moved_itself = False
+            else:
+                self._idle_rounds = 0
             if not moved_itself and (patient
                                      or not self._untried_exits(cur)):
                 went = self._route_to_frontier(cur, sg, patient=patient)
