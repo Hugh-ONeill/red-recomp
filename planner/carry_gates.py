@@ -28,14 +28,36 @@ def gates(plan: dict) -> list:
     return out
 
 
+# How many rewrites may re-insert the same gate before the model's decision
+# to drop it stands. The protection is against an ACCIDENTAL drop — a plan
+# re-authored mid-dungeon that forgets what it came for — and one carry
+# covers that. Carrying without limit means the harness overrides the model
+# indefinitely on evidence the model has and it does not: leg_08 came back
+# from the S.S. Anne carrying two Rocket gates keyed to EVENT_GOT_TM,
+# re-inserted after the model had watched them fail and written them out,
+# and each one is entitled to a full event-gate round budget.
+MAX_CARRIES = 2
+
+
 def carry(old: dict, new: dict) -> tuple:
     """Return (merged, carried_ids). Matching is by CONDITION, not id, so a
     renamed subgoal with the same done_when is not duplicated."""
     have = {json.dumps(sg.get("done_when") or {}, sort_keys=True)
             for sg in new.get("subgoals") or []}
-    missing = [sg for sg in gates(old)
-               if json.dumps(sg.get("done_when") or {}, sort_keys=True)
-               not in have]
+    missing, spent = [], []
+    for sg in gates(old):
+        if json.dumps(sg.get("done_when") or {}, sort_keys=True) in have:
+            continue
+        if int(sg.get("carried_forward") or 0) >= MAX_CARRIES:
+            spent.append(sg.get("id"))
+            continue
+        sg = dict(sg)
+        sg["carried_forward"] = int(sg.get("carried_forward") or 0) + 1
+        missing.append(sg)
+    if spent:
+        print(f"[gates] leaving {len(spent)} gate(s) dropped — carried "
+              f"{MAX_CARRIES}x already and never once satisfied: "
+              f"{', '.join(str(s) for s in spent)}")
     if not missing:
         return new, []
     subs = list(new.get("subgoals") or [])
