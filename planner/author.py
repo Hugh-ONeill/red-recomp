@@ -586,8 +586,21 @@ def observed_text(path: Path) -> str:
         return ""
     lines = []
     for region in sorted(exp):
+        # ONE LINE PER DOORWAY, NOT PER TILE. A door spans two tiles and
+        # both get recorded, so the same passage was stated twice or three
+        # times — 20 of 91 lines in the walked graph said something the
+        # line above it already said. Which tile you step on is not a fact
+        # the model needs; where the door goes is. Keep every DISTINCT
+        # destination, name the tiles once.
+        byd: dict = {}
         for key, e in sorted((exp[region] or {}).items()):
-            lines.append(f"  {region}  --{key}-->  {e.get('to')}")
+            byd.setdefault(e.get("to"), []).append((key, e))
+        for dest, group in sorted(byd.items(), key=lambda kv: str(kv[0])):
+            keys = ", ".join(k for k, _ in group)
+            shut = all((e or {}).get("shut") for _, e in group)
+            lines.append(f"  {region}  --{keys}-->  {dest}"
+                         + ("  (SHUT: walked into it and turned back every "
+                            "time)" if shut and dest == region else ""))
     seen = []
     for region, names in sorted((d.get("sightings") or {}).items()):
         if names:
@@ -734,7 +747,15 @@ def observed_text(path: Path) -> str:
                 + "\n".join(fired))
     if dead:
         out += "\n\nPROVEN UNREACHABLE:\n" + "\n".join(dead)
-    return _fit(out)
+    # Nearness = the maps the run has spent the most time in, which is
+    # where it is and where it keeps returning. Mechanical, not a judgment
+    # about what matters.
+    vis_m: dict = {}
+    for r, n in (d.get("visits") or {}).items():
+        m = r.split("|")[0]
+        vis_m[m] = vis_m.get(m, 0) + n
+    near = {m for m, _ in sorted(vis_m.items(), key=lambda kv: -kv[1])[:14]}
+    return _fit(out, near=near)
 
 
 # Ollama evaluates a prompt at HALF of num_ctx and drops its FRONT — where
@@ -748,26 +769,31 @@ def observed_text(path: Path) -> str:
 EVIDENCE_BUDGET = 22000
 
 
-def _fit(text: str, budget: int = EVIDENCE_BUDGET) -> str:
-    """Trim the growing blocks until the evidence fits, oldest lines first.
+def _fit(text: str, budget: int = EVIDENCE_BUDGET,
+         near: set | None = None) -> str:
+    """Trim the growing blocks until the evidence fits, FAREST FIRST.
 
-    Blocks are ALL-CAPS-headed; the ones that grow without bound are the
-    walked graph and the event sites. Their tail lines are the most recent
-    ground and the least useful to lose, so drop from the middle-out by
-    keeping the head (the earliest, most-established facts) and the tail
-    (where the run is now), and say how many went."""
+    These lists are alphabetical by region, not chronological, so "oldest"
+    and "newest" are not properties they have — a head-and-tail trim keeps
+    the B's and the V's and silently drops everything from Mt Moon to Rock
+    Tunnel. What actually distinguishes a line is whether it concerns
+    ground near where the party is or is going: those are the facts a plan
+    written now can act on. Keep them, drop the far ones, and say how many
+    went."""
     while len(text) > budget:
         blocks = re.split(r"\n\n(?=[A-Z][A-Z ,\'-]{12,})", text)
         i = max(range(len(blocks)), key=lambda j: len(blocks[j]))
         lines = blocks[i].splitlines()
         if len(lines) < 8:
             return text[:budget] + "\n[evidence truncated to fit]"
-        keep = max(4, (len(lines) - 1) * 3 // 4)
-        cut = len(lines) - 1 - keep
+        head, body = lines[0], lines[1:]
+        keep_n = max(4, len(body) * 3 // 4)
+        if near:
+            body.sort(key=lambda l: 0 if any(m in l for m in near) else 1)
+        kept, cut = body[:keep_n], len(body) - keep_n
         blocks[i] = "\n".join(
-            [lines[0]] + lines[1:1 + keep // 2]
-            + [f"  ... {cut} older line(s) not shown ..."]
-            + lines[-(keep - keep // 2):])
+            [head] + sorted(kept)
+            + [f"  ... {cut} line(s) about ground far from here not shown ..."])
         text = "\n\n".join(blocks)
     return text
 
