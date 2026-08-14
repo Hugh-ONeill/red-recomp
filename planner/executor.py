@@ -505,6 +505,7 @@ class Executor:
         self._faint_at = None               # region we were in when wiped
         self._ui_pending = 0                # rounds a prompt has sat open
         self._dead_ops: dict = {}           # (target, op, arg) -> failures
+        self._ferried: dict = {}            # target -> {region: untried set}
         self.save_each = False              # in-game SAVE after each subgoal
         self._tried_objs: dict = {}         # region -> objects interacted
         self._inert_objs: dict = {}         # region -> {object: state it was inert in}
@@ -1432,6 +1433,10 @@ class Executor:
             fresh = [e for e in exits if e not in done_x and e not in shut_x]
             if not fresh:
                 continue
+            been = (self._ferried.get(self._cur_target) or {}).get(region)
+            if been is not None and been == frozenset(
+                    e for e in exits if e not in done_x):
+                continue      # already brought here; nothing was used
             path = self._route(here, region)
             if path is None:
                 continue
@@ -1517,6 +1522,18 @@ class Executor:
                 self.log("reroute_lost", subgoal=sg["id"], wanted=nxt,
                          got=self._where(o))
                 return None
+        # DELIVERING SOMEBODY SOMEWHERE CONSUMES THE TRIP, NOT THE GROUND.
+        # A region stays maximally fresh however many times you are walked
+        # into it — only TAKING one of its exits changes that — so Mt Moon,
+        # with four unopened ladders, won this election six times in one
+        # attempt while the party was ferried in and wandered back out.
+        # Record which regions this target has already been delivered to,
+        # keyed by what was untried when we arrived: if that set is
+        # unchanged next time, the trip taught nothing and the region is
+        # not a candidate again.
+        self._ferried.setdefault(self._cur_target, {})[region] = frozenset(
+            e for e in (self.frontier.get(region) or [])
+            if e not in set((self.explored.get(region) or {}).keys()))
         self.log("rerouted", subgoal=sg["id"], to=region, hops=len(path))
         return region
 
