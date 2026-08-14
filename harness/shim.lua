@@ -1547,9 +1547,23 @@ function OPS.use_item(G, c)
     return false, "HM moves cannot be forgotten; pick a different forget="
   end
   local abandoned
+  -- "Not compatible" is ON SCREEN — the game says so by name the moment a
+  -- TM meets a Pokemon that cannot take it. Without catching it here the
+  -- fall-through blamed the FULL MOVE LIST instead ("it already knows four
+  -- moves, pick a forget="), which is advice that can never work: no
+  -- choice of forget= makes TM_WATER_GUN teachable to a Charmeleon, so the
+  -- model would burn every round overwriting a different move for nothing.
+  local incompatible
   for _ = 1, 50 do
     local t = G.stack:top()
     if t == G.overworld then break end
+    do
+      local _tx = page_text()
+      if _tx:find("not compatible") or _tx:find("Not compatible")
+         or _tx:find("NOT COMPATIBLE") then
+        incompatible = true
+      end
+    end
     if t and t.newMoveId and t.selecting then
       -- the forget list is live: pick the model's chosen move
       local idx
@@ -1609,6 +1623,13 @@ function OPS.use_item(G, c)
       .. "cannot be forgotten)."
   end
   if c.item:find("^TM_") or c.item:find("^HM_") then
+    if incompatible then
+      return false, (mon and mon.species or ("slot " .. slot))
+        .. " is NOT COMPATIBLE with " .. c.item
+        .. " — that species can never learn this move, so no forget= will "
+        .. "help. Try the machine on a different party member, or a "
+        .. "different machine."
+    end
     if #monmoves >= 4 then
       return false, "it already knows four moves: "
         .. table.concat(monmoves, ", ")
