@@ -1056,8 +1056,18 @@ def author_best_of(goal: str, model: str, draws: int = 3,
                    start: str | None = None) -> dict | None:
     """Several independent plans for one goal, then the model picks one."""
     plans, seen = [], {}
-    for _ in range(max(1, draws)):
-        p = author(goal, model, start=start)
+    for i in range(max(1, draws)):
+        # ONE FLAKY CALL MUST NOT COST THE CHAIN. Taking several drafts
+        # multiplies the chances of a timeout, and the first one killed the
+        # whole run: author() lets a transport error out, fresh_discovery
+        # runs under set -e, and a 25-leg campaign died on a socket. A draw
+        # that fails is a draw we do not have, nothing more.
+        try:
+            p = author(goal, model, start=start)
+        except (OSError, TimeoutError, ValueError) as e:
+            print(f"[draws] draft {i + 1} failed ({type(e).__name__}: "
+                  f"{str(e)[:80]}) — carrying on with the rest")
+            continue
         if not p:
             continue
         key = _plan_digest(p)
