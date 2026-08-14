@@ -193,6 +193,22 @@ local recent_text = nil
 -- loud ("I'm too sleepy to move", "you need the POKEDEX"), and every word
 -- of it was being dropped before the model could read it.
 local last_text = nil
+-- ...and ALL of it, not just the last page. A speech breaks into pages on
+-- \f, and keeping only the page showing when the box closed threw away
+-- everything said before it. The Saffron gate guard says "I'm on guard
+-- duty. Gee, I'm thirsty, though!" and THEN "Oh wait there, the road's
+-- closed." — so the run recorded the refusal and lost the reason, which is
+-- the only clue that the gate opens with a drink. Accumulate the pages of
+-- one speech; a return to free roam ends it and the next starts fresh.
+local text_run = nil
+local function note_text(txt)
+  if not txt or #txt == 0 then return end
+  recent_text = txt
+  if not (text_run and text_run:sub(-#txt) == txt) then
+    text_run = text_run and (text_run .. " " .. txt) or txt
+  end
+  last_text = text_run
+end
 -- Oracle probe result (battle_probe), surfaced once in the next observation.
 local last_probe = nil
 
@@ -236,6 +252,7 @@ local function observe(G, seq, result)
   if G.overworld and top == G.overworld then
     recent_text = nil          -- free roam: stale prompt no longer applies
     o.recent_text = nil
+    text_run = nil             -- that speech is over; the next starts clean
     o.mode = "overworld"
     local p = G.overworld.player or {}
     o.player = { x = p.cellX, y = p.cellY, facing = p.facing,
@@ -2205,7 +2222,7 @@ function OPS.interact(G, c)
       local pg = t.pages[t.pageIndex]
       if type(pg) == "table" then
         local txt = table.concat(pg, " ")
-        if #txt > 0 then recent_text = txt; last_text = txt end
+        note_text(txt)
       end
     end
   end
@@ -2666,8 +2683,7 @@ local function advance_to_decision(G, maxn)
       if top and top.pages and top.pageIndex then
         local pg = top.pages[top.pageIndex]
         if type(pg) == "table" then
-          recent_text = table.concat(pg, " ")
-          if #recent_text > 0 then last_text = recent_text end
+          note_text(table.concat(pg, " "))
         end
         U.tap(G, "a"); U.wait(2)                          -- plain text
       elseif top and (top.enemy or top.kind) then
