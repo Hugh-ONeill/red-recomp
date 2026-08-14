@@ -202,10 +202,14 @@ PY
   v=1
   while [ -e "plans/${base}.v${v}.json" ]; do v=$((v+1)); done
   rewritten="plans/${base}.v${v}.json"
+  # A FLAKY RE-AUTHOR MUST NOT KILL THE CAMPAIGN. Under `set -euo
+  # pipefail` a non-zero exit here — one ollama socket timeout is enough —
+  # took the whole chain down BEFORE the "produced nothing" guard three
+  # lines below could do its job, mid-run, with no message.
   python planner/author.py --goal "$goal" --start "$start" \
       --out "$rewritten" --model "$MODEL" \
       --observed run/explored.json \
-      --journal run/executor_log.jsonl 2>&1 | tee -a "$LOG"
+      --journal run/executor_log.jsonl 2>&1 | tee -a "$LOG" || true
   if [ ! -s "$rewritten" ]; then
     echo "!! re-author produced nothing; keeping plans/$failed_plan" \
         | tee -a "$LOG"
