@@ -330,9 +330,15 @@ journey across walked ground is ONE subgoal naming where you want to BE:
 {"map":"CELADON_CITY"}, not a road-by-road chain through Route 5, Route 6
 and Route 7. Spelling out the roads does not help it — it FORCES the exact
 route you named, including any road that has never opened, when it could
-have found a way round. Break travel into steps only where you are heading
-into ground the evidence shows has never been walked, and then name the
-step you are unsure of, not the whole road list.
+have found a way round. It can aim at a town it has NEVER SEEN, because the
+printed map says which way that is — so "never been there" is not a reason
+to spell out the roads.
+
+The one thing it cannot work out for itself is a way through an INTERIOR,
+because the printed map does not draw what is inside one. Where the road
+you need runs through a tunnel, a cave or a building — the named places
+listed above, whose ids you have — say THAT as its own subgoal, and leave
+the outdoor walking on either side of it as one step each.
 
 Each subgoal is an object:
   {"id":"snake_case_name",
