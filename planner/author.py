@@ -1079,7 +1079,16 @@ def author_best_of(goal: str, model: str, draws: int = 3,
             continue
         seen[key] = 1
         plans.append(p)
-        print(f"[draws] draft {len(plans)}: {len(p['subgoals'])} subgoals")
+        # Every DRAW, not just the winner. Only the picked plan was
+        # archived, so how much the drafts actually differed — the one
+        # number that says whether taking three of them is worth three
+        # times the calls — was thrown away at the moment it was measured.
+        archive_draft(goal, dict(p, drawn_as=f"draw {len(plans)}"))
+        print(f"[draws] draft {len(plans)}: {len(p['subgoals'])} subgoals: "
+              + " -> ".join(
+                  str((s.get("done_when") or {}).get("map")
+                      or (s.get("done_when") or {}).get("badge") or "?")
+                  for s in p["subgoals"]))
     if not plans:
         return None
     for k, n in seen.items():
