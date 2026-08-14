@@ -38,10 +38,27 @@ local wd = { co = nil, budget = nil, frames = 0, label = "?" }
 -- yield starvation. Hook-free on purpose: debug.sethook would disable the
 -- JIT and cause the very slowdown being hunted.
 local hb = { yields = 0 }
+-- assigned further down, once the text buffers it writes into exist
+local note_text
 coroutine.yield = function(...)
   local co = coroutine.running()
   if wd.co and co == wd.co then
     hb.yields = hb.yields + 1
+    -- READ THE SCREEN WHILE THE OP IS STILL RUNNING. Text that appears
+    -- mid-op was never recorded: the settle loop only sees whichever page
+    -- is up when the op RETURNS, so a two-page speech reached the ledger
+    -- as its second half. The Saffron guard says "Gee, I'm thirsty,
+    -- though!" and then "Oh wait there, the road's closed" — and only the
+    -- refusal ever survived, which is the half that explains nothing.
+    -- Cheap by construction: nothing is built unless the page changed.
+    local g = wd.G
+    local top = g and g.stack and g.stack:top()
+    if top and top.pages and top.pageIndex and note_text
+        and (top ~= wd.pagetop or top.pageIndex ~= wd.pageidx) then
+      wd.pagetop, wd.pageidx = top, top.pageIndex
+      local pg = top.pages[top.pageIndex]
+      if type(pg) == "table" then note_text(table.concat(pg, " ")) end
+    end
     if hb.yields % 2048 == 0 then
       local f = io.open(BRIDGE .. "/heartbeat", "w")
       if f then
@@ -62,6 +79,7 @@ coroutine.yield = function(...)
 end
 local function wd_run(G, label, budget, fn, ...)
   wd.co = coroutine.running()
+  wd.G = G                       -- for the yield hook's screen sampling
   wd.label = label
   wd.budget = budget
   wd.frames = 0
@@ -201,7 +219,7 @@ local last_text = nil
 -- the only clue that the gate opens with a drink. Accumulate the pages of
 -- one speech; a return to free roam ends it and the next starts fresh.
 local text_run = nil
-local function note_text(txt)
+function note_text(txt)        -- forward-declared above the yield hook
   if not txt or #txt == 0 then return end
   recent_text = txt
   if not (text_run and text_run:sub(-#txt) == txt) then
