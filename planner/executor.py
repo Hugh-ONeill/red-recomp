@@ -3984,8 +3984,16 @@ Reply with ONLY a JSON array of ops, e.g.
                     while o2 and o2.get("mode") == "battle":
                         o2 = self.handle_battle(sg, o2)
                         o2 = self.settle()
-                    if o2 and (pre.get("map") or {}).get("id") != \
-                            (o2.get("map") or {}).get("id"):
+                    # RECORD IT EVEN WHEN IT MOVED NOTHING. This guarded on
+                    # a map CHANGE, so a door that refuses you was never
+                    # written down — and "prefer the exit nobody has opened"
+                    # then elected the same shut gate for ever, because a
+                    # gate you cannot pass is a door that stays unopened by
+                    # definition. It also meant the goal-ward pricing never
+                    # ran: unopened doors short-circuit it, and there was
+                    # always one. note_transition handles the went-nowhere
+                    # case itself now; just let it see the attempt.
+                    if o2:
                         self.note_transition(pre, step, o2)
                     self.log("free_round_exit", subgoal=sg["id"],
                              via=key, to=self._where(o2))
