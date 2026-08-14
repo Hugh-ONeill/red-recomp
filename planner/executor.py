@@ -1627,8 +1627,16 @@ class Executor:
                     for b2 in blocked}
             reach = static_cost(here.split("|")[0], region.split("|")[0],
                                 toll, self._walked_map_links())
+            # AMONG EQUALS, GO WHERE MOST IS LEFT UNDONE. The tiebreak
+            # was path length, so a room one hop away with nothing in it
+            # beat the fossil room three hops away with five untouched
+            # things in it — both fossils and the trainer guarding them —
+            # every single time. How much is left to do somewhere is a
+            # better reason to walk there than how close it is.
+            _undone = len(set(self.sightings.get(region) or ())
+                          - set(self._tried_objs.get(region) or ()))
             rank = (goalward, reach if reach is not None else 99,
-                    self.visits.get(region, 0), len(path))
+                    -_undone, self.visits.get(region, 0), len(path))
             if best is None or rank < best[2]:
                 best = (region, path, rank)
         if not best or not best[1]:
