@@ -3280,6 +3280,15 @@ Reply with ONLY a JSON array of ops, e.g.
             # them, and the one prompt that would have made the model try
             # again with answer="yes" never appeared — leaving the corridor
             # east shut behind a question nobody answered.
+            # NOR IS A TOUCH THAT ENDED IN A WIPE. Reaching for the Mt
+            # Moon fossil starts the Super Nerd fight; losing it blacks the
+            # party out and the fossil is NOT taken — but the press was
+            # recorded, so the room read as fully worked and the sweep
+            # never offered either fossil again. An interaction whose
+            # outcome was a faint has not been made.
+            if blackout and op == "interact" and step.get("name"):
+                self._tried_objs.get(self._where(pre_obs),
+                                     set()).discard(step["name"])
             if ("asked a QUESTION" in str(r.get("detail") or "")
                     and op == "interact" and step.get("name")):
                 self._tried_objs.get(self._where(pre_obs),
