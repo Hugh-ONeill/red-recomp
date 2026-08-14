@@ -476,6 +476,13 @@ class Executor:
         self.hints: dict = {}        # region -> things people said here
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
+        # A RESUMED SAVE ARRIVES MID-SENTENCE. The loaded game still holds
+        # the last line it printed before saving, and the bootstrap
+        # observation has not seen it yet — so the very first op of a run
+        # looks like the thing that said it. Resuming inside the Vermilion
+        # gym had a warp announce "Nope, there's only trash here." Nothing
+        # precedes the first op, so nothing may be attributed to it.
+        self._said_ready = False
         self._cur_target = ""
         self._load_memory()
         # ATLAS: map edges observed so far this run ({map_id: {dir: dest}}).
@@ -2794,7 +2801,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # The ledger has always had this smear; putting the words
                 # in the round's own feedback would have made the run act
                 # on it. Only text that CHANGED across this op is its own.
-                heard = said if said != (
+                heard = said if self._said_ready and said != (
                     ((pre_obs or {}).get("last_text") or "").strip()) else ""
                 if said and "None" not in reg and len(said) > 12:
                     lst = self.hints.setdefault(reg, [])
@@ -2803,6 +2810,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         lst.append(line)
                         del lst[:-8]
                         self._save_memory()
+            self._said_ready = True
             note = f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
             # A DECLINED QUESTION IS NOT A TOUCH, however the state moved.
             # This retraction used to live in the "nothing changed" branch,
