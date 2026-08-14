@@ -3924,12 +3924,27 @@ Reply with ONLY a JSON array of ops, e.g.
                     key, scored = None, []
                     if want_m:
                         blocked = self._impassable()
+                        # THE EXIT'S OWN EDGE PAYS TOO. _goal_score rates
+                        # the map an exit LEADS TO, and Saffron is zero hops
+                        # from Saffron — so the shut gate scored 0, the best
+                        # possible, as though the run were already through
+                        # it. Pricing only the road BEYOND a door means a
+                        # door that has never once opened outranks every
+                        # road that has. Charge the step itself: shut, and
+                        # by how hard it has already been leaned on.
+                        vis_e = self._map_visits()
+                        def _edge_cost(dest):
+                            if (hmap, dest) not in blocked:
+                                return 0
+                            return 4 + min(vis_e.get(hmap, 0) // 8, 40)
                         scored = sorted(
-                            (self._goal_score(redges[e], want_m, blocked), e)
+                            (self._goal_score(redges[e], want_m, blocked)
+                             + _edge_cost(redges[e]), e)
                             for e in sorted(untried) if redges.get(e))
                         # A known exit still wins outright when it IS the
-                        # door to the target; short of that, an unopened
-                        # door beats another lap through walked ground.
+                        # door to the target AND that door has ever opened;
+                        # short of that, an unopened door beats another lap
+                        # through walked ground.
                         if scored and (scored[0][0] == 0 or not unopened):
                             key = scored[0][1]
                             self.log("free_round_goalward", subgoal=sg["id"],
