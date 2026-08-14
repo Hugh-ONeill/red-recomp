@@ -1210,6 +1210,17 @@ class Executor:
         # honest ignorance beats a coin-flip assertion, and the door reads
         # untried again so the next clean walk re-records it.
         old = node.get(key)
+        # A DOOR THAT WENT SOMEWHERE BEATS A RECORD OF IT GOING NOWHERE.
+        # A self-loop means the attempt failed; a real destination means it
+        # worked. Treating them as equal contradictions voided BOTH and let
+        # the next transient failure re-record the self-loop — so Mt Moon's
+        # 17,11 ladder read "leads back to 1F, taken 8x" even after we
+        # watched it warp into B1F|14,8, and the run was left believing 1F
+        # had exactly one working ladder. Failures must not overwrite
+        # successes by attrition.
+        if old and old.get("to") == src and dst != src:
+            old = None
+            node.pop(key, None)
         if old and old.get("to") not in (dst,) \
                 and dst not in AREA_ALIASES.get(old.get("to"), ()):
             self.log("edge_conflict", frm=src, via=str(key),
