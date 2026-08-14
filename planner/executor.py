@@ -2787,7 +2787,15 @@ Reply with ONLY a JSON array of ops, e.g.
                 # the Charmander ball that way.
                 if noise:
                     said = ""
-                heard = said
+                # ATTRIBUTE ONLY WHAT THIS OP PRODUCED. last_text outlives
+                # the box that printed it, so an op that said nothing of
+                # its own inherits the previous line — and a warp out of
+                # the gym duly reported "Nope, there's only trash here."
+                # The ledger has always had this smear; putting the words
+                # in the round's own feedback would have made the run act
+                # on it. Only text that CHANGED across this op is its own.
+                heard = said if said != (
+                    ((pre_obs or {}).get("last_text") or "").strip()) else ""
                 if said and "None" not in reg and len(said) > 12:
                     lst = self.hints.setdefault(reg, [])
                     line = f"{who}: {said[:220]}"
