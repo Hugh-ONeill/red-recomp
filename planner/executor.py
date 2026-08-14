@@ -3561,9 +3561,8 @@ Reply with ONLY a JSON array of ops, e.g.
                     stuck_note += (f"\nYour party fainted and you were sent "
                                    f"back to a Pokemon Center. You have been "
                                    f"walked back to {back}, where you were. "
-                                   f"You are HEALED — but whatever beat you "
-                                   f"is still there, so do not simply repeat "
-                                   f"what you just did.")
+                                   f"You are HEALED, and whatever beat you "
+                                   f"is still standing where it was.")
             sig1 = self._snapshot(cur)
             here_now = self._where(cur)
             self._stuck_in[here_now] = self._stuck_in.get(here_now, 0) + 1
@@ -3573,15 +3572,18 @@ Reply with ONLY a JSON array of ops, e.g.
             # had been walked home or that the thing that beat it is still
             # standing there.
             if self._blackouts.get(self._target_key(sg), 0) >= 2:
-                # Being LOST and being TOO WEAK fail the same way from the
-                # executor's side (condition still false), but the remedies
-                # are opposite: one says leave, the other says come back
-                # stronger. Naming which one this is lets the model author
-                # the fix instead of re-entering the same fight unchanged.
-                # date the evidence: a count carried across attempts can
-                # predate training, and the lead-level pair lets the model
-                # see whether anything has actually changed since it last
-                # lost (wiped at L19, still L19 = walking back in unchanged)
+                # WHAT the wipes cost and whether anything changed between
+                # them — never what to do about it. This note used to
+                # conclude "you are TOO WEAK to win this fight as you are,
+                # do not walk back in unchanged" and list remedies, which is
+                # a strategy claim the harness is in no position to make: a
+                # trainer you beat STAYS beaten, so re-entering a gauntlet
+                # banks the ones you got before you fell. The run ground the
+                # Nugget Bridge down over 13 wipes, L26 -> L28, while being
+                # told every round that repeating was hopeless. The paired
+                # levels below are the evidence that settles it either way
+                # (wiped at L19, still L19 = nothing has changed; L26 -> L28
+                # = the grind is working). Print them and stop talking.
                 last_lv = self._blackout_lead.get(self._target_key(sg))
                 now_lv = ((cur or {}).get("party") or [{}])[0].get("level")
                 dated = (f" (last wipe: lead L{last_lv}; your lead now: "
@@ -3589,13 +3591,8 @@ Reply with ONLY a JSON array of ops, e.g.
                 stuck_note += (
                     f"\nYour party has been WIPED OUT "
                     f"{self._blackouts[self._target_key(sg)]}x pursuing this "
-                    f"goal{dated}. You are not lost — you are TOO WEAK to "
-                    f"win this fight as you are. Do not walk back in "
-                    f"unchanged. Get stronger first: grind levels, add "
-                    f"another Pokemon to the party so one faint does not "
-                    f"end the fight, buy and use healing items, or all "
-                    f"three. Note that each blackout also costs you half "
-                    f"your money.")
+                    f"goal{dated}. Each blackout also costs you half your "
+                    f"money.")
             # TRAINING A FAINTED POKEMON IS NOT TRAINING. It cannot be sent
             # out, so it earns nothing and the lead soaks every battle while
             # the condition never moves. The party screen says so; say it
