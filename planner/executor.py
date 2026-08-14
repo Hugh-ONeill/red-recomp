@@ -1030,6 +1030,36 @@ class Executor:
         m = (obs or {}).get("map") or {}
         return f"{m.get('id')}|{m.get('region')}"
 
+    @staticmethod
+    def _world_mark(obs) -> list:
+        """What the run is carrying, coarsely — badges, event flags, and
+        the KINDS of item in the bag. Not a clock: a door does not care how
+        long you stood elsewhere, only whether you came back with something
+        you did not have. Compared, never interpreted."""
+        o = obs or {}
+        return [len(o.get("badges") or []), len(o.get("flags") or []),
+                len(o.get("bag") or {})]
+
+    def _twin_keys(self, before_obs, step) -> list:
+        """A doorway is one door however many tiles it spans.
+
+        Gate buildings have PAIRED warp tiles — (3,0) and (4,0) are the same
+        opening — and the ledger counted them as two separate unknowns, so
+        every gate cost twice the rounds to exhaust and kept "a door nobody
+        has opened" true long after the doorway had been tried. use_warp has
+        always known this (it retries the adjacent twin on failure); the
+        bookkeeping did not.
+        """
+        x, y = step.get("x"), step.get("y")
+        if x is None:
+            return []
+        warps = ((before_obs or {}).get("map") or {}).get("warps") or []
+        dest = next((w.get("dest") for w in warps
+                     if w.get("x") == x and w.get("y") == y), None)
+        return [f"{w.get('x')},{w.get('y')}" for w in warps
+                if w.get("dest") == dest
+                and abs((w.get("x") or 0) - x) + abs((w.get("y") or 0) - y) == 1]
+
     def note_transition(self, before_obs, step, after_obs):
         """Record: from this area, that exit led there."""
         src, dst = self._where(before_obs), self._where(after_obs)
@@ -1051,11 +1081,27 @@ class Executor:
             # properly the edge-conflict check voids this and it reads
             # untried again, so nothing is lost by being honest now.
             node = self.explored.setdefault(src, {})
-            e = node.setdefault(key, {"n": 0, "to": dst})
-            e["n"] += 1
-            e["to"] = dst
-            self.log("exit_went_nowhere", frm=src, via=str(key),
-                     times=e["n"])
+            for k in [key] + self._twin_keys(before_obs, step):
+                e = node.setdefault(k, {"n": 0, "to": dst})
+                e["n"] += 1
+                e["to"] = dst
+                # A BLOCKED UNKNOWN IS NOT AN EXPLORED ONE. This door was
+                # walked into and refused — somebody stood in it, or a
+                # script turned you back — which is a different fact from a
+                # door that opened onto somewhere. Recording only "tried"
+                # loses the difference, and the difference is the whole
+                # question of whether coming back later is worth anything:
+                # a guard wanting a drink moves, a wall does not.
+                e["shut"] = True
+                # WHEN it was shut, so we can tell whether anything has
+                # happened since. A door that turned you back is worth one
+                # more press once you are carrying something you were not
+                # carrying then — the guard wanting a drink is the case
+                # this whole run has been stuck behind.
+                e["shut_at"] = self._world_mark(after_obs)
+            self.log("exit_refused", frm=src, via=str(key),
+                     times=node[key]["n"],
+                     twins=len(self._twin_keys(before_obs, step)))
             self._save_memory()
             return
         self.visits[dst] = self.visits.get(dst, 0) + 1
@@ -1085,10 +1131,13 @@ class Executor:
             del node[key]
             self._save_memory()
             return
-        e = node.setdefault(key, {"n": 0, "to": dst})
-        e["n"] += 1
-        e["to"] = dst
-        self.log("explored", frm=src, via=str(key), to=dst, times=e["n"])
+        for k in [key] + self._twin_keys(before_obs, step):
+            e = node.setdefault(k, {"n": 0, "to": dst})
+            e["n"] += 1
+            e["to"] = dst
+            e.pop("shut", None)          # it opened; whatever shut it is gone
+        self.log("explored", frm=src, via=str(key), to=dst,
+                 times=node[key]["n"])
         self._save_memory()
 
     def _unopened_doors(self, obs) -> list:
@@ -1137,7 +1186,17 @@ class Executor:
             if not w.get("reachable"):
                 continue
             k = f"{w.get('x')},{w.get('y')}"
-            if k not in taken and k not in blocked:
+            # A SHUT DOOR IS NEITHER EXPLORED NOR UNTRIED. It stays out of
+            # this list — it monopolised the "prefer a door nobody has
+            # opened" rule and held the run at the Saffron gates for
+            # hundreds of arrivals — but it comes BACK the moment the run
+            # is carrying something it was not carrying when the door
+            # refused it. Nothing is known about what lies beyond a shut
+            # door, so it is never resolved, only postponed.
+            was = taken.get(k) or {}
+            reopened = (was.get("shut")
+                        and was.get("shut_at") != self._world_mark(obs))
+            if (k not in taken or reopened) and k not in blocked:
                 out.append((w.get("dest") in seen_maps,
                             f"({k})->{w.get('dest')}"))
         for d, t in (m.get("connections") or {}).items():
@@ -1788,11 +1847,24 @@ class Executor:
                         beyond = (f"; BUT {dest} still has {len(left)} exit(s) "
                                   f"never taken, so going back through here "
                                   f"is how you reach them")
-                tried.append(
-                    f"({k}) -> {dest} [taken {taken[k]['n']}x"
-                    + (f"; that area is a KNOWN DEAD END for this goal, "
-                       f"failed there {bad}x — do NOT go back" if bad else beyond)
-                    + "]")
+                # SHUT is not the same as SEEN. A door that turned you back
+                # says nothing about what is behind it, so it stays worth
+                # returning to when the thing that shut it might have
+                # changed — which a door you have simply walked through
+                # does not. Both used to read "taken Nx".
+                if taken[k].get("shut"):
+                    tried.append(
+                        f"({k}) SHUT — walked into {taken[k]['n']}x and "
+                        f"turned back every time; nothing is known about "
+                        f"what is beyond it, and it may open when whatever "
+                        f"holds it changes")
+                else:
+                    tried.append(
+                        f"({k}) -> {dest} [taken {taken[k]['n']}x"
+                        + (f"; that area is a KNOWN DEAD END for this goal, "
+                           f"failed there {bad}x — do NOT go back"
+                           if bad else beyond)
+                        + "]")
             else:
                 untried.append(
                     (w.get("dest") in {a.split("|")[0] for a in self.visits},
