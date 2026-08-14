@@ -164,6 +164,27 @@ PY
       done
       continue
     fi
+    # NOTHING ELSE WORKED: IS THE PLAN MISSING A STEP? A leg can be
+    # unreachable because a deed nobody wrote down has to happen first —
+    # the parcel before the mart will sell, Cut before Surge's gym. The
+    # run holds the evidence: the events it HAS recorded and the
+    # objectives it has not reached. Bounded like the reorders, and the
+    # model names the deed; the harness only places it.
+    if [ "$(cat run/outline_inserts 2>/dev/null | wc -l)" -lt 4 ] \
+        && missing=$(python planner/author.py --check-missing \
+            --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
+            --start "$(python planner/state_text.py)" --model "$MODEL"); then
+      echo "=== leg $i needs something first: $missing ==="
+      python planner/insert_leg.py "$i" "$missing"
+      echo "$i:$missing" >> run/outline_inserts
+      n=$i
+      while [ "$n" -le "${#LEGS[@]}" ]; do
+        rm -f "$(printf 'plans/leg_%02d' "$n")".json \
+              "$(printf 'plans/leg_%02d' "$n")".v*.json
+        n=$((n + 1))
+      done
+      continue
+    fi
     echo "=== chain stopped at leg $i/${#LEGS[@]}: $leg ===" >&2
     exit 1
   fi

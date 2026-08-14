@@ -1875,6 +1875,64 @@ def _never_stood_in(goal: str, observed) -> str | None:
     return None
 
 
+CHECKMISSING_SYS = """You are stuck on one objective of your own
+playthrough, and neither finishing it nor reordering what you already
+planned has worked. So the question is whether the plan is INCOMPLETE:
+some deed the game wants first that you never wrote down.
+
+You are shown what this run has actually DONE (events the game recorded),
+what is still on the docket (the objectives you have not reached yet), and
+the objective you are stuck on.
+
+Name ONE missing objective, or none. It must be a thing the game will not
+let you past until it is done, phrased the way the rest of your list is
+phrased. Do NOT restate something already on the docket, and do not name
+something the recorded events show is already done.
+
+Reply with ONLY a JSON object, the reason FIRST:
+{"why": "one sentence", "insert": "the objective"}   or
+{"why": "one sentence", "insert": null}"""
+
+
+def check_missing(goal: str, ahead: list, start: str, model: str) -> str:
+    """Ask whether the PLAN is missing a step, when nothing else worked.
+
+    The chain's last recourse used to be stopping. But a leg can be
+    unreachable because a deed nobody listed has to happen first — the
+    parcel before the mart will sell, Cut before Surge's gym — and the run
+    holds the evidence for that: the events it HAS recorded, and the
+    objectives it has not reached. Ours is to ask and to place the answer;
+    which deed is missing is the model's to say.
+    """
+    try:
+        cur = json.loads(Path("run/obs.json").read_text())
+    except (OSError, ValueError):
+        cur = {}
+    done = sorted(cur.get("flags") or [])
+    body = (f"THE OBJECTIVE YOU ARE STUCK ON: {goal}\n\n"
+            f"WHERE THE RUN STANDS: {start}\n\n"
+            f"WHAT THE GAME HAS RECORDED YOU DOING ({len(done)} events): "
+            + ", ".join(done[:60])
+            + "\n\nSTILL ON THE DOCKET, in order:\n"
+            + "\n".join(f"  {n}. {t}" for n, t in ahead))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": CHECKMISSING_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\{.*\}", reply, re.S)
+        ans = json.loads(m.group(0)) if m else {}
+    except (ValueError, KeyError, OSError, AttributeError):
+        return ""
+    ins = str(ans.get("insert") or "").strip()
+    if not ins or ins.lower() in ("none", "null"):
+        return ""
+    # never re-add something already listed
+    if any(ins.lower() == t.lower() for _, t in ahead):
+        return ""
+    print(f"[check-missing] {str(ans.get('why') or '')[:160]}")
+    return ins
+
+
 def check_done(goal: str, start: str, model: str,
                observed=None, gained: str = "") -> bool:
     """The model judges whether a failed leg's objective is already met.
