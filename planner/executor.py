@@ -1689,60 +1689,39 @@ class Executor:
             if vis.get(m, 0) >= 8 and not vis.get(nb))
 
     def _goal_score(self, from_map: str, want: str, blocked) -> int:
-        """Printed-map legs from here to the goal, avoiding shut maps —
-        and when no open road to the goal exists at all, legs to the
-        NEAREST GROUND NEVER SET FOOT ON. A sealed goal should send the
-        run looking, not re-treading: with Saffron shut there is no
-        printed route to Celadon, and the honest next move is the
-        unexplored east."""
-        h = static_hops(from_map, want, blocked)
+        """What it COSTS to get to the goal from here — one number, always.
+
+        This used to answer on three scales: a bare hop count when an open
+        road existed, 50+ for "nearest ground never set foot on" when it
+        did not, and 80+ for a tolled route. Every one of them degenerated
+        the same way — with the goal sealed, every candidate got the same
+        fallback and the ranking became a coin flip, which is how a run
+        aiming at Saffron toured Route 22 and Route 23 in the far west.
+
+        A tolled route never needs a fallback. A shut door is expensive,
+        not impassable, so there is always an answer and it always
+        discriminates: the cheapest way to a sealed city is the door it
+        has leaned on least, and ground on the way there scores better
+        than ground in the opposite corner. With nothing shut on the path
+        the toll is zero and this is exactly the old hop count — verified
+        equal for all 36x36 printed-map pairs.
+        """
+        vis = self._map_visits()
+        toll = {b: 4 + min(vis.get(b[0], 0) // 8, 40) for b in blocked}
+        h = static_cost(from_map, want, toll, self._walked_map_links())
         if h is not None:
             return h
-        vis = self._map_visits()
+        # Not on the printed map at all (an interior with no doorstep, or
+        # a map id this run has never had an edge for): fall back to the
+        # nearest unvisited ground, which is the honest "go and look".
         best = None
         for m in MAP_EDGES:
             if vis.get(m):
                 continue
-            hh = static_hops(from_map, m, blocked)
+            hh = static_cost(from_map, m, toll, self._walked_map_links())
             if hh is not None and (best is None or hh < best):
                 best = hh
-        if best is not None:
-            return 50 + best
-        # THE SHUT-EDGE LEDGER HAS OVER-CLAIMED. Every candidate scoring 99
-        # is not a ranking, it is a coin toss: with Route 10 -> Lavender
-        # judged shut (12 visits at its NORTH end, and its south end is
-        # past Rock Tunnel) Lavender sealed, which sealed Routes 7 and 8,
-        # which sealed Saffron, which left no unvisited map reachable from
-        # anywhere. The run then walked a 171-hop circuit between two
-        # guarded gates because nothing scored better than anything else.
-        # A heuristic may steer; it may not delete the world. Fall back to
-        # the printed map ungated, ranked strictly below any honest route
-        # so a real one always wins.
-        # WHEN NOTHING IS REACHABLE, PREFER GROUND YOU HAVE TRODDEN LESS.
-        # The ungated fallback ranks by distance alone, so among doors that
-        # are all shut it picks the NEAREST — and Lavender's two doors are
-        # Route 12 (one hop away, hammered 328 times) and Route 10 (seven
-        # hops, tried 22). It went back to the Snorlax, every time, because
-        # the Snorlax was closer. Distance is the wrong question once every
-        # answer is "no"; how hard you have already leaned on this one is
-        # the only thing left that distinguishes them.
-        # Price each shut edge by how hard its near side has already been
-        # leaned on, then take the cheapest route rather than the shortest.
-        # A door tried 22 times from Route 10 costs a fraction of the one
-        # tried 328 times from Route 12, so the long eastern road finally
-        # outranks the Snorlax sitting one hop away.
-        toll = {e: 4 + min(vis.get(e[0], 0) // 8, 40) for e in blocked}
-        walked = self._walked_map_links()
-        h = static_cost(from_map, want, toll, walked)
-        if h is not None:
-            return 80 + h
-        for m in MAP_EDGES:
-            if vis.get(m):
-                continue
-            hh = static_cost(from_map, m, toll, walked)
-            if hh is not None and (best is None or hh < best):
-                best = hh
-        return 80 + best if best is not None else 99
+        return 50 + best if best is not None else 99
 
     def _walked_map_links(self) -> dict:
         """Map-to-map connections this run has personally walked.
