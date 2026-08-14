@@ -1255,8 +1255,15 @@ class Executor:
             # refused it. Nothing is known about what lies beyond a shut
             # door, so it is never resolved, only postponed.
             was = taken.get(k) or {}
+            # BEING ABLE TO REACH IT IS ITSELF THE CHANGE. A doorway that
+            # refused you while pathfinding could not get there was marked
+            # shut and left out for ever after — and Mt Moon ended up with
+            # every one of its doorways "taken", five of which had never
+            # been walked at all. If you can walk to it now and could not
+            # then, that is new, whatever the bag says.
             reopened = (was.get("shut")
-                        and was.get("shut_at") != self._world_mark(obs))
+                        and (was.get("shut_at") != self._world_mark(obs)
+                             or w.get("reachable")))
             if (k not in taken or reopened) and k not in blocked:
                 # A DOORWAY PATHFINDING CANNOT REACH IS NOT AUTO-EXPLORABLE.
                 # It was briefly listed here so the run would try a blocked
