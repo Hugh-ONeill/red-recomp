@@ -1565,7 +1565,17 @@ class Executor:
                     seen_keys |= {k for k, e in ex2.items()
                                   if not (e or {}).get("shut")
                                   and (e or {}).get("to") != r2}
-                if not (set(self.map_doors.get(rmap0, ())) - seen_keys):
+                # A ROOM WITH THINGS YOU HAVE NEVER TOUCHED IS ALSO
+                # UNFINISHED. This walk-back only ever looked for untried
+                # EXITS, so Mt Moon's fossil room — one exit, taken, and
+                # five things nobody has pressed, including both fossils
+                # and the trainer guarding them — was invisible to it. A
+                # thing you have seen and not touched is exactly as good a
+                # reason to walk somewhere as a door you have not opened.
+                _seen_objs = set(self.sightings.get(region) or ())
+                _done_objs = set(self._tried_objs.get(region) or ())
+                if not (_seen_objs - _done_objs) and not (
+                        set(self.map_doors.get(rmap0, ())) - seen_keys):
                     continue
             # ONE WASTED TRIP IS NOT A VERDICT. Excluding a region the
             # moment a single delivery went unused was too strong: the
