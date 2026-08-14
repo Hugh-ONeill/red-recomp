@@ -1207,6 +1207,7 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
     # `party_hp`. Put the droppable stuff — old walked edges, old journal
     # lines — at the front, and keep the vocabulary next to the audit
     # instructions at the tail where truncation cannot reach either.
+    repeat_add = None
     base = ((observed_text(observed) if observed else "")
             + (journal_text(journal) if journal else "")
             + drafts_text(drafts or [])
@@ -1265,6 +1266,19 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
                   for a, b in zip(hops, hops[1:])
                   if a in MAP_EDGES and b in MAP_EDGES)
         cap = MAX_REVIEW_ADDS * 4 if gap else MAX_REVIEW_ADDS
+        # SAYING THE SAME THING TWICE IS CONVICTION, NOT THRASH. The cap
+        # stops an audit replacing a plan wholesale on a whim, and a whim
+        # does not come back identical. Asked to review a three-step plan
+        # to Celadon, this one proposed the SAME eleven-step eastern route
+        # in both rounds — the route the run genuinely needs, and the only
+        # one the model has ever found. Refusing it twice for being large
+        # was the cap outliving its reason.
+        if repeat_add is not None and added and added == repeat_add:
+            print(f"[review] round {rnd} proposed the same {len(added)} "
+                  f"addition(s) again — taking it as considered, not a "
+                  f"rewrite")
+            cap = max(cap, len(added))
+        repeat_add = list(added)
         if len(added) > cap:
             print(f"[review] round {rnd} added {len(added)} subgoals "
                   f"(cap {MAX_REVIEW_ADDS}) — that is a rewrite, not an "
