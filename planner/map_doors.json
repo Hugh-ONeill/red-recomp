@@ -1,0 +1,89 @@
+{
+ "CERULEAN_CITY": {
+  "CERULEAN CAVE": [
+   "CERULEAN_CAVE_1F"
+  ]
+ },
+ "FUCHSIA_CITY": {
+  "SAFARI ZONE": [
+   "SAFARI_ZONE_GATE"
+  ]
+ },
+ "LAVENDER_TOWN": {
+  "POK\u00e9MON TOWER": [
+   "POKEMON_TOWER_1F"
+  ]
+ },
+ "ROUTE_10": {
+  "POWER PLANT": [
+   "POWER_PLANT"
+  ],
+  "ROCK TUNNEL": [
+   "ROCK_TUNNEL_1F",
+   "ROCK_TUNNEL_POKECENTER"
+  ]
+ },
+ "ROUTE_11": {
+  "DIGLETT's CAVE": [
+   "DIGLETTS_CAVE"
+  ]
+ },
+ "ROUTE_2": {
+  "DIGLETT's CAVE": [
+   "DIGLETTS_CAVE"
+  ],
+  "VIRIDIAN FOREST": [
+   "VIRIDIAN_FOREST"
+  ]
+ },
+ "ROUTE_20": {
+  "SEAFOAM ISLANDS": [
+   "SEAFOAM_ISLANDS_1F"
+  ]
+ },
+ "ROUTE_23": {
+  "ROUTE 22": [
+   "ROUTE_22_GATE"
+  ],
+  "VICTORY ROAD": [
+   "VICTORY_ROAD_1F",
+   "VICTORY_ROAD_2F"
+  ]
+ },
+ "ROUTE_25": {
+  "SEA COTTAGE": [
+   "BILLS_HOUSE"
+  ]
+ },
+ "ROUTE_4": {
+  "MT.MOON": [
+   "MT_MOON_1F",
+   "MT_MOON_B1F"
+  ]
+ },
+ "ROUTE_5": {
+  "UNDERGROUND PATH": [
+   "UNDERGROUND_PATH_NORTH_SOUTH"
+  ]
+ },
+ "ROUTE_6": {
+  "UNDERGROUND PATH": [
+   "UNDERGROUND_PATH_NORTH_SOUTH"
+  ]
+ },
+ "ROUTE_7": {
+  "UNDERGROUND PATH": [
+   "UNDERGROUND_PATH_WEST_EAST"
+  ]
+ },
+ "ROUTE_8": {
+  "UNDERGROUND PATH": [
+   "UNDERGROUND_PATH_WEST_EAST"
+  ]
+ },
+ "VERMILION_CITY": {
+  "S.S.ANNE": [
+   "SS_ANNE_1F"
+  ]
+ }
+}

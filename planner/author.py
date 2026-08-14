@@ -209,6 +209,36 @@ try:
 except (OSError, ValueError):
     MAP_EDGES = {}
 
+# The same printed map's LABELLED PLACES: which named cave, tunnel or
+# landmark each road has a door into (planner/gen_map_doors.py). Same tier
+# as the edges above — the Town Map draws ROCK TUNNEL its own pin at (14,3)
+# beside ROUTE 10's at (14,4) — and filtered by that geometry, so a place
+# sharing its city's pin is absent. What is behind a door stays unknown.
+try:
+    MAP_DOORS = json.loads(
+        Path(__file__).with_name("map_doors.json").read_text())
+except (OSError, ValueError):
+    MAP_DOORS = {}
+
+
+def doors_text() -> str:
+    """The labelled places, as the printed map shows them.
+
+    Written because a plan read "Enter Diglett's Cave from Route 10, exit
+    east into Route 11". Diglett's Cave joins Routes 2 and 11; the tunnel
+    on Route 10 is Rock Tunnel. Two real places, swapped — and the map
+    names both.
+    """
+    if not MAP_DOORS:
+        return ""
+    rows = "\n".join(
+        f"  {road}: " + ", ".join(
+            f"{lbl} (enter {ids[0]})" for lbl, ids in sorted(places.items()))
+        for road, places in sorted(MAP_DOORS.items()))
+    return ("\n\nPLACES THE PRINTED MAP NAMES, and the road each one opens "
+            "off. This is the map's own labelling, not scouting: what lies "
+            "BEYOND any of these doors is not here.\n" + rows)
+
 # The bag SCREEN says "HM01", never "HM_CUT" — the model's spelling is the
 # game's own on-screen spelling, and five feedback rounds could not talk it
 # out of the name every player reads. Accept the screen's names; the
@@ -286,6 +316,7 @@ def build_prompt(goal: str, start: str | None = None) -> str:
         + "\n".join(f"  {k}: {v}" for k, v in PREDICATES.items())
         + "\n\nMAP IDs on this route (use exact strings):\n  "
         + ", ".join(ROUTE_MAPS)
+        + doors_text()
         + "\n\nEVENT FLAGS: you may use {\"flag\": \"EVENT_...\"} for a "
           "milestone that is not just a map change, spelled the way this "
           "game spells it. Which events matter is YOUR call — the evidence "
