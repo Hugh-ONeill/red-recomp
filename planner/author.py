@@ -193,6 +193,15 @@ ENGINE_FLAGS = _engine_names("engine_flags.txt")
 # may name any real item; validation only checks the string is real.
 ENGINE_ITEMS = _engine_names("engine_items.txt")
 
+# The game's printed outdoor map (data/generated/maps.lua connections),
+# shared with the executor — used to name roads the run has stood beside
+# and never crossed.
+try:
+    MAP_EDGES = json.loads(
+        Path(__file__).with_name("map_edges.json").read_text())
+except (OSError, ValueError):
+    MAP_EDGES = {}
+
 # The bag SCREEN says "HM01", never "HM_CUT" — the model's spelling is the
 # game's own on-screen spelling, and five feedback rounds could not talk it
 # out of the name every player reads. Accept the screen's names; the
@@ -481,6 +490,30 @@ def observed_text(path: Path) -> str:
            "area, so the SAME map id appearing with DIFFERENT regions is a "
            "map split into parts that cannot walk to each other):\n"
            + "\n".join(lines))
+    # ROADS STOOD BESIDE AND NEVER CROSSED. The walker knows these (it
+    # ranks its own moves around them) but the AUTHOR never did, so a
+    # plan kept being written as "go to Route 12, then Lavender" and the
+    # run spent its rounds pressing north at a sleeping Snorlax. Derived
+    # from visits alone — a well-trodden map whose printed neighbour has
+    # never been entered — so it clears itself the moment the road opens.
+    vis: dict = {}
+    for r, n in (d.get("visits") or {}).items():
+        m = r.split("|")[0]
+        vis[m] = vis.get(m, 0) + n
+    blocked = sorted(
+        f"  {m} --{dirn}--> {nb}  (stood in {m} {vis[m]}x, never once "
+        f"reached {nb})"
+        for m, edges in MAP_EDGES.items()
+        for dirn, nb in edges.items()
+        if vis.get(m, 0) >= 8 and not vis.get(nb))
+    if blocked:
+        out += ("\n\nROADS YOU HAVE STOOD BESIDE AND NEVER CROSSED. Each of "
+                "these is a printed connection the run has had many chances "
+                "to take and never has — something holds it shut (a person "
+                "wanting something, a sleeping Pokemon, a barrier). A plan "
+                "whose route uses one of these legs WILL fail on it, so "
+                "route around it or plan the deed that opens it:\n"
+                + "\n".join(blocked))
     if seen:
         out += ("\n\nWHAT WAS SEEN IN EACH AREA (so you can aim a subgoal "
                 "at the RIGHT part of a map — the same map id can have "
