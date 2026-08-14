@@ -1619,7 +1619,7 @@ class Executor:
     def _logged_exploration(self, obs, sg) -> str:
         txt = self.exploration_text(obs, self._target_key(sg))
         self.log("escalate_context", subgoal=sg["id"],
-                 target=self._target_key(sg), memory=txt[:1200])
+                 target=self._target_key(sg), memory=txt[:6000])
         return txt
 
     def exploration_text(self, obs, target: str = "") -> str:
@@ -3247,7 +3247,7 @@ Reply with ONLY a JSON array of ops, e.g.
             # LAST_MAP unresolved), and each took a whole run to find because
             # the prompt was never recorded anywhere.
             self.log("escalate_context", subgoal=sg["id"],
-                     target=self._target_key(sg), memory=memory[:1200])
+                     target=self._target_key(sg), memory=memory[:6000])
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
                     f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
