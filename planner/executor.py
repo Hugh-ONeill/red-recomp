@@ -1125,7 +1125,7 @@ class Executor:
                 if w.get("dest") == dest
                 and abs((w.get("x") or 0) - x) + abs((w.get("y") or 0) - y) == 1]
 
-    def note_transition(self, before_obs, step, after_obs):
+    def note_transition(self, before_obs, step, after_obs, reason=""):
         """Record: from this area, that exit led there."""
         src, dst = self._where(before_obs), self._where(after_obs)
         if "None" in src or "None" in dst:
@@ -1169,7 +1169,16 @@ class Executor:
                 # loses the difference, and the difference is the whole
                 # question of whether coming back later is worth anything:
                 # a guard wanting a drink moves, a wall does not.
-                e["shut"] = True
+                # COULD NOT REACH IT IS NOT THE SAME AS IT REFUSED. The
+                # first is a fact about pathing at this instant — an NPC
+                # standing on the approach, the party on the wrong side of
+                # a room — and it clears on its own: Mt Moon's 17,11 ladder
+                # failed twice with "couldn't reach" and warped fine on the
+                # third try. Marking that shut blacklisted a working ladder
+                # for ever. Only a door we STOOD AT and that did not fire
+                # is shut.
+                if "couldn't reach" not in (reason or ""):
+                    e["shut"] = True
                 # WHEN it was shut, so we can tell whether anything has
                 # happened since. A door that turned you back is worth one
                 # more press once you are carrying something you were not
@@ -1695,8 +1704,10 @@ class Executor:
             while o2 and o2.get("mode") == "battle":
                 o2 = self.handle_battle(sg, o2)
                 o2 = self.settle()
+            _res0 = (r or {}).get("result") or {}
             if o2:
-                self.note_transition(pre, step, o2)
+                self.note_transition(pre, step, o2,
+                                     reason=str(_res0.get("detail") or ""))
             # WHY it did not fire, not just that it did not. These ops go
             # through _send_safe, which never reaches the trace builder, so
             # a door that refused the walk-back was invisible.
@@ -4308,7 +4319,10 @@ Reply with ONLY a JSON array of ops, e.g.
                     # always one. note_transition handles the went-nowhere
                     # case itself now; just let it see the attempt.
                     if o2:
-                        self.note_transition(pre, step, o2)
+                        self.note_transition(
+                            pre, step, o2,
+                            reason=str(((o2 or {}).get("result") or {})
+                                       .get("detail") or ""))
                     self.log("free_round_exit", subgoal=sg["id"],
                              via=key, to=self._where(o2))
                     trace.append(
