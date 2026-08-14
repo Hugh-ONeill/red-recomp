@@ -873,13 +873,14 @@ class Executor:
             self.visits[here] = self.visits.get(here, 0) + 1
             self._last_visit_region = here
         m = (obs or {}).get("map") or {}
-        # A DOORWAY YOU CAN SEE COUNTS, WALKABLE OR NOT. Filtering on
-        # reachable here meant a floor's far pocket never entered the
-        # frontier at all, so every region of Mt Moon reported its exits
-        # exhausted while the way out east sat behind a trainer. Whether it
-        # can be walked to right now is a fact about this instant; whether
-        # it exists is a fact about the map.
-        keys = [f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])]
+        # WALKABLE ONES ONLY. Recording doorways pathfinding cannot reach
+        # made every region holding one look permanently unexplored, so the
+        # walk-back kept electing regions whose only "fresh" exit was a
+        # ladder behind a trainer. That a blocked doorway EXISTS is told to
+        # the model separately (DOORWAYS ON THIS MAP...) and computed from
+        # the observation, not from this ledger.
+        keys = [f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])
+                if w.get("reachable")]
         keys += list((m.get("connections") or {}).keys())
         # DOORS THAT EXIST BUT CANNOT BE WALKED TO stay out of the frontier
         # (you cannot take them now) and are recorded separately, because
@@ -1253,20 +1254,19 @@ class Executor:
             reopened = (was.get("shut")
                         and was.get("shut_at") != self._world_mark(obs))
             if (k not in taken or reopened) and k not in blocked:
-                # INCLUDE THE ONES PATHFINDING CANNOT CURRENTLY REACH. They
-                # were filtered out entirely, so a ladder the map shows but
-                # a trainer stands between you and was never proposed, never
-                # attempted, and never learned about — Mt Moon's (5,7) in
-                # every round of every attempt. Trying costs one op, the
-                # failure now names who is in the way, and a doorway that
-                # refuses is recorded shut and drops out until the world
-                # changes. A player tries the ladder they can see.
+                # A DOORWAY PATHFINDING CANNOT REACH IS NOT AUTO-EXPLORABLE.
+                # It was briefly listed here so the run would try a blocked
+                # ladder, and that poisoned everything downstream: this list
+                # also answers "does this region still have anything left",
+                # so a region with one blocked door looked unexplored for
+                # ever — the frontier walk-back stopped firing and free
+                # rounds burned on doors that cannot fire. Blocked doorways
+                # are reported to the MODEL instead (see the DOORWAYS ON
+                # THIS MAP line), which can propose one deliberately.
                 if not w.get("reachable"):
-                    out.append((True, f"({k})->{w.get('dest')} "
-                                      f"[cannot walk to it from here yet]"))
-                else:
-                    out.append((w.get("dest") in seen_maps,
-                                f"({k})->{w.get('dest')}"))
+                    continue
+                out.append((w.get("dest") in seen_maps,
+                            f"({k})->{w.get('dest')}"))
         for d, t in (m.get("connections") or {}).items():
             if d not in taken and d not in blocked:
                 out.append((t in seen_maps, f"walk {d} -> {t}"))
@@ -3435,6 +3435,7 @@ Reply with ONLY a JSON array of ops, e.g.
         free_rounds = 0
         self._cur_target = self._target_key(sg)
         self._idle_rounds = 0     # laps count per subgoal, not per run
+        self._seen_this_sg = set()   # rooms this subgoal has stood in
         self._stuck_in: dict = {}
         # NOT reset here: a fresh escalation forgetting what it already
         # interacted with is why the run kept talking to the same Jigglypuff
@@ -4368,8 +4369,18 @@ Reply with ONLY a JSON array of ops, e.g.
             # holding untried exits. Rounds that move the party without
             # moving the CONDITION are the definition of stuck; after a few
             # of them, go somewhere new instead.
+            # ...BUT REACHING SOMEWHERE NEW IS PROGRESS. Counting only
+            # done_when made every ladder in a dungeon an idle lap — three
+            # floors in and the walk-back dragged the run out of the cave
+            # it was crossing. A room it has never stood in is exactly what
+            # exploring means, whether or not the goal came any closer.
             moved_itself = bool(progress)
-            if moved_itself and not pred_holds(done, cur):
+            _here_now = self._where(cur)
+            _fresh_ground = _here_now not in getattr(self, "_seen_this_sg", ())
+            if not hasattr(self, "_seen_this_sg"):
+                self._seen_this_sg = set()
+            self._seen_this_sg.add(_here_now)
+            if moved_itself and not pred_holds(done, cur) and not _fresh_ground:
                 self._idle_rounds = getattr(self, "_idle_rounds", 0) + 1
                 if self._idle_rounds >= 3:
                     moved_itself = False
