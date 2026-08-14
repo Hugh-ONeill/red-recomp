@@ -506,6 +506,7 @@ class Executor:
         self._ui_pending = 0                # rounds a prompt has sat open
         self._dead_ops: dict = {}           # (target, op, arg) -> failures
         self._ferried: dict = {}            # target -> {region: untried set}
+        self.map_doors: dict = {}           # map id -> every doorway seen
         self.save_each = False              # in-game SAVE after each subgoal
         self._tried_objs: dict = {}         # region -> objects interacted
         self._inert_objs: dict = {}         # region -> {object: state it was inert in}
@@ -823,6 +824,18 @@ class Executor:
         here = self._where(obs)
         if "None" in here:
             return
+        # EVERY DOORWAY THIS MAP HAS, remembered per MAP not per region.
+        # The frontier is per region and only ever held doorways reachable
+        # from where the run stood, so a floor whose far pocket was never
+        # entered reported "frontier == taken" in every region it knew —
+        # nothing left, in a cave with the way out still in it.
+        _m = (obs or {}).get("map") or {}
+        _mid = _m.get("id")
+        if _mid:
+            _all = {f"{w.get('x')},{w.get('y')}"
+                    for w in (_m.get("warps") or [])}
+            if _all:
+                self.map_doors[_mid] = set(self.map_doors.get(_mid, ())) | _all
         # A visit is a VISIT, counted on arrival — not only on a recorded
         # transition. Regions whose transitions landed under other labels
         # (the hop-free relabeling) collected zero visits however often
@@ -832,8 +845,13 @@ class Executor:
             self.visits[here] = self.visits.get(here, 0) + 1
             self._last_visit_region = here
         m = (obs or {}).get("map") or {}
-        keys = [f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])
-                if w.get("reachable")]
+        # A DOORWAY YOU CAN SEE COUNTS, WALKABLE OR NOT. Filtering on
+        # reachable here meant a floor's far pocket never entered the
+        # frontier at all, so every region of Mt Moon reported its exits
+        # exhausted while the way out east sat behind a trainer. Whether it
+        # can be walked to right now is a fact about this instant; whether
+        # it exists is a fact about the map.
+        keys = [f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])]
         keys += list((m.get("connections") or {}).keys())
         # DOORS THAT EXIST BUT CANNOT BE WALKED TO stay out of the frontier
         # (you cannot take them now) and are recorded separately, because
