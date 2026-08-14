@@ -2306,7 +2306,17 @@ Reply with ONLY a JSON array of ops, e.g.
                 # macro run_subgoal will): a misplaced op skips, not misfires
                 trace.append(f"{op}: skipped (when-guard)")
                 continue
-            sig = (self._cur_target, op,
+            # WHERE IT FAILED IS PART OF THE FAILURE. Without the region in
+            # this key, three failures of "cross south" banned crossing
+            # south for the whole subgoal no matter where the party later
+            # stood — and the refusal it printed claimed "it cannot work
+            # FROM HERE", a statement about position made from a key that
+            # held none. Cerulean is split by a fence: the south seam is
+            # unreachable from the north pocket and reachable from the main
+            # city, and an NPC parked in the gap can make even the good
+            # side fail transiently. Three such misses sealed the only road
+            # to Route 5 for the rest of the leg.
+            sig = (self._cur_target, self._where(obs), op,
                    step.get("name") or step.get("dir")
                    or (step.get("x"), step.get("y")))
             if op == "use_warp":
