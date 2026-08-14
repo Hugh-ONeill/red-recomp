@@ -656,6 +656,8 @@ class Executor:
             self.flag_sites = data.get("flag_sites") or {}
             self.shut_doors = data.get("shut_doors") or {}
             self.hints = data.get("hints") or {}
+            self.map_doors = {k: set(v) for k, v
+                              in (data.get("map_doors") or {}).items()}
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
             # reset before ever reaching 2 — the TOO-WEAK note was aimed at
@@ -724,7 +726,9 @@ class Executor:
                  "hints": self.hints,
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead,
-                 "plan_done": getattr(self, "_plan_done", {})},
+                 "plan_done": getattr(self, "_plan_done", {}),
+                 "map_doors": {k: sorted(v)
+                               for k, v in (self.map_doors or {}).items()}},
                 indent=1))
         except OSError:
             pass
@@ -1498,7 +1502,21 @@ class Executor:
             shut_x = self._no_cross.get(region, set())
             fresh = [e for e in exits if e not in done_x and e not in shut_x]
             if not fresh:
-                continue
+                # A FLOOR WITH DOORWAYS NOBODY HAS WALKED IS NOT FINISHED,
+                # even when every ROOM in it reports its own exits taken.
+                # Mt Moon's regions each said "nothing left" while two of
+                # the eight doorways on B1F had never been used, so the
+                # walk-back went to Pewter's shop doors instead of back
+                # into the cave the run was trying to cross. Compare the
+                # map's whole doorway list against every key taken anywhere
+                # on it; the ferry ledger stops this being a loop.
+                rmap0 = region.split("|")[0]
+                seen_keys = set()
+                for r2, ex2 in (self.explored or {}).items():
+                    if r2.split("|")[0] == rmap0:
+                        seen_keys |= set(ex2.keys())
+                if not (set(self.map_doors.get(rmap0, ())) - seen_keys):
+                    continue
             been = (self._ferried.get(self._cur_target) or {}).get(region)
             if been is not None and been == frozenset(
                     e for e in exits if e not in done_x):
