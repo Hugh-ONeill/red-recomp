@@ -2251,6 +2251,11 @@ nothing arrives. WHICH item to sacrifice is your call),
 {"op":"sell","item":"NUGGET","count":N} (sell to THIS map's mart clerk:
 raises money AND frees the slot — a NUGGET exists to be sold; key items
 are refused. What to part with is your call),
+{"op":"store_item","item":"HM_CUT","count":N} (put an item into the PC at
+THIS map's PC — every Pokemon Center has one. Frees a bag slot and
+DESTROYS NOTHING; obs.pc_items lists what is already in there),
+{"op":"retrieve_item","item":"HM_CUT","count":N} (take one back out of
+the PC; it fails if the bag is already at 20 kinds),
 {"op":"wait"}. Battles are auto-handled.
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
@@ -3223,9 +3228,14 @@ Reply with ONLY a JSON array of ops, e.g.
                     "at a mart clerk raises money AND frees the slot "
                     "({\"op\":\"sell\",\"item\":...} — a NUGGET exists "
                     "to be sold). TOSSING dumps dead weight "
-                    "({\"op\":\"toss\",\"item\":...}). Whoever tried to "
-                    "hand you a thing will hand it again once there is "
-                    "room.")
+                    "({\"op\":\"toss\",\"item\":...}). STORING at any "
+                    "Pokemon Center's PC frees the slot and destroys "
+                    "nothing, so it is the only reversible one "
+                    "({\"op\":\"store_item\",\"item\":...}, and "
+                    "{\"op\":\"retrieve_item\",...} brings it back; "
+                    "obs.pc_items is what the PC already holds). "
+                    "Whoever tried to hand you a thing will hand it "
+                    "again once there is room.")
             # Log what the model was actually TOLD. Most of this session's
             # bugs were "the signal never reached the model" (dead ends only
             # in failure feedback, the too-weak note shadowed by an elif,

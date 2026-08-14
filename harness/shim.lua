@@ -485,6 +485,16 @@ local function observe(G, seq, result)
       o.bag[k] = v
     end
   end
+  -- What the PC is holding. Player-visible: it is the WITHDRAW ITEM list,
+  -- one A-press away at any Pokemon Center. Without it a withdrawal is a
+  -- guess, and anything deposited is gone from the run's knowledge the
+  -- moment it stops being in the bag.
+  o.pc_items = {}
+  for k, v in pairs((G.save and G.save.pcItems) or {}) do
+    if type(k) == "string" and (tonumber(v) or 0) > 0 then
+      o.pc_items[k] = v
+    end
+  end
   o.money = G.save and G.save.money
   -- Set event flags, for the EXECUTOR's done_when predicates (SPD tier 0).
   -- Instrumentation, not model eyes: the model-facing obs builder must strip
@@ -1676,6 +1686,161 @@ function OPS.toss(G, c)
       .. (left > 0 and (", " .. left .. " left") or ", slot freed")
   end
   return false, "toss did not go through"
+end
+
+-- ------------------------------------------------------------ PC storage
+-- The fourth answer to a full bag, and the only reversible one. Tossing
+-- HM01 is forever; storing it is a walk back to any Pokemon Center. WHICH
+-- item leaves the bag stays the plan's call — this is the verb, not the
+-- choice.
+--
+-- The menus differ by location (OverworldController:openPC): the bedroom PC
+-- in REDS_HOUSE_2F runs item storage directly, every other PC first shows
+-- the multi-PC menu whose own-name row is the item storage. Drive by LABEL,
+-- never by row index: the rows present depend on the Pokedex and on whether
+-- Bill has been met.
+local function ui_row_labelled(G, want)
+  for i, r in ipairs(ui_rows(G) or {}) do
+    local lb = r.label
+    if type(lb) == "string" and lb:upper():find(want, 1, true) then
+      return i
+    end
+  end
+end
+
+local function pc_open_storage(G)
+  local ow = G.overworld
+  local px, py, pfacing
+  for _, f in ipairs(map_fixtures(G, ((ow.map or {}).id))) do
+    if f.name == "PC" then px, py, pfacing = f.x, f.y, f.facing end
+  end
+  if not px then
+    return false, "there is no PC on this map (every Pokemon Center has one)"
+  end
+  -- stand beside it and face it, WITHOUT the A-mash interact() ends with:
+  -- that would walk straight through these menus
+  local p = ow.player
+  local adj = { { px, py + 1, "up" }, { px, py - 1, "down" },
+                { px - 1, py, "right" }, { px + 1, py, "left" } }
+  if pfacing then
+    local keep = {}
+    for _, a in ipairs(adj) do
+      if a[3] == pfacing then keep[#keep + 1] = a end
+    end
+    if #keep > 0 then adj = keep end
+  end
+  local at = false
+  for _ = 1, 2 do
+    for _, a in ipairs(adj) do
+      if p.cellX == a[1] and p.cellY == a[2] then
+        if p.facing ~= a[3] then U.tap(G, a[3]); U.wait(3) end
+        at = true; break
+      end
+    end
+    if at then break end
+    for _, a in ipairs(adj) do
+      OPS.walk_to(G, { x = a[1], y = a[2], max_steps = 60 })
+      if p.cellX == a[1] and p.cellY == a[2] then break end
+    end
+  end
+  if not at then return false, "could not stand at the PC" end
+  U.tap(G, "a"); U.wait(10)
+  for _ = 1, 12 do                       -- through "Turned on the PC" text
+    if ui_is_menu(G) then break end
+    U.tap(G, "a"); U.wait(5)
+  end
+  if not ui_is_menu(G) then
+    ui_back_out(G); return false, "the PC never opened"
+  end
+  if not ui_row_labelled(G, "DEPOSIT ITEM") then   -- the multi-PC menu
+    local own = ui_row_labelled(G, "'S PC")
+    -- "SOMEONE'S PC"/"BILL'S PC" is the BOX menu and matches that too; the
+    -- item storage is the row carrying the player's own name
+    local name = ((G.save or {}).player or {}).name
+    if name and name ~= "" then
+      own = ui_row_labelled(G, name:upper() .. "'S PC") or own
+    end
+    if not own then
+      ui_back_out(G); return false, "no item-storage row on the PC menu"
+    end
+    ui_cursor_to(G, "index", own)
+    U.tap(G, "a"); U.wait(10)
+  end
+  if not ui_row_labelled(G, "DEPOSIT ITEM") then
+    ui_back_out(G); return false, "item storage never opened"
+  end
+  return true
+end
+
+local function pc_move(G, c, row, giving)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  if not c.item then return false, "needs item" end
+  local before = bag_count(G, c.item)
+  local stored = ((G.save or {}).pcItems or {})[c.item] or 0
+  if giving and before < 1 then
+    return false, "no " .. c.item .. " in the bag to store"
+  end
+  if not giving and stored < 1 then
+    return false, "the PC is not holding any " .. c.item
+  end
+  local ok, why = pc_open_storage(G)
+  if not ok then return false, why end
+  local r = ui_row_labelled(G, row)
+  if not r then ui_back_out(G); return false, row .. " row missing" end
+  ui_cursor_to(G, "index", r)
+  U.tap(G, "a"); U.wait(8)
+  if not ui_is_list(G) then
+    ui_back_out(G)
+    return false, (giving and "the bag" or "the PC") .. " list never opened"
+  end
+  local want
+  for i, it in ipairs(ui_rows(G) or {}) do
+    if it.value == c.item then want = i break end
+  end
+  if not want then
+    ui_back_out(G)
+    return false, c.item .. " is not in the " ..
+      (giving and "bag" or "PC") .. " list"
+  end
+  ui_cursor_to(G, "index", want)
+  U.tap(G, "a"); U.wait(8)
+  -- Key items and HMs move one with no prompt (IsKeyItem, players_pc.asm);
+  -- everything else raises the quantity selector.
+  local n = math.min(c.count or 1, giving and before or stored)
+  if ui_is_qty(G) then
+    ui_qty_to(G, math.max(1, n))
+    U.tap(G, "a"); U.wait(8)
+  end
+  for _ = 1, 8 do                        -- footer/confirm text
+    local t = ui_top(G)
+    if not (t and t.pages) then break end
+    U.tap(G, "a"); U.wait(5)
+  end
+  ui_back_out(G)
+  local after = bag_count(G, c.item)
+  if giving and after < before then
+    return true, ("stored %d %s via PC (%d left in the bag)")
+      :format(before - after, c.item, after)
+  end
+  if not giving and after > before then
+    return true, ("withdrew %d %s from the PC")
+      :format(after - before, c.item)
+  end
+  if giving then
+    return false, "the PC would not take it (its 50 stacks may be full)"
+  end
+  return false, "nothing came out — the bag may be full at 20 kinds"
+end
+
+-- Move an item from the bag into PC storage. Frees a bag slot WITHOUT
+-- destroying anything.
+function OPS.store_item(G, c) return pc_move(G, c, "DEPOSIT ITEM", true) end
+
+-- Take an item back out of PC storage.
+function OPS.retrieve_item(G, c)
+  return pc_move(G, c, "WITHDRAW ITEM", false)
 end
 
 -- Level-grind primitive: stand in this map's wild grass and pace until an
