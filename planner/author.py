@@ -634,15 +634,31 @@ def observed_text(path: Path) -> str:
                     if vis.get(m, 0) >= 8 and not vis.get(nb)}
         walls = []
         for dest in sorted(hammered):
-            rows = []
+            rows, ways = [], 0
             for src, dirn in sorted(into.get(dest, [])):
                 n = vis.get(src, 0)
+                ways += 1
                 rows.append(
                     f"    from {src} heading {dirn}: "
                     + (f"stood there {n}x and never once got through"
                        if n else "you have never stood in that place"))
+                # A ROAD CAN HAVE HALVES. Where a road has a named place
+                # opening off it, its far side may be reachable only
+                # through that door — Route 10's south end is past Rock
+                # Tunnel, so a plan hopping ROUTE_10 -> LAVENDER_TOWN is
+                # standing at the north end asking for a road that leaves
+                # from the south. The two facts sat in different tables and
+                # were never put side by side. What that means here is
+                # yours to judge.
+                for lbl, ids in sorted((MAP_DOORS.get(src) or {}).items()):
+                    been = sum(vis.get(i, 0) for i in ids)
+                    rows.append(
+                        f"      ({src} also has a door into {lbl} "
+                        f"[{ids[0]}] — "
+                        + (f"gone through {been}x" if been
+                           else "never gone through") + ")")
             if rows:
-                walls.append(f"  {dest} — {len(rows)} way(s) in on the "
+                walls.append(f"  {dest} — {ways} way(s) in on the "
                              f"printed map:\n" + "\n".join(rows))
         if walls:
             out += ("\n\nEVERY PRINTED WAY INTO A PLACE YOU HAVE NEVER "
