@@ -734,7 +734,42 @@ def observed_text(path: Path) -> str:
                 + "\n".join(fired))
     if dead:
         out += "\n\nPROVEN UNREACHABLE:\n" + "\n".join(dead)
-    return out
+    return _fit(out)
+
+
+# Ollama evaluates a prompt at HALF of num_ctx and drops its FRONT — where
+# the goal, the predicates and the map vocabulary live — so oversize does
+# not degrade the reasoning, it deletes the instructions. Per-block caps
+# were not enough: the walked graph and the event-site list grow with every
+# region entered, so the total crept back over the cliff within the hour.
+# Budget the whole thing instead, trimming the blocks that grow, and say
+# what was dropped. 22000 chars leaves room for the journal, the drafts and
+# the vocabulary inside a 12288-token evaluation.
+EVIDENCE_BUDGET = 22000
+
+
+def _fit(text: str, budget: int = EVIDENCE_BUDGET) -> str:
+    """Trim the growing blocks until the evidence fits, oldest lines first.
+
+    Blocks are ALL-CAPS-headed; the ones that grow without bound are the
+    walked graph and the event sites. Their tail lines are the most recent
+    ground and the least useful to lose, so drop from the middle-out by
+    keeping the head (the earliest, most-established facts) and the tail
+    (where the run is now), and say how many went."""
+    while len(text) > budget:
+        blocks = re.split(r"\n\n(?=[A-Z][A-Z ,\'-]{12,})", text)
+        i = max(range(len(blocks)), key=lambda j: len(blocks[j]))
+        lines = blocks[i].splitlines()
+        if len(lines) < 8:
+            return text[:budget] + "\n[evidence truncated to fit]"
+        keep = max(4, (len(lines) - 1) * 3 // 4)
+        cut = len(lines) - 1 - keep
+        blocks[i] = "\n".join(
+            [lines[0]] + lines[1:1 + keep // 2]
+            + [f"  ... {cut} older line(s) not shown ..."]
+            + lines[-(keep - keep // 2):])
+        text = "\n\n".join(blocks)
+    return text
 
 
 def journal_text(path: Path, limit: int = 60) -> str:
