@@ -18,6 +18,11 @@ set -euo pipefail
 cd "$(dirname "$0")"
 ATTEMPTS="${1:-4}"
 MODEL="${RED_MODEL:-gemma4:31b-it-q4_K_M}"
+# What the run is FOR, in the player's own words. It is the only thing the
+# outline pass is given, so it decides what the model thinks the game is —
+# "Become the Champion" produces a list of badges and the errands between
+# them. Overridable so the framing itself can be tested.
+GOAL="${RED_GOAL:-Become the Champion}"
 SAVE="$HOME/.local/share/love/pokemon-love2d/saves/red/slot1.lua"
 
 # Match real processes only: -f over full cmdlines also matches ANCESTOR
@@ -67,7 +72,8 @@ else
   # a new outline invalidates every leg plan written for the old one
   rm -f plans/leg_[0-9]*.json plans/outline.notes
   echo "--- authoring the outline"
-  python planner/author.py --outline --goal "Become the Champion" \
+  echo "goal: $GOAL"
+  python planner/author.py --outline --goal "$GOAL" \
       --out plans/outline.txt --model "$MODEL"
 fi
 
