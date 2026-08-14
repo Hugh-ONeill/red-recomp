@@ -11,9 +11,12 @@ The model gets the "API" (its intelligence is the decomposition itself):
   - the predicate DSL it may use for done_when
   - the map ids and milestone event-flags it may reference (it knows Red but
     not the exact strings)
-  - the granularity rule learned in step 3: ONE map-transition or ONE
-    event/interaction per subgoal (the executor authors macros from the
-    current map's visible warps/objects, so coarse subgoals aren't authorable)
+  - the granularity rule: ONE event/interaction per subgoal, but TRAVEL over
+    walked ground is a single subgoal naming the destination. The old rule
+    ("one map transition each") dates from an executor that could not cross
+    maps by itself; it now routes between milestones and prices roads that
+    have never opened, so a road-by-road plan only pins it to the shut gate
+    the model happened to name
 
 Usage:
   author.py --goal "Get the Boulder Badge from Brock" --out plans/brock.json
@@ -316,11 +319,20 @@ side of the mountain, the room with the exit east). Use "player_at" only
 when no area code covers the spot you need — a coordinate you have never
 stood on is a guess, while an area code is a place you have been.
 
-Hard rule on GRANULARITY: each subgoal must be ONE map transition, OR one
-event/interaction that happens within a single map. Do not bundle multiple
-map changes into one subgoal: walking through three maps to reach a town is
-three subgoals, and "go to the shop and buy potions" is two — arrive, then
-buy.
+Hard rule on GRANULARITY: each subgoal is ONE event or interaction that
+happens within a single map. "Go to the shop and buy potions" is two —
+arrive, then buy.
+
+TRAVEL IS THE EXCEPTION, and naming every road is worse than naming none.
+The executor routes between milestones by itself over ground this run has
+already walked, and it knows which roads have never once opened. So a
+journey across walked ground is ONE subgoal naming where you want to BE:
+{"map":"CELADON_CITY"}, not a road-by-road chain through Route 5, Route 6
+and Route 7. Spelling out the roads does not help it — it FORCES the exact
+route you named, including any road that has never opened, when it could
+have found a way round. Break travel into steps only where you are heading
+into ground the evidence shows has never been walked, and then name the
+step you are unsure of, not the whole road list.
 
 Each subgoal is an object:
   {"id":"snake_case_name",
