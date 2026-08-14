@@ -1153,6 +1153,12 @@ def author_best_of(goal: str, model: str, draws: int = 3,
     return pick_plan(goal, plans, model, start=start)
 
 
+# How many subgoals one review round may INVENT. Gap-filling is a step or
+# two ("you cannot reach Route 7 from Route 6 without crossing Saffron");
+# a dozen is a different plan wearing the audit's clothes.
+MAX_REVIEW_ADDS = 4
+
+
 def review(goal: str, plan: dict, model: str, start: str | None = None,
            rounds: int = 2, observed: Path | None = None,
            journal: Path | None = None, drafts: list | None = None) -> dict:
@@ -1197,6 +1203,24 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
         if probs:
             print(f"[review] merged plan invalid, keeping the previous one: "
                   f"{probs[0]}")
+            continue
+        # A REVISION IS AN AUDIT, NOT A NEW PLAN. The outline review was
+        # bounded for exactly this reason (97315bb: reorder, insert and
+        # flag, never delete or reword) after a free rewrite deleted Bill.
+        # The plan review kept its licence and used it: handed the draft
+        # the model had just CHOSEN for avoiding the shut Saffron gate, it
+        # returned a seventeen-step tour of western Kanto that walked back
+        # to Route 6 and through Saffron anyway — twelve subgoals invented
+        # in one pass, and the choice the drafts lever had just made
+        # discarded on the way. Filling a gap is one or two steps. Anything
+        # past that is a plan the pick never selected, so keep the pick.
+        added = [x["id"] for x in revised["subgoals"]
+                 if x["id"] not in {y["id"] for y in plan["subgoals"]}]
+        if len(added) > MAX_REVIEW_ADDS:
+            print(f"[review] round {rnd} added {len(added)} subgoals "
+                  f"(cap {MAX_REVIEW_ADDS}) — that is a rewrite, not an "
+                  f"audit; keeping the plan as chosen: "
+                  f"{', '.join(added[:6])}...")
             continue
         for s in revised["subgoals"]:
             s.setdefault("escalation_rounds", 4)
