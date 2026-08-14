@@ -1686,10 +1686,10 @@ class Executor:
             pre = o_arr
             if "," in key:
                 x, y = key.split(",")
-                self._send_safe("use_warp", x=int(x), y=int(y))
+                r = self._send_safe("use_warp", x=int(x), y=int(y))
                 step = {"x": int(x), "y": int(y)}
             else:
-                self._send_safe("cross", dir=key)
+                r = self._send_safe("cross", dir=key)
                 step = {"dir": key}
             o2 = self.settle()
             while o2 and o2.get("mode") == "battle":
@@ -1697,8 +1697,12 @@ class Executor:
                 o2 = self.settle()
             if o2:
                 self.note_transition(pre, step, o2)
+            # WHY it did not fire, not just that it did not. These ops go
+            # through _send_safe, which never reaches the trace builder, so
+            # a door that refused the walk-back was invisible.
             self.log("reroute_opened", subgoal=sg["id"], via=key,
-                     to=self._where(o2))
+                     to=self._where(o2), ok=bool((r or {}).get("ok")),
+                     detail=str((r or {}).get("detail"))[:120])
             region = self._where(o2) or region
         self.log("rerouted", subgoal=sg["id"], to=region, hops=len(path))
         return region
