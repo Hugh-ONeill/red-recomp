@@ -56,6 +56,63 @@ try:
         (Path(__file__).with_name("map_edges.json")).read_text())
 except (OSError, ValueError):
     MAP_EDGES = {}
+
+_HOPS: dict = {}
+
+
+def static_hops(a: str, b: str, avoid=frozenset()):
+    """How many printed-map legs from map A to map B, or None.
+
+    DIRECT ADJACENCY IS NOT ENOUGH. Goal-ward preference only fired when
+    an untried edge landed ON the target map, so the first hop of a
+    three-hop journey ranked no better than any door — Cerulean's east
+    edge, the whole eastern half of Kanto, never outranked the numeric
+    door keys that sort ahead of it even with the road restored and an
+    eastern destination named. Distance over the town map orders them.
+    Interiors are not on the printed map, so a target inside a building
+    is asked about by its city (see _doorstep).
+    """
+    if not a or not b:
+        return None
+    if a == b:
+        return 0
+    key = (a, b, avoid)
+    if key in _HOPS:
+        return _HOPS[key]
+    seen, frontier, d = {a}, [a], 0
+    while frontier:
+        d += 1
+        nxt = []
+        for m in frontier:
+            for m2 in (MAP_EDGES.get(m) or {}).values():
+                if m2 in seen or (m, m2) in avoid:
+                    continue
+                if m2 == b:
+                    _HOPS[key] = d
+                    return d
+                seen.add(m2)
+                nxt.append(m2)
+        frontier = nxt
+    _HOPS[key] = None
+    return None
+
+
+def _doorstep(map_id: str) -> str:
+    """The printed-map place a target sits in: itself if the town map
+    draws it, else the city its name carries (CELADON_GYM -> CELADON_CITY,
+    the same fallback badge routing already uses)."""
+    if not map_id or map_id in MAP_EDGES:
+        return map_id
+    for suffix in ("_GYM", "_MART", "_POKECENTER", "_GATE"):
+        if map_id.endswith(suffix):
+            city = map_id[: -len(suffix)] + "_CITY"
+            if city in MAP_EDGES:
+                return city
+    for city in MAP_EDGES:
+        if city.endswith("_CITY") and map_id.startswith(
+                city[: -len("_CITY")] + "_"):
+            return city
+    return map_id
 import battle_oracle
 import brock_probe   # reuse the live model driver (chat/parse) for escalation
 
@@ -1199,6 +1256,10 @@ class Executor:
         # dropped, the MAP is the compass
         want_map = (tgt.split(":", 1)[1].split("|")[0]
                     if tgt.startswith(("map:", "area:")) else None)
+        if not want_map and tgt.startswith("badge:"):
+            want_map = BADGE_GYMS.get(tgt.split(":", 1)[1])
+        want_map = _doorstep(want_map) if want_map else None
+        blocked = self._impassable()
         best = None
         for region, exits in self.frontier.items():
             if region == here:
@@ -1218,12 +1279,22 @@ class Executor:
             # instead of Route 5. When a region's untried directional
             # edge leads to the target map per the atlas (geography this
             # run has itself observed), it comes first.
-            goalward = 1
+            # DISTANCE, not adjacency: score each untried exit by how many
+            # printed-map legs remain after taking it, so the FIRST hop of
+            # a long journey outranks a door that goes nowhere near.
+            goalward = 99
             if want_map:
-                redges = (self.atlas.get(region.split("|")[0]) or {}) \
-                    .get("edges") or {}
-                if any(redges.get(e) == want_map for e in fresh):
-                    goalward = 0
+                rmap = region.split("|")[0]
+                redges = dict((self.atlas.get(rmap) or {}).get("edges") or {})
+                for d, m2 in (MAP_EDGES.get(rmap) or {}).items():
+                    redges.setdefault(d, m2)
+                goalward = self._goal_score(rmap, want_map, blocked)
+                for e in fresh:
+                    dest_m = redges.get(e)
+                    if dest_m:
+                        goalward = min(
+                            goalward,
+                            self._goal_score(dest_m, want_map, blocked))
             rank = (goalward, self.visits.get(region, 0), len(path))
             if best is None or rank < best[2]:
                 best = (region, path, rank)
@@ -1409,6 +1480,56 @@ class Executor:
         self.log("passage_retry", subgoal=sg["id"],
                  result="no far side worked")
         return o2
+
+    def _map_visits(self) -> dict:
+        out: dict = {}
+        for r, n in self.visits.items():
+            m = r.split("|")[0]
+            out[m] = out.get(m, 0) + n
+        return out
+
+    def _impassable(self) -> frozenset:
+        """EDGES we have hammered and never crossed, as (from, to) pairs.
+
+        Saffron is the case: stood in Route 6 and Route 5 (and their
+        gates, 86 and 8 times) and SAFFRON_CITY still has zero visits —
+        the thirsty guards, whose own words are in the hint ledger. This
+        is CURRENT evidence, not the stale failure tallies, and it clears
+        itself the moment the road opens.
+
+        EDGE-level, not map-level, and the difference decides the run:
+        marking whole MAPS shut sealed Lavender (Snorlax blocks it from
+        Route 12) and the ranking then preferred the giant western
+        Cycling-Road loop as "shorter". Route 12 cannot reach Lavender;
+        ROUTE_10 reaches it fine, and only an edge-shaped fact can say
+        both. Route 9 -> Route 10 stays open because Route 9 has barely
+        been walked — the whole difference between 'shut' and 'not tried'.
+        """
+        vis = self._map_visits()
+        return frozenset(
+            (m, nb) for m, edges in MAP_EDGES.items()
+            for nb in edges.values()
+            if vis.get(m, 0) >= 8 and not vis.get(nb))
+
+    def _goal_score(self, from_map: str, want: str, blocked) -> int:
+        """Printed-map legs from here to the goal, avoiding shut maps —
+        and when no open road to the goal exists at all, legs to the
+        NEAREST GROUND NEVER SET FOOT ON. A sealed goal should send the
+        run looking, not re-treading: with Saffron shut there is no
+        printed route to Celadon, and the honest next move is the
+        unexplored east."""
+        h = static_hops(from_map, want, blocked)
+        if h is not None:
+            return h
+        vis = self._map_visits()
+        best = None
+        for m in MAP_EDGES:
+            if vis.get(m):
+                continue
+            hh = static_hops(from_map, m, blocked)
+            if hh is not None and (best is None or hh < best):
+                best = hh
+        return 50 + best if best is not None else 99
 
     def _fought_at(self, tgt: str, obs, step, dest_map: str) -> bool:
         """Did a fight happen in the REGION this exit leads to?
@@ -3542,20 +3663,34 @@ Reply with ONLY a JSON array of ops, e.g.
                            if e not in done_x]
                 if (not retalked_now and untried
                         and (cur or {}).get("mode") == "overworld"):
-                    # goal-ward edge first, same rule as the reroute rank
+                    # goal-ward edge first, same rule as the reroute rank:
+                    # by DISTANCE over the printed map, so a first hop
+                    # toward a far target beats a door that goes nowhere
+                    # near it (alphabetical order buried Cerulean's 'east'
+                    # behind every numeric door key on the map)
                     tgt_k = self._target_key(sg)
                     want_m = (tgt_k.split(":", 1)[1].split("|")[0]
                               if tgt_k.startswith(("map:", "area:"))
-                              else None)
+                              else BADGE_GYMS.get(tgt_k.split(":", 1)[1])
+                              if tgt_k.startswith("badge:") else None)
+                    want_m = _doorstep(want_m) if want_m else None
                     key = None
                     if want_m:
-                        redges = (self.atlas.get(
-                            (cur.get("map") or {}).get("id")) or {}) \
-                            .get("edges") or {}
-                        for e in sorted(untried):
-                            if redges.get(e) == want_m:
-                                key = e
-                                break
+                        hmap = (cur.get("map") or {}).get("id")
+                        redges = dict((self.atlas.get(hmap) or {})
+                                      .get("edges") or {})
+                        for d, m2 in (MAP_EDGES.get(hmap) or {}).items():
+                            redges.setdefault(d, m2)
+                        blocked = self._impassable()
+                        scored = [(self._goal_score(redges[e], want_m,
+                                                    blocked), e)
+                                  for e in sorted(untried) if redges.get(e)]
+                        if scored:
+                            key = min(scored)[1]
+                            self.log("free_round_goalward", subgoal=sg["id"],
+                                     via=key, score=min(scored)[0],
+                                     toward=want_m,
+                                     blocked=sorted(blocked)[:4])
                     if key is None:
                         key = sorted(untried)[0]
                     pre = cur
