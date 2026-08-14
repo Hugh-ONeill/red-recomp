@@ -1123,6 +1123,18 @@ class Executor:
         if key is None:
             return
         if src == dst:
+            # A DOORWAY YOU COULD NOT EVEN WALK TO IS NOT AN EXIT OF THIS
+            # ROOM. An attempt that never reached the tile was filed against
+            # whatever region the party was standing in, so Mt Moon's
+            # B1F|24,14 came to own all eight of the floor's doorways —
+            # five of them in pockets it cannot reach — and the room read
+            # as fully accounted for. Record a refusal only for a door we
+            # actually stood at.
+            _w = ((before_obs or {}).get("map") or {}).get("warps") or []
+            if step.get("x") is not None and not any(
+                    w.get("x") == step.get("x") and w.get("y") == step.get("y")
+                    and w.get("reachable") for w in _w):
+                return
             # AN EXIT THAT DOES NOT MOVE YOU IS STILL AN EXIT YOU TRIED.
             # Returning early here left it out of the taken ledger, so it
             # stayed on the untried list — which the free round reads as
