@@ -991,11 +991,30 @@ class Executor:
     def note_transition(self, before_obs, step, after_obs):
         """Record: from this area, that exit led there."""
         src, dst = self._where(before_obs), self._where(after_obs)
-        if src == dst or "None" in src or "None" in dst:
+        if "None" in src or "None" in dst:
             return
         key = (f"{step.get('x')},{step.get('y')}"
                if step.get("x") is not None else step.get("dir"))
         if key is None:
+            return
+        if src == dst:
+            # AN EXIT THAT DOES NOT MOVE YOU IS STILL AN EXIT YOU TRIED.
+            # Returning early here left it out of the taken ledger, so it
+            # stayed on the untried list — which the free round reads as
+            # "the only way to find anything new". At the Saffron gate it
+            # elected the same door six times running, each time landing
+            # back in the room it was trying to leave, while the note above
+            # it insisted two ways out had never been taken. Record where
+            # the door actually put you: back here. If it ever does fire
+            # properly the edge-conflict check voids this and it reads
+            # untried again, so nothing is lost by being honest now.
+            node = self.explored.setdefault(src, {})
+            e = node.setdefault(key, {"n": 0, "to": dst})
+            e["n"] += 1
+            e["to"] = dst
+            self.log("exit_went_nowhere", frm=src, via=str(key),
+                     times=e["n"])
+            self._save_memory()
             return
         self.visits[dst] = self.visits.get(dst, 0) + 1
         dmap = dst.split("|")[0]
