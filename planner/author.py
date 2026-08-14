@@ -237,7 +237,12 @@ def doors_text() -> str:
         for road, places in sorted(MAP_DOORS.items()))
     return ("\n\nPLACES THE PRINTED MAP NAMES, and the road each one opens "
             "off. This is the map's own labelling, not scouting: what lies "
-            "BEYOND any of these doors is not here.\n" + rows)
+            "BEYOND any of these doors is not here. The listing is COMPLETE "
+            "— every road with a door into a named place is above — so a "
+            "place appearing under ONE road is entered and left on that "
+            "same road (a mountain or tunnel joining two halves of it, "
+            "which the road's own name cannot tell apart), and a place "
+            "appearing under TWO roads joins those two.\n" + rows)
 
 
 def edges_text() -> str:
