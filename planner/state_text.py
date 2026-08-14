@@ -29,6 +29,16 @@ def mon_text(p):
     hp, mx = p.get("hp"), p.get("max_hp")
     if hp is not None and mx:
         s += f" {hp}/{mx}hp"
+    # WHAT IT CAN ACTUALLY DO. The author was told a level and a HP bar and
+    # nothing else, so it could not reason about the four slots at all —
+    # Charmeleon lost to Misty twelve times swinging RAGE with GROWL and
+    # LEER filling half its moveset and TM_MEGA_PUNCH in the bag, and every
+    # rewrite came back "go, heal, enter, fight". The party screen shows
+    # moves; a plan written without them is written half-blind.
+    mv = [str(m.get("id") if isinstance(m, dict) else m)
+          for m in (p.get("moves") or [])]
+    if mv:
+        s += " knowing " + "/".join(mv)
     st = str(p.get("status") or "")
     if st not in ("", "0", "NONE", "OK"):
         s += f" {st}"
