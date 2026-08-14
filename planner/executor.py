@@ -1722,17 +1722,32 @@ class Executor:
         if left and o_arr:
             key = sorted(left)[0]
             pre = o_arr
-            if "," in key:
-                x, y = key.split(",")
-                r = self._send_safe("use_warp", x=int(x), y=int(y))
-                step = {"x": int(x), "y": int(y)}
-            else:
-                r = self._send_safe("cross", dir=key)
-                step = {"dir": key}
-            o2 = self.settle()
-            while o2 and o2.get("mode") == "battle":
-                o2 = self.handle_battle(sg, o2)
+            # A WILD ENCOUNTER IS NOT A CLOSED DOOR. walk_to gives up the
+            # moment the game leaves the overworld, so in a cave with Mt
+            # Moon's encounter rate a single-shot warp reports "couldn't
+            # reach the warp tile" whenever a Zubat interrupts the walk —
+            # and that got written down as a shut ladder. Fight what
+            # interrupts and try the same door again, the way _walk_route
+            # already does for routed hops.
+            step = ({"x": int(key.split(",")[0]), "y": int(key.split(",")[1])}
+                    if "," in key else {"dir": key})
+            r, o2 = None, None
+            for _try in range(4):
+                if "," in key:
+                    r = self._send_safe("use_warp", **step)
+                else:
+                    r = self._send_safe("cross", dir=key)
                 o2 = self.settle()
+                fought = False
+                while o2 and o2.get("mode") == "battle":
+                    o2 = self.handle_battle(sg, o2)
+                    o2 = self.settle()
+                    fought = True
+                det = str(((r or {}).get("result") or {}).get("detail") or "")
+                if self._where(o2) != self._where(pre):
+                    break
+                if not (fought or "not in overworld" in det):
+                    break
             _res0 = (r or {}).get("result") or {}
             if o2:
                 self.note_transition(pre, step, o2,
