@@ -1700,9 +1700,14 @@ class Executor:
             # WHY it did not fire, not just that it did not. These ops go
             # through _send_safe, which never reaches the trace builder, so
             # a door that refused the walk-back was invisible.
+            # send() returns the OBSERVATION; the op's outcome is nested
+            # under "result". Reading ok/detail off the observation gave
+            # ok=False, detail=None for every attempt — a diagnostic that
+            # reported failure whatever happened.
+            _res = (r or {}).get("result") or {}
             self.log("reroute_opened", subgoal=sg["id"], via=key,
-                     to=self._where(o2), ok=bool((r or {}).get("ok")),
-                     detail=str((r or {}).get("detail"))[:120])
+                     to=self._where(o2), ok=bool(_res.get("ok")),
+                     detail=str(_res.get("detail"))[:140])
             region = self._where(o2) or region
         self.log("rerouted", subgoal=sg["id"], to=region, hops=len(path))
         return region
