@@ -961,6 +961,7 @@ function OPS.use_warp(G, c)
   local p = ow.player
   if not (c.x and c.y) then return false, "use_warp needs x,y" end
 
+  local walk_why = nil
   local function attempt(x, y)
     -- Three passes, yielding ground between them: pass 1 is the plain
     -- walk, and each retry backs off a tile first so an NPC pinned by the
@@ -968,7 +969,9 @@ function OPS.use_warp(G, c)
     -- (it re-BFSes across rounds); a door needs the same patience.
     for pass = 1, 3 do
       if p.cellX ~= x or p.cellY ~= y then
-        OPS.walk_to(G, { x = x, y = y, max_steps = c.max_steps or 120 })
+        local _wok, _wwhy = OPS.walk_to(
+          G, { x = x, y = y, max_steps = c.max_steps or 400 })
+        walk_why = _wwhy or walk_why
         if (ow.map and ow.map.id) ~= startMap then return true end
       end
       if p.cellX == x and p.cellY == y then break end
@@ -1070,7 +1073,8 @@ function OPS.use_warp(G, c)
       .. ". People who stand in front of doors in this game usually say "
       .. "why; interact with them to hear it."
   end
-  return false, "couldn't reach the warp tile"
+  return false, "couldn't reach the warp tile ("
+    .. tostring(walk_why or "no reason recorded") .. ")"
 end
 
 -- Cross to the connected map in a direction (north/south/east/west). Finds
