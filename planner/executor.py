@@ -1584,7 +1584,28 @@ class Executor:
             hh = static_hops(from_map, m, blocked)
             if hh is not None and (best is None or hh < best):
                 best = hh
-        return 50 + best if best is not None else 99
+        if best is not None:
+            return 50 + best
+        # THE SHUT-EDGE LEDGER HAS OVER-CLAIMED. Every candidate scoring 99
+        # is not a ranking, it is a coin toss: with Route 10 -> Lavender
+        # judged shut (12 visits at its NORTH end, and its south end is
+        # past Rock Tunnel) Lavender sealed, which sealed Routes 7 and 8,
+        # which sealed Saffron, which left no unvisited map reachable from
+        # anywhere. The run then walked a 171-hop circuit between two
+        # guarded gates because nothing scored better than anything else.
+        # A heuristic may steer; it may not delete the world. Fall back to
+        # the printed map ungated, ranked strictly below any honest route
+        # so a real one always wins.
+        h = static_hops(from_map, want)
+        if h is not None:
+            return 80 + h
+        for m in MAP_EDGES:
+            if vis.get(m):
+                continue
+            hh = static_hops(from_map, m)
+            if hh is not None and (best is None or hh < best):
+                best = hh
+        return 80 + best if best is not None else 99
 
     def _fought_at(self, tgt: str, obs, step, dest_map: str) -> bool:
         """Did a fight happen in the REGION this exit leads to?
