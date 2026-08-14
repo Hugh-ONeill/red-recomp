@@ -1887,6 +1887,25 @@ def check_done(goal: str, start: str, model: str,
     judgment this project leaves to the model. The harness only asks, and
     only applies the answer.
     """
+    # EVENTS THIS RUN HAS ALREADY WATCHED FIRE, when their names touch the
+    # objective's own words. The delta above answers "did this leg do it";
+    # this answers "was it already done" — and the two are different
+    # questions. Leg 6 asked "Deliver the parcel from Bill to the Oak Lab"
+    # with EVENT_OAK_GOT_PARCEL set since leg 3, and nothing in front of the
+    # model said so. Matching is mechanical and names only what already
+    # happened; whether it satisfies the objective is the model's call.
+    bearing = ""
+    try:
+        cur = json.loads(Path("run/obs.json").read_text())
+        words = {w for w in re.sub(r"[^A-Z]+", " ", goal.upper()).split()
+                 if len(w) > 3}
+        hit = [f for f in (cur.get("flags") or [])
+               if words & set(re.sub(r"[^A-Z]+", " ", f.upper()).split())]
+        if hit:
+            bearing = ("\n\nEVENTS ALREADY RECORDED THAT MENTION THIS "
+                       "OBJECTIVE'S OWN WORDS: " + ", ".join(sorted(hit)[:10]))
+    except (OSError, ValueError):
+        pass
     never = _never_stood_in(goal, observed)
     if never:
         print(f"[check-done] refused: this objective names {never} and the "
@@ -1900,7 +1919,7 @@ def check_done(goal: str, start: str, model: str,
           # every subgoal and still have done the thing — and a FUSED
           # objective ("deliver the parcel from Bill", two errands welded
           # into one) can only be judged against what actually changed.
-          + (f"\n\n{gained}" if gained else "")}], model)
+          + (f"\n\n{gained}" if gained else "") + bearing}], model)
     m = re.search(r"\{.*\}", reply, re.S)
     if not m:
         return False
