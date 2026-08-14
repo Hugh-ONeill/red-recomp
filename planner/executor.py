@@ -1596,16 +1596,25 @@ class Executor:
         # A heuristic may steer; it may not delete the world. Fall back to
         # the printed map ungated, ranked strictly below any honest route
         # so a real one always wins.
+        # WHEN NOTHING IS REACHABLE, PREFER GROUND YOU HAVE TRODDEN LESS.
+        # The ungated fallback ranks by distance alone, so among doors that
+        # are all shut it picks the NEAREST — and Lavender's two doors are
+        # Route 12 (one hop away, hammered 328 times) and Route 10 (seven
+        # hops, tried 22). It went back to the Snorlax, every time, because
+        # the Snorlax was closer. Distance is the wrong question once every
+        # answer is "no"; how hard you have already leaned on this one is
+        # the only thing left that distinguishes them.
+        worn = min(vis.get(from_map, 0) // 20, 12)
         h = static_hops(from_map, want)
         if h is not None:
-            return 80 + h
+            return 80 + h + worn
         for m in MAP_EDGES:
             if vis.get(m):
                 continue
             hh = static_hops(from_map, m)
             if hh is not None and (best is None or hh < best):
                 best = hh
-        return 80 + best if best is not None else 99
+        return 80 + best + worn if best is not None else 99
 
     def _fought_at(self, tgt: str, obs, step, dest_map: str) -> bool:
         """Did a fight happen in the REGION this exit leads to?
