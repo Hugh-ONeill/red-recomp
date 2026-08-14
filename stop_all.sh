@@ -24,7 +24,7 @@ pids() {   # executors, games, loops — never this script or its parents
   local skip
   skip=$(ancestors | tr '\n' '|' | sed 's/|$//')
   ps -eo pid,args \
-    | grep -E "executor\.py --bootstrap|love \.|campaign(\.run)?\.sh|fresh_run\.sh|xvfb-run" \
+    | grep -E "executor\.py --bootstrap|love \.|campaign(\.run)?\.sh|fresh_run\.sh|fresh_discovery\.sh|xvfb-run" \
     | grep -v grep \
     | grep -vE "shell-snapshots|stop_all\.sh" \
     | awk '{print $1}' \
