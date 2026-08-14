@@ -1771,8 +1771,19 @@ class Executor:
                 beyond = ""
                 if not bad:
                     done_x = set((self.explored.get(dest) or {}).keys())
+                    # NEVER ATTEMPTED IS NOT THE SAME AS ATTEMPTED AND
+                    # FAILED. The frontier deliberately keeps a printed road
+                    # even after a seam proof, so the map cannot be eroded
+                    # by one bad crossing — but counting those proofs as
+                    # "exits never taken" advertises a wall as unopened
+                    # ground. Route 10's only such exit is its SOUTH seam,
+                    # which is past Rock Tunnel and proven uncrossable from
+                    # the northern half, so the run was told over and over
+                    # that Route 10 had somewhere new to go, and the door
+                    # that actually leads there read as already used.
+                    shut = self._no_cross.get(dest, set())
                     left = [e for e in (self.frontier.get(dest) or [])
-                            if e not in done_x]
+                            if e not in done_x and e not in shut]
                     if left:
                         beyond = (f"; BUT {dest} still has {len(left)} exit(s) "
                                   f"never taken, so going back through here "
