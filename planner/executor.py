@@ -3932,15 +3932,30 @@ Reply with ONLY a JSON array of ops, e.g.
                         # door that has never once opened outranks every
                         # road that has. Charge the step itself: shut, and
                         # by how hard it has already been leaned on.
+                        # ONE CURRENCY, MEASURED FROM WHERE YOU STAND.
+                        # _goal_score answers on three different scales — a
+                        # bare hop count when the goal is reachable avoiding
+                        # shut edges, 50+ for nearest-unvisited, 80+ for the
+                        # tolled fallback — so adding an edge toll to it
+                        # compared prices in different units. Saffron scored
+                        # 2 ("once through the gate it is a two-hop stroll")
+                        # + 44 for the gate = 46, while the genuinely open
+                        # eastern road came back as 80 + 18 = 98. Price the
+                        # WHOLE journey through this exit instead, tolls and
+                        # all, and the numbers mean the same thing.
                         vis_e = self._map_visits()
-                        def _edge_cost(dest):
-                            if (hmap, dest) not in blocked:
-                                return 0
-                            return 4 + min(vis_e.get(hmap, 0) // 8, 40)
-                        scored = sorted(
-                            (self._goal_score(redges[e], want_m, blocked)
-                             + _edge_cost(redges[e]), e)
-                            for e in sorted(untried) if redges.get(e))
+                        toll = {b: 4 + min(vis_e.get(b[0], 0) // 8, 40)
+                                for b in blocked}
+                        walked = self._walked_map_links()
+
+                        def _via(dest):
+                            on = static_cost(dest, want_m, toll, walked)
+                            if on is None:
+                                return 999
+                            return 1 + toll.get((hmap, dest), 0) + on
+                        scored = sorted((_via(redges[e]), e)
+                                        for e in sorted(untried)
+                                        if redges.get(e))
                         # A known exit still wins outright when it IS the
                         # door to the target AND that door has ever opened;
                         # short of that, an unopened door beats another lap
