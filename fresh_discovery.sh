@@ -41,7 +41,17 @@ if [ "$done_legs" = 0 ]; then
   [ -f run/explored.json ] && cp run/explored.json "run/explored.${ts}.pre-discovery.bak.json"
   [ -f run/executor_log.jsonl ] && mv run/executor_log.jsonl "run/executor_log.${ts}.pre-discovery.jsonl"
   [ -f "$SAVE" ] && cp "$SAVE" "run/slot1.${ts}.pre-discovery.lua"
-  rm -f run/explored.json run/last_state.json
+  # obs.json is the LIVE world snapshot and outlives the process that wrote
+  # it. Left in place it lies twice about a world that no longer exists:
+  # fresh_run.sh takes its existence as "the game is up" (so the wait for
+  # the new process returns at once), and campaign.sh's already-met check
+  # falls back to it — a three-badge obs certifies the Brock, Misty and
+  # Surge legs complete on a badgeless new game. Same false-completion
+  # class as the stale-flag resume teleport.
+  rm -f run/explored.json run/last_state.json run/obs.json \
+        run/status.txt run/heartbeat
+  # the reorder budget belongs to a chain, not to the directory
+  : > run/outline_reorders
   echo "archived ${ts}.pre-discovery; ledgers cleared"
 fi
 
