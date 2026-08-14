@@ -1,0 +1,38 @@
+{
+ "goal": "Navigate through Mt. Moon",
+ "subgoals": [
+  {
+   "id": "enter_mt_moon",
+   "goal_text": "Enter Mt. Moon from Route 4",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b1f",
+   "goal_text": "Find the stairs and descend to the first basement level",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Find the stairs and descend to the second basement level",
+   "done_when": {
+    "map": "MT_MOON_B2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Navigate through the basement and exit Mt. Moon to reach Route 3",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

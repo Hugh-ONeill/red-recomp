@@ -1,0 +1,86 @@
+{
+  "goal": "Win the Cascade Badge from Misty at the Cerulean City Gym",
+  "subgoals": [
+    {
+      "id": "exit_bills_house",
+      "goal_text": "Leave Bill's house and enter Cerulean City.",
+      "done_when": {
+        "area": "CERULEAN_CITY|20,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 13,
+          "when": {
+            "map": "CERULEAN_GYM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "heal_at_cerulean_center",
+      "goal_text": "Visit the Pokemon Center in Cerulean City to fully heal the party.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "enter_cerulean_gym",
+      "goal_text": "Enter the Cerulean City Gym to face Misty.",
+      "done_when": {
+        "area": "CERULEAN_GYM|0,1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 30,
+          "y": 19,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "defeat_misty",
+      "goal_text": "Battle and defeat Gym Leader Misty to earn the Cascade Badge.",
+      "done_when": {
+        "badge": "CASCADEBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

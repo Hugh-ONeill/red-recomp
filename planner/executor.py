@@ -325,6 +325,28 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             if (abs(pl["x"] - want["x"]) > r
                     or abs(pl["y"] - want["y"]) > r):
                 return False
+        elif key == "knows_move":
+            # WHAT A POKEMON CAN DO WAS INEXPRESSIBLE. party_size could say
+            # "catch something" and lead_level could say "train", but no
+            # predicate could say "teach it a move that works" — so a plan
+            # could not aim at the one action that would have ended twelve
+            # losses to Misty with TM_MEGA_PUNCH sitting in the bag. Takes
+            # a move id, or {"move": ..., "slot": N} for a particular
+            # member; any member counts when no slot is named.
+            want_mv = (want or {}) if isinstance(want, dict) else {"move": want}
+            mid = str(want_mv.get("move") or "").upper()
+            mons = obs.get("party") or []
+            slot = want_mv.get("slot")
+            if slot is not None:
+                slot = int(slot)
+                if slot < 1 or slot > len(mons):
+                    return False
+                mons = [mons[slot - 1]]
+            if not any(
+                    mid in [str(m.get("id") if isinstance(m, dict) else m).upper()
+                            for m in (mon.get("moves") or [])]
+                    for mon in mons):
+                return False
         elif key == "party_size":
             if len(obs.get("party") or []) < want:
                 return False
@@ -1103,7 +1125,7 @@ class Executor:
         if dw.get("has_item"):
             return "item:" + ",".join(sorted(dw["has_item"]))
         for k in ("party_size", "lead_level", "party_min_level",
-                  "slot_level", "party_healthy"):
+                  "slot_level", "party_healthy", "knows_move"):
             if k in dw:
                 return f"{k}:{dw[k]}"
         return "subgoal:" + sg.get("id", "?")

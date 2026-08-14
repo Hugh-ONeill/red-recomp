@@ -1,0 +1,639 @@
+{
+  "goal": "Win your first Gym Badge",
+  "subgoals": [
+    {
+      "id": "go_to_route_1",
+      "goal_text": "Leave Viridian City and travel south onto Route 1.",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "reach_pallet_town",
+      "goal_text": "Continue south from Route 1 to enter Pallet Town.",
+      "done_when": {
+        "area": "PALLET_TOWN|10,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "ROUTE1_YOUNGSTER2",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "enter_oaks_lab",
+      "goal_text": "Enter Professor Oak's lab in Pallet Town.",
+      "done_when": {
+        "area": "OAKS_LAB|4,1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 11,
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "deliver_parcel",
+      "goal_text": "Talk to Professor Oak to deliver the parcel and receive the Pokedex.",
+      "done_when": {
+        "flag": "EVENT_GOT_POKEDEX"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_OAK1",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "exit_oaks_lab",
+      "goal_text": "Leave Professor Oak's lab and return to Pallet Town.",
+      "done_when": {
+        "area": "PALLET_TOWN|10,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_BULBASAUR_POKE_BALL",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_BULBASAUR_POKE_BALL",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11,
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "go_to_route_1_north",
+      "goal_text": "Travel north from Pallet Town back onto Route 1.",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "reach_viridian_city",
+      "goal_text": "Continue north through Route 1 to enter Viridian City.",
+      "done_when": {
+        "area": "VIRIDIAN_CITY|17,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "ROUTE1_YOUNGSTER2",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "enter_viridian_forest",
+      "goal_text": "Travel north from Viridian City to enter the Viridian Forest.",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VIRIDIANCITY_OLD_MAN",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 43,
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTSOUTHGATE_GIRL",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTSOUTHGATE_LITTLE_GIRL",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 6
+      }
+    },
+    {
+      "id": "train_in_forest",
+      "goal_text": "Battle wild Pokemon in Viridian Forest until Charmander reaches level 12.",
+      "done_when": {
+        "lead_level": 12
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_POTION",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_ANTIDOTE",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "exit_to_pewter",
+      "goal_text": "Navigate through the forest and exit west into Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_YOUNGSTER1",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_YOUNGSTER5",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_YOUNGSTER2",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_YOUNGSTER3",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_YOUNGSTER4",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_POKE_BALL",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTNORTHGATE_SUPER_NERD",
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTNORTHGATE_GRAMPS",
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_2"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 11
+      }
+    },
+    {
+      "id": "enter_pewter_poke_center",
+      "goal_text": "Enter the Pewter City Pokemon Center to heal.",
+      "done_when": {
+        "map": "PEWTER_POKECENTER"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 25,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "heal_at_pewter",
+      "goal_text": "Fully heal the party at the Pewter City Pokemon Center.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PEWTERPOKECENTER_NURSE",
+          "answer": "yes",
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "exit_pewter_poke_center",
+      "goal_text": "Leave the Pokemon Center and return to Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PEWTERPOKECENTER_JIGGLYPUFF",
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERPOKECENTER_GENTLEMAN",
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter City Gym to challenge Brock.",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PEWTERCITY_COOLTRAINER_F",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERCITY_COOLTRAINER_M",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERCITY_SUPER_NERD1",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERCITY_SUPER_NERD2",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERCITY_YOUNGSTER",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 16,
+          "y": 17,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 6
+      }
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Defeat Brock in battle to earn the Boulder Badge.",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_GYM_GUIDE",
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_BROCK",
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

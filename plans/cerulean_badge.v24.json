@@ -1,0 +1,119 @@
+{
+  "goal": "Win the Cascade Badge from Misty at the Cerulean City Gym",
+  "subgoals": [
+    {
+      "id": "exit_mt_moon_center",
+      "goal_text": "Leave the Mt. Moon Pokemon Center and enter Route 4.",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "MT_MOON_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "reach_cerulean_city",
+      "goal_text": "Travel east through Route 4 to arrive in Cerulean City.",
+      "done_when": {
+        "area": "CERULEAN_CITY|20,0"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_cerulean",
+      "goal_text": "Visit the Cerulean Pokemon Center to ensure the party is fully healed before the gym.",
+      "done_when": {
+        "area": "CERULEAN_POKECENTER|0,3",
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_4"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 17,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "enter_cerulean_gym",
+      "goal_text": "Go to the Cerulean Gym.",
+      "done_when": {
+        "area": "CERULEAN_GYM|0,1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "CERULEAN_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 30,
+          "y": 19,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "defeat_misty",
+      "goal_text": "Battle and defeat Misty to earn the Cascade Badge.",
+      "done_when": {
+        "badge": "CASCADEBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

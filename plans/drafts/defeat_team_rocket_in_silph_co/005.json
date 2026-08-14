@@ -1,0 +1,110 @@
+{
+ "goal": "Defeat Team Rocket in Silph Co.",
+ "subgoals": [
+  {
+   "id": "travel_to_saffron",
+   "goal_text": "Travel from Vermilion City to Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building in Saffron City.",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_first_floor",
+   "goal_text": "Fight through the first floor of Silph Co. to reach the elevator.",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_third_floor",
+   "goal_text": "Use the elevator to go to the 3rd floor.",
+   "done_when": {
+    "map": "SILPH_CO_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_third_floor",
+   "goal_text": "Fight through the 3rd floor to reach the elevator again.",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_second_floor",
+   "goal_text": "Use the elevator to go to the 2nd floor.",
+   "done_when": {
+    "map": "SILPH_CO_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_second_floor",
+   "goal_text": "Fight through the 2nd floor to reach the elevator again.",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_fifth_floor",
+   "goal_text": "Use the elevator to go to the 5th floor.",
+   "done_when": {
+    "map": "SILPH_CO_5F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_fifth_floor",
+   "goal_text": "Fight through the 5th floor to reach the elevator again.",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_fourth_floor",
+   "goal_text": "Use the elevator to go to the 4th floor.",
+   "done_when": {
+    "map": "SILPH_CO_4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_fourth_floor",
+   "goal_text": "Fight through the 4th floor to reach the elevator again.",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_eleventh_floor",
+   "goal_text": "Use the elevator to go to the 11th floor.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni in the battle at the top of Silph Co.",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

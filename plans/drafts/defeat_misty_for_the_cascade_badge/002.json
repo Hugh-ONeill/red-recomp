@@ -1,0 +1,39 @@
+{
+ "goal": "Defeat Misty for the Cascade Badge",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel to Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_cerulean_center",
+   "goal_text": "Visit the Pokemon Center in Cerulean City to fully heal Charmeleon and Magikarp.",
+   "done_when": {
+    "map": "CERULEAN_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_cerulean_gym",
+   "goal_text": "Enter the Cerulean Gym to face Misty.",
+   "done_when": {
+    "map": "CERULEAN_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_misty",
+   "goal_text": "Battle and defeat Gym Leader Misty using Charmeleon or a developed Magikarp.",
+   "done_when": {
+    "badge": "CASCADEBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

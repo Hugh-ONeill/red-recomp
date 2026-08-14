@@ -1,0 +1,14 @@
+{
+  "goal": "Win the Cascade Badge from Misty at the Cerulean City Gym",
+  "subgoals": [
+    {
+      "id": "battle_misty",
+      "goal_text": "Battle and defeat Gym Leader Misty in the Cerulean Gym",
+      "done_when": {
+        "badge": "CASCADEBADGE"
+      },
+      "escalation_rounds": 10
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

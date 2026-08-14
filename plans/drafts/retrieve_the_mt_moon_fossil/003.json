@@ -1,0 +1,14 @@
+{
+ "goal": "Retrieve the MT Moon fossil",
+ "subgoals": [
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Go down the stairs to the second basement floor of Mt. Moon",
+   "done_when": {
+    "area": "MT_MOON_B2F|3,2"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

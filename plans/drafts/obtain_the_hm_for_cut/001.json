@@ -1,0 +1,164 @@
+{
+ "goal": "Obtain the HM for Cut",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Walk from Route 24 south into Cerulean City",
+   "done_when": {
+    "area": "CERULEAN_CITY|20,0"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "cross",
+     "dir": "south",
+     "when": {
+      "map": "ROUTE_24"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1
+   }
+  },
+  {
+   "id": "go_to_route_4",
+   "goal_text": "Walk west from Cerulean City to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "cross",
+     "dir": "west",
+     "when": {
+      "map": "CERULEAN_CITY"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1
+   }
+  },
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Walk south from Route 4 into Route 5",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_saffron_city",
+   "goal_text": "Walk east from Route 5 into Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_7",
+   "goal_text": "Walk south from Saffron City to Route 7",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_city",
+   "goal_text": "Walk west from Route 7 into Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_dept_store",
+   "goal_text": "Enter the Celadon Department Store",
+   "done_when": {
+    "map": "CELADON_MART_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_mart_5f",
+   "goal_text": "Take the elevator to the 5th floor of the Department Store",
+   "done_when": {
+    "map": "CELADON_MART_5F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Interact with the clerk on the 5th floor to receive the SILPH_SCOPE",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_dept_store",
+   "goal_text": "Exit the Department Store back into Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_game_corner",
+   "goal_text": "Enter the Game Corner",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_rocket_hideout_b1f",
+   "goal_text": "Find the secret switch in the Game Corner and enter the Rocket Hideout B1F",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_rocket_hideout_b4f",
+   "goal_text": "Descend through the Rocket Hideout to B4F",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_rocket_admin",
+   "goal_text": "Defeat the Team Rocket Admin in the basement",
+   "done_when": {
+    "no_battle": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_hm_cut",
+   "goal_text": "Interact with the item ball on the desk to obtain HM01 (Cut)",
+   "done_when": {
+    "flag": "EVENT_GOT_HM01"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

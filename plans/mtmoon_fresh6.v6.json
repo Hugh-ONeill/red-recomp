@@ -1,0 +1,356 @@
+{
+  "goal": "Travel from Pewter City through Mt Moon and reach Cerulean City",
+  "subgoals": [
+    {
+      "id": "descend_to_b1f",
+      "goal_text": "Move from the first floor of Mt Moon down to the basement (B1F).",
+      "done_when": {
+        "map": "MT_MOON_B1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_ROCKET1",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_ROCKET4",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOON1F_HIKER",
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOON1F_YOUNGSTER1",
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOON1F_COOLTRAINER_F1",
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOON1F_COOLTRAINER_F2",
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOON1F_ESCAPE_ROPE",
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOON1F_TM_WATER_GUN",
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 25,
+          "y": 15,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 10
+      }
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Move from the first basement (B1F) down to the second basement (B2F).",
+      "done_when": {
+        "map": "MT_MOON_B2F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 27,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "defeat_mt_moon_nerd",
+      "goal_text": "Defeat the Super Nerd guarding the fossils on B2F.",
+      "done_when": {
+        "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_ROCKET1",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_ROCKET4",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_HELIX_FOSSIL",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_DOME_FOSSIL",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 7
+      }
+    },
+    {
+      "id": "exit_mt_moon",
+      "goal_text": "Navigate through the tunnels of Mt Moon's bottom floor and exit to the north.",
+      "done_when": {
+        "map": "MT_MOON_POKECENTER"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 25,
+          "y": 9,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOON1F_HIKER",
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOON1F_YOUNGSTER1",
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 14,
+          "y": 35,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROUTE4_COOLTRAINER_F1",
+          "when": {
+            "map": "ROUTE_4"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 5,
+          "when": {
+            "map": "ROUTE_4"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 6
+      }
+    },
+    {
+      "id": "heal_at_mt_moon_center",
+      "goal_text": "Heal the party at the Pokemon Center located inside Mt Moon.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "MTMOONPOKECENTER_NURSE",
+          "when": {
+            "map": "MT_MOON_POKECENTER"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "reach_route_4",
+      "goal_text": "Leave the Mt Moon Pokemon Center and enter Route 4.",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "MTMOONPOKECENTER_YOUNGSTER",
+          "when": {
+            "map": "MT_MOON_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONPOKECENTER_GENTLEMAN",
+          "when": {
+            "map": "MT_MOON_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONPOKECENTER_MAGIKARP_SALESMAN",
+          "when": {
+            "map": "MT_MOON_POKECENTER"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 2
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONPOKECENTER_LINK_RECEPTIONIST",
+          "when": {
+            "map": "MT_MOON_POKECENTER"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 2
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "MT_MOON_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 7
+      }
+    },
+    {
+      "id": "reach_cerulean_city",
+      "goal_text": "Travel east across Route 4 until you enter Cerulean City.",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

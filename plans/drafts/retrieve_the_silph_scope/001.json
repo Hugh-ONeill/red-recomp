@@ -1,0 +1,88 @@
+{
+ "goal": "Retrieve the Silph Scope",
+ "subgoals": [
+  {
+   "id": "go_to_route_4",
+   "goal_text": "Leave Cerulean City and head east to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Continue east through Route 4 and enter Route 5",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_saffron_city",
+   "goal_text": "Enter Saffron City from Route 5",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building in Saffron City",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_elevator",
+   "goal_text": "Navigate to the elevator in Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_3f",
+   "goal_text": "Use the elevator to go to the 3rd floor",
+   "done_when": {
+    "map": "SILPH_CO_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_5f",
+   "goal_text": "Navigate through the building to reach the 5th floor",
+   "done_when": {
+    "map": "SILPH_CO_5F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_elevator_again",
+   "goal_text": "Return to the elevator from the 5th floor",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_2f",
+   "goal_text": "Use the elevator to go to the 2nd floor",
+   "done_when": {
+    "map": "SILPH_CO_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_silph_scope",
+   "goal_text": "Locate and retrieve the Silph Scope from the building",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

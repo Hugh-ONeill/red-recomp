@@ -1,0 +1,16 @@
+{
+ "goal": "Obtain the HM for Cut",
+ "subgoals": [
+  {
+   "id": "check_inventory",
+   "goal_text": "Check if the player already possesses HM Cut.",
+   "done_when": {
+    "has_item": {
+     "HM_CUT": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

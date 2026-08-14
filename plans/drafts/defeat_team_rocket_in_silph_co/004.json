@@ -1,0 +1,58 @@
+{
+ "goal": "Defeat Team Rocket in Silph Co.",
+ "subgoals": [
+  {
+   "id": "travel_to_saffron",
+   "goal_text": "Travel from Vermilion City to Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building in Saffron City.",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_first_floor",
+   "goal_text": "Fight through the first floor of Silph Co. to reach the elevator.",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "ascend_to_higher_floors",
+   "goal_text": "Use the elevator to move through the floors of Silph Co., defeating Rocket Grunts along the way.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_giovanni",
+   "goal_text": "Navigate to the top floor of Silph Co. and locate Giovanni.",
+   "done_when": {
+    "player_at": {
+     "x": 4,
+     "y": 5,
+     "radius": 2
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni in battle to liberate Silph Co.",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

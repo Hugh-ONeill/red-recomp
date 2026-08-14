@@ -1,0 +1,46 @@
+{
+ "goal": "Defeat Team Rocket in Silph Co.",
+ "subgoals": [
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Travel from Cerulean City to Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building in Saffron City.",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_first_floor",
+   "goal_text": "Fight through the first floor of Silph Co. to reach the elevator.",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_upper_floors",
+   "goal_text": "Use the elevator to navigate through the building, defeating Team Rocket members on each floor.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Locate and defeat Giovanni on the 11th floor of Silph Co.",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

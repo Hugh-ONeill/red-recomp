@@ -1,0 +1,155 @@
+{
+  "goal": "Win your second Gym Badge",
+  "subgoals": [
+    {
+      "id": "exit_mt_moon",
+      "goal_text": "Exit Mt. Moon to the east and enter Route 4.",
+      "done_when": {
+        "area": "ROUTE_4|36,2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_cerulean_city",
+      "goal_text": "Walk through Route 4 until you reach Cerulean City.",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_4"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_cerulean_poke_center",
+      "goal_text": "Go to the Cerulean Pokemon Center.",
+      "done_when": {
+        "map": "CERULEAN_POKECENTER"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 17,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "heal_at_cerulean",
+      "goal_text": "Heal your party at the Cerulean Pokemon Center.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "enter_cerulean_gym",
+      "goal_text": "Enter the Cerulean Gym.",
+      "done_when": {
+        "map": "CERULEAN_GYM"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "CERULEANPOKECENTER_SUPER_NERD",
+          "when": {
+            "map": "CERULEAN_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CERULEANPOKECENTER_GENTLEMAN",
+          "when": {
+            "map": "CERULEAN_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CERULEANPOKECENTER_SUPER_NERD",
+          "when": {
+            "map": "CERULEAN_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CERULEANPOKECENTER_LINK_RECEPTIONIST",
+          "when": {
+            "map": "CERULEAN_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CERULEANPOKECENTER_SUPER_NERD",
+          "when": {
+            "map": "CERULEAN_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 30,
+          "y": 19,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 6
+      }
+    },
+    {
+      "id": "defeat_misty",
+      "goal_text": "Defeat Misty to earn the Cascade Badge.",
+      "done_when": {
+        "badge": "CASCADEBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

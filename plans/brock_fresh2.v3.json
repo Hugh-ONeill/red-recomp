@@ -1,0 +1,384 @@
+{
+  "goal": "Get the Boulder Badge from Brock in Pewter City",
+  "subgoals": [
+    {
+      "id": "wait_for_oak_intro",
+      "goal_text": "Talk to Professor Oak and wait for him to finish his introduction so you can choose a Pokemon.",
+      "done_when": {
+        "flag": "EVENT_OAK_ASKED_TO_CHOOSE_MON"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_RIVAL",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_RIVAL",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_POKEDEX1",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 11,
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure25",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "pick_starter",
+      "goal_text": "Choose your starter Pokemon from the Poke Balls on the table.",
+      "done_when": {
+        "flag": "EVENT_GOT_STARTER"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_CHARMANDER_POKE_BALL",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "battle_rival",
+      "goal_text": "Battle your rival in the lab.",
+      "done_when": {
+        "flag": "EVENT_BATTLED_RIVAL_IN_OAKS_LAB"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_RIVAL",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_RIVAL",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_BULBASAUR_POKE_BALL",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_RIVAL",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11,
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure25",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "deliver_parcel_to_oak",
+      "goal_text": "Go back into Oak's lab and deliver the parcel to Professor Oak.",
+      "done_when": {
+        "flag": "EVENT_GOT_POKEDEX"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 11,
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_OAK1",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure25",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "get_oaks_parcel",
+      "goal_text": "Interact with the counter to receive Oak's Parcel.",
+      "done_when": {
+        "flag": "EVENT_GOT_OAKS_PARCEL"
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "heal_at_viridian",
+      "goal_text": "Go to the Pokemon Center in Viridian City and heal the party.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_viridian_forest",
+      "goal_text": "Travel north from Viridian City to enter Viridian Forest.",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 7,
+          "when": {
+            "map": "ROUTE_22_GATE"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 43,
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "cross_viridian_forest",
+      "goal_text": "Navigate through Viridian Forest to reach the north exit.",
+      "done_when": {
+        "player_at": {
+          "x": 5,
+          "y": 0,
+          "radius": 4
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "enter_route_2",
+      "goal_text": "Exit Viridian Forest onto Route 2.",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 15,
+          "y": 47,
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "reach_pewter_city",
+      "goal_text": "Travel from Route 2 into Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "buy_potions",
+      "goal_text": "Visit the Pewter Mart and buy Potions to prepare for Brock.",
+      "done_when": {
+        "has_item": {
+          "POTION": 3
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_before_gym",
+      "goal_text": "Heal the party at the Pewter City Pokemon Center before challenging the gym.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter Gym to face Brock.",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Battle and defeat Brock to earn the Boulder Badge.",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

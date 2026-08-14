@@ -1,0 +1,30 @@
+{
+ "goal": "Reach Viridian City",
+ "subgoals": [
+  {
+   "id": "talk_to_oak",
+   "goal_text": "Talk to Professor Oak in his lab to trigger the event that opens the exit from Pallet Town.",
+   "done_when": {
+    "flag": "EVENT_GOT_STARTER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_pallet_town",
+   "goal_text": "Leave Pallet Town and enter Route 1.",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_viridian_city",
+   "goal_text": "Travel north from Route 1 to reach Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,38 @@
+{
+ "goal": "Defeat Erika",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Exit the Trade House and enter Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_celadon",
+   "goal_text": "Travel from Cerulean City to Celadon City. This may require passing through Route 5, Route 6, or the Underground Path.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_gym",
+   "goal_text": "Enter the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Erika to earn the Rainbow Badge.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,22 @@
+{
+ "goal": "Reach Cerulean City",
+ "subgoals": [
+  {
+   "id": "exit_museum",
+   "goal_text": "Exit the museum to return to the overworld",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean",
+   "goal_text": "Travel from Vermilion City to Cerulean City via Route 6 and Route 5",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

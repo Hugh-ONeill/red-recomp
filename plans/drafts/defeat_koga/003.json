@@ -1,0 +1,142 @@
+{
+ "goal": "Defeat Koga",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_pokecenter",
+   "goal_text": "Go to the Pokemon Center in Cerulean City to heal Venusaur.",
+   "done_when": {
+    "map": "CERULEAN_POKECENTER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_pokemon",
+   "goal_text": "Heal the party at the Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Leave Cerulean City and head north to Route 24.",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_25",
+   "goal_text": "Continue north through Route 24 to reach Route 25.",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Return to Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_22",
+   "goal_text": "Travel west from Cerulean City to Route 22.",
+   "done_when": {
+    "map": "ROUTE_22"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_viridian_city",
+   "goal_text": "Continue west from Route 22 into Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Head north from Viridian City to Route 2.",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_digletts_cave",
+   "goal_text": "Enter Diglett's Cave from Route 2.",
+   "done_when": {
+    "map": "DIGLETTS_CAVE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_digletts_cave_east",
+   "goal_text": "Traverse Diglett's Cave and exit on the east side to Route 11.",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_12",
+   "goal_text": "Travel south from Route 11 to Route 12.",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_13",
+   "goal_text": "Travel south from Route 12 to Route 13.",
+   "done_when": {
+    "map": "ROUTE_13"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_14",
+   "goal_text": "Travel south from Route 13 to Route 14.",
+   "done_when": {
+    "map": "ROUTE_14"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_15",
+   "goal_text": "Travel south from Route 14 to Route 15.",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_fuchsia_city",
+   "goal_text": "Enter Fuchsia City from Route 15.",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_fuchsia_gym",
+   "goal_text": "Enter the Fuchsia City Gym.",
+   "done_when": {
+    "map": "FUCHSIA_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_koga",
+   "goal_text": "Battle and defeat Koga to earn the Marsh Badge.",
+   "done_when": {
+    "badge": "MARSHBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

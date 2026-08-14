@@ -1,0 +1,43 @@
+{
+ "goal": "Obtain Poke Balls from Mart",
+ "subgoals": [
+  {
+   "id": "enter_viridian_mart",
+   "goal_text": "Walk into the Viridian City Mart.",
+   "done_when": {
+    "area": "VIRIDIAN_MART|0,2"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 29,
+     "y": 19,
+     "when": {
+      "map": "VIRIDIAN_CITY"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign2",
+    "via": "escalation",
+    "n_ops": 1
+   }
+  },
+  {
+   "id": "buy_poke_balls",
+   "goal_text": "Purchase Poke Balls from the shop clerk.",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

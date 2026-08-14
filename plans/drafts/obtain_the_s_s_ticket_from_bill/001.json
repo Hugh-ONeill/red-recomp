@@ -1,0 +1,16 @@
+{
+ "goal": "Obtain the S.S. Ticket from Bill",
+ "subgoals": [
+  {
+   "id": "talk_to_bill",
+   "goal_text": "Talk to Bill inside his house to receive the S.S. Ticket.",
+   "done_when": {
+    "has_item": {
+     "S_S_TICKET": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

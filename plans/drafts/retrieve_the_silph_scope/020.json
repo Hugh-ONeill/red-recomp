@@ -1,0 +1,80 @@
+{
+ "goal": "Retrieve the Silph Scope",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Walk east from Route 4 to enter Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Walk south from Cerulean City to Route 5.",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_saffron_city",
+   "goal_text": "Walk south from Route 5 to enter Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building in Saffron City.",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_silph_co_2f",
+   "goal_text": "Move up to the second floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_silph_co_3f",
+   "goal_text": "Move up to the third floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_silph_co_4f",
+   "goal_text": "Move up to the fourth floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_silph_co_5f",
+   "goal_text": "Move up to the fifth floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_5F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Interact with the NPC or object to obtain the Silph Scope.",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

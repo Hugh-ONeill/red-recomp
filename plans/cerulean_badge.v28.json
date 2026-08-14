@@ -1,0 +1,199 @@
+{
+  "goal": "Win the Cascade Badge from Misty at the Cerulean City Gym",
+  "subgoals": [
+    {
+      "id": "exit_mt_moon_center",
+      "goal_text": "Leave the Mt. Moon Pokemon Center and enter Route 4.",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "MT_MOON_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "reach_cerulean_city",
+      "goal_text": "Travel east through Route 4 to arrive in Cerulean City. Note: The path is not a straight line; follow the walkable terrain.",
+      "done_when": {
+        "area": "CERULEAN_CITY|20,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 5,
+          "when": {
+            "map": "ROUTE_4"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 5,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 21,
+          "y": 17,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 7,
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 27,
+          "y": 3,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_4"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 6
+      }
+    },
+    {
+      "id": "heal_at_cerulean",
+      "goal_text": "Visit the Cerulean City Pokemon Center to ensure the party is fully healed before the gym.",
+      "done_when": {
+        "area": "CERULEAN_POKECENTER|0,3",
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 17,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "train_backup_rattata",
+      "goal_text": "Since Charmeleon is struggling against Misty's Water types, train Rattata on the grassy areas of Cerulean City to provide a viable alternative attacker.",
+      "done_when": {
+        "slot_level": {
+          "slot": 2,
+          "min": 20
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_cerulean_gym",
+      "goal_text": "Enter the Cerulean City Gym to face Misty.",
+      "done_when": {
+        "area": "CERULEAN_GYM|0,1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "CERULEAN_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 30,
+          "y": 19,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "defeat_misty",
+      "goal_text": "Battle and defeat Gym Leader Misty to earn the Cascade Badge.",
+      "done_when": {
+        "badge": "CASCADEBADGE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "CERULEANGYM_MISTY",
+          "when": {
+            "map": "CERULEAN_GYM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

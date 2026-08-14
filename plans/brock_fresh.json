@@ -7,7 +7,26 @@
       "done_when": {
         "map": "REDS_HOUSE_1F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 7,
+          "y": 1,
+          "when": {
+            "map": "REDS_HOUSE_2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure2",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "exit_house",
@@ -15,7 +34,26 @@
       "done_when": {
         "map": "PALLET_TOWN"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 7,
+          "when": {
+            "map": "REDS_HOUSE_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure2",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "enter_oaks_lab",
@@ -23,7 +61,17 @@
       "done_when": {
         "flag": "EVENT_OAK_ASKED_TO_CHOOSE_MON"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure1",
+        "via": "escalation",
+        "n_ops": 0
+      }
     },
     {
       "id": "choose_starter",
@@ -31,7 +79,33 @@
       "done_when": {
         "flag": "EVENT_GOT_STARTER"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_CHARMANDER_POKE_BALL",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "menu",
+          "index": 2
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 3
+      }
     },
     {
       "id": "battle_rival",
@@ -39,7 +113,33 @@
       "done_when": {
         "flag": "EVENT_BATTLED_RIVAL_IN_OAKS_LAB"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_RIVAL",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 11,
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
       "id": "exit_lab_to_pallet",
@@ -47,7 +147,26 @@
       "done_when": {
         "map": "PALLET_TOWN"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11,
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "travel_to_route_1",
@@ -55,7 +174,25 @@
       "done_when": {
         "map": "ROUTE_1"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "travel_to_viridian",
@@ -63,7 +200,25 @@
       "done_when": {
         "map": "VIRIDIAN_CITY"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "visit_viridian_mart",
@@ -71,7 +226,26 @@
       "done_when": {
         "flag": "EVENT_GOT_OAKS_PARCEL"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 29,
+          "y": 19,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "exit_mart_to_city",
@@ -79,7 +253,26 @@
       "done_when": {
         "map": "VIRIDIAN_CITY"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "return_to_pallet",
@@ -87,7 +280,32 @@
       "done_when": {
         "map": "PALLET_TOWN"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
       "id": "deliver_parcel",
@@ -95,7 +313,33 @@
       "done_when": {
         "flag": "EVENT_GOT_POKEDEX"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 11,
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_OAK1",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
       "id": "exit_lab_to_pallet_2",
@@ -103,7 +347,26 @@
       "done_when": {
         "map": "PALLET_TOWN"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11,
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "travel_to_viridian_2",
@@ -111,7 +374,46 @@
       "done_when": {
         "map": "VIRIDIAN_CITY"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 4
+      }
     },
     {
       "id": "heal_at_viridian",
@@ -119,7 +421,37 @@
       "done_when": {
         "party_healthy": true
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 25,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANPOKECENTER_NURSE",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 3
+      }
     },
     {
       "id": "shopping_for_potions",
@@ -137,7 +469,26 @@
       "done_when": {
         "map": "VIRIDIAN_CITY"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "travel_to_route_2",
@@ -145,7 +496,25 @@
       "done_when": {
         "map": "ROUTE_2"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "train_route_2",
@@ -153,7 +522,39 @@
       "done_when": {
         "lead_level": 10
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_2"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure17",
+        "via": "escalation",
+        "n_ops": 3
+      }
     },
     {
       "id": "enter_viridian_forest",
@@ -161,7 +562,34 @@
       "done_when": {
         "map": "VIRIDIAN_FOREST"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 43,
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure5",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
       "id": "navigate_forest",
@@ -169,7 +597,41 @@
       "done_when": {
         "map": "PEWTER_CITY"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_2"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure13",
+        "via": "escalation",
+        "n_ops": 3
+      }
     },
     {
       "id": "heal_at_pewter",
@@ -177,7 +639,37 @@
       "done_when": {
         "party_healthy": true
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 25,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERPOKECENTER_NURSE",
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure13",
+        "via": "escalation",
+        "n_ops": 3
+      }
     },
     {
       "id": "enter_pewter_gym",
@@ -185,7 +677,34 @@
       "done_when": {
         "map": "PEWTER_GYM"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 16,
+          "y": 17,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure13",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
       "id": "defeat_brock",
@@ -193,7 +712,48 @@
       "done_when": {
         "badge": "BOULDERBADGE"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 16,
+          "y": 17,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_COOLTRAINER_M",
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_BROCK",
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure20",
+        "via": "escalation",
+        "n_ops": 4
+      }
     }
   ],
   "authored_by": "gemma4:31b-it-q4_K_M"

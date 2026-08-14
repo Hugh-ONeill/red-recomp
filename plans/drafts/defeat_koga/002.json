@@ -1,0 +1,86 @@
+{
+ "goal": "Defeat Koga",
+ "subgoals": [
+  {
+   "id": "go_to_route_9",
+   "goal_text": "Travel from Cerulean City to Route 9",
+   "done_when": {
+    "map": "ROUTE_9"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_10",
+   "goal_text": "Continue south from Route 9 to Route 10",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_11",
+   "goal_text": "Continue south from Route 10 to Route 11",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_12",
+   "goal_text": "Travel from Route 11 to Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_13",
+   "goal_text": "Walk west from Route 12 to Route 13",
+   "done_when": {
+    "map": "ROUTE_13"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_14",
+   "goal_text": "Walk west from Route 13 to Route 14",
+   "done_when": {
+    "map": "ROUTE_14"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_15",
+   "goal_text": "Walk west from Route 14 to Route 15",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_fuchsia_city",
+   "goal_text": "Enter Fuchsia City from Route 15",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_fuchsia_gym",
+   "goal_text": "Walk to the Fuchsia Gym",
+   "done_when": {
+    "map": "FUCHSIA_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_koga",
+   "goal_text": "Battle and defeat Koga to earn the Marsh Badge",
+   "done_when": {
+    "badge": "MARSHBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

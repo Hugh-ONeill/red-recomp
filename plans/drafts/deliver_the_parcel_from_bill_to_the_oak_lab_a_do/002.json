@@ -1,0 +1,78 @@
+{
+ "goal": "Deliver the parcel from Bill to the Oak Lab",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Travel north from Cerulean City to Route 24",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_25",
+   "goal_text": "Continue east to Route 25",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_bills_house",
+   "goal_text": "Enter Bill's house (Sea Cottage)",
+   "done_when": {
+    "map": "BILLS_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_parcel",
+   "goal_text": "Talk to Bill and receive the parcel for Professor Oak",
+   "done_when": {
+    "flag": "EVENT_GOT_OAKS_PARCEL"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_bills_house",
+   "goal_text": "Leave Bill's house",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_pallet_town",
+   "goal_text": "Travel back to Pallet Town",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Enter Professor Oak's Lab",
+   "done_when": {
+    "map": "OAKS_LAB"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "deliver_parcel",
+   "goal_text": "Talk to Professor Oak to deliver the parcel",
+   "done_when": {
+    "flag": "EVENT_OAK_GOT_PARCEL"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

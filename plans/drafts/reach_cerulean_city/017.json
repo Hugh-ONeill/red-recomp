@@ -1,0 +1,54 @@
+{
+ "goal": "Reach Cerulean City",
+ "subgoals": [
+  {
+   "id": "exit_museum",
+   "goal_text": "Leave the museum and return to the overworld",
+   "done_when": {
+    "mode": "overworld"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_pewter",
+   "goal_text": "Travel back to Pewter City",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_3",
+   "goal_text": "Head east from Pewter City onto Route 3",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_mt_moon",
+   "goal_text": "Enter Mt. Moon from Route 4",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "traverse_mt_moon",
+   "goal_text": "Navigate through the tunnels of Mt. Moon to reach the exit",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean",
+   "goal_text": "Travel east from Route 4 into Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 3"
+}

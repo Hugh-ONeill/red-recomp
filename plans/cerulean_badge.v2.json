@@ -1,0 +1,48 @@
+{
+  "goal": "Win the Cascade Badge from Misty at the Cerulean City Gym",
+  "subgoals": [
+    {
+      "id": "go_to_cerulean_city",
+      "goal_text": "Travel east from Route 4 to enter Cerulean City",
+      "done_when": {
+        "area": "CERULEAN_CITY|20,0"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_cerulean_center",
+      "goal_text": "Visit the Pokemon Center in Cerulean City to ensure the party is fully healed before the gym",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "enter_cerulean_gym",
+      "goal_text": "Enter the Cerulean City Gym",
+      "done_when": {
+        "area": "CERULEAN_GYM|0,1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_misty",
+      "goal_text": "Battle and defeat Gym Leader Misty to earn the Cascade Badge",
+      "done_when": {
+        "badge": "CASCADEBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

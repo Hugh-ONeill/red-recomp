@@ -1,0 +1,71 @@
+{
+  "goal": "Win your third Gym Badge",
+  "subgoals": [
+    {
+      "id": "go_to_route_5",
+      "goal_text": "Leave Cerulean City and head south to Route 5.",
+      "done_when": {
+        "map": "ROUTE_5"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_5_gate",
+      "goal_text": "Reach the gate at the end of Route 5.",
+      "done_when": {
+        "map": "ROUTE_5_GATE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_6",
+      "goal_text": "Continue south through the gate to Route 6.",
+      "done_when": {
+        "map": "ROUTE_6"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_6_gate",
+      "goal_text": "Reach the gate at the end of Route 6.",
+      "done_when": {
+        "map": "ROUTE_6_GATE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_vermilion_city",
+      "goal_text": "Travel south from Route 6 into Vermilion City.",
+      "done_when": {
+        "map": "VERMILION_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_vermilion_center",
+      "goal_text": "Visit the Pokemon Center in Vermilion City to fully heal the party.",
+      "done_when": {
+        "map": "VERMILION_POKECENTER",
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_vermilion_gym",
+      "goal_text": "Enter the Vermilion City Gym.",
+      "done_when": {
+        "map": "VERMILION_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_lt_surge",
+      "goal_text": "Battle and defeat Gym Leader Lt. Surge to earn the Thunder Badge.",
+      "done_when": {
+        "badge": "THUNDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,182 @@
+{
+  "goal": "Win your first Gym Badge",
+  "subgoals": [
+    {
+      "id": "go_to_route_1",
+      "goal_text": "Walk from Viridian City to Route 1.",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_pallet",
+      "goal_text": "Continue south through Route 1 to reach Pallet Town.",
+      "done_when": {
+        "area": "PALLET_TOWN|10,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "ROUTE1_YOUNGSTER2",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "enter_oaks_lab",
+      "goal_text": "Enter Professor Oak's lab.",
+      "done_when": {
+        "area": "OAKS_LAB|4,1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 11,
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "visit_oak",
+      "goal_text": "Talk to Professor Oak to receive Poke Balls.",
+      "done_when": {
+        "has_item": {
+          "POKE_BALL": 5
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_oaks_lab",
+      "goal_text": "Leave the lab and return to Pallet Town.",
+      "done_when": {
+        "area": "PALLET_TOWN|10,0"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "return_to_route_1",
+      "goal_text": "Walk north from Pallet Town back to Route 1.",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "return_to_viridian",
+      "goal_text": "Continue north through Route 1 to return to Viridian City.",
+      "done_when": {
+        "area": "VIRIDIAN_CITY|17,0"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_forest",
+      "goal_text": "Enter the Viridian Forest from Viridian City.",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "train_in_forest",
+      "goal_text": "Battle wild Pokemon in the forest until Charmander reaches level 12.",
+      "done_when": {
+        "lead_level": 12
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_forest",
+      "goal_text": "Walk through Viridian Forest to reach Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_pewter_poke_center",
+      "goal_text": "Walk to the Pewter City Pokemon Center.",
+      "done_when": {
+        "map": "PEWTER_POKECENTER"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_pewter",
+      "goal_text": "Fully heal the party at the Pewter City Pokemon Center.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter City Gym.",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Defeat Brock to earn the Boulder Badge.",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

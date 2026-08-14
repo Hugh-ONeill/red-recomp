@@ -1,0 +1,80 @@
+{
+ "goal": "Retrieve the Silph Scope",
+ "subgoals": [
+  {
+   "id": "go_to_route_12",
+   "goal_text": "Walk from Route 11 to Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_13",
+   "goal_text": "Walk from Route 12 to Route 13",
+   "done_when": {
+    "map": "ROUTE_13"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_14",
+   "goal_text": "Walk from Route 13 to Route 14",
+   "done_when": {
+    "map": "ROUTE_14"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_15",
+   "goal_text": "Walk from Route 14 to Route 15",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_fuchsia_city",
+   "goal_text": "Enter Fuchsia City from Route 15",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_safari_zone",
+   "goal_text": "Walk to the Safari Zone center",
+   "done_when": {
+    "map": "SAFARI_ZONE_CENTER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_safari_zone",
+   "goal_text": "Enter the Safari Zone",
+   "done_when": {
+    "map": "SAFARI_ZONE_EAST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "navigate_to_secret_house",
+   "goal_text": "Navigate through the Safari Zone to reach the Secret House",
+   "done_when": {
+    "map": "SAFARI_ZONE_SECRET_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Interact with the Warden in the Secret House to retrieve the Silph Scope",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,40 @@
+{
+ "goal": "Obtain the S.S. Ticket from Bill",
+ "subgoals": [
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Walk north from Cerulean City to Route 24",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_25",
+   "goal_text": "Continue north/west from Route 24 to Route 25",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "visit_bills_house",
+   "goal_text": "Enter Bill's house on Route 25",
+   "done_when": {
+    "map": "BILLS_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "talk_to_bill",
+   "goal_text": "Talk to Bill inside his house to receive the S.S. Ticket",
+   "done_when": {
+    "has_item": {
+     "S_S_TICKET": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

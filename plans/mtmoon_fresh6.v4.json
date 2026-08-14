@@ -1,0 +1,220 @@
+{
+  "goal": "Travel from Pewter City through Mt Moon and reach Cerulean City",
+  "subgoals": [
+    {
+      "id": "go_to_pewter_city",
+      "goal_text": "Walk west from Route 4 back into Pewter City",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_4"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "ROUTE_3"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "heal_at_pewter_center",
+      "goal_text": "Visit the Pokemon Center in Pewter City to fully heal the party",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "go_to_route_3",
+      "goal_text": "Leave Pewter City and enter Route 3",
+      "done_when": {
+        "map": "ROUTE_3"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PEWTERCITY_SUPER_NERD2",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "enter_mt_moon",
+      "goal_text": "Travel east through Route 3 and enter the entrance of Mt Moon",
+      "done_when": {
+        "map": "MT_MOON_1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_3"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 5,
+          "when": {
+            "map": "ROUTE_4"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "defeat_super_nerd",
+      "goal_text": "Battle and defeat the Super Nerd guarding the fossils on B2F.",
+      "done_when": {
+        "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_SUPER_NERD",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "descend_to_b1f",
+      "goal_text": "Find the stairs and descend to the first basement floor of Mt Moon",
+      "done_when": {
+        "map": "MT_MOON_B1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 5,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Find the stairs and descend to the second basement floor of Mt Moon",
+      "done_when": {
+        "map": "MT_MOON_B2F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 11,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign5",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "exit_mt_moon_east",
+      "goal_text": "Navigate through the bottom floor and exit Mt Moon to the east",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_cerulean_city",
+      "goal_text": "Continue east from Route 4 until you enter Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

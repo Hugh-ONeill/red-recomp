@@ -1,0 +1,22 @@
+{
+ "goal": "Defeat Lt. Surge",
+ "subgoals": [
+  {
+   "id": "teach_cut_to_pokemon",
+   "goal_text": "Use HM01 (CUT) from the bag to teach it to a Pokemon in the party.",
+   "done_when": {
+    "flag": "EVENT_GOT_HM01"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "battle_lt_surge",
+   "goal_text": "Battle and defeat Lt. Surge in the Vermilion Gym to earn the Thunder Badge.",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

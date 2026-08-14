@@ -1,0 +1,110 @@
+{
+ "goal": "Obtain the HM for Cut",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Walk from Route 24 south into Cerulean City",
+   "done_when": {
+    "area": "CERULEAN_CITY|20,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Walk south from Cerulean City to enter Route 5",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_underground_path_route_5",
+   "goal_text": "Enter the Underground Path from Route 5",
+   "done_when": {
+    "area": "UNDERGROUND_PATH_ROUTE_5|1,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_underground_path_north_south",
+   "goal_text": "Walk through the Underground Path to the North-South junction",
+   "done_when": {
+    "area": "UNDERGROUND_PATH_NORTH_SOUTH|2,3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_underground_path_route_6",
+   "goal_text": "Continue through the Underground Path to Route 6",
+   "done_when": {
+    "area": "UNDERGROUND_PATH_ROUTE_6|1,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_6",
+   "goal_text": "Exit the Underground Path into Route 6",
+   "done_when": {
+    "area": "ROUTE_6|0,3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_vermilion_city",
+   "goal_text": "Walk south from Route 6 to enter Vermilion City",
+   "done_when": {
+    "area": "VERMILION_CITY|18,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_ss_anne",
+   "goal_text": "Walk from Vermilion City to the S.S. Anne dock and board the ship",
+   "done_when": {
+    "map": "SS_ANNE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_ss_anne_2f",
+   "goal_text": "Go up to the second floor of the S.S. Anne",
+   "done_when": {
+    "map": "SS_ANNE_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_ss_anne_captains_room",
+   "goal_text": "Enter the Captain's Room on the S.S. Anne",
+   "done_when": {
+    "area": "SS_ANNE_CAPTAINS_ROOM|0,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "collect_hm_cut",
+   "goal_text": "Search the trash in the Captain's Room to obtain HM01 (Cut)",
+   "done_when": {
+    "flag": "EVENT_GOT_HM01"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_rocket_admin",
+   "goal_text": "Find and defeat the Team Rocket administrator in the hideout",
+   "done_when": {
+    "flag": "EVENT_GOT_TM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "evict_rocket_gym_leader",
+   "goal_text": "Interact with the Team Rocket members in the Saffron Gym to make them leave",
+   "done_when": {
+    "flag": "EVENT_GOT_TM"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,136 @@
+{
+ "goal": "Obtain the HM for Cut",
+ "subgoals": [
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Travel from Cerulean City to Route 24",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_25",
+   "goal_text": "Continue north from Route 24 to Route 25",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_bill",
+   "goal_text": "Walk east on Route 25 to reach Bill's House",
+   "done_when": {
+    "map": "BILLS_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "talk_to_bill",
+   "goal_text": "Talk to Bill inside his house to trigger the event",
+   "done_when": {
+    "flag": "EVENT_GOT_SS_TICKET"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "return_to_cerulean",
+   "goal_text": "Leave Bill's House and return to Route 25",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_24_again",
+   "goal_text": "Travel south from Route 25 back to Route 24",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel south from Route 24 back into Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Travel south from Cerulean City to Route 5",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_4",
+   "goal_text": "Travel west from Route 5 to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean_city_again",
+   "goal_text": "Travel north from Route 4 back into Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_5_again",
+   "goal_text": "Travel south from Cerulean City to Route 5 again",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_saffron_city",
+   "goal_text": "Travel south through the gate from Route 5 to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_7",
+   "goal_text": "Travel east from Saffron City to Route 7",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_city",
+   "goal_text": "Travel east through the gate from Route 7 to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_mansion",
+   "goal_text": "Enter the Celadon Mansion",
+   "done_when": {
+    "map": "CELADON_MANSION_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_hm_cut",
+   "goal_text": "Find and pick up HM01 (Cut) inside the Celadon Mansion",
+   "done_when": {
+    "has_item": {
+     "HM_CUT": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

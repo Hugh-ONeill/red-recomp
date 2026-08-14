@@ -1,0 +1,22 @@
+{
+ "goal": "Reach Cerulean City",
+ "subgoals": [
+  {
+   "id": "enter_mt_moon",
+   "goal_text": "Enter Mt. Moon from Route 4",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "traverse_mt_moon",
+   "goal_text": "Navigate through the tunnels of Mt. Moon to reach the eastern exit",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

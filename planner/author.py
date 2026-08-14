@@ -69,6 +69,14 @@ PREDICATES = {
     "party_size": "party has at least N Pokemon (e.g. {\"party_size\":2}); "
                   "set battle_policy \"catch\" on such a subgoal so wild "
                   "battles throw balls instead of knocking the target out",
+    "knows_move": "a party Pokemon knows a MOVE (e.g. "
+        "{\"knows_move\":\"MEGA_PUNCH\"}, or {\"knows_move\":{\"move\":"
+        "\"MEGA_PUNCH\",\"slot\":1}} for one particular member). A TM in the "
+        "bag does nothing until it is taught, and a Pokemon that only knows "
+        "weak or non-damaging moves loses fights its level says it should "
+        "win — when the journal shows your hits dealing very little, teaching "
+        "a move is a subgoal you can aim at, not just a thing that happens on "
+        "its own",
     "any_of": "EITHER/OR: a LIST of predicates, satisfied as soon as ANY "
         "one of them holds (e.g. {\"any_of\":[{\"has_item\":"
         "{\"HELIX_FOSSIL\":1}},{\"has_item\":{\"DOME_FOSSIL\":1}}]}). Use "
@@ -202,6 +210,10 @@ ENGINE_FLAGS = _engine_names("engine_flags.txt")
 # RIGHT condition for a fossil leg — unwritable in any spelling. The model
 # may name any real item; validation only checks the string is real.
 ENGINE_ITEMS = _engine_names("engine_items.txt")
+# Every move id the engine defines (data/generated/moves.lua), so knows_move
+# can be spell-checked the same way. Manual tier: the TM's own description
+# names the move it teaches, and a Pokemon's summary screen lists its moves.
+ENGINE_MOVES = _engine_names("engine_moves.txt")
 
 # The game's printed outdoor map (data/generated/maps.lua connections),
 # shared with the executor — used to name roads the run has stood beside
@@ -461,6 +473,25 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                              f"game defines{hint}")
             elif k == "badge" and v not in BADGES:
                 probs.append(f"{tag} ({sid}) badge '{v}' unknown")
+            elif k == "knows_move" and ENGINE_MOVES:
+                # The TM is TM_MEGA_PUNCH; the MOVE it teaches is MEGA_PUNCH.
+                # Naming the TM here would be checked against a move list it
+                # can never be in, so say which half is wanted.
+                mv = str((v or {}).get("move") if isinstance(v, dict)
+                         else v or "").upper()
+                if mv not in ENGINE_MOVES:
+                    stripped = mv.split("_", 1)[-1] if mv.startswith(
+                        ("TM_", "HM_")) else ""
+                    if stripped in ENGINE_MOVES:
+                        hint = (f" — {mv} is the ITEM; the move it teaches "
+                                f"is {stripped}")
+                    else:
+                        near = difflib.get_close_matches(
+                            mv, ENGINE_MOVES, n=3, cutoff=0.6)
+                        hint = (f" — did you mean {', '.join(near)}?"
+                                if near else "")
+                    probs.append(f"{tag} ({sid}) '{mv}' is not a move this "
+                                 f"game defines{hint}")
 
 
 def author(goal: str, model: str, rounds: int = 5,
@@ -524,6 +555,7 @@ REVISION_NOTE = (
     "still fail every time because of what it arrives WITH. The predicates "
     "can express that too: lead_level, slot_level and party_min_level raise "
     "a Pokemon by battling in grass; party_size adds one to the party; "
+    "knows_move teaches it something that actually hurts; "
     "has_item buys supplies from a counter. Whether any of those is the "
     "right answer here is your judgement and the evidence is above — but "
     "re-issuing the same approach into a fight that has already been lost "

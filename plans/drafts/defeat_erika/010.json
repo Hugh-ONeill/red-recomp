@@ -1,0 +1,46 @@
+{
+ "goal": "Defeat Erika",
+ "subgoals": [
+  {
+   "id": "go_to_saffron_city",
+   "goal_text": "Walk north from Route 6 into Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_7",
+   "goal_text": "Walk west from Saffron City into Route 7",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_city",
+   "goal_text": "Walk west from Route 7 into Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_gym",
+   "goal_text": "Navigate to the Celadon Gym entrance",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Erika to earn the Rainbow Badge",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,86 @@
+{
+ "goal": "Defeat Brock",
+ "subgoals": [
+  {
+   "id": "go_to_route_1",
+   "goal_text": "Walk from Pallet Town to Route 1.",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_viridian_city",
+   "goal_text": "Walk from Route 1 to Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Walk from Viridian City to Route 2.",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_viridian_forest",
+   "goal_text": "Enter Viridian Forest.",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "train_bulbasaur",
+   "goal_text": "Battle wild Pokemon in Viridian Forest until Bulbasaur reaches level 12.",
+   "done_when": {
+    "lead_level": 12
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_viridian_forest",
+   "goal_text": "Walk through Viridian Forest to the north exit onto Route 2.",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_pewter_city",
+   "goal_text": "Walk from Route 2 to Pewter City.",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_pewter_center",
+   "goal_text": "Visit the Pewter City Pokemon Center to fully heal Bulbasaur.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_pewter_gym",
+   "goal_text": "Enter the Pewter City Gym.",
+   "done_when": {
+    "map": "PEWTER_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Battle and defeat Brock to earn the Boulder Badge.",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

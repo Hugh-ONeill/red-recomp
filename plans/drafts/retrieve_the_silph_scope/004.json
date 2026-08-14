@@ -1,0 +1,96 @@
+{
+ "goal": "Retrieve the Silph Scope",
+ "subgoals": [
+  {
+   "id": "go_to_route_11",
+   "goal_text": "Walk east from Vermilion City to Route 11",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_digletts_cave",
+   "goal_text": "Enter Diglett's Cave from Route 11",
+   "done_when": {
+    "map": "DIGLETTS_CAVE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_digletts_cave_east",
+   "goal_text": "Walk through Diglett's Cave to exit on the east side into Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_13",
+   "goal_text": "Walk east from Route 12 to Route 13",
+   "done_when": {
+    "map": "ROUTE_13"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_14",
+   "goal_text": "Walk east from Route 13 to Route 14",
+   "done_when": {
+    "map": "ROUTE_14"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_15",
+   "goal_text": "Walk east from Route 14 to Route 15",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_fuchsia_city",
+   "goal_text": "Walk east from Route 15 into Fuchsia City",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_safari_zone",
+   "goal_text": "Walk north to the Safari Zone entrance",
+   "done_when": {
+    "map": "SAFARI_ZONE_CENTER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_safari_zone",
+   "goal_text": "Enter the Safari Zone area",
+   "done_when": {
+    "map": "SAFARI_ZONE_WEST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "navigate_to_secret_house",
+   "goal_text": "Navigate through the Safari Zone to reach the Secret House",
+   "done_when": {
+    "map": "SAFARI_ZONE_SECRET_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Interact with the Warden in the Secret House to receive the Silph Scope",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

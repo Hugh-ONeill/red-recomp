@@ -1,0 +1,30 @@
+{
+ "goal": "Reach Cerulean City",
+ "subgoals": [
+  {
+   "id": "exit_mt_moon_b1f",
+   "goal_text": "Exit Mt. Moon B1F and return to the first floor.",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_mt_moon_1f",
+   "goal_text": "Exit Mt. Moon from the surface to Route 4.",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "arrive_cerulean_city",
+   "goal_text": "Travel east from Route 4 to arrive in Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

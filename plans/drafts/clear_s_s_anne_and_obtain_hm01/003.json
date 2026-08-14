@@ -1,0 +1,48 @@
+{
+ "goal": "Clear S.S. Anne and obtain HM01",
+ "subgoals": [
+  {
+   "id": "go_to_ss_anne",
+   "goal_text": "Travel to Vermilion City and enter the S.S. Anne.",
+   "done_when": {
+    "map": "SS_ANNE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "explore_first_floor",
+   "goal_text": "Explore the first floor of the S.S. Anne and move to the second floor.",
+   "done_when": {
+    "map": "SS_ANNE_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "explore_second_floor",
+   "goal_text": "Navigate through the second floor rooms and reach the third floor.",
+   "done_when": {
+    "map": "SS_ANNE_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_captains_room",
+   "goal_text": "Find and enter the Captain's room on the third floor.",
+   "done_when": {
+    "map": "SS_ANNE_CAPTAINS_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_hm01",
+   "goal_text": "Speak with the Captain to receive HM01 (Cut).",
+   "done_when": {
+    "has_item": {
+     "HM_CUT": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 3"
+}

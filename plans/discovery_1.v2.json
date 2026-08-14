@@ -1,0 +1,315 @@
+{
+  "goal": "Win your first Gym Badge",
+  "subgoals": [
+    {
+      "id": "exit_viridian_pokecenter",
+      "goal_text": "Leave the Viridian Pokemon Center and enter Viridian City.",
+      "done_when": {
+        "area": "VIRIDIAN_CITY|17,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_route_22",
+      "goal_text": "Walk west from Viridian City to Route 22.",
+      "done_when": {
+        "map": "ROUTE_22"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "reach_pallet_town",
+      "goal_text": "Continue west through Route 22 to reach Pallet Town.",
+      "done_when": {
+        "area": "PALLET_TOWN|10,0"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "visit_oak_lab",
+      "goal_text": "Enter Professor Oak's Lab in Pallet Town.",
+      "done_when": {
+        "area": "OAKS_LAB|4,1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 0,
+          "when": {
+            "map": "ROUTE_22_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "ROUTE_22_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "ROUTE_22_GATE"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROUTE1_YOUNGSTER1",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROUTE1_YOUNGSTER2",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PALLETTOWN_GIRL",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PALLETTOWN_FISHER",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 11,
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 11
+      }
+    },
+    {
+      "id": "get_pokeballs",
+      "goal_text": "Interact with Professor Oak to obtain Poke Balls.",
+      "done_when": {
+        "has_item": {
+          "POKE_BALL": 5
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_oak_lab",
+      "goal_text": "Leave Professor Oak's Lab.",
+      "done_when": {
+        "area": "PALLET_TOWN|10,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "return_to_route_22",
+      "goal_text": "Walk east from Pallet Town back to Route 22.",
+      "done_when": {
+        "map": "ROUTE_22"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROUTE1_YOUNGSTER1",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROUTE1_YOUNGSTER2",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "return_to_viridian_city",
+      "goal_text": "Continue east through Route 22 back to Viridian City.",
+      "done_when": {
+        "area": "VIRIDIAN_CITY|17,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "enter_viridian_forest",
+      "goal_text": "Walk north from Viridian City into Viridian Forest.",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "train_in_forest",
+      "goal_text": "Battle wild Pokemon in Viridian Forest until Charmander reaches level 13.",
+      "done_when": {
+        "lead_level": 13
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_viridian_forest",
+      "goal_text": "Navigate through the forest and exit north into Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter City Gym to challenge Brock.",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Defeat Gym Leader Brock in battle to earn the Boulder Badge.",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

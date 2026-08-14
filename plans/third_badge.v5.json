@@ -1,0 +1,104 @@
+{
+  "goal": "Win your third Gym Badge",
+  "subgoals": [
+    {
+      "id": "go_to_route_4",
+      "goal_text": "Exit Cerulean City to the west to enter Route 4",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 9,
+          "y": 9,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "CERULEAN_BADGE_HOUSE"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "go_to_route_5",
+      "goal_text": "Continue east through Route 4 and pass through the gate into Route 5",
+      "done_when": {
+        "map": "ROUTE_5"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_6",
+      "goal_text": "Continue east through Route 5 and pass through the gate into Route 6",
+      "done_when": {
+        "map": "ROUTE_6"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_7",
+      "goal_text": "Continue east through Route 6 and pass through the gate into Route 7",
+      "done_when": {
+        "map": "ROUTE_7"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_celadon_city",
+      "goal_text": "Enter Celadon City from Route 7",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_ss_ticket",
+      "goal_text": "Go to the top floor of the department store and obtain the Secret Ticket (SS Ticket) from the clerk.",
+      "done_when": {
+        "flag": "EVENT_GOT_SS_TICKET"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_celadon_gym",
+      "goal_text": "Walk to the Celadon Gym",
+      "done_when": {
+        "map": "CELADON_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_celadon_gym_leader",
+      "goal_text": "Defeat the gym leader Erika to earn the Rainbow Badge",
+      "done_when": {
+        "badge": "RAINBOWBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

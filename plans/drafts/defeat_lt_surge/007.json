@@ -1,0 +1,94 @@
+{
+ "goal": "Defeat Lt. Surge",
+ "subgoals": [
+  {
+   "id": "go_to_route_25",
+   "goal_text": "Walk east from Route 24 to Route 25",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Walk west from Route 25 back into Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Walk north from Cerulean City to Route 24",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Walk south through Cerulean City and Route 24, then continue south towards Vermilion City via Route 5 and 6 (or the bridge)",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_4",
+   "goal_text": "Walk south from Cerulean City to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Walk south from Route 4 into Route 5",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_6",
+   "goal_text": "Walk south through the gate from Route 5 to Route 6",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_vermilion_city",
+   "goal_text": "Walk south from Route 6 into Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_vermilion_center",
+   "goal_text": "Go to the Vermilion Pokemon Center and heal the party",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_vermilion_gym",
+   "goal_text": "Enter the Vermilion Gym",
+   "done_when": {
+    "map": "VERMILION_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_lt_surge",
+   "goal_text": "Battle and defeat Lt. Surge to earn the Thunder Badge",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

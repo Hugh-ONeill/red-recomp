@@ -1,0 +1,71 @@
+{
+ "goal": "Defeat Erika",
+ "subgoals": [
+  {
+   "id": "go_to_vermilion",
+   "goal_text": "Walk west from Route 11 to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_6",
+   "goal_text": "Walk north from Vermilion City to Route 6",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Walk north from Route 6 to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_7",
+   "goal_text": "Walk west from Saffron City to Route 7",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Walk west from Route 7 to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_celadon",
+   "goal_text": "Visit the Pokemon Center in Celadon City to heal the party",
+   "done_when": {
+    "map": "CELADON_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_gym",
+   "goal_text": "Enter the Celadon Gym",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Erika to earn the Rainbow Badge",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

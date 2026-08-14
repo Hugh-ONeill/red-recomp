@@ -1,0 +1,122 @@
+{
+ "goal": "Retrieve the Silph Scope",
+ "subgoals": [
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Exit Mt. Moon to reach the surface.",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_2",
+   "goal_text": "Walk west from Mt. Moon to Route 2.",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Continue west through Route 2 to Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_5",
+   "goal_text": "Travel south from Cerulean City to Route 5.",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_6",
+   "goal_text": "Continue south through Route 5 to Route 6.",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_7",
+   "goal_text": "Continue south through Route 6 to reach Route 7.",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_celadon_city",
+   "goal_text": "Continue south from Route 7 into Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_secret_key",
+   "goal_text": "Enter the Celadon Game Corner and retrieve the Secret Key from the prize room.",
+   "done_when": {
+    "has_item": {
+     "SECRET_KEY": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_saffron_city",
+   "goal_text": "Travel north from Celadon City to Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building.",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "ascend_to_3f",
+   "goal_text": "Navigate through the building to reach the 3rd floor.",
+   "done_when": {
+    "map": "SILPH_CO_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "ascend_to_5f",
+   "goal_text": "Continue ascending to the 5th floor.",
+   "done_when": {
+    "map": "SILPH_CO_5F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_president_office",
+   "goal_text": "Navigate through the upper floors to reach the President's office on the 11th floor.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Talk to the President of Silph Co. to receive the Silph Scope.",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

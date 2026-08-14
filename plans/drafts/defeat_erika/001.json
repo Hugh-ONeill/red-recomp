@@ -1,0 +1,151 @@
+{
+ "goal": "Defeat Erika",
+ "subgoals": [
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Travel from Cerulean City to Route 5.",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_underground_path_route_5",
+   "goal_text": "Enter the Underground Path from Route 5.",
+   "done_when": {
+    "area": "UNDERGROUND_PATH_ROUTE_5|1,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_underground_path_north_south",
+   "goal_text": "Walk through the Underground Path to the North-South junction.",
+   "done_when": {
+    "area": "UNDERGROUND_PATH_NORTH_SOUTH|2,3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_underground_path_route_6",
+   "goal_text": "Walk from the junction to the Route 6 exit of the Underground Path.",
+   "done_when": {
+    "area": "UNDERGROUND_PATH_ROUTE_6|1,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_6",
+   "goal_text": "Exit the Underground Path onto Route 6.",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_vermilion_city",
+   "goal_text": "Travel south from Route 6 to Vermilion City.",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_11",
+   "goal_text": "Travel east from Vermilion City to Route 11.",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_12",
+   "goal_text": "Continue east from Route 11 to Route 12.",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_13",
+   "goal_text": "Travel through the gate from Route 12 to Route 13.",
+   "done_when": {
+    "map": "ROUTE_13"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_14",
+   "goal_text": "Travel north from Route 13 to Route 14.",
+   "done_when": {
+    "map": "ROUTE_14"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_15",
+   "goal_text": "Continue east from Route 14 to Route 15.",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_16",
+   "goal_text": "Travel north from Route 15 to Route 16.",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_17",
+   "goal_text": "Continue west through Route 16 to Route 17.",
+   "done_when": {
+    "map": "ROUTE_17"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_18",
+   "goal_text": "Continue west from Route 17 to Route 18.",
+   "done_when": {
+    "map": "ROUTE_18"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_city",
+   "goal_text": "Travel south from Route 18 into Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_celadon_center",
+   "goal_text": "Visit the Pokemon Center in Celadon City to fully heal Venusaur.",
+   "done_when": {
+    "map": "CELADON_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_gym",
+   "goal_text": "Enter the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Gym Leader Erika using Venusaur.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

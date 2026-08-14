@@ -1,0 +1,30 @@
+{
+ "goal": "Obtain the HM for Cut",
+ "subgoals": [
+  {
+   "id": "exit_ss_anne_rooms",
+   "goal_text": "Leave the rooms on the second floor of the S.S. Anne.",
+   "done_when": {
+    "map": "SS_ANNE_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_captains_room",
+   "goal_text": "Go to the Captain's Room on the S.S. Anne.",
+   "done_when": {
+    "area": "SS_ANNE_CAPTAINS_ROOM|0,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "collect_hm_cut",
+   "goal_text": "Search the trash in the Captain's Room to find HM01.",
+   "done_when": {
+    "flag": "EVENT_GOT_HM01"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

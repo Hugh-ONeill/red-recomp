@@ -1,0 +1,439 @@
+{
+  "goal": "Win your first Gym Badge",
+  "subgoals": [
+    {
+      "id": "exit_house_2f",
+      "goal_text": "Go downstairs from the second floor of the house.",
+      "done_when": {
+        "map": "REDS_HOUSE_1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 7,
+          "y": 1,
+          "when": {
+            "map": "REDS_HOUSE_2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "exit_house_1f",
+      "goal_text": "Leave the house and enter Pallet Town.",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "REDSHOUSE1F_MOM",
+          "when": {
+            "map": "REDS_HOUSE_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 7,
+          "when": {
+            "map": "REDS_HOUSE_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "go_to_oaks_lab",
+      "goal_text": "Walk to Professor Oak's laboratory.",
+      "done_when": {
+        "map": "OAKS_LAB"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PALLETTOWN_GIRL",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PALLETTOWN_FISHER",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 11,
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "get_starter_pokemon",
+      "goal_text": "Interact with the Poke Ball on the table to choose a starter Pokemon.",
+      "done_when": {
+        "party_nonempty": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_CHARMANDER_POKE_BALL",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "exit_oaks_lab",
+      "goal_text": "Leave Professor Oak's laboratory.",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_BULBASAUR_POKE_BALL",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_OAK1",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11,
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "go_to_route_1",
+      "goal_text": "Walk north from Pallet Town to Route 1.",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "reach_viridian_city",
+      "goal_text": "Continue north through Route 1 to reach Viridian City.",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "ROUTE1_YOUNGSTER1",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROUTE1_YOUNGSTER2",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "go_to_poke_center_viridian",
+      "goal_text": "Enter the Pokemon Center in Viridian City.",
+      "done_when": {
+        "map": "VIRIDIAN_POKECENTER"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VIRIDIANCITY_YOUNGSTER1",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANCITY_YOUNGSTER2",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANCITY_GIRL",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANCITY_OLD_MAN_SLEEPY",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 25,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "heal_at_viridian",
+      "goal_text": "Heal your party at the Pokemon Center.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "exit_poke_center_viridian",
+      "goal_text": "Leave the Viridian City Pokemon Center.",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VIRIDIANPOKECENTER_COOLTRAINER_M",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANPOKECENTER_GENTLEMAN",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANPOKECENTER_LINK_RECEPTIONIST",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANPOKECENTER_GENTLEMAN",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "go_to_route_2",
+      "goal_text": "Walk north from Viridian City to Route 2.",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_viridian_forest",
+      "goal_text": "Enter the Viridian Forest.",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_viridian_forest",
+      "goal_text": "Navigate through Viridian Forest to reach the north exit into Route 2.",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_pewter_city",
+      "goal_text": "Walk north from Route 2 into Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "train_for_gym",
+      "goal_text": "Train your lead Pokemon until it is at least level 12 to prepare for the gym.",
+      "done_when": {
+        "lead_level": 12
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter City Gym.",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Battle and defeat Brock to earn the Boulder Badge.",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

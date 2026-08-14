@@ -1,0 +1,55 @@
+{
+  "goal": "Win the Cascade Badge from Misty at the Cerulean City Gym",
+  "subgoals": [
+    {
+      "id": "enter_cerulean_gym",
+      "goal_text": "Walk into the Cerulean City Gym",
+      "done_when": {
+        "map": "CERULEAN_GYM"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "CERULEANCITY_SUPER_NERD2",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CERULEANCITY_SUPER_NERD1",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 30,
+          "y": 19,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "defeat_misty",
+      "goal_text": "Battle and defeat Misty to earn the Cascade Badge",
+      "done_when": {
+        "badge": "CASCADEBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

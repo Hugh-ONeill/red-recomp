@@ -1,0 +1,94 @@
+{
+ "goal": "Defeat Erika",
+ "subgoals": [
+  {
+   "id": "go_to_route_10",
+   "goal_text": "Walk west from Route 11 to Route 10",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_digletts_cave",
+   "goal_text": "Enter Diglett's Cave from Route 10",
+   "done_when": {
+    "map": "DIGLETTS_CAVE_ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "traverse_digletts_cave",
+   "goal_text": "Walk through Diglett's Cave to the west exit",
+   "done_when": {
+    "map": "DIGLETTS_CAVE_ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Exit Diglett's Cave onto Route 2",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Walk north from Route 2 to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Walk south from Cerulean City to Route 5",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_6",
+   "goal_text": "Walk south from Route 5 to Route 6",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_7",
+   "goal_text": "Walk south from Route 6 to Route 7",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_city",
+   "goal_text": "Walk east from Route 7 into Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_gym",
+   "goal_text": "Navigate to the entrance of the Celadon Gym",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Erika to earn the Rainbow Badge",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

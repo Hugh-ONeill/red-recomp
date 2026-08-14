@@ -1,0 +1,174 @@
+{
+ "goal": "Defeat Erika",
+ "subgoals": [
+  {
+   "id": "go_to_route_10",
+   "goal_text": "Walk east from Vermilion City to Route 10.",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_digletts_cave",
+   "goal_text": "Enter Diglett's Cave from Route 10.",
+   "done_when": {
+    "map": "DIGLETTS_CAVE_ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_digletts_cave_east",
+   "goal_text": "Traverse Diglett's Cave and exit east onto Route 11.",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_12",
+   "goal_text": "Walk east through the Route 11 Gate to reach Route 12.",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_13",
+   "goal_text": "Walk east through the Route 12 Gate to reach Route 13.",
+   "done_when": {
+    "map": "ROUTE_13"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_14",
+   "goal_text": "Walk north from Route 13 to reach Route 14.",
+   "done_when": {
+    "map": "ROUTE_14"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_15",
+   "goal_text": "Walk east from Route 14 to reach Route 15.",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_16",
+   "goal_text": "Walk north from Route 15 through the gate to reach Route 16.",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_17",
+   "goal_text": "Walk north from Route 16 to reach Route 17.",
+   "done_when": {
+    "map": "ROUTE_17"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_18",
+   "goal_text": "Walk north from Route 17 to reach Route 18.",
+   "done_when": {
+    "map": "ROUTE_18"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_19",
+   "goal_text": "Walk north from Route 18 through the gate to reach Route 19.",
+   "done_when": {
+    "map": "ROUTE_19"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_20",
+   "goal_text": "Walk north from Route 19 to reach Route 20.",
+   "done_when": {
+    "map": "ROUTE_20"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_21",
+   "goal_text": "Walk west from Route 20 to reach Route 21.",
+   "done_when": {
+    "map": "ROUTE_21"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Walk west from Route 21 to enter Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_4",
+   "goal_text": "Walk east from Cerulean City to reach Route 4.",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Walk east through the Route 4 Gate to reach Route 5.",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_6",
+   "goal_text": "Walk east through the Route 5 Gate to reach Route 6.",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_7",
+   "goal_text": "Walk east from Route 6 to reach Route 7.",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_city",
+   "goal_text": "Walk east from Route 7 to enter Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_gym",
+   "goal_text": "Navigate through Celadon City and enter the Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Erika to earn the RAINBOWBADGE.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

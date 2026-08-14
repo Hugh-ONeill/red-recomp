@@ -1,0 +1,111 @@
+{
+  "goal": "Win your third Gym Badge",
+  "subgoals": [
+    {
+      "id": "go_to_cerulean_pkcenter",
+      "goal_text": "Go to the Pokemon Center in Cerulean City and heal the party.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_cerulean_south",
+      "goal_text": "Leave Cerulean City to the south towards Route 4.",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_24"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "reach_route_5",
+      "goal_text": "Travel south from Route 4 to reach Route 5.",
+      "done_when": {
+        "map": "ROUTE_5"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_route_6",
+      "goal_text": "Continue east through the gate to Route 6.",
+      "done_when": {
+        "map": "ROUTE_6"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_route_7",
+      "goal_text": "Continue east to Route 7.",
+      "done_when": {
+        "map": "ROUTE_7"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_lt_surge",
+      "goal_text": "Defeat Lt. Surge to win the Thunder Badge",
+      "done_when": {
+        "badge": "THUNDERBADGE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_celadon_city",
+      "goal_text": "Enter Celadon City from the west.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_celadon_pkcenter",
+      "goal_text": "Visit the Pokemon Center in Celadon City to ensure the party is healthy.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_celadon_gym",
+      "goal_text": "Enter the Celadon Gym.",
+      "done_when": {
+        "map": "CELADON_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_celadon_gym_leader",
+      "goal_text": "Defeat the gym leader Erika to earn the Rainbow Badge.",
+      "done_when": {
+        "badge": "RAINBOWBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -7,7 +7,33 @@
       "done_when": {
         "map": "ROUTE_3"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 13,
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure26",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
       "id": "traverse_route_3",
@@ -15,7 +41,55 @@
       "done_when": {
         "map": "MT_MOON_1F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_3"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_3"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 5,
+          "when": {
+            "map": "ROUTE_4"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure29",
+        "via": "escalation",
+        "n_ops": 5
+      }
     },
     {
       "id": "descend_mt_moon_1f",
@@ -23,7 +97,26 @@
       "done_when": {
         "map": "MT_MOON_B1F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 5,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure29",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "descend_mt_moon_b1f",
@@ -31,7 +124,26 @@
       "done_when": {
         "map": "MT_MOON_B2F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 27,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure29",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "clear_mt_moon_b2f",
@@ -39,7 +151,56 @@
       "done_when": {
         "map": "ROUTE_4"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_ROCKET2",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MTMOONB2F_HP_UP",
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 15,
+          "y": 27,
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 25,
+          "y": 15,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 14,
+          "y": 35,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure29",
+        "via": "escalation",
+        "n_ops": 5
+      }
     },
     {
       "id": "traverse_route_4",

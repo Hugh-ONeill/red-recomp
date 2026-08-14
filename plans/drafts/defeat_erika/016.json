@@ -1,0 +1,142 @@
+{
+ "goal": "Defeat Erika",
+ "subgoals": [
+  {
+   "id": "exit_route_6_gate",
+   "goal_text": "Exit the Route 6 Gate to enter Route 6.",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_vermilion_city",
+   "goal_text": "Travel south from Route 6 into Vermilion City.",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_11",
+   "goal_text": "Travel east from Vermilion City to Route 11.",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_digletts_cave",
+   "goal_text": "Enter Diglett's Cave from Route 11.",
+   "done_when": {
+    "map": "DIGLETTS_CAVE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_digletts_cave_east",
+   "goal_text": "Traverse Diglett's Cave and exit on the east side to Route 2.",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_pewter_city",
+   "goal_text": "Travel north from Route 2 into Pewter City.",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_3",
+   "goal_text": "Travel east from Pewter City to Route 3.",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_4",
+   "goal_text": "Travel north from Route 3 to Route 4.",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_cerulean_city",
+   "goal_text": "Travel east from Route 4 into Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Travel south from Cerulean City to Route 5.",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_underground_path_north_south",
+   "goal_text": "Enter the Underground Path from Route 5.",
+   "done_when": {
+    "map": "UNDERGROUND_PATH_NORTH_SOUTH"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_underground_path_route_6",
+   "goal_text": "Traverse the Underground Path and exit onto Route 6.",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_saffron_city",
+   "goal_text": "Travel north from Route 6 into Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_7",
+   "goal_text": "Travel west from Saffron City to Route 7.",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_city",
+   "goal_text": "Travel west from Route 7 into Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_gym",
+   "goal_text": "Navigate through Celadon City to the entrance of the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Erika to earn the Rainbow Badge.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

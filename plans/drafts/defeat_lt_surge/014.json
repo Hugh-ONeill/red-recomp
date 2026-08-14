@@ -1,0 +1,22 @@
+{
+ "goal": "Defeat Lt. Surge",
+ "subgoals": [
+  {
+   "id": "enter_vermilion_gym",
+   "goal_text": "Enter the Vermilion City Gym",
+   "done_when": {
+    "area": "VERMILION_GYM|4,5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_lt_surge",
+   "goal_text": "Battle and defeat Lt. Surge using Venusaur",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

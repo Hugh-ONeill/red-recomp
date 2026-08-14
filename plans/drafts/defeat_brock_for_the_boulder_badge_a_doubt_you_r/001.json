@@ -1,0 +1,30 @@
+{
+ "goal": "Defeat Brock for the Boulder Badge",
+ "subgoals": [
+  {
+   "id": "travel_to_pewter_city",
+   "goal_text": "Travel to Pewter City.",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_pewter_gym",
+   "goal_text": "Enter the Pewter City Gym.",
+   "done_when": {
+    "map": "PEWTER_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Defeat Brock in battle to earn the Boulder Badge.",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

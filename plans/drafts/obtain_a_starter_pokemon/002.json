@@ -1,0 +1,86 @@
+{
+ "goal": "Obtain a starter Pokemon",
+ "subgoals": [
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Walk west from Route 6 to Route 5",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_4",
+   "goal_text": "Walk west from Route 5 to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Walk west from Route 4 to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Walk north from Cerulean City to Route 24",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_25",
+   "goal_text": "Walk north from Route 24 to Route 25",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Walk west from Route 25 to Route 2",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_1",
+   "goal_text": "Walk south from Route 2 to Route 1",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_pallet_town",
+   "goal_text": "Walk south from Route 1 to Pallet Town",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Enter Professor Oak's Lab in Pallet Town",
+   "done_when": {
+    "map": "OAKS_LAB"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_starter",
+   "goal_text": "Interact with the starter Pokemon Poke Balls on the table to obtain a starter",
+   "done_when": {
+    "party_size": 2
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

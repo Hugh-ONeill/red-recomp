@@ -1,0 +1,255 @@
+{
+ "goal": "Defeat Misty",
+ "subgoals": [
+  {
+   "id": "exit_mt_moon_b2f",
+   "goal_text": "Exit the bottom floor of Mt. Moon to reach B1F.",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 21,
+     "y": 17,
+     "when": {
+      "map": "MT_MOON_B2F"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1
+   }
+  },
+  {
+   "id": "exit_mt_moon_b1f",
+   "goal_text": "Exit the first basement of Mt. Moon to reach the surface.",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 5,
+     "y": 5,
+     "when": {
+      "map": "MT_MOON_B1F"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1
+   }
+  },
+  {
+   "id": "exit_mt_moon_surface",
+   "goal_text": "Exit Mt. Moon and enter Route 4.",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "interact",
+     "name": "MTMOON1F_HIKER",
+     "answer": "yes",
+     "when": {
+      "map": "MT_MOON_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 15,
+     "y": 35,
+     "when": {
+      "map": "MT_MOON_1F"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 2
+   }
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel east through Route 4 to enter Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "cross",
+     "dir": "east",
+     "when": {
+      "map": "ROUTE_4"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1
+   }
+  },
+  {
+   "id": "heal_at_cerulean_center",
+   "goal_text": "Visit the Cerulean Pokemon Center to fully heal Ivysaur.",
+   "done_when": {
+    "map": "CERULEAN_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 19,
+     "y": 17,
+     "when": {
+      "map": "CERULEAN_CITY"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "CERULEANPOKECENTER_GENTLEMAN",
+     "when": {
+      "map": "CERULEAN_POKECENTER"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "CERULEANPOKECENTER_SUPER_NERD",
+     "when": {
+      "map": "CERULEAN_POKECENTER"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "CERULEANPOKECENTER_LINK_RECEPTIONIST",
+     "when": {
+      "map": "CERULEAN_POKECENTER"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "CERULEANPOKECENTER_NURSE",
+     "when": {
+      "map": "CERULEAN_POKECENTER"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "CERULEANPOKECENTER_LINK_RECEPTIONIST",
+     "answer": "no",
+     "when": {
+      "map": "CERULEAN_POKECENTER"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "CERULEANPOKECENTER_NURSE",
+     "answer": "yes",
+     "when": {
+      "map": "CERULEAN_POKECENTER"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 7
+   }
+  },
+  {
+   "id": "enter_cerulean_gym",
+   "goal_text": "Enter the Cerulean Gym to challenge Misty.",
+   "done_when": {
+    "map": "CERULEAN_GYM"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 3,
+     "y": 7,
+     "when": {
+      "map": "CERULEAN_POKECENTER"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 30,
+     "y": 19,
+     "when": {
+      "map": "CERULEAN_CITY"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 2
+   }
+  },
+  {
+   "id": "defeat_misty",
+   "goal_text": "Battle and defeat Gym Leader Misty to earn the Cascade Badge.",
+   "done_when": {
+    "badge": "CASCADEBADGE"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "interact",
+     "name": "CERULEANGYM_MISTY",
+     "answer": "yes",
+     "when": {
+      "map": "CERULEAN_GYM"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1
+   }
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

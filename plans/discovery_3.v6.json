@@ -1,0 +1,122 @@
+{
+  "goal": "Win your third Gym Badge",
+  "subgoals": [
+    {
+      "id": "go_to_cerulean_city",
+      "goal_text": "Walk south from Route 24 to Cerulean City",
+      "done_when": {
+        "area": "CERULEAN_CITY|20,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_24"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_route_4",
+      "goal_text": "Walk west from Cerulean City to Route 4",
+      "done_when": {
+        "area": "ROUTE_4|63,10"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_route_5",
+      "goal_text": "Walk west through Route 4 to the gate of Route 5",
+      "done_when": {
+        "map": "ROUTE_5"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_saffron_city",
+      "goal_text": "Walk east from Route 5 into Saffron City",
+      "done_when": {
+        "map": "SAFFRON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_6",
+      "goal_text": "Walk east from Saffron City to Route 6",
+      "done_when": {
+        "map": "ROUTE_6"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_7",
+      "goal_text": "Walk east through the gate from Route 6 to Route 7",
+      "done_when": {
+        "map": "ROUTE_7"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_celadon_city",
+      "goal_text": "Walk east from Route 7 into Celadon City",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_celadon_gym",
+      "goal_text": "Enter the Celadon Gym",
+      "done_when": {
+        "map": "CELADON_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_gym_leader",
+      "goal_text": "Defeat the Celadon Gym Leader to earn the Rainbow Badge",
+      "done_when": {
+        "badge": "RAINBOWBADGE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_lt_surge",
+      "goal_text": "Defeat Lt. Surge to earn the Thunder Badge.",
+      "done_when": {
+        "badge": "THUNDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

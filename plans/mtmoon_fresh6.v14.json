@@ -1,0 +1,96 @@
+{
+ "goal": "Travel from Pewter City through Mt Moon and reach Cerulean City",
+ "subgoals": [
+  {
+   "id": "exit_cerulean_gym",
+   "goal_text": "Leave the Cerulean Gym to enter Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_pewter_city",
+   "goal_text": "Travel from Cerulean City back to Pewter City via Route 4 and Mt Moon.",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_pewter",
+   "goal_text": "Visit the Pewter City Pokemon Center to ensure the party is healthy before heading back into Mt Moon.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_route_3",
+   "goal_text": "Leave Pewter City and enter Route 3.",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_mt_moon_1f",
+   "goal_text": "Enter the entrance of Mt Moon (1F).",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b1f",
+   "goal_text": "Navigate through the first floor and descend to the basement (B1F).",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Navigate through the first basement and descend to the second basement (B2F).",
+   "done_when": {
+    "map": "MT_MOON_B2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_super_nerd",
+   "goal_text": "Find and defeat the Super Nerd guarding the fossils on B2F.",
+   "done_when": {
+    "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
+   },
+   "escalation_rounds": 4,
+   "macro": [],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign4",
+    "via": "escalation",
+    "n_ops": 0
+   }
+  },
+  {
+   "id": "exit_mt_moon_to_route_4",
+   "goal_text": "Navigate through the second basement and exit Mt Moon onto Route 4.",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel from Route 4 to reach Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

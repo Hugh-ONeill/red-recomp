@@ -7,7 +7,45 @@
       "done_when": {
         "party_healthy": true
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 13,
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 25,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERPOKECENTER_NURSE",
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure14",
+        "via": "escalation",
+        "n_ops": 4
+      }
     },
     {
       "id": "buy_potions",
@@ -17,7 +55,42 @@
           "POTION": 5
         }
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 17,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "buy",
+          "item": "POTION",
+          "count": 5,
+          "when": {
+            "map": "PEWTER_MART"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure14",
+        "via": "escalation",
+        "n_ops": 3
+      }
     },
     {
       "id": "exit_pewter_to_route3",
@@ -25,7 +98,33 @@
       "done_when": {
         "map": "ROUTE_3"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_MART"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure14",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
       "id": "cross_route3",
@@ -33,7 +132,33 @@
       "done_when": {
         "map": "MT_MOON_1F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_3"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 5,
+          "when": {
+            "map": "ROUTE_4"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure14",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
       "id": "descend_to_b1f",
@@ -41,7 +166,26 @@
       "done_when": {
         "map": "MT_MOON_B1F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 5,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure14",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "descend_to_b2f",
@@ -49,7 +193,26 @@
       "done_when": {
         "map": "MT_MOON_B2F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 11,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "pure20",
+        "via": "escalation",
+        "n_ops": 1
+      }
     },
     {
       "id": "defeat_super_nerd",

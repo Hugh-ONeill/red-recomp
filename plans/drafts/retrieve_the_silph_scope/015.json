@@ -1,0 +1,112 @@
+{
+ "goal": "Retrieve the Silph Scope",
+ "subgoals": [
+  {
+   "id": "go_to_route_12",
+   "goal_text": "Walk from Route 11 to Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_13",
+   "goal_text": "Walk from Route 12 to Route 13",
+   "done_when": {
+    "map": "ROUTE_13"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_14",
+   "goal_text": "Walk from Route 13 to Route 14",
+   "done_when": {
+    "map": "ROUTE_14"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_15",
+   "goal_text": "Walk from Route 14 to Route 15",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_fuchsia_city",
+   "goal_text": "Enter Fuchsia City from Route 15",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_fuchsia_center",
+   "goal_text": "Heal party at Fuchsia Pokemon Center before entering Safari Zone",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_safari_zone_gate",
+   "goal_text": "Walk to the Safari Zone entrance in Fuchsia City",
+   "done_when": {
+    "map": "SAFARI_ZONE_GATE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_safari_zone",
+   "goal_text": "Enter the Safari Zone",
+   "done_when": {
+    "map": "SAFARI_ZONE_CENTER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_safari_zone_west",
+   "goal_text": "Enter the West area of the Safari Zone",
+   "done_when": {
+    "map": "SAFARI_ZONE_WEST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_safari_zone_north",
+   "goal_text": "Enter the North area of the Safari Zone",
+   "done_when": {
+    "map": "SAFARI_ZONE_NORTH"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_safari_zone_east",
+   "goal_text": "Enter the East area of the Safari Zone",
+   "done_when": {
+    "map": "SAFARI_ZONE_EAST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_safari_zone_secret_house",
+   "goal_text": "Navigate to the Secret House in the Safari Zone",
+   "done_when": {
+    "map": "SAFARI_ZONE_SECRET_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "find_silph_scope",
+   "goal_text": "Find and pick up the Silph Scope in the Safari Zone Secret House",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

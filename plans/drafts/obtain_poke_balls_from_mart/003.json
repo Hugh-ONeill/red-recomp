@@ -1,0 +1,72 @@
+{
+ "goal": "Obtain Poke Balls from Mart",
+ "subgoals": [
+  {
+   "id": "exit_poke_center",
+   "goal_text": "Exit the Viridian Pokemon Center to enter Viridian City.",
+   "done_when": {
+    "area": "VIRIDIAN_CITY|17,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_pallet_town",
+   "goal_text": "Travel from Viridian City back to Pallet Town.",
+   "done_when": {
+    "area": "PALLET_TOWN|10,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Enter Professor Oak's Lab in Pallet Town.",
+   "done_when": {
+    "area": "OAKS_LAB|4,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "deliver_parcel",
+   "goal_text": "Talk to Professor Oak to deliver the parcel and receive the Pokedex.",
+   "done_when": {
+    "flag": "EVENT_GOT_POKEDEX"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_oaks_lab",
+   "goal_text": "Exit Professor Oak's Lab back into Pallet Town.",
+   "done_when": {
+    "area": "PALLET_TOWN|10,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "traverse_route_1",
+   "goal_text": "Travel from Pallet Town back to Viridian City.",
+   "done_when": {
+    "area": "VIRIDIAN_CITY|17,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_mart",
+   "goal_text": "Walk from the city center into the Viridian Mart.",
+   "done_when": {
+    "area": "VIRIDIAN_MART|0,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "buy_poke_balls",
+   "goal_text": "Interact with the shop clerk and purchase Poke Balls (now that the parcel is delivered).",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

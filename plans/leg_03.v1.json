@@ -1,0 +1,440 @@
+{
+  "goal": "Defeat Brock for the Boulder Badge",
+  "subgoals": [
+    {
+      "id": "reach_pallet_town",
+      "goal_text": "Travel south from Viridian City to Pallet Town.",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_oaks_lab",
+      "goal_text": "Enter Professor Oak's Lab in Pallet Town.",
+      "done_when": {
+        "area": "OAKS_LAB|4,1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "deliver_parcel",
+      "goal_text": "Talk to Professor Oak to deliver the parcel and receive the Pokedex.",
+      "done_when": {
+        "flag": "EVENT_GOT_POKEDEX"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_viridian_city",
+      "goal_text": "Travel north back to Viridian City.",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_route_2",
+      "goal_text": "Travel north from Viridian City to Route 2.",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_BULBASAUR_POKE_BALL",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11,
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANCITY_OLD_MAN",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "enter_viridian_forest",
+      "goal_text": "Enter the Viridian Forest from Route 2.",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "CUT_TREE",
+          "x": 12,
+          "y": 52,
+          "answer": "yes",
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CUT_TREE",
+          "x": 12,
+          "y": 60,
+          "answer": "yes",
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CUT_TREE",
+          "x": 12,
+          "y": 68,
+          "answer": "yes",
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 43,
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTSOUTHGATE_LITTLE_GIRL",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTSOUTHGATE_GIRL",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 7
+      }
+    },
+    {
+      "id": "train_charmander",
+      "goal_text": "Battle wild Pokemon in Viridian Forest until Charmander reaches level 12.",
+      "done_when": {
+        "lead_level": 12
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "grind",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CUT_TREE",
+          "x": 12,
+          "y": 52,
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CUT_TREE",
+          "x": 12,
+          "y": 60,
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CUT_TREE",
+          "x": 12,
+          "y": 68,
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 43,
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "use_item",
+          "item": "POTION",
+          "slot": 1,
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 12
+      }
+    },
+    {
+      "id": "exit_forest",
+      "goal_text": "Navigate through Viridian Forest to reach the north exit onto Route 2.",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTNORTHGATE_SUPER_NERD",
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTNORTHGATE_GRAMPS",
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "reach_pewter_city",
+      "goal_text": "Travel north from Route 2 into Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_2"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "heal_at_pewter",
+      "goal_text": "Visit the Pewter City Pokemon Center to fully heal the party.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter City Gym to challenge Brock.",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 16,
+          "y": 17,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Defeat Brock in battle to earn the Boulder Badge.",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_BROCK",
+          "answer": "yes",
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_BROCK",
+          "answer": "yes",
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

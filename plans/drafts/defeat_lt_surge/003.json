@@ -1,0 +1,230 @@
+{
+ "goal": "Defeat Lt. Surge",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Walk from Route 24 into Cerulean City",
+   "done_when": {
+    "area": "CERULEAN_CITY|20,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_4",
+   "goal_text": "Walk from Cerulean City to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_3",
+   "goal_text": "Walk from Route 4 south to Route 3",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_pewter_city",
+   "goal_text": "Walk from Route 3 into Pewter City",
+   "done_when": {
+    "area": "PEWTER_CITY|4,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Walk from Pewter City south to Route 2",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_viridian_city",
+   "goal_text": "Walk from Route 2 into Viridian City",
+   "done_when": {
+    "area": "VIRIDIAN_CITY|17,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_1",
+   "goal_text": "Walk from Viridian City south to Route 1",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_pallet_town",
+   "goal_text": "Walk from Route 1 into Pallet Town",
+   "done_when": {
+    "area": "PALLET_TOWN|10,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_oaks_lab",
+   "goal_text": "Enter Professor Oak's Lab in Pallet Town",
+   "done_when": {
+    "area": "OAKS_LAB|4,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_22",
+   "goal_text": "Walk from Oak's Lab to Route 22",
+   "done_when": {
+    "map": "ROUTE_22"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_viridian_city_2",
+   "goal_text": "Walk from Route 22 back into Viridian City",
+   "done_when": {
+    "area": "VIRIDIAN_CITY|17,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_viridian_forest",
+   "goal_text": "Walk from Viridian City into Viridian Forest",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_viridian_forest",
+   "goal_text": "Walk through Viridian Forest to the north exit",
+   "done_when": {
+    "area": "VIRIDIAN_FOREST_NORTH_GATE|5,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_2_north",
+   "goal_text": "Walk from the forest gate to Route 2",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_pewter_city_2",
+   "goal_text": "Walk from Route 2 into Pewter City",
+   "done_when": {
+    "area": "PEWTER_CITY|4,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_3_2",
+   "goal_text": "Walk from Pewter City east to Route 3",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_4_2",
+   "goal_text": "Walk from Route 3 north to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_mt_moon",
+   "goal_text": "Enter Mt. Moon from Route 4",
+   "done_when": {
+    "area": "MT_MOON_1F|2,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_mt_moon_b1f",
+   "goal_text": "Descend to the first basement of Mt. Moon",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_mt_moon_b2f",
+   "goal_text": "Descend to the second basement of Mt. Moon",
+   "done_when": {
+    "map": "MT_MOON_B2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Walk through Mt. Moon to the east exit into Route 4",
+   "done_when": {
+    "area": "ROUTE_4|36,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean_city_2",
+   "goal_text": "Walk from Route 4 into Cerulean City",
+   "done_when": {
+    "area": "CERULEAN_CITY|20,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Walk from Cerulean City south to Route 5",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_6",
+   "goal_text": "Walk from Route 5 to Route 6",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_vermilion_city",
+   "goal_text": "Walk from Route 6 into Vermilion City",
+   "done_when": {
+    "area": "VERMILION_CITY|18,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_vermilion_center",
+   "goal_text": "Visit the Pokemon Center in Vermilion City to fully heal Venusaur",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_vermilion_gym",
+   "goal_text": "Enter the Vermilion Gym",
+   "done_when": {
+    "map": "VERMILION_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_lt_surge",
+   "goal_text": "Battle and defeat Lt. Surge to earn the Thunder Badge",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

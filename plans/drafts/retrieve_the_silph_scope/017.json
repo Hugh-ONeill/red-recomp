@@ -1,0 +1,128 @@
+{
+ "goal": "Retrieve the Silph Scope",
+ "subgoals": [
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Walk from Route 6 Gate to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building in Saffron City",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_floor_2",
+   "goal_text": "Take the elevator to the 2nd floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_floor_3",
+   "goal_text": "Take the elevator to the 3rd floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_floor_4",
+   "goal_text": "Take the elevator to the 4th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_floor_5",
+   "goal_text": "Take the elevator to the 5th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_5F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_rocket_boss_5f",
+   "goal_text": "Defeat the Team Rocket executive on the 5th floor",
+   "done_when": {
+    "no_battle": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_floor_6",
+   "goal_text": "Take the elevator to the 6th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_6F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_floor_7",
+   "goal_text": "Take the elevator to the 7th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_7F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_floor_8",
+   "goal_text": "Take the elevator to the 8th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_8F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_floor_9",
+   "goal_text": "Take the elevator to the 9th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_9F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_floor_10",
+   "goal_text": "Take the elevator to the 10th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_10F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_floor_11",
+   "goal_text": "Take the elevator to the 11th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni, the leader of Team Rocket",
+   "done_when": {
+    "no_battle": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Retrieve the Silph Scope from the building (usually given by an NPC or found after defeating Giovanni)",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

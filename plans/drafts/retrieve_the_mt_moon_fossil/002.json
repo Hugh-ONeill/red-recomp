@@ -1,0 +1,178 @@
+{
+ "goal": "Retrieve the MT Moon fossil",
+ "subgoals": [
+  {
+   "id": "exit_mt_moon_b2f",
+   "goal_text": "Exit the basement of Mt. Moon to reach B1F",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "interact",
+     "name": "MTMOONB2F_ROCKET2",
+     "answer": "yes",
+     "when": {
+      "map": "MT_MOON_B2F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 15,
+     "y": 27,
+     "when": {
+      "map": "MT_MOON_B2F"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign2",
+    "via": "escalation",
+    "n_ops": 2
+   }
+  },
+  {
+   "id": "exit_mt_moon_b1f",
+   "goal_text": "Exit Mt. Moon B1F to reach 1F",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 25,
+     "y": 15,
+     "when": {
+      "map": "MT_MOON_B1F"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign2",
+    "via": "escalation",
+    "n_ops": 1
+   }
+  },
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Leave Mt. Moon and enter Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 14,
+     "y": 35,
+     "when": {
+      "map": "MT_MOON_1F"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign2",
+    "via": "escalation",
+    "n_ops": 1
+   }
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel through Route 4 to reach Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_12",
+   "goal_text": "Leave Cerulean City and travel east through Saffron or the routes to reach Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_13",
+   "goal_text": "Move from Route 12 to Route 13",
+   "done_when": {
+    "map": "ROUTE_13"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_14",
+   "goal_text": "Move from Route 13 to Route 14",
+   "done_when": {
+    "map": "ROUTE_14"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_15",
+   "goal_text": "Move from Route 14 to Route 15",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_fuchsia_city",
+   "goal_text": "Enter Fuchsia City from Route 15",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cinnabar_island",
+   "goal_text": "Travel from Fuchsia City to Cinnabar Island via surfing",
+   "done_when": {
+    "map": "CINNABAR_ISLAND"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_cinnabar_lab",
+   "goal_text": "Enter the Cinnabar Island Laboratory",
+   "done_when": {
+    "map": "CINNABAR_LAB"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_fossil_room",
+   "goal_text": "Navigate to the fossil room within the lab",
+   "done_when": {
+    "map": "CINNABAR_LAB_FOSSIL_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "retrieve_fossil",
+   "goal_text": "Interact with the scientist to retrieve the revived fossil Pokemon",
+   "done_when": {
+    "has_item": {
+     "DOME_FOSSIL": 0,
+     "HELIX_FOSSIL": 0
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

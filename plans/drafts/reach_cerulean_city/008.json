@@ -1,0 +1,22 @@
+{
+ "goal": "Reach Cerulean City",
+ "subgoals": [
+  {
+   "id": "heal_at_mt_moon_center",
+   "goal_text": "Visit the Pokemon Center at the foot of Mt. Moon to restore health before attempting to cross into Cerulean City.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Walk east from Route 4 to enter Cerulean City. Note: If the eastern path is blocked, ensure all Mt. Moon events are cleared or check for alternative routes.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

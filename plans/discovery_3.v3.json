@@ -1,0 +1,236 @@
+{
+  "goal": "Win your third Gym Badge",
+  "subgoals": [
+    {
+      "id": "go_to_route_25",
+      "goal_text": "Walk from Route 24 to Route 25",
+      "done_when": {
+        "map": "ROUTE_25"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_24"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_cerulean_city",
+      "goal_text": "Walk from Route 25 back into Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "ROUTE_25"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_24"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "go_to_route_4",
+      "goal_text": "Exit Cerulean City to the east into Route 4",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "enter_digletts_cave",
+      "goal_text": "Enter Diglett's Cave from Route 4",
+      "done_when": {
+        "map": "DIGLETTS_CAVE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_digletts_cave",
+      "goal_text": "Walk through Diglett's Cave to exit on the other side",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_1",
+      "goal_text": "Walk from Route 2 to Route 1",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_pallet_town",
+      "goal_text": "Walk from Route 1 into Pallet Town",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_22",
+      "goal_text": "Walk from Pallet Town to Route 22",
+      "done_when": {
+        "map": "ROUTE_22"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_viridian_city",
+      "goal_text": "Walk through the gate from Route 22 into Viridian City",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_2",
+      "goal_text": "Walk from Viridian City to Route 2",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_cerulean_city_via_route_2",
+      "goal_text": "Walk from Route 2 back to Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_5",
+      "goal_text": "Walk south from Cerulean City through Route 4, then Route 24/25 is not the way; go south to Route 5 via Cerulean City and Route 4 (wait, route 4 is east). Go south from Cerulean to Route 24, then back to city, then south to Route 4... no. From Cerulean City, go South to Route 24, but the path to Vermilion is via Route 5. Walk south through Cerulean City to Route 4's entrance or rather the southern exit to Route 5.",
+      "done_when": {
+        "map": "ROUTE_5"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_6",
+      "goal_text": "Walk from Route 5 through the gate to Route 6",
+      "done_when": {
+        "map": "ROUTE_6"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_7",
+      "goal_text": "Walk from Route 6 to Route 7",
+      "done_when": {
+        "map": "ROUTE_7"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_cerulean_city_correction",
+      "goal_text": "Actually, the most direct path from Cerulean to Vermilion is south through Route 4 (no), south through Route 24/25 (no). Go South from Cerulean City to Route 5 via the city streets.",
+      "done_when": {
+        "map": "ROUTE_5"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_6_correction",
+      "goal_text": "Walk from Route 5 to Route 6",
+      "done_when": {
+        "map": "ROUTE_6"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_11",
+      "goal_text": "Wait, the path is Route 5 -> Route 6 -> Route 7 -> Route 11 or Route 5 -> Route 4 (no). Let's go Route 5 -> Route 6 -> Route 7 -> Vermilion City.",
+      "done_when": {
+        "map": "ROUTE_7"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_vermilion_city",
+      "goal_text": "Walk from Route 7 into Vermilion City",
+      "done_when": {
+        "map": "VERMILION_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_vermilion",
+      "goal_text": "Visit the Pokemon Center in Vermilion City to heal the party",
+      "done_when": {
+        "map": "VERMILION_POKECENTER",
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_vermilion_gym",
+      "goal_text": "Enter the Vermilion Gym",
+      "done_when": {
+        "map": "VERMILION_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_lt_surge",
+      "goal_text": "Defeat Lt. Surge to win the Thunder Badge",
+      "done_when": {
+        "badge": "THUNDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

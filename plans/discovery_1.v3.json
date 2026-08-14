@@ -1,0 +1,151 @@
+{
+  "goal": "Win your first Gym Badge",
+  "subgoals": [
+    {
+      "id": "go_to_poke_center_viridian",
+      "goal_text": "Enter the Pokemon Center in Viridian City.",
+      "done_when": {
+        "area": "VIRIDIAN_POKECENTER|0,3"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 25,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "heal_at_viridian",
+      "goal_text": "Heal Charmander at the Pokemon Center.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VIRIDIANPOKECENTER_NURSE",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "exit_poke_center_viridian",
+      "goal_text": "Exit the Pokemon Center back into Viridian City.",
+      "done_when": {
+        "area": "VIRIDIAN_CITY|17,0"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "enter_viridian_forest",
+      "goal_text": "Travel north from Viridian City to enter the Viridian Forest.",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "train_in_forest",
+      "goal_text": "Battle wild Pokemon in Viridian Forest until Charmander reaches level 12.",
+      "done_when": {
+        "lead_level": 12
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_viridian_forest",
+      "goal_text": "Navigate through the forest and exit to the north into Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_pewter_poke_center",
+      "goal_text": "Enter the Pewter City Pokemon Center.",
+      "done_when": {
+        "map": "PEWTER_POKECENTER"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_pewter",
+      "goal_text": "Fully heal before the gym challenge.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_pewter_poke_center",
+      "goal_text": "Exit the Pokemon Center back into Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter City Gym.",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Defeat Brock to earn the Boulder Badge.",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

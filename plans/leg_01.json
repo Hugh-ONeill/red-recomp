@@ -1,0 +1,134 @@
+{
+  "goal": "Choose a starter Pokemon",
+  "subgoals": [
+    {
+      "id": "exit_house_2f",
+      "goal_text": "Go downstairs from the second floor of Red's house.",
+      "done_when": {
+        "map": "REDS_HOUSE_1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PC",
+          "answer": "yes",
+          "when": {
+            "map": "REDS_HOUSE_2F"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 2
+        },
+        {
+          "op": "use_warp",
+          "x": 7,
+          "y": 1,
+          "when": {
+            "map": "REDS_HOUSE_2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "exit_house_1f",
+      "goal_text": "Leave Red's house and enter Pallet Town.",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "REDSHOUSE1F_MOM",
+          "answer": "yes",
+          "when": {
+            "map": "REDS_HOUSE_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 7,
+          "when": {
+            "map": "REDS_HOUSE_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "enter_oaks_lab",
+      "goal_text": "Go to Professor Oak's laboratory.",
+      "done_when": {
+        "map": "OAKS_LAB"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 11,
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "pick_starter",
+      "goal_text": "Interact with the Poke Balls on the table to choose a starter Pokemon.",
+      "done_when": {
+        "party_nonempty": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "OAKSLAB_CHARMANDER_POKE_BALL",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

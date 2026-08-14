@@ -1,0 +1,78 @@
+{
+ "goal": "Defeat Team Rocket in Silph Co.",
+ "subgoals": [
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Travel from Vermilion City to Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building in Saffron City.",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_1f",
+   "goal_text": "Defeat the Team Rocket grunts on the first floor and reach the elevator.",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_2f",
+   "goal_text": "Go to the second floor and defeat the Team Rocket grunts there.",
+   "done_when": {
+    "map": "SILPH_CO_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_3f",
+   "goal_text": "Go to the third floor and defeat the Team Rocket grunts there.",
+   "done_when": {
+    "map": "SILPH_CO_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_4f",
+   "goal_text": "Go to the fourth floor and defeat the Team Rocket grunts there.",
+   "done_when": {
+    "map": "SILPH_CO_4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_5f",
+   "goal_text": "Go to the fifth floor and defeat the Team Rocket grunts there.",
+   "done_when": {
+    "map": "SILPH_CO_5F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_top_floor",
+   "goal_text": "Use the elevator to reach the top floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Locate and defeat Giovanni in the Silph Co. headquarters.",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 3"
+}

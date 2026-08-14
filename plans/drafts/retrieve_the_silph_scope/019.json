@@ -1,0 +1,72 @@
+{
+ "goal": "Retrieve the Silph Scope",
+ "subgoals": [
+  {
+   "id": "go_to_lavender_town",
+   "goal_text": "Walk north from Route 12 to Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_pokemon_tower",
+   "goal_text": "Enter the Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "climb_to_2f",
+   "goal_text": "Go up to the second floor of the tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "climb_to_3f",
+   "goal_text": "Go up to the third floor of the tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "climb_to_4f",
+   "goal_text": "Go up to the fourth floor of the tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "climb_to_5f",
+   "goal_text": "Go up to the fifth floor of the tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_5F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_mr_fuji",
+   "goal_text": "Reach Mr. Fuji on the top floor",
+   "done_when": {
+    "map": "POKEMON_TOWER_6F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Talk to Mr. Fuji and receive the Silph Scope",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,102 @@
+{
+ "goal": "Defeat Erika",
+ "subgoals": [
+  {
+   "id": "go_to_route_10",
+   "goal_text": "Walk east from Vermilion City to Route 10.",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_digletts_cave",
+   "goal_text": "Enter Diglett's Cave from Route 10.",
+   "done_when": {
+    "map": "DIGLETTS_CAVE_ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_digletts_cave",
+   "goal_text": "Walk through Diglett's Cave to exit on the east side.",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_12",
+   "goal_text": "Walk east through Route 11 and the gate to reach Route 12.",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_13",
+   "goal_text": "Walk east through Route 12 and the gate to reach Route 13.",
+   "done_when": {
+    "map": "ROUTE_13"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_14",
+   "goal_text": "Walk north from Route 13 to reach Route 14.",
+   "done_when": {
+    "map": "ROUTE_14"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_15",
+   "goal_text": "Walk west from Route 14 to reach Route 15.",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_16",
+   "goal_text": "Walk north through Route 15 and the gate to reach Route 16.",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_17",
+   "goal_text": "Walk north through Route 16 and the gate to reach Route 17.",
+   "done_when": {
+    "map": "ROUTE_17"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_city",
+   "goal_text": "Walk east from Route 17 to enter Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_gym",
+   "goal_text": "Walk to and enter the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Erika to earn the Rainbow Badge.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

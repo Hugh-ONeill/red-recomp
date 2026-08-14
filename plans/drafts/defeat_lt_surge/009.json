@@ -1,0 +1,46 @@
+{
+ "goal": "Defeat Lt. Surge",
+ "subgoals": [
+  {
+   "id": "go_to_poke_center",
+   "goal_text": "Walk to the Vermilion City Pokemon Center.",
+   "done_when": {
+    "area": "VERMILION_POKECENTER|0,3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal Venusaur at the Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_poke_center",
+   "goal_text": "Exit the Pokemon Center back into Vermilion City.",
+   "done_when": {
+    "area": "VERMILION_CITY|18,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_gym",
+   "goal_text": "Walk to the Vermilion Gym.",
+   "done_when": {
+    "area": "VERMILION_GYM|4,5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_lt_surge",
+   "goal_text": "Battle and defeat Lt. Surge using Venusaur.",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}
