@@ -1422,7 +1422,14 @@ class Executor:
             if region == here:
                 continue
             done_x = set((self.explored.get(region) or {}).keys())
-            fresh = [e for e in exits if e not in done_x]
+            # A PROVEN SEAM IS NOT FRONTIER. The frontier deliberately
+            # keeps a printed road after a failed crossing so one bad proof
+            # cannot erode the map, but counting those as "never taken"
+            # sends the walk-back to a region whose only opening is a wall
+            # it has already bounced off — the same mistake 773bbc3 fixed
+            # for the remote-region note and left standing here.
+            shut_x = self._no_cross.get(region, set())
+            fresh = [e for e in exits if e not in done_x and e not in shut_x]
             if not fresh:
                 continue
             path = self._route(here, region)
