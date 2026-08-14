@@ -957,8 +957,13 @@ def journal_text(path: Path, limit: int = 60) -> str:
             # heal kept instant-passing on a blackout-healed party, so the
             # Center was never entered and every wipe teleported the run
             # back to a centre several maps west. "OK" alone hid that.
+            # ...but only claim it when it is TRUE. A route walk that ends
+            # with the condition met can have distilled==0 and still have
+            # fought a gym leader on the way in, so op-count alone called
+            # the Cascade Badge "nothing was done".
             idle = (r.get("via") == "pre-check"
-                    or (k == "escalate_success" and not r.get("distilled")))
+                    or (k == "escalate_success" and not r.get("distilled")
+                        and not r.get("walked")))
             events.append(f"  OK      {r.get('subgoal')}"
                           + (" (already true on arrival — nothing was done,"
                              " no building was entered)" if idle else ""))

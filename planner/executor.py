@@ -3748,8 +3748,16 @@ Reply with ONLY a JSON array of ops, e.g.
                 self._walk_route(sg, r0)
                 start = self.settle() or start
                 if pred_holds(done, start):
+                    # SAY THAT A ROUTE WAS WALKED. Op-count is not a proxy
+                    # for "nothing happened": a trainer engages you as you
+                    # walk into their line of sight, so this branch WON THE
+                    # MISTY FIGHT in 241 seconds while proposing zero ops —
+                    # and the author, reading distilled==0, was told the
+                    # badge was "already true on arrival, nothing was done"
+                    # under thirty WIPED lines for that same fight. The one
+                    # success in the run rendered as a no-op.
                     self.log("escalate_success", subgoal=sg["id"],
-                             round=rnd, proposed=0,
+                             round=rnd, proposed=0, walked=len(r0),
                              distilled=len(progress), verified=False)
                     return True, progress
             sig0 = self._snapshot(start)
