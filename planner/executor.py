@@ -2235,7 +2235,8 @@ never produce an encounter),
 the difference from THIS map's mart clerk — it talks to the clerk ITSELF,
 no interact needed first; obs.money is your budget),
 {"op":"use_item","item":"POTION","slot":N} (use a bag item on party slot
-N, lead if omitted — this is ALSO how a TM or HM is TAUGHT: the item
+N COUNTING FROM 1 — slot 1 is the lead — lead if omitted; this is ALSO
+how a TM or HM is TAUGHT: the item
 boots and the chosen slot learns the move. A mon that already knows four
 moves needs {"op":"use_item","item":"TM_...","slot":N,"forget":"MOVE"}
 naming which of ITS OWN four moves to write over — the choice is yours,

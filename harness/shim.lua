@@ -1456,9 +1456,24 @@ function OPS.use_item(G, c)
     if pm and pm.screenId == "PartyMenu" then break end
     U.tap(G, "a"); U.wait(6)
   end
+  -- SLOT IS 1-BASED, AND 0 IS TRUTHY IN LUA. `c.slot or 1` left slot=0 on
+  -- a 0-based request, party[0] is nil, so the move list came out EMPTY
+  -- and every forget= was rejected as "not one of its moves" — against a
+  -- Pokemon that "knows ". The model asked to forget GROWL, twice, and
+  -- was refused both times by this; the Razor Leaf that got written over
+  -- instead was never its choice. Clamp, and say so when the slot is real
+  -- but out of range.
+  local party = (G.save and G.save.party) or {}
+  local slot = math.floor(tonumber(c.slot) or 1)
+  if slot < 1 then slot = 1 end            -- there is no slot 0
+  if #party > 0 and slot > #party then
+    ui_back_out(G)
+    return false, ("no party slot %d — the party has %d")
+      :format(slot, #party)
+  end
   pm = ui_top(G)
   if pm and pm.screenId == "PartyMenu" then
-    ui_cursor_to(G, "index", c.slot or 1)
+    ui_cursor_to(G, "index", slot)
     U.tap(G, "a"); U.wait(10)
   end
   -- TM/HM teach flow. The MODEL owns every choice in it: which mon
@@ -1468,8 +1483,7 @@ function OPS.use_item(G, c)
   -- the whole moveset, never defaulted to whatever the cursor sat on.
   local HM_MOVES = { CUT = true, FLY = true, SURF = true,
                      STRENGTH = true, FLASH = true }
-  local slot = c.slot or 1
-  local mon = (G.save and G.save.party or {})[slot]
+  local mon = party[slot]
   local monmoves = {}
   for j, mv in ipairs((mon and mon.moves) or {}) do
     monmoves[j] = tostring(type(mv) == "table" and mv.id or mv)
@@ -1536,6 +1550,14 @@ function OPS.use_item(G, c)
       .. " learned " .. gained
   end
   if abandoned then
+    -- An empty list is never the Pokemon's fault; it means we looked in
+    -- the wrong place. Saying "It knows ." sent the model hunting for a
+    -- better forget= when no name could ever have matched.
+    if #monmoves == 0 then
+      return false, abandoned .. ". The harness could not read slot "
+        .. slot .. "'s moves, so no forget= could match — this is a "
+        .. "harness fault, not a bad choice of move."
+    end
     return false, abandoned .. ". It knows "
       .. table.concat(monmoves, ", ")
       .. ". Re-send use_item with forget= one of those (HM moves "
