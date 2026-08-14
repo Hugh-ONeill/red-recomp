@@ -139,12 +139,40 @@ def static_cost(a: str, b: str, toll: dict, extra: dict | None = None):
     return None
 
 
+# Which ROAD each interior opens off, inverted from the generated doors
+# table (planner/map_doors.json, the printed map's own labelling). Without
+# it an interior is not on the outdoor graph at all, so every distance from
+# inside one fell through to the same worst score — and a run standing in
+# Mt Moon rated the road outside better than the cave it was crossing, left,
+# was pulled back by its plan, and left again.
+import re as _re
+try:
+    _DOORS = json.loads(
+        Path(__file__).with_name("map_doors.json").read_text())
+    INTERIOR_ROAD = {mid: road for road, places in _DOORS.items()
+                     for ids in places.values() for mid in ids}
+    # Deeper floors too. The table names only what a road warps into
+    # DIRECTLY, so Mt Moon's B2F was still nowhere — and rating the bottom
+    # of a cave worse than its middle pushes a run upward out of it. A
+    # floor belongs to the same place as its siblings.
+    _FLOOR = _re.compile(r"_(B?\d+F|ROOF|ELEVATOR)$")
+    for _mid, _road in list(INTERIOR_ROAD.items()):
+        INTERIOR_ROAD.setdefault(_FLOOR.sub("", _mid), _road)
+except (OSError, ValueError):
+    INTERIOR_ROAD = {}
+
+
 def _doorstep(map_id: str) -> str:
     """The printed-map place a target sits in: itself if the town map
-    draws it, else the city its name carries (CELADON_GYM -> CELADON_CITY,
-    the same fallback badge routing already uses)."""
+    draws it, else the road it opens off, else the city its name carries
+    (CELADON_GYM -> CELADON_CITY, the same fallback badge routing uses)."""
     if not map_id or map_id in MAP_EDGES:
         return map_id
+    if map_id in INTERIOR_ROAD:
+        return INTERIOR_ROAD[map_id]
+    fam = _re.sub(r"_(B?\d+F|ROOF|ELEVATOR)$", "", map_id)
+    if fam in INTERIOR_ROAD:
+        return INTERIOR_ROAD[fam]
     for suffix in ("_GYM", "_MART", "_POKECENTER", "_GATE"):
         if map_id.endswith(suffix):
             city = map_id[: -len(suffix)] + "_CITY"
@@ -1763,6 +1791,11 @@ class Executor:
         """
         vis = self._map_visits()
         toll = {b: 4 + min(vis.get(b[0], 0) // 8, 40) for b in blocked}
+        # An interior is not a node on the printed map, so asking its
+        # distance returned the worst score for everywhere alike — the
+        # inside of a cave rated worse than the road outside it, whichever
+        # way the run was going. Score it as the road it opens off.
+        from_map = _doorstep(from_map)
         h = static_cost(from_map, want, toll, self._walked_map_links())
         if h is not None:
             return h
