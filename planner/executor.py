@@ -1825,6 +1825,34 @@ class Executor:
                  for w in (m.get("warps") or [])]
         warps += [{"key": d, "dest": t, "reachable": True}
                   for d, t in (m.get("connections") or {}).items()]
+        # A FLOOR YOU CANNOT WALK ACROSS IS NOT A FLOOR YOU HAVE FINISHED.
+        # The frontier is built from warps in regions the run has STOOD in,
+        # so a part of a map it has never entered contributes nothing and
+        # every known region reports "nothing untried" — which reads as a
+        # finished dungeon. Mt Moon B1F has eight doorways; the run used
+        # six, and the two it never saw were the way out east, sitting in a
+        # fourth pocket of the same floor. This is arithmetic on the
+        # doorway list the observation already carries, plus which ones
+        # this run has walked: it says a part exists, never where it is or
+        # how to get in.
+        mid = m.get("id")
+        here_keys = {w["key"] for w in warps if w.get("reachable")}
+        ever = set()
+        for reg, ex in (self.explored or {}).items():
+            if reg.split("|")[0] == mid:
+                ever |= set(ex.keys())
+        allw = {f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])}
+        unseen = allw - here_keys - ever
+        floor_note = ""
+        if unseen:
+            floor_note = (
+                f"\nTHIS FLOOR IS NOT FINISHED. {mid} has {len(allw)} "
+                f"doorway(s) in total and {len(unseen)} of them "
+                f"({', '.join(sorted(unseen))}) are on part of it you have "
+                f"never stood on — you cannot walk there from any spot you "
+                f"have been, so the way in is a DIFFERENT doorway from "
+                f"somewhere else. Every region you know here can report "
+                f"nothing left to try and this still be true.")
         # A seam PROVEN uncrossable from this region is not an exit. A map
         # connection belongs to the whole map, so the stub side of a split
         # route still lists the far side's edge — and advertising it as
@@ -2240,7 +2268,8 @@ class Executor:
             out += ("\nPlaces you have already been that still have ways "
                     "you have NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
                     + "." + near_hint)
-        out += route_line + searched_line + shut_line + hint_line + loot_line
+        out += (floor_note + route_line + searched_line + shut_line
+                + hint_line + loot_line)
         return out
 
     def _atlas_text(self) -> str:
