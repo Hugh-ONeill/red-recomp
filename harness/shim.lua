@@ -912,8 +912,22 @@ local function bfs_dir(G, tx, ty)
         if Collision.canMove(ow.map, ow.entities, probe, dir) then
           seen[key(nx, ny)] = true
           local first = cur.first or dir
-          if nx == tx and ny == ty then return first end
-          queue[#queue + 1] = { x = nx, y = ny, first = first }
+          -- THE WALKER'S OWN PATHFINDER HAS TO KNOW THIS TOO. Stepping
+          -- onto an arrow tile slides you across the room, so a route
+          -- planned as if you stopped there is wrong at the first press:
+          -- walk_to aims, gets carried somewhere else, re-paths, and burns
+          -- its step budget doing it. Rocket Hideout B3F is 16 such tiles.
+          local sx, sy = spinner_landing(G, ow.map, nx, ny)
+          if sx then
+            if sx == tx and sy == ty then return first end
+            if not seen[key(sx, sy)] and not wblock[key(sx, sy)] then
+              seen[key(sx, sy)] = true
+              queue[#queue + 1] = { x = sx, y = sy, first = first }
+            end
+          else
+            if nx == tx and ny == ty then return first end
+            queue[#queue + 1] = { x = nx, y = ny, first = first }
+          end
         else
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dir)
           if lx and not seen[key(lx, ly)] and not wblock[key(lx, ly)] then
