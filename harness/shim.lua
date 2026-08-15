@@ -2379,7 +2379,7 @@ end
 -- slot the way store_item/retrieve_item do for the PC: the model says WHO
 -- and WHETHER, the harness drives the menus. Everything they refuse is a
 -- fact the game would refuse on anyway, reported before any button moves.
-local function daycare_talk(G)
+local function daycare_talk(G, slot)
   -- SAY THE PLAIN THING FIRST. Issued from inside the Poke Mart, the only
   -- complaint was that an object named DAYCARE_GENTLEMAN was not visible,
   -- which reads like a harness fault rather than "you are in the wrong
@@ -2392,8 +2392,11 @@ local function daycare_talk(G)
     return false, "the DAY-CARE MAN is not in this building — the day care "
       .. "is its own small house on ROUTE_5, and you have to be inside it"
   end
+  -- pass the slot through: this op HAS chosen one, so the party-picker
+  -- guard in settle_dialog must let it past
   local ok, why = OPS.interact(G, { name = "DAYCARE_GENTLEMAN",
-                                    answer = "yes", read_question = true })
+                                    answer = "yes", read_question = true,
+                                    slot = slot })
   if not ok then return false, why or "could not talk to the day care man" end
   return true
 end
@@ -2505,7 +2508,7 @@ function OPS.daycare_deposit(G, c)
       .. "leave you with none"
   end
   local giving = party[slot]
-  local ok, why = daycare_talk(G)
+  local ok, why = daycare_talk(G, slot)
   if not ok then return false, why end
   local pm
   for _ = 1, 20 do
@@ -2950,6 +2953,22 @@ function OPS.interact(G, c)
       -- there! May I help you?". Callers that intend to DRIVE a counter
       -- ask to be handed it instead.
       if c.stop_at_menu and ui_shop_up(G) then return true end
+      -- WHICH POKEMON IS NOT THE HARNESS'S CHOICE. A party picker inside a
+      -- dialog got A-pressed like any other screen, which selects whoever
+      -- is in slot 1 -- and after collecting CHARIZARD that slot held
+      -- MAGIKARP, so a stray yes at the DAY-CARE MAN handed over the wrong
+      -- Pokemon entirely. Ops that name a slot (use_item, daycare_deposit)
+      -- drive this menu themselves; a bare interact must not.
+      if t and t.screenId == "PartyMenu" and not c.slot then
+        U.tap(G, "b"); U.wait(6)
+        for _ = 1, 20 do
+          if G.stack:top() == ow then break end
+          U.tap(G, "b"); U.wait(4)
+        end
+        return true, "it asked WHICH POKEMON, and nothing here had chosen "
+          .. "one — backed out. Use an op that names the slot (for the day "
+          .. "care that is daycare_deposit with slot=N)."
+      end
       if t == ow then return true end
       if t and (t.enemy or t.kind) then return true, "battle started" end
       if ui_is_choice(G) then
