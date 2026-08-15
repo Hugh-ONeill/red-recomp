@@ -68,6 +68,20 @@ def bag_text(bagd):
     return txt
 
 
+def money_text(m):
+    """How much money there is, next to what things cost.
+
+    Everything else about a purchase reaches the author — the bag, the
+    fullness of it, the price the day care asks — but never the wallet, so
+    "it costs 100" could not be compared with anything. The run stood two
+    coins short of its own CHARIZARD (98 against 100) with a NUGGET in the
+    bag worth thousands, and no way to notice.
+    """
+    if m is None:
+        return ""
+    return f", {int(m)} money"
+
+
 def daycare_text(dc):
     """The Pokemon that is NOT in the party because it is being raised.
 
@@ -91,7 +105,8 @@ if "region" in o:                    # last_state.json is already flattened
     badges = ", ".join(o.get("badges") or []) or "no badges"
     bag = bag_text(o.get("bag"))
     print(f"standing in {m or 'an unknown location'} with "
-          f"{party or 'no party'}, {badges}, and {bag}"
+          f"{party or 'no party'}, {badges}"
+          + money_text(o.get("money")) + f", and {bag}"
           + daycare_text(o.get("daycare")))
     raise SystemExit
 m = (o.get("map") or {}).get("id")
@@ -101,5 +116,6 @@ if not m:                      # stale/missing obs: say so rather than
 party = party_text(o.get("party") or [])
 badges = ", ".join(o.get("badges") or []) or "no badges"
 bag = bag_text(o.get("bag"))
-print(f"standing in {m} with {party or 'no party'}, {badges}, and {bag}"
+print(f"standing in {m} with {party or 'no party'}, {badges}"
+      + money_text(o.get("money")) + f", and {bag}"
       + daycare_text(o.get("daycare")))
