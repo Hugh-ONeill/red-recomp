@@ -572,6 +572,7 @@ class Executor:
         self.map_doors: dict = {}           # map id -> every doorway seen
         self.save_each = False              # in-game SAVE after each subgoal
         self._tried_objs: dict = {}         # region -> objects interacted
+        self._drift: dict = {}              # subgoal -> goalward progress
         self._inert_objs: dict = {}         # region -> {object: state it was inert in}
         self._cant_afford: dict = {}        # item -> unit price we lack
         self._no_cross: dict = {}           # region -> dirs proven uncrossable
@@ -1262,6 +1263,56 @@ class Executor:
         return [f"{w.get('x')},{w.get('y')}" for w in warps
                 if w.get("dest") == dest
                 and abs((w.get("x") or 0) - x) + abs((w.get("y") or 0) - y) == 1]
+
+    def _goal_drift(self, sg, obs):
+        """Is this subgoal getting CLOSER to what it is aimed at?
+
+        The printed map gives a hop count between any two roads, which is
+        the same number the itinerary line is built from — so "am I nearer
+        Celadon than I was" is answerable every round without guessing.
+        Nothing here chooses a direction; it states a distance and, when a
+        subgoal has spent a long stretch getting no nearer, stops paying
+        for it so the plan can be rewritten from what actually happened.
+        The run toured Pewter, Route 2, Route 11 and Diglett's Cave on a
+        `travel_to_celadon` subgoal — every one of them further away than
+        where it started.
+
+        Returns (note, give_up).
+        """
+        tgt = self._target_key(sg)
+        want_map = (tgt.split(":", 1)[1].split("|")[0]
+                    if tgt.startswith(("map:", "area:")) else None)
+        if not want_map and tgt.startswith("badge:"):
+            want_map = BADGE_GYMS.get(tgt.split(":", 1)[1])
+        want_map = _doorstep(want_map) if want_map else None
+        here_map = ((obs or {}).get("map") or {}).get("id")
+        if not (want_map and here_map):
+            return "", False
+        try:
+            d = self._goal_score(here_map, want_map, self._impassable())
+        except Exception:
+            return "", False
+        st = self._drift.setdefault(sg.get("id"), {"best": d, "since": 0,
+                                                   "at": here_map})
+        if d < st["best"]:
+            st["best"], st["since"], st["at"] = d, 0, here_map
+        else:
+            st["since"] += 1
+        # GENEROUS, because a real route can lead AWAY first: Rock Tunnel
+        # is the way to Celadon and every step of it scores worse than
+        # standing in Cerulean. Only a long stretch with no improvement at
+        # all counts, and only while actually further off than the best.
+        give_up = st["since"] >= 14 and d > st["best"]
+        note = (f"\nHOW FAR OFF YOU ARE: the printed map puts {here_map} "
+                f"{d} step(s) from {want_map}. The closest you have been "
+                f"this subgoal is {st['best']} (at {st['at']})"
+                + (f", and you have not improved on it for {st['since']} "
+                   f"rounds." if st["since"] else "."))
+        if give_up:
+            self.log("goal_drift_giveup", subgoal=sg.get("id"),
+                     want=want_map, here=here_map, d=d, best=st["best"],
+                     since=st["since"])
+        return note, give_up
 
     def _passage_note(self, here: str) -> str:
         """Buildings whose far side is somewhere else.
@@ -4689,6 +4740,19 @@ Reply with ONLY a JSON array of ops, e.g.
             # killed. Being stuck is the trigger; dying is not a
             # prerequisite for being told how the city is put together.
             stuck_note += self._passage_note(here_now)
+            # distance to the objective, and how long since it improved
+            _drift_note, _drift_done = self._goal_drift(sg, cur)
+            stuck_note += _drift_note
+            if _drift_done:
+                stuck_note += (
+                    "\nThis subgoal has spent a long stretch getting no "
+                    "nearer and is being ended here so the plan can be "
+                    "rewritten from what actually happened.")
+                # exhaust the budget rather than breaking out: the loop's
+                # own exit (while spent < rounds) runs the same cleanup a
+                # natural exhaustion does, and this code does not take
+                # kindly to new exits.
+                spent = rounds
             want2 = ((sg.get("done_when") or {}).get("slot_level") or {}
                      ).get("slot")
             if want2:
