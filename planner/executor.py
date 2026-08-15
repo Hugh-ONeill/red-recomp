@@ -174,6 +174,27 @@ except (OSError, ValueError):
     INTERIOR_ROAD = {}
 
 
+# A SERVICE IS NEVER EXHAUSTED. "Fully worked" means nothing is left to
+# FIND here, which is trivially true of these and useless, because their
+# value is a counter, a nurse or a panel that keeps working however many
+# times you come back. Marked, they read as "done with this place" to
+# every consumer of the ledger.
+#
+# ONE LIST, TWO READERS. The refusal in note_searched and the expiry at
+# load time were written separately with the same tuple inline, and they
+# drifted: the BIKE_SHOP sat in "Already fully worked" all day holding an
+# untraded BIKE_VOUCHER (user, twice), and CELADON_MART_ELEVATOR — the
+# only way to the department store's five floors — read as an exhausted
+# closet the run entered four times and left four times. Neither ends in
+# MART or POKECENTER. Splitting a rule across two call sites and updating
+# one is this project's most repeated bug; the constant is the fix.
+SERVICE_SUFFIXES = ("POKECENTER", "MART", "SHOP", "ELEVATOR")
+
+
+def _is_service(region: str) -> bool:
+    return str(region).split("|")[0].endswith(SERVICE_SUFFIXES)
+
+
 def _doorstep(map_id: str) -> str:
     """The printed-map place a target sits in: itself if the town map
     draws it, else the road it opens off, else the city its name carries
@@ -678,8 +699,7 @@ class Executor:
                 for r in self.searched.pop(tgt, {}):
                     anyd.pop(r, None)
             # service buildings recorded as worked by older runs expire too
-            for r in [r for r in anyd
-                      if r.split("|")[0].endswith(("POKECENTER", "MART"))]:
+            for r in [r for r in anyd if _is_service(r)]:
                 anyd.pop(r, None)
             # every surviving entry was recorded under the fully-worked
             # condition, so the union of targets joins the worked rooms
@@ -1130,7 +1150,7 @@ class Executor:
         # read as "done with this place" to every consumer of the ledger,
         # which is why the door seal needed item:/party_healthy patches
         # downstream. Do not make the claim in the first place.
-        if region.split("|")[0].endswith(("POKECENTER", "MART")):
+        if _is_service(region):
             return
         # A room where a FIGHT ran for this goal is not exhausted — losing
         # to the Mt Moon nerd marked his room worked, and the refusal then
