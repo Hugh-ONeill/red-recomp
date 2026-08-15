@@ -105,8 +105,6 @@ sweep_ahead() {
     nums=$(printf '%s\n' "$got" | cut -f1 | tr '\n' ' ')
     if python planner/skip_legs.py $nums; then
       printf '%s\n' "$got" >> run/outline_skips
-      # positions after this leg have shifted, so their plans name the
-      # wrong objective now — the cleanup the reorder rung already does
     fi
   fi
   # ...AND THE WORK IT NEVER THOUGHT TO LIST. The sweep above can only
