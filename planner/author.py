@@ -672,8 +672,24 @@ def observed_text(path: Path) -> str:
             dead.append(f"  {tgt} was NOT reachable from {region} ({n}x)")
     areas = sorted({r for r in exp} | {t for v in exp.values()
                                        for t in [e.get("to") for e in v.values()] if t})
+    # ALL OF THEM, GROUPED. A flat alphabetical [:40] hid 48 of the 88
+    # blocks already walked, and the validator forbids naming a code that
+    # is not listed — so half the map was unaimable-at, silently, with the
+    # survivors picked by spelling. Sharing the map prefix costs a fraction
+    # of the room and drops nobody. These get MORE numerous as the game
+    # goes on (a place is now bounded by seams and one-way drops, and the
+    # Rocket hideout is nothing but fiddly locked pockets), so a fixed cap
+    # was only ever going to bite harder.
+    # WRITTEN OUT IN FULL, because the model has to copy one of these
+    # verbatim into a predicate. Collapsing them to CERULEAN_CITY|20,0|8,7
+    # is shorter and unusable: it is not a code, and the validator would
+    # bounce it. The whole list costs ~2KB of a 22KB budget; hiding half
+    # the map to save that is a bad trade.
+    _grouped = ", ".join(areas)
     out = ("\n\nAREA CODES you may use with the \"area\" predicate (these are "
-           "the enclosed areas actually walked):\n  " + ", ".join(areas[:40])
+           "the enclosed areas actually walked; a map with several is split "
+           "into parts that cannot be walked between, listed after its "
+           "name):\n  " + _grouped
            + "\n\nWHAT PREVIOUS RUNS ACTUALLY WALKED (evidence — trust this "
            "over your memory of the game; MAP|region means one connected "
            "area, so the SAME map id appearing with DIFFERENT regions is a "
