@@ -2306,6 +2306,29 @@ function OPS.toss(G, c)
   if not c.item then return false, "toss needs item" end
   local have = bag_count(G, c.item)
   if have < 1 then return false, "no " .. c.item .. " in the bag" end
+  -- KEY ITEMS CANNOT BE THROWN AWAY. The game says so itself
+  -- ("That's too impor-tant to toss!") and items.lua marks them
+  -- keyItem = true, so there is no reason to walk the bag menu and find
+  -- out. The run reached for the S.S. TICKET to make room for the SILPH
+  -- SCOPE — sound thinking, the boat has sailed and the ticket is spent —
+  -- and gen 1 simply will not allow it. Say which ones it CAN throw.
+  local def = G.data and G.data.items and G.data.items[c.item]
+  if def and def.keyItem then
+    local spare = {}
+    for id, n in pairs((G.save and G.save.inventory) or {}) do
+      local d2 = G.data.items and G.data.items[id]
+      if (tonumber(n) or 0) > 0 and not (d2 and d2.keyItem) then
+        spare[#spare + 1] = id
+      end
+    end
+    table.sort(spare)
+    return false, c.item .. " is a KEY ITEM — \"That's too important to "
+      .. "toss!\" — this game never lets one go, spent or not."
+      .. (#spare > 0
+          and (" Things you CAN throw away: " .. table.concat(spare, ", ")
+               .. ".")
+          or " Nothing in the bag can be thrown away.")
+  end
   local n = math.min(c.count or have, have)
   U.tap(G, "start"); U.wait(8)
   local menu = ui_top(G)
