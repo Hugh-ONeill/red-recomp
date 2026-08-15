@@ -1,0 +1,46 @@
+{
+ "goal": "Defeat Giovanni for the Earth Badge",
+ "subgoals": [
+  {
+   "id": "go_to_elevator",
+   "goal_text": "Navigate to the elevator in the Rocket Hideout",
+   "done_when": {
+    "area": "ROCKET_HIDEOUT_ELEVATOR|2,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_rocket_hideout",
+   "goal_text": "Use the lift key to exit the Rocket Hideout and return to Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_viridian_center",
+   "goal_text": "Heal Charizard at the Viridian City Pokemon Center",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_gym",
+   "goal_text": "Enter the Viridian City Gym to face Giovanni",
+   "done_when": {
+    "map": "VIRIDIAN_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni in battle to earn the Earth Badge",
+   "done_when": {
+    "badge": "EARTHBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

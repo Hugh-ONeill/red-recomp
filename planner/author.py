@@ -411,6 +411,37 @@ def recent_events(cap: int = 14) -> str:
             + (f" (+{len(fam) - cap} more)" if len(fam) > cap else "") + ".")
 
 
+def outline_so_far(cap: int = 12) -> str:
+    """Your own playthrough list, split at where the run has got to.
+
+    recent_events() is a flat set of things that fired; this is the same
+    history in ORDER, in the model's own words, and the two together are
+    what let it place a new leg in the arc instead of in a vacuum. Every
+    line is the model's own product — its outline, and the chain's count
+    of how far it got — so nothing here tells it anything about the game.
+    """
+    try:
+        legs = [l.strip() for l in
+                Path("plans/outline.txt").read_text().splitlines() if l.strip()]
+        n = int(Path("run/outline_leg").read_text().strip() or 0)
+    except (OSError, ValueError):
+        return ""
+    if not legs:
+        return ""
+    n = max(0, min(n, len(legs)))
+    out = ""
+    if n:
+        show = legs[:n][-cap:]
+        out += ("\n\nTHE OBJECTIVES YOU HAVE ALREADY FINISHED, in the order "
+                "you finished them: "
+                + ("... " if n > cap else "")
+                + "; ".join(show) + ".")
+    if n < len(legs):
+        out += ("\n\nWHAT YOU PLANNED TO DO AFTER THIS ONE: "
+                + "; ".join(legs[n + 1:n + 1 + 4]) + ".")
+    return out
+
+
 def build_prompt(goal: str, start: str | None = None) -> str:
     return (
         f"GOAL: {goal}\n\n"
@@ -433,6 +464,7 @@ def build_prompt(goal: str, start: str | None = None) -> str:
           "matches to pick from. The spelling traps among the common ones:\n"
         + "\n".join(f"  {k}: {v}" for k, v in KEY_ITEMS.items())
         + recent_events()
+        + outline_so_far()
         + f"\n\nBADGES: {', '.join(BADGES)}\n\n"
         "Author the ordered subgoal list now. Remember the granularity rule.")
 
@@ -2000,6 +2032,149 @@ def _never_stood_in(goal: str, observed) -> str | None:
     return None
 
 
+def _events_bearing(goal: str) -> str:
+    """Events THIS RUN HAS FIRED whose names touch the objective's words.
+
+    History, not a dictionary: every name here is something that already
+    happened, so it tells the model nothing about what a place contains.
+    (The rejected version listed flags that merely EXIST — user, 2026-08-15.)
+    Leg 6 asked "Deliver the parcel from Bill to the Oak Lab" with
+    EVENT_OAK_GOT_PARCEL set since leg 3, and nothing in front of the model
+    said so. Matching is mechanical; whether it satisfies the objective is
+    the model's call.
+    """
+    try:
+        cur = json.loads(Path("run/obs.json").read_text())
+    except (OSError, ValueError):
+        return ""
+    words = {w for w in re.sub(r"[^A-Z]+", " ", goal.upper()).split()
+             if len(w) > 3}
+    hit = [f for f in (cur.get("flags") or [])
+           if words & set(re.sub(r"[^A-Z]+", " ", f.upper()).split())]
+    if not hit:
+        return ""
+    return ("\n\nEVENTS ALREADY RECORDED THAT MENTION THIS OBJECTIVE'S OWN "
+            "WORDS: " + ", ".join(sorted(hit)[:10]))
+
+
+ALREADY_SYS = """You are checking your own playthrough list for work you
+have ALREADY FINISHED. An objective still on the list is not proof it is
+still outstanding — you may have done it early, or in passing, or while
+chasing something else.
+
+Judge only on what the run holds and what it has recorded doing. An
+objective is about its OUTCOME: if the thing is in the bag, the badge is
+earned, or the event has fired, it is done however it came about, and the
+wording it was written in does not matter. If you cannot point at
+something that shows it is done, it is NOT done — say so.
+
+Reply with ONLY {"why": "<one sentence>", "done": true} or
+{"why": "<one sentence>", "done": false} — the why comes first."""
+
+
+def check_already_done(deed: str, start: str, model: str,
+                       observed=None) -> bool:
+    """Has this objective ALREADY been accomplished, at any point in the run?
+
+    Different question from check_done, which asks whether the leg that
+    just ran achieved its aim and is judged on that leg's delta. This one
+    is judged on the whole run: an objective can have been satisfied ten
+    legs ago and nobody noticed, because the chain's only record of
+    progress is a high-water mark.
+
+    Same refusal as check_done: a claim the ledger disproves is not
+    judgment. The harness asks; which facts satisfy which objective is the
+    model's to say.
+    """
+    never = _never_stood_in(deed, observed)
+    if never:
+        print(f"[already-done] refused: '{deed[:60]}' names {never} and the "
+              f"run has never once stood on it", file=sys.stderr)
+        return False
+    body = (f"THE OBJECTIVE: {deed}\n\nWHERE THE RUN STANDS: {start}"
+            + recent_events() + _events_bearing(deed))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": ALREADY_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\{.*\}", reply, re.S)
+        ans = json.loads(m.group(0)) if m else {}
+    except (ValueError, KeyError, OSError, AttributeError):
+        return False
+    if ans.get("done"):
+        print(f"[already-done] {str(ans.get('why') or '')[:160]}",
+              file=sys.stderr)
+        return True
+    return False
+
+
+SWEEP_SYS = """Here is the rest of your own Pokemon Red playthrough list —
+objectives you have not marked finished — together with what the run holds
+and what it has recorded doing.
+
+Some of them may be finished anyway. Work gets done early, in passing, or
+while chasing something else, and nothing crosses it off. Name the ones
+you can SHOW are already accomplished: the item is in the bag, the badge
+is earned, the event has fired. If you cannot point at something, leave it
+alone. Naming nothing is the ordinary answer and a perfectly good one.
+
+Reply with ONLY a JSON object, the reason FIRST:
+{"why": "one sentence", "done": [3, 7]}   or   {"why": "...", "done": []}"""
+
+
+def sweep_already_done(ahead: list, start: str, model: str,
+                       observed=None, behind: list = ()) -> list:
+    """Which of the objectives still ahead are already accomplished?
+
+    Runs at the END OF EVERY LEG, win or lose. The chain tracks progress
+    as a single high-water mark, so an objective satisfied out of order
+    stays on the list and is eventually attempted in full: four attempts,
+    a rewrite apiece, half an hour of walking, before check_done catches
+    it at the exhaustion gate. This asks the question up front instead.
+
+    Two stages on purpose. The broad pass sees the objectives together and
+    is cheap when the answer is none (the common case); each objective it
+    names is then confirmed on its own, where a yes/no is far more
+    reliable than a list from a 31B model and the ledger refusal applies.
+    """
+    if not ahead:
+        return []
+    # THE WHOLE ARC, not just the tail. Events are a flat set; objectives
+    # are ordered narrative, and reading the finished ones beside the
+    # remaining ones is what puts the flat set in sequence — the picture
+    # the next author pass inherits, not just this one answer.
+    body = ("WHERE THE RUN STANDS: " + start + recent_events()
+            + ("\n\nOBJECTIVES YOU HAVE FINISHED, in order:\n"
+               + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
+            + "\n\nSTILL ON YOUR LIST, in order:\n"
+            + "\n".join(f"  {n}. {t}" for n, t in ahead))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": SWEEP_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\{.*\}", reply, re.S)
+        ans = json.loads(m.group(0)) if m else {}
+    except (ValueError, KeyError, OSError, AttributeError):
+        return []
+    want = ans.get("done")
+    if not isinstance(want, list) or not want:
+        return []
+    by_n = dict(ahead)
+    cand = []
+    for v in want:
+        try:
+            n = int(v)
+        except (TypeError, ValueError):
+            continue
+        if n in by_n and n not in [c for c, _ in cand]:
+            cand.append((n, by_n[n]))
+    if not cand:
+        return []
+    print(f"[sweep] {str(ans.get('why') or '')[:160]}", file=sys.stderr)
+    return [(n, t) for n, t in cand
+            if check_already_done(t, start, model, observed=observed)]
+
+
 CHECKMISSING_SYS = """You are stuck on one objective of your own
 playthrough, and neither finishing it nor reordering what you already
 planned has worked. So the question is whether the plan is INCOMPLETE:
@@ -2019,7 +2194,13 @@ Reply with ONLY a JSON object, the reason FIRST:
 {"why": "one sentence", "insert": null}"""
 
 
-def check_missing(goal: str, ahead: list, start: str, model: str) -> str:
+def _norm_obj(t: str) -> str:
+    """An objective's text, flattened for equality only."""
+    return re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
+
+
+def check_missing(goal: str, ahead: list, start: str, model: str,
+                  behind: list = (), observed=None, tries: int = 3) -> str:
     """Ask whether the PLAN is missing a step, when nothing else worked.
 
     The chain's last recourse used to be stopping. But a leg can be
@@ -2028,34 +2209,58 @@ def check_missing(goal: str, ahead: list, start: str, model: str) -> str:
     holds the evidence for that: the events it HAS recorded, and the
     objectives it has not reached. Ours is to ask and to place the answer;
     which deed is missing is the model's to say.
+
+    What it must NOT be is work already finished. The old filter compared
+    the proposal against the objectives still AHEAD and never against the
+    ones behind, so a run stuck on "the Secret Key" — a leg whose outline
+    named the wrong item for a dungeon already cleared — could have been
+    handed back "Obtain the Silph Scope" with the Scope in the bag, and
+    spent four attempts proving it. Two gates now: matching text on the
+    list either side of here is bookkeeping and the harness settles it,
+    and whether an unmatched deed is nonetheless done is asked outright.
+    A rejected proposal is quoted back, so the re-ask is not a re-roll.
     """
     try:
         cur = json.loads(Path("run/obs.json").read_text())
     except (OSError, ValueError):
         cur = {}
     done = sorted(cur.get("flags") or [])
-    body = (f"THE OBJECTIVE YOU ARE STUCK ON: {goal}\n\n"
+    listed = {_norm_obj(t) for _, t in ahead} | {_norm_obj(t) for _, t in behind}
+    base = (f"THE OBJECTIVE YOU ARE STUCK ON: {goal}\n\n"
             f"WHERE THE RUN STANDS: {start}\n\n"
             f"WHAT THE GAME HAS RECORDED YOU DOING ({len(done)} events): "
             + ", ".join(done[:60])
+            + ("\n\nOBJECTIVES YOU HAVE ALREADY FINISHED:\n"
+               + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
             + "\n\nSTILL ON THE DOCKET, in order:\n"
             + "\n".join(f"  {n}. {t}" for n, t in ahead))
-    try:
-        reply = brock_probe.chat(
-            [{"role": "system", "content": CHECKMISSING_SYS},
-             {"role": "user", "content": body}], model)
-        m = re.search(r"\{.*\}", reply, re.S)
-        ans = json.loads(m.group(0)) if m else {}
-    except (ValueError, KeyError, OSError, AttributeError):
-        return ""
-    ins = str(ans.get("insert") or "").strip()
-    if not ins or ins.lower() in ("none", "null"):
-        return ""
-    # never re-add something already listed
-    if any(ins.lower() == t.lower() for _, t in ahead):
-        return ""
-    print(f"[check-missing] {str(ans.get('why') or '')[:160]}")
-    return ins
+    turned_down: list = []
+    for _ in range(max(1, tries)):
+        body = base + ("\n\nYOU ALREADY PROPOSED THESE AND THEY WERE TURNED "
+                       "DOWN — name something else or name none:\n"
+                       + "\n".join(f"  - {d} ({w})" for d, w in turned_down)
+                       if turned_down else "")
+        try:
+            reply = brock_probe.chat(
+                [{"role": "system", "content": CHECKMISSING_SYS},
+                 {"role": "user", "content": body}], model)
+            m = re.search(r"\{.*\}", reply, re.S)
+            ans = json.loads(m.group(0)) if m else {}
+        except (ValueError, KeyError, OSError, AttributeError):
+            return ""
+        ins = str(ans.get("insert") or "").strip()
+        if not ins or ins.lower() in ("none", "null"):
+            return ""
+        if _norm_obj(ins) in listed:
+            turned_down.append((ins, "already on your own list"))
+            continue
+        if check_already_done(ins, start, model, observed=observed):
+            turned_down.append((ins, "you have already done this"))
+            continue
+        print(f"[check-missing] {str(ans.get('why') or '')[:160]}",
+              file=sys.stderr)
+        return ins
+    return ""
 
 
 def check_done(goal: str, start: str, model: str,
@@ -2077,18 +2282,7 @@ def check_done(goal: str, start: str, model: str,
     # with EVENT_OAK_GOT_PARCEL set since leg 3, and nothing in front of the
     # model said so. Matching is mechanical and names only what already
     # happened; whether it satisfies the objective is the model's call.
-    bearing = ""
-    try:
-        cur = json.loads(Path("run/obs.json").read_text())
-        words = {w for w in re.sub(r"[^A-Z]+", " ", goal.upper()).split()
-                 if len(w) > 3}
-        hit = [f for f in (cur.get("flags") or [])
-               if words & set(re.sub(r"[^A-Z]+", " ", f.upper()).split())]
-        if hit:
-            bearing = ("\n\nEVENTS ALREADY RECORDED THAT MENTION THIS "
-                       "OBJECTIVE'S OWN WORDS: " + ", ".join(sorted(hit)[:10]))
-    except (OSError, ValueError):
-        pass
+    bearing = _events_bearing(goal)
     never = _never_stood_in(goal, observed)
     if never:
         print(f"[check-done] refused: this objective names {never} and the "
@@ -2131,6 +2325,14 @@ def main():
     # whole chain instead of asking what was missing.
     ap.add_argument("--check-missing", action="store_true",
                     help="ask what deed the outline never listed")
+    ap.add_argument("--check-already-done", action="store_true",
+                    help="ask which objectives STILL AHEAD of --leg are "
+                         "already accomplished; prints 'N<TAB>text' per "
+                         "line and exits 0, or exits 3. With --deed, judges "
+                         "that one objective instead")
+    ap.add_argument("--deed", default=None,
+                    help="a single objective for --check-already-done, "
+                         "instead of sweeping the outline")
     ap.add_argument("--check-blocker", action="store_true",
                     help="ask the model whether a later outline leg must "
                          "come before the stuck --goal; prints the leg "
@@ -2160,6 +2362,25 @@ def main():
                           gained=args.gained or "")
         print("DONE" if done else "NOT_DONE")
         sys.exit(0 if done else 3)
+    if args.check_already_done:
+        st = args.start or "a brand new game"
+        if args.deed:
+            hit = check_already_done(args.deed, st, args.model,
+                                     observed=args.observed)
+            sys.exit(0 if hit else 3)
+        if not (args.outline_path and args.leg):
+            ap.error("--check-already-done needs --deed, or --outline-path "
+                     "and --leg")
+        lines = [l.strip() for l in args.outline_path.read_text()
+                 .splitlines() if l.strip()]
+        ahead = [(n, lines[n - 1])
+                 for n in range(args.leg + 1, len(lines) + 1)]
+        behind = [(n, lines[n - 1]) for n in range(1, args.leg + 1)]
+        got = sweep_already_done(ahead, st, args.model,
+                                 observed=args.observed, behind=behind)
+        for n, t in got:
+            print(f"{n}\t{t}")
+        sys.exit(0 if got else 3)
     if args.check_blocker:
         if not (args.outline_path and args.leg):
             ap.error("--check-blocker needs --outline-path and --leg")
@@ -2187,7 +2408,9 @@ def main():
                  for n in range(args.leg, len(lines) + 1)]
         if not ahead:
             sys.exit(3)
-        deed = check_missing(args.goal, ahead, args.start or "", args.model)
+        behind = [(n, lines[n - 1]) for n in range(1, args.leg)]
+        deed = check_missing(args.goal, ahead, args.start or "", args.model,
+                             behind=behind, observed=args.observed)
         if deed:
             print(deed)
             sys.exit(0)

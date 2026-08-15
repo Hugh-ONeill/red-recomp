@@ -77,6 +77,41 @@ else
       --out plans/outline.txt --model "$MODEL"
 fi
 
+# WORK ALREADY FINISHED, CROSSED OFF BEFORE IT IS EVER ATTEMPTED. The
+# chain's only record of progress is a high-water mark, so an objective
+# satisfied out of order stays on the list and is eventually walked in
+# full — four attempts, a rewrite apiece, half an hour — before the
+# exhaustion gate thinks to ask whether it was needed. This asks first.
+#
+# It runs at the END OF EVERY LEG, won or lost, and in the lost case it
+# runs BEFORE the reorder rung, so what that rung is choosing among is a
+# list of real outstanding work. Leg 11 exhausted holding the SILPH SCOPE
+# with "Retrieve the Silph Scope from Team Rocket" still sitting at 17.
+#
+# The judgment is the model's, twice over (a sweep of the remaining list,
+# then a yes/no on each objective it names, refused outright for any that
+# names a map the run has never stood on). The harness only crosses off.
+sweep_ahead() {
+  local at="$1" got nums n
+  [ "$(cat run/outline_skips 2>/dev/null | wc -l)" -lt 8 ] || return 0
+  got=$(python planner/author.py --check-already-done \
+      --goal "$leg" --outline-path plans/outline.txt --leg "$at" \
+      --start "$(python planner/state_text.py)" \
+      --observed run/explored.json --model "$MODEL") || return 0
+  [ -n "$got" ] || return 0
+  nums=$(printf '%s\n' "$got" | cut -f1 | tr '\n' ' ')
+  python planner/skip_legs.py $nums || return 0
+  printf '%s\n' "$got" >> run/outline_skips
+  # positions after this leg have shifted, so their plans name the wrong
+  # objective now — same cleanup the reorder and insert rungs do
+  n=$((at + 1))
+  while [ "$n" -le "${#LEGS[@]}" ]; do
+    rm -f "$(printf 'plans/leg_%02d' "$n")".json \
+          "$(printf 'plans/leg_%02d' "$n")".v*.json
+    n=$((n + 1))
+  done
+}
+
 # The outline is re-read EVERY iteration: a stuck leg may pull a later
 # leg forward (the model reordering its own outline on play evidence), and
 # the loop must see the new order at once.
@@ -160,8 +195,10 @@ while :; do
         --observed run/explored.json --model "$MODEL"; then
       echo "=== leg $i/${#LEGS[@]} judged already accomplished: $leg ==="
       echo "$i" > "$PROGRESS"
+      sweep_ahead "$i"
       continue
     fi
+    sweep_ahead "$i"
     # Or the leg is stuck because a LATER leg of the model's own outline
     # has to happen first (Surge's gym behind a CUT bush, with "Obtain
     # the HM for Cut" two legs later). The model names the blocking leg
@@ -217,4 +254,5 @@ PY
   fi
   echo "$i" > "$PROGRESS"
   echo "=== leg $i/${#LEGS[@]} complete: $leg ==="
+  sweep_ahead "$i"
 done
