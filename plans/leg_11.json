@@ -33,7 +33,32 @@
       "done_when": {
         "party_healthy": true
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 41,
+          "y": 9,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "CELADON_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
       "id": "enter_viridian_gym",

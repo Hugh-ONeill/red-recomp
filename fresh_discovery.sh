@@ -61,8 +61,10 @@ if [ "$done_legs" = 0 ]; then
   # class as the stale-flag resume teleport.
   rm -f run/explored.json run/last_state.json run/obs.json \
         run/status.txt run/heartbeat
-  # the reorder budget belongs to a chain, not to the directory
+  # these budgets belong to a chain, not to the directory
   : > run/outline_reorders
+  rm -f run/outline_skips run/outline_inserts \
+        run/outline_pulls run/outline_pulls_failed
   echo "archived ${ts}.pre-discovery; ledgers cleared"
 fi
 
@@ -76,6 +78,26 @@ else
   python planner/author.py --outline --goal "$GOAL" \
       --out plans/outline.txt --model "$MODEL"
 fi
+
+# When the list is rearranged, every plan at or after the shift names the
+# wrong objective and must not be picked up as "keeping existing". The
+# rungs used to rm them, and one pull-forward took all eleven leg_11
+# rewrites with it — real evidence about a real dungeon, thrown away to
+# invalidate a filename. ADD AND UPDATE, NEVER DELETE: they move aside.
+shelve_plans_from() {
+  local n="$1" f stamp
+  stamp=$(date +%H%M%S)
+  mkdir -p plans/archive
+  while [ "$n" -le "${#LEGS[@]}" ]; do
+    for f in "$(printf 'plans/leg_%02d' "$n")".json \
+             "$(printf 'plans/leg_%02d' "$n")".v*.json; do
+      if [ -e "$f" ]; then
+        mv -f "$f" "plans/archive/${stamp}-$(basename "$f")"
+      fi
+    done
+    n=$((n + 1))
+  done
+}
 
 # WORK ALREADY FINISHED, CROSSED OFF BEFORE IT IS EVER ATTEMPTED. The
 # chain's only record of progress is a high-water mark, so an objective
@@ -104,12 +126,7 @@ sweep_ahead() {
       printf '%s\n' "$got" >> run/outline_skips
       # positions after this leg have shifted, so their plans name the
       # wrong objective now — the cleanup the reorder rung already does
-      n=$((at + 1))
-      while [ "$n" -le "${#LEGS[@]}" ]; do
-        rm -f "$(printf 'plans/leg_%02d' "$n")".json \
-              "$(printf 'plans/leg_%02d' "$n")".v*.json
-        n=$((n + 1))
-      done
+      shelve_plans_from $((at + 1))
     fi
   fi
   # ...AND THE WORK IT NEVER THOUGHT TO LIST. The sweep above can only
@@ -212,33 +229,35 @@ while :; do
       continue
     fi
     sweep_ahead "$i"
+    # A PULL THAT DID NOT UNSTICK ANYTHING GOES HOME. This leg may itself
+    # be one that was moved here, and it has now failed in its new slot
+    # too — so the move bought nothing and cost the leg it displaced.
+    # Leaving it costs the run twice over, and the reorder budget gets
+    # spent defending the mistake. Bounded hard at two: an undo hands the
+    # same leg back to the same ladder, and the point is to get out of
+    # the loop, not to walk round it.
+    if [ "$(cat run/outline_pulls_failed 2>/dev/null | wc -l)" -lt 2 ] \
+        && python planner/pull_leg.py undo "$i"; then
+      shelve_plans_from "$i"
+      continue
+    fi
     # Or the leg is stuck because a LATER leg of the model's own outline
     # has to happen first (Surge's gym behind a CUT bush, with "Obtain
     # the HM for Cut" two legs later). The model names the blocking leg
-    # and the harness pulls it forward — choose-only, bounded.
+    # and the harness pulls it forward — choose-only, bounded, and now
+    # gated: a leg is not pulled if it is already done, not pulled twice
+    # if the first pull failed, and not pulled from far down the list
+    # unless it can say what it provides that the stuck leg needs.
     if [ "$(cat run/outline_reorders 2>/dev/null | wc -l)" -lt 8 ] \
         && blocker=$(python planner/author.py --check-blocker \
             --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
             --start "$(python planner/state_text.py)" \
+            --observed run/explored.json \
             --journal run/executor_log.jsonl --model "$MODEL"); then
       echo "=== leg $i stuck behind leg $blocker: pulling it forward ==="
-      python - "$i" "$blocker" <<'PY'
-import sys
-i, b = int(sys.argv[1]), int(sys.argv[2])
-lines = [l for l in open('plans/outline.txt').read().splitlines()
-         if l.strip()]
-mv = lines.pop(b - 1)
-lines.insert(i - 1, mv)
-open('plans/outline.txt', 'w').write('\n'.join(lines) + '\n')
-print('pulled forward:', mv)
-PY
+      python planner/pull_leg.py pull "$i" "$blocker"
       echo "$i<-$blocker" >> run/outline_reorders
-      n=$i
-      while [ "$n" -le "${#LEGS[@]}" ]; do
-        rm -f "$(printf 'plans/leg_%02d' "$n")".json \
-              "$(printf 'plans/leg_%02d' "$n")".v*.json
-        n=$((n + 1))
-      done
+      shelve_plans_from "$i"
       continue
     fi
     # NOTHING ELSE WORKED: IS THE PLAN MISSING A STEP? A leg can be
@@ -254,12 +273,7 @@ PY
       echo "=== leg $i needs something first: $missing ==="
       python planner/insert_leg.py "$i" "$missing"
       echo "$i:$missing" >> run/outline_inserts
-      n=$i
-      while [ "$n" -le "${#LEGS[@]}" ]; do
-        rm -f "$(printf 'plans/leg_%02d' "$n")".json \
-              "$(printf 'plans/leg_%02d' "$n")".v*.json
-        n=$((n + 1))
-      done
+      shelve_plans_from "$i"
       continue
     fi
     echo "=== chain stopped at leg $i/${#LEGS[@]}: $leg ===" >&2

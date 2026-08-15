@@ -1966,8 +1966,94 @@ sentence of reasoning recovered. You are choosing from your own outline,
 not writing new legs."""
 
 
+PULLCHECK_SYS = """You have proposed moving one leg of your own Pokemon Red
+outline forward, out of the order you planned it in, because you believe
+the stuck leg cannot be done without it. You are proposing to move it a
+long way, which is a large claim about your own plan being wrong, so this
+one gets checked before it is applied.
+
+Name the THING. What does the stuck leg need that the leg you want to move
+would provide — an item, a move, a badge, a door opened, someone gone from
+a doorway? One concrete thing, that you could point at.
+
+It has to be something the leg you are moving HANDS YOU. Naming what the
+stuck leg is itself trying to get is not an answer; that is the question
+said over again.
+
+If you cannot name one, say so. Two legs that mention the same name, or
+happen in the same building, or simply feel related, is not one. Saying no
+here costs nothing: the run asks a different question instead.
+
+Reply with ONLY a JSON object, the reason FIRST:
+{"why": "one sentence", "provides": "the one thing"}   or
+{"why": "one sentence", "provides": null}"""
+
+
+# How far a leg may be pulled on the strength of one question. Beyond
+# this the pull has to say what it is FOR. Not a rule about the game —
+# a rule about how much the harness will rearrange the model's own list
+# on a single answer.
+PULL_NEAR = 3
+
+
+def confirm_blocker(goal: str, n: int, text: str, gap: int, start: str,
+                    journal: str, model: str) -> bool:
+    """A long pull must name what it provides, or it does not happen.
+
+    Leg 11 — "Obtain the Secret Key from the Rocket Hideout", an objective
+    naming an item that is not in that dungeon — was judged stuck behind
+    leg 23, "Defeat Giovanni for the Earth Badge", and the gym pulled
+    twelve places forward on a party of one. The run had just fired
+    EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI, and leg 23 was the only other line
+    on the list with the word Giovanni in it. It reached for the name it
+    recognised.
+
+    A name in common survives "what blocks this?" and does not survive
+    "what does that give you that this needs?". Asking the second question
+    in different words is the whole of the guard; the answer is the
+    model's either way.
+    """
+    body = (f"THE STUCK LEG, number {n - gap}: {goal}\n\n"
+            f"THE LEG YOU WANT TO MOVE, number {n}, planned {gap} legs "
+            f"later: {text}\n\nWHERE THE RUN STANDS: {start}\n{journal}")
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": PULLCHECK_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\{.*\}", reply, re.S)
+        ans = json.loads(m.group(0)) if m else {}
+    except (ValueError, KeyError, OSError, AttributeError):
+        return False
+    got = str(ans.get("provides") or "").strip()
+    why = str(ans.get("why") or "")[:160]
+    if not got or got.lower() in ("none", "null", "nothing"):
+        print(f"[blocker] refused a {gap}-leg pull: {why}", file=sys.stderr)
+        return False
+    # THE ANSWER MAY NOT BE THE QUESTION. Asked what the Viridian gym
+    # would hand a run stuck on "Obtain the Secret Key from the Rocket
+    # Hideout", the model answered "the Secret Key", and explained that
+    # the key only appears once Giovanni is beaten and leaves — a fluent
+    # account of a game that does not work that way, from a run whose own
+    # journal said it had beaten Giovanni and found no key. Raising the
+    # burden of proof does not help when the proof can be invented.
+    #
+    # What cannot be invented is the shape of the reply. A thing the
+    # pulled leg HANDS YOU is not the thing the stuck leg is reaching
+    # for; when it is, no work has been located, the sentence has just
+    # been read backwards. That much the harness can see without knowing
+    # one fact about the game.
+    if _sig(got) and _sig(got) <= _sig(goal):
+        print(f"[blocker] refused a {gap}-leg pull: it says leg {n} provides "
+              f"{got!r}, which is what the stuck leg is for — {why}",
+              file=sys.stderr)
+        return False
+    print(f"[blocker] {gap}-leg pull provides {got!r}: {why}",
+          file=sys.stderr)
+    return True
+
+
 def check_blocker(goal: str, ahead: list, start: str, journal: str,
-                  model: str):
+                  model: str, leg: int = 0, observed=None, refused=()):
     """The model reorders its own outline when play proves it misordered.
 
     The Surge leg walled on a bush only CUT clears while the model's own
@@ -1976,11 +2062,18 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
     The outline is where that knowledge lives, so the outline is what has
     to move, and the model authored it, so the model moves it: the
     harness asks one question and applies a pull-forward, choose-only.
+
+    What the harness does decide is how far it will rearrange the list on
+    the strength of that one question. A pull from the next leg or two is
+    cheap and usually right. A pull from twelve legs away says the plan
+    was badly wrong, and it earns a second question in different words —
+    see confirm_blocker. Distance raises the burden; it never forbids.
     """
     body = (f"THE STUCK LEG: {goal}\n\n"
             f"WHERE THE RUN STANDS: {start}\n"
             f"{journal}\n\nTHE LEGS STILL AHEAD:\n"
-            + "\n".join(f"  {n}. {t}" for n, t in ahead))
+            + "\n".join(f"  {n}. {t}" for n, t in ahead
+                        if _norm_obj(t) not in refused))
     reply = brock_probe.chat(
         [{"role": "system", "content": BLOCKER_SYS},
          {"role": "user", "content": body}], model)
@@ -1991,9 +2084,31 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
         n = json.loads(m.group(0)).get("pull_forward")
     except (ValueError, AttributeError):
         return None
-    if isinstance(n, (int, float)) and any(int(n) == a for a, _ in ahead):
-        return int(n)
-    return None
+    if not isinstance(n, (int, float)):
+        return None
+    n = int(n)
+    hit = [(a, t) for a, t in ahead if a == n]
+    if not hit:
+        return None
+    text = hit[0][1]
+    # A leg already pulled forward once and failed there is not pulled
+    # again — otherwise a wrong pull is re-made every time the ladder
+    # comes round, and the reorder budget is spent churning one mistake.
+    if _norm_obj(text) in refused:
+        print(f"[blocker] refused: leg {n} was pulled forward before and "
+              f"did not unstick this", file=sys.stderr)
+        return None
+    # Moving a finished objective forward accomplishes nothing but four
+    # more attempts at it; the sweep would cross it off at the next leg
+    # boundary anyway, so settle it here rather than pay for it first.
+    if check_already_done(text, start, model, observed=observed):
+        print(f"[blocker] refused: leg {n} is already done", file=sys.stderr)
+        return None
+    gap = n - leg if leg else 0
+    if gap > PULL_NEAR and not confirm_blocker(goal, n, text, gap, start,
+                                               journal, model):
+        return None
+    return n
 
 
 CHECKDONE_SYS = """You are judging whether a Pokemon Red objective is
@@ -2537,8 +2652,16 @@ def main():
         if not ahead:
             sys.exit(3)
         jt = journal_text(args.journal) if args.journal else ""
+        # legs already pulled forward once that did not unstick anything
+        try:
+            refused = {_norm_obj(l.split("\t", 1)[-1]) for l in
+                       Path("run/outline_pulls_failed").read_text().splitlines()
+                       if l.strip()}
+        except OSError:
+            refused = set()
         n = check_blocker(args.goal, ahead, args.start or "", jt,
-                          args.model)
+                          args.model, leg=args.leg, observed=args.observed,
+                          refused=refused)
         if n:
             print(n)
             sys.exit(0)

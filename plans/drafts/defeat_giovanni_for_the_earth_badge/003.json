@@ -1,0 +1,55 @@
+{
+ "goal": "Defeat Giovanni for the Earth Badge",
+ "subgoals": [
+  {
+   "id": "exit_game_corner_prize_room",
+   "goal_text": "Leave the Game Corner Prize Room and return to the main Game Corner area.",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_game_corner",
+   "goal_text": "Leave the Game Corner and enter Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_city",
+   "goal_text": "Travel from Saffron City to Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_viridian_center",
+   "goal_text": "Visit the Pokemon Center in Viridian City to ensure the party is at full health.",
+   "done_when": {
+    "map": "VIRIDIAN_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_gym",
+   "goal_text": "Enter the Viridian Gym to face Giovanni.",
+   "done_when": {
+    "map": "VIRIDIAN_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Battle and defeat Giovanni to earn the Earth Badge.",
+   "done_when": {
+    "badge": "EARTHBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}
