@@ -609,6 +609,14 @@ local function observe(G, seq, result)
   elseif top then
     o.mode = "ui"
     o.ui = scalars(top, 0)
+    -- IS THIS A QUESTION OR A MENU? scalars() copies only scalar fields, so
+    -- a menu's `items` table never reaches the observation -- and the
+    -- executor's "a cursor and no items means yes/no" test was therefore
+    -- true of EVERYTHING with a cursor. It put the mart's BUY list to the
+    -- model as a yes/no, got "yes" (it was trying to reach the day care
+    -- man), pressed A into the shopping list and spent 2000 doing it.
+    -- Answer the question here, with the same test the shim itself uses.
+    o.ui.is_choice = (top.index ~= nil and top.items == nil) and true or false
   else
     o.mode = "boot"
   end
@@ -2372,6 +2380,18 @@ end
 -- and WHETHER, the harness drives the menus. Everything they refuse is a
 -- fact the game would refuse on anyway, reported before any button moves.
 local function daycare_talk(G)
+  -- SAY THE PLAIN THING FIRST. Issued from inside the Poke Mart, the only
+  -- complaint was that an object named DAYCARE_GENTLEMAN was not visible,
+  -- which reads like a harness fault rather than "you are in the wrong
+  -- building". The day care is its own map on ROUTE_5.
+  local here
+  for _, npc in ipairs((G.overworld and G.overworld.npcs) or {}) do
+    if ((npc.def or {}).name or "") == "DAYCARE_GENTLEMAN" then here = true end
+  end
+  if not here then
+    return false, "the DAY-CARE MAN is not in this building — the day care "
+      .. "is its own small house on ROUTE_5, and you have to be inside it"
+  end
   local ok, why = OPS.interact(G, { name = "DAYCARE_GENTLEMAN",
                                     answer = "yes", read_question = true })
   if not ok then return false, why or "could not talk to the day care man" end

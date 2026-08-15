@@ -2284,7 +2284,9 @@ class Executor:
         if (obs or {}).get("mode") != "ui":
             return False
         ui = (obs or {}).get("ui") or {}
-        return ui.get("index") is not None and not ui.get("items")
+        # the shim decides this now: `items` is a table and never survived
+        # into the observation, so "no items" was true of every screen.
+        return bool(ui.get("is_choice"))
 
     QUESTION_SYS = (
         "You are playing Pokemon Red. The game has stopped on a YES/NO "
