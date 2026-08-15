@@ -3280,6 +3280,32 @@ return function(G)
       U.wait(6)
     end
     seq = cmd.seq
+    -- NEVER SIT IN THE CABLE CLUB LINK SCREENS. Two reasons, and they
+    -- point the same way. Practically, a link session needs a SECOND
+    -- PLAYER: there is none, so every one of these screens can only stall
+    -- the run (the Cable Club save prompt already held a campaign for 23
+    -- escalations). And they PUT AN ADDRESS ON SCREEN -- the joiner's
+    -- entry field comes prefilled with this machine's own LAN IP, and a
+    -- host shows "ip:port" for the friend to type. It is a private-range
+    -- address and online play uses a relay room code rather than a public
+    -- one, so nothing routable is exposed, but it is still this machine's
+    -- address sitting in frame, and this run is meant to be streamed.
+    -- Backing out costs the model nothing it can use: talking to the
+    -- LINK_RECEPTIONIST still works, her words still reach the ledger,
+    -- and saying yes is still hers to choose -- the session just never
+    -- opens behind it.
+    do
+      local LINK_STAGES = {
+        menu = true, lanMenu = true, onlineMenu = true, addrEntry = true,
+        hosting = true, onlineJoining = true, joining = true,
+        notice = true, battleOptions = true,
+      }
+      for _ = 1, 12 do
+        local t = G.stack and G.stack:top()
+        if not (t and t.stage and LINK_STAGES[t.stage]) then break end
+        U.tap(G, "b"); U.wait(6)
+      end
+    end
     local op = OPS[cmd.op]
     if op then
       local ok, detail = wd_run(G, cmd.op, OP_FRAME_BUDGET, op, G, cmd)
