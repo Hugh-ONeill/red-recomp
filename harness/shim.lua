@@ -1187,11 +1187,78 @@ function OPS.cross(G, c)
     -- Poke Flute, and east of Cerulean it is a CUT_TREE the party has
     -- known CUT for hours. Both are on screen. State the fact, and let
     -- what is standing there be read from the objects like anything else.
+    -- ...AND SAY WHAT IS THERE. "Go and look" is not help when the
+    -- looking is the harness's job: the objects, their tiles and whether
+    -- a bush is cuttable are all in the map data already. East of
+    -- Cerulean that is a CUT_TREE the party has known CUT for hours, and
+    -- north of Route 12 it is a SNORLAX. Naming it costs nothing and
+    -- decides nothing — cut it, wake it, or go round is still the
+    -- model's call. Also point at the buildings on this edge: the
+    -- Cerulean trashed house is a PASSAGE (a hole in its back wall), and
+    -- a door is a way through that BFS over open ground cannot see.
+    local lm = ow.map
+    local W = (lm and lm.widthCells) or 0
+    local H = (lm and lm.heightCells) or 0
+    local function near_seam(x, y)
+      if dir == "north" then return y <= 4 end
+      if dir == "south" then return y >= H - 5 end
+      if dir == "west"  then return x <= 4 end
+      if dir == "east"  then return x >= W - 5 end
+      return false
+    end
+    local blockers, doors = {}, {}
+    local function add(tag, x, y)
+      if #blockers < 8 then
+        blockers[#blockers + 1] = ("%s at %d,%d"):format(tag, x, y)
+      end
+    end
+    for _, npc in ipairs((ow.npcs) or {}) do
+      local nx, ny = npc.cellX, npc.cellY
+      if nx and ny and near_seam(nx, ny) then
+        add(tostring((npc.def or {}).name or "someone"), nx, ny)
+      end
+    end
+    for _, f in ipairs(map_fixtures(G, (lm and lm.id)) or {}) do
+      if f.x and f.y and near_seam(f.x, f.y) then
+        add(tostring(f.name or "something"), f.x, f.y)
+      end
+    end
+    -- cuttable bushes, the same tile test observe() uses, but only over
+    -- the five-cell band against this edge rather than the whole map
+    local ts = lm and lm.def and lm.def.tileset
+    local want = (ts == "OVERWORLD" and 0x3d) or (ts == "GYM" and 0x50) or nil
+    if lm and lm.cellTile and want then
+      for cy = 0, math.min(H - 1, 71) do
+        for cx = 0, math.min(W - 1, 71) do
+          if near_seam(cx, cy) and lm:cellTile(cx, cy) == want
+             and not lm:isWalkableCell(cx, cy) then
+            add("CUT_TREE (a bush CUT clears)", cx, cy)
+          end
+        end
+      end
+    end
+    for _, w in ipairs((md and md.warps) or {}) do
+      if w.x and w.y and near_seam(w.x, w.y) and #doors < 6 then
+        doors[#doors + 1] = ("%s at %d,%d")
+          :format(tostring(w.destMap or "somewhere"), w.x, w.y)
+      end
+    end
+    local said = ""
+    if #blockers > 0 then
+      said = said .. " Standing against that edge: "
+        .. table.concat(blockers, ", ") .. "."
+    end
+    if #doors > 0 then
+      said = said .. " Doors on that edge (a building can be a way "
+        .. "THROUGH, not just a room): " .. table.concat(doors, ", ") .. "."
+    end
+    if said == "" then
+      said = " Nothing this map lists sits against that edge."
+    end
     return false, ("the %s seam of %s (to %s) cannot be walked to from "
-      .. "here — no walkable path reaches it; something in between could "
-      .. "not be walked through, and whatever that is can be seen from "
-      .. "where you are standing"):format(cmap[dir], tostring(startMap),
-                               tostring(dest and dest.map or "?"))
+      .. "here — no walkable path reaches it."):format(
+        cmap[dir], tostring(startMap), tostring(dest and dest.map or "?"))
+      .. said
   end
   if p.cellX ~= ex or p.cellY ~= ey then
     for round = 1, 3 do
