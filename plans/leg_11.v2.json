@@ -48,7 +48,146 @@
       "done_when": {
         "flag": "EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 1,
+          "when": {
+            "map": "ROCKET_HIDEOUT_ELEVATOR"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB2F_TM_HORN_DRILL",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB2F_SUPER_POTION",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 21,
+          "y": 8,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 18,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B3F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 10,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 25,
+          "y": 6,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B3F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 21,
+          "y": 8,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 18,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B3F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB4F_ROCKET3",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 24,
+          "y": 19,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 1,
+          "when": {
+            "map": "ROCKET_HIDEOUT_ELEVATOR"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB4F_ROCKET1",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB4F_ROCKET2",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB4F_IRON",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB4F_GIOVANNI",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 16
+      }
     },
     {
       "id": "take_secret_key",

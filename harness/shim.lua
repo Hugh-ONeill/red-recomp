@@ -2639,10 +2639,22 @@ function OPS.elevator(G, c)
     return false, "elevator needs floor=<label>, e.g. floor=\"B4F\""
   end
   local want = tostring(c.floor):upper()
-  -- the panel is a sign-shaped fixture on this map
+  -- THE PANEL IS A SIGN. data/maps has it as
+  -- signs = {{ text = "TEXT_ROCKETHIDEOUTELEVATOR", x = 1, y = 1 }} —
+  -- not an object and not a fixture, which is where this looked first and
+  -- would never have found it. Signs are usually flavour text, which is
+  -- presumably why the run rode the car twice without pressing anything.
+  local ow = G.overworld
+  local md = ow and ow.map and G.data and G.data.maps
+             and G.data.maps[ow.map.id]
   local px, py
+  for _, sg in ipairs((md and md.signs) or {}) do
+    if tostring(sg.name or sg.text or ""):upper():find("ELEVATOR") then
+      px, py = sg.x, sg.y
+    end
+  end
   for _, f in ipairs(map_fixtures(G, ((G.overworld.map or {}).id)) or {}) do
-    if tostring(f.name or ""):upper():find("ELEVATOR") then
+    if not px and tostring(f.name or ""):upper():find("ELEVATOR") then
       px, py = f.x, f.y
     end
   end
