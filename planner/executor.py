@@ -1284,6 +1284,20 @@ class Executor:
         src, dst = self._where(before_obs), self._where(after_obs)
         if "None" in src or "None" in dst:
             return
+        # A CROSSING WHOSE DOOR WE CANNOT NAME TEACHES NOTHING ABOUT DOORS.
+        # The key here is the tile the walk AIMED at, which is only the
+        # right answer when the walk finished and stepped through on
+        # purpose. Walking toward the Day Care door and clipping the Route
+        # 5 gate on the way wrote "10,21 leads to ROUTE_5_GATE"; that
+        # contradicted the true edge learned on the way in, the conflict
+        # rule voided the honest one, and the way into the Day Care was
+        # gone. The shim now says so when it cannot name the door. Take the
+        # visit, take the region, write no edge.
+        _d = str(((after_obs or {}).get("result") or {}).get("detail") or "")
+        if "door unknown" in _d:
+            self.visits[dst] = self.visits.get(dst, 0) + 1
+            self.log("crossed_door_unknown", frm=src, to=dst)
+            return
         key = (f"{step.get('x')},{step.get('y')}"
                if step.get("x") is not None else step.get("dir"))
         if key is None:

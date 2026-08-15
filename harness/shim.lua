@@ -992,6 +992,18 @@ function OPS.use_warp(G, c)
   local p = ow.player
   if not (c.x and c.y) then return false, "use_warp needs x,y" end
 
+  -- WHICH DOOR ACTUALLY FIRED. note_transition keys its edge on the tile
+  -- we AIMED at, so a walk toward the Day Care door that crosses the Route
+  -- 5 gate warp on the way recorded "10,21 leads to ROUTE_5_GATE". That
+  -- contradicted the true edge learned walking IN, the conflict rule voided
+  -- the honest one, and go_to_daycare went unreachable in the next two log
+  -- lines: the run had learned the way in and the harness overwrote it.
+  -- The departure tile cannot be recovered once the map has flipped -- by
+  -- the time walk_to returns, the player is already somewhere else -- so
+  -- when a crossing happens MID-WALK we say the door is unknown and let
+  -- the executor record no edge at all. Honest ignorance beats a wrong
+  -- edge; that is the same rule the conflict-voiding already states, moved
+  -- to where the bad data is born instead of cleaning up after it.
   local walk_why = nil
   local function attempt(x, y)
     -- Three passes, yielding ground between them: pass 1 is the plain
@@ -1003,11 +1015,15 @@ function OPS.use_warp(G, c)
         local _wok, _wwhy = OPS.walk_to(
           G, { x = x, y = y, max_steps = c.max_steps or 400 })
         walk_why = _wwhy or walk_why
-        if (ow.map and ow.map.id) ~= startMap then return true end
+        if (ow.map and ow.map.id) ~= startMap then
+          return true, "crossed mid-walk (door unknown)"
+        end
       end
       if p.cellX == x and p.cellY == y then break end
       if pass < 3 then yield_ground(G) end
-      if (ow.map and ow.map.id) ~= startMap then return true end
+      if (ow.map and ow.map.id) ~= startMap then
+        return true, "crossed mid-walk (door unknown)"
+      end
     end
     if p.cellX ~= x or p.cellY ~= y then return false, "unreachable" end
     -- step through: prefer whichever edge the tile sits on (cell dims)
