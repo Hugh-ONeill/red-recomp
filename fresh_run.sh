@@ -18,4 +18,19 @@ GAME_PID=$!
 trap 'kill -- -"$GAME_PID" 2>/dev/null || true' EXIT
 for _ in $(seq 1 60); do [ -f run/obs.json ] && break; sleep 1; done
 [ -f run/obs.json ] || { echo "game did not come up" >&2; exit 1; }
-python planner/executor.py --bootstrap "$@"
+# THE MODEL-AUTHORED SPEC IS THE ONE THAT PLAYS. battle_policy's own
+# header says the hand-seeded DEFAULT_SPEC "exists for spine/oracle
+# validation only; the record run requires a model-authored spec" — and
+# nothing ever passed --policy-spec, so every battle of the record run was
+# fought on the seed. plans/policy_model_v1.json had been sitting there
+# authored and live-evaluated (6/6 rival, 3/3 badge, 0 blackouts, beating
+# the typed_v0 baseline on oracle agreement 47 to 36) and never once used.
+# Newest by version, overridable, and silent if there is none.
+POLICY="${RED_POLICY:-$(ls -1 plans/policy_model_v*.json 2>/dev/null \
+        | sort -V | tail -1 || true)}"
+pol=()
+if [ -n "$POLICY" ] && [ -s "$POLICY" ]; then
+  pol=(--policy-spec "$POLICY")
+  echo "[policy] $POLICY"
+fi
+python planner/executor.py --bootstrap "$@" "${pol[@]}"
