@@ -1202,6 +1202,47 @@ class Executor:
                 if w.get("dest") == dest
                 and abs((w.get("x") or 0) - x) + abs((w.get("y") or 0) - y) == 1]
 
+    def _passage_note(self, here: str) -> str:
+        """Buildings this run has WALKED two ways out of.
+
+        Only doors actually taken count. The map table lists every warp a
+        building has, including a hole in a back wall nobody has seen from
+        the street, and reading that out would be telling the run something
+        the player could not know. Walking in the front and coming out
+        somewhere else is a thing that HAPPENED, and it is the only reason
+        this note ever appears.
+
+        It matters because BFS walks open ground on one map, so a road that
+        leaves through a door and returns on the far side is invisible to
+        it — Cerulean's way south runs through the trashed house, which
+        stands in the north of the city, and the south seam will fail for
+        ever with no bush to blame.
+        """
+        node = self.explored.get(here) or {}
+        bydest: dict = {}
+        for key, e in node.items():
+            to = (e or {}).get("to")
+            if to and to != here and not (e or {}).get("shut"):
+                bydest.setdefault(to, {})[key] = (e or {}).get("land")
+        out = []
+        for dest, doors in bydest.items():
+            if len(doors) < 2:
+                continue
+            lands = {v for v in doors.values() if v}
+            # two doors that drop you on the SAME tile are one door seen
+            # twice; different tiles are two genuinely different ways out
+            if len(doors) >= 2 and (len(lands) >= 2 or not lands):
+                where = ", ".join(
+                    f"{k}" + (f" (came out at {v})" if v else "")
+                    for k, v in sorted(doors.items()))
+                out.append(f"{dest} from {where}")
+        if not out:
+            return ""
+        return ("\nA BUILDING YOU HAVE WALKED TWO WAYS OUT OF joins parts "
+                "of this map that cannot be walked between — going in one "
+                "door and out the other is how you get across, and no "
+                "amount of walking will do it: " + "; ".join(out[:3]) + ".")
+
     def _learn_doorsteps(self):
         """A building you have walked OUT of sits on the road you landed on.
 
@@ -1346,6 +1387,16 @@ class Executor:
             e["n"] += 1
             e["to"] = dst
             e.pop("shut", None)          # it opened; whatever shut it is gone
+            # WHERE THIS DOOR PUT YOU. Only the region label was kept, and
+            # a region is coarse: Cerulean's front door and the hole in the
+            # trashed house's back wall both read CERULEAN_CITY|20,0, so
+            # the ledger said "a room with three doors to the same place"
+            # about the one building that joins the city's two halves. The
+            # tile you land on is the difference between those doors, and
+            # it is simply where you were standing when you came out.
+            _ap = ((after_obs or {}).get("map") or {}).get("player") or {}
+            if _ap.get("x") is not None and _ap.get("y") is not None:
+                e["land"] = f"{_ap['x']},{_ap['y']}"
         self.log("explored", frm=src, via=str(key), to=dst,
                  times=node[key]["n"])
         self._save_memory()
@@ -4454,6 +4505,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 _money = (cur or {}).get("money")
                 if _money is not None:
                     stuck_note += f"\nMONEY: {_money}."
+                stuck_note += self._passage_note(here_now)
                 _dc = (cur or {}).get("daycare") or {}
                 if _dc.get("species"):
                     stuck_note += (
