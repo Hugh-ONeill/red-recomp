@@ -1241,10 +1241,17 @@ function OPS.cross(G, c)
       blockers[#blockers + 1] = { s = ("%s at %d,%d"):format(tag, x, y),
                                   d = seam_dist(x, y) }
     end
+    -- SAY WHICH BLOCKERS ARE PEOPLE. A wandering trainer standing in a
+    -- corridor reads exactly like a wall in a BFS result, but this seam
+    -- has been crossed 15 times and people step aside -- so "cannot be
+    -- walked to" here means "not this second", not "not ever". Naming a
+    -- bush as cuttable and a person as a person is the same act: saying
+    -- what is there. Whether to wait, go round, or give up stays open.
     for _, npc in ipairs((ow.npcs) or {}) do
       local nx, ny = npc.cellX, npc.cellY
       if nx and ny and near_seam(nx, ny) then
-        add(tostring((npc.def or {}).name or "someone"), nx, ny)
+        add(tostring((npc.def or {}).name or "someone")
+            .. " (a person, who moves)", nx, ny)
       end
     end
     for _, f in ipairs(map_fixtures(G, (lm and lm.id)) or {}) do
