@@ -90,6 +90,18 @@ while :; do
   fi
   leg="${LEGS[$((i - 1))]}"
   plan=$(printf 'plans/leg_%02d.json' "$i")
+  # RESUME FROM THE LATEST REWRITE, NOT THE ORIGINAL. campaign.sh rewrites a
+  # failing plan from evidence and writes leg_NN.vK.json, and within one run
+  # it carries on from there — but a RESTART handed it leg_NN.json again, so
+  # every rewrite was thrown away. Ten restarts today meant ten fresh trips
+  # to the day care for a Charizard already in the party, one of which lent
+  # the Magikarp away. Version sort so v10 beats v9.
+  latest=$(ls -1 "$(printf 'plans/leg_%02d' "$i")".v*.json 2>/dev/null \
+           | sort -V | tail -1)
+  if [ -n "$latest" ] && [ -s "$latest" ]; then
+    echo "=== leg $i: resuming from the latest rewrite $latest ==="
+    plan="$latest"
+  fi
 
   # the outline's own doubt about this leg rides along in the goal string
   goal="$leg"
