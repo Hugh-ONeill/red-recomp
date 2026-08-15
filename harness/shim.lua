@@ -2626,6 +2626,73 @@ function OPS.heal(G, c)
     :format(after, after == 1 and "is" or "are")
 end
 
+-- THE ELEVATOR. The panel is a bg_event: face it, press A, and with the
+-- LIFT KEY in the bag a floor list opens (engine/events/elevator.asm
+-- DisplayElevatorFloorMenu). Choosing rewrites the car's exit warps and
+-- hands control back -- you then WALK OUT of the car onto that floor,
+-- which is why this op ends with you still inside it.
+function OPS.elevator(G, c)
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
+  end
+  if not c.floor then
+    return false, "elevator needs floor=<label>, e.g. floor=\"B4F\""
+  end
+  local want = tostring(c.floor):upper()
+  -- the panel is a sign-shaped fixture on this map
+  local px, py
+  for _, f in ipairs(map_fixtures(G, ((G.overworld.map or {}).id)) or {}) do
+    if tostring(f.name or ""):upper():find("ELEVATOR") then
+      px, py = f.x, f.y
+    end
+  end
+  if not px then
+    for _, npc in ipairs((G.overworld.npcs) or {}) do
+      if tostring((npc.def or {}).name or ""):upper():find("ELEVATOR") then
+        px, py = npc.cellX, npc.cellY
+      end
+    end
+  end
+  if not px then
+    return false, "no elevator panel visible on this map"
+  end
+  local ok, why = OPS.interact(G, { x = px, y = py, floor = want })
+  if not ok then return false, why or "could not reach the panel" end
+  local t
+  for _ = 1, 20 do
+    t = ui_top(G)
+    if t and t.items and t.title
+       and tostring(t.title):upper():find("FLOOR") then break end
+    U.tap(G, "a"); U.wait(6)
+  end
+  t = ui_top(G)
+  if not (t and t.items) then
+    ui_back_out(G)
+    return false, "the panel opened no floor menu — the LIFT KEY is what "
+      .. "it wants (it says so out loud without one)"
+  end
+  local idx, offer = nil, {}
+  for i, it in ipairs(t.items) do
+    local lab = tostring(it.label or ""):upper()
+    offer[#offer + 1] = lab
+    if lab == want or lab:find(want, 1, true) then idx = i end
+  end
+  if not idx then
+    ui_back_out(G)
+    return false, ("no floor called %s — it offers %s")
+      :format(want, table.concat(offer, ", "))
+  end
+  ui_cursor_to(G, "index", idx)
+  U.tap(G, "a"); U.wait(10)
+  for _ = 1, 60 do              -- ride the shake out
+    if G.stack:top() == G.overworld then break end
+    U.tap(G, "a"); U.wait(5)
+  end
+  ui_back_out(G)
+  return true, ("rode to %s — you are still IN the car; walk out of its "
+    .. "door to arrive"):format(want)
+end
+
 function OPS.daycare_deposit(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close)"
@@ -3099,6 +3166,27 @@ function OPS.interact(G, c)
       -- MAGIKARP, so a stray yes at the DAY-CARE MAN handed over the wrong
       -- Pokemon entirely. Ops that name a slot (use_item, daycare_deposit)
       -- drive this menu themselves; a bare interact must not.
+      -- WHICH FLOOR IS NOT THE HARNESS'S CHOICE EITHER. The elevator
+      -- panel opens a ListMenu ("WHICH FLOOR?", built from the floors
+      -- whose warps reach this car); A-mashing it rides to whatever the
+      -- cursor sat on. Same rule as the party picker: an op that has
+      -- chosen says so, a bare interact backs out.
+      if t and t.items and t.title and tostring(t.title):upper():find("FLOOR")
+         and not c.floor then
+        U.tap(G, "b"); U.wait(6)
+        for _ = 1, 20 do
+          if G.stack:top() == ow then break end
+          U.tap(G, "b"); U.wait(4)
+        end
+        local names = {}
+        for _, it in ipairs(t.items or {}) do
+          names[#names + 1] = tostring(it.label or "?")
+        end
+        return true, "the elevator asked WHICH FLOOR and nothing here had "
+          .. "chosen one — backed out. Floors it offered: "
+          .. table.concat(names, ", ")
+          .. ". Use {\"op\":\"elevator\",\"floor\":\"<one of those>\"}."
+      end
       if t and t.screenId == "PartyMenu" and not c.slot then
         U.tap(G, "b"); U.wait(6)
         for _ = 1, 20 do

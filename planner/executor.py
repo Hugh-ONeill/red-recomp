@@ -3263,6 +3263,10 @@ one at a time and will not leave you with an empty party. obs.daycare says
 who is in and what taking them back costs),
 {"op":"daycare_withdraw"} (collect the boarded Pokemon and pay the fee;
 needs a free party slot and the money),
+{"op":"elevator","floor":"B4F"} (ride an elevator: presses its panel and
+picks that floor from the list it offers. Some panels want a key and say
+so. After the ride you are STILL INSIDE the car — walk out of its door to
+arrive on that floor),
 {"op":"heal"} (restore the WHOLE party at a Pokemon Center: walks in if
 you are outside one on this map and talks to the NURSE. Free, always. It
 fails plainly if this map has no Center),
