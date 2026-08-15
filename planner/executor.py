@@ -1174,6 +1174,20 @@ class Executor:
                 self.log("dead_end_refused", subgoal=sg_id, region=region,
                          reason="a walked path to it already exists")
                 return
+        # A PLACE WITH DOORS YOU HAVE NOT OPENED IS NOT A PROVEN DEAD END.
+        # This rule is already stated for the "fully worked" verdict; the
+        # dead-end ledger never honoured it, so ONE failure at ROUTE_10 —
+        # the mouth of Rock Tunnel, with four exits still untried and two
+        # of the tunnel's own floors already walked — filed it as a KNOWN
+        # DEAD END for Celadon and told the run "do NOT go back". It is the
+        # only way through. A dungeon you have not finished is not a wall.
+        _untried = set(self.frontier.get(region) or ()) - set(
+            (self.explored.get(region) or {}))
+        if _untried:
+            self.log("dead_end_refused", subgoal=sg_id, region=region,
+                     reason=f"{len(_untried)} exit(s) here never taken: "
+                            + ",".join(sorted(_untried)[:6]))
+            return
         d = self.dead_ends.setdefault(sg_id, {})
         d[region] = d.get(region, 0) + 1
         self.log("dead_end", subgoal=sg_id, region=region, times=d[region])
