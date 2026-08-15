@@ -2957,7 +2957,15 @@ function OPS.interact(G, c)
         local who = c.name or (c.x and ("%s,%s"):format(tostring(c.x),
                                                         tostring(c.y)))
                     or "?"
-        if c.answer ~= nil and not seen_question[who] and not c.read_question
+        -- KEYED ON THE QUESTION, NOT THE QUESTIONER. Keying on who asked
+        -- meant one read licensed every later blind "yes" to that NPC --
+        -- and the DAY-CARE MAN asks two opposite questions depending on
+        -- whether he is holding anything: "shall I raise one?" when empty,
+        -- "do you want him back?" when full. Having read the second, the
+        -- run answered yes to the first and handed over its MAGIKARP while
+        -- trying to collect its CHARIZARD.
+        local qkey = who .. "|" .. tostring(recent_text or "?")
+        if c.answer ~= nil and not seen_question[qkey] and not c.read_question
         then
           -- LEAVE IT OPEN. Neither pressing A nor pressing B here is the
           -- model's judgement: `answer` arrived as boilerplate on 302 of
@@ -2965,7 +2973,7 @@ function OPS.interact(G, c)
           -- much an answer as accepting. Stop with the box on screen and
           -- the words in recent_text; the executor puts the question to
           -- the model and presses whatever comes back.
-          seen_question[who] = recent_text or true
+          seen_question[qkey] = recent_text or true
           return true, ("%s is ASKING something and the box is STILL OPEN"
             ):format(who)
             .. ((recent_text and (" — \"" .. recent_text .. "\"")) or "")
@@ -2986,7 +2994,7 @@ function OPS.interact(G, c)
           -- deterministically, which lost the Dome Fossil prompt in one
           -- world. Hold the box; the question gets asked properly.
           local asked = recent_text
-          seen_question[who] = asked or true
+          seen_question[who .. "|" .. tostring(asked or "?")] = asked or true
           return true, ("%s is ASKING something and the box is STILL OPEN"
             ):format(who)
             .. ((asked and (" — \"" .. asked .. "\"")) or "")
