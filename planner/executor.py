@@ -1230,45 +1230,47 @@ class Executor:
                 and abs((w.get("x") or 0) - x) + abs((w.get("y") or 0) - y) == 1]
 
     def _passage_note(self, here: str) -> str:
-        """Buildings this run has WALKED two ways out of.
+        """Buildings whose far side is somewhere else.
 
-        Only doors actually taken count. The map table lists every warp a
-        building has, including a hole in a back wall nobody has seen from
-        the street, and reading that out would be telling the run something
-        the player could not know. Walking in the front and coming out
-        somewhere else is a thing that HAPPENED, and it is the only reason
-        this note ever appears.
+        Only walked doors count. The first version asked for TWO doors into
+        the same building FROM HERE, which is weak evidence and stopped
+        being true the moment one of the pair was cleared -- Cerulean's
+        trashed house went quiet with the whole route through it already
+        recorded. The far side is the better place to look: if a building
+        this run has entered has exits reaching MORE THAN ONE area block,
+        it joins them, and that is a fact about ground already walked.
 
         It matters because BFS walks open ground on one map, so a road that
         leaves through a door and returns on the far side is invisible to
-        it — Cerulean's way south runs through the trashed house, which
-        stands in the north of the city, and the south seam will fail for
-        ever with no bush to blame.
+        it -- Cerulean's way south runs through that house, and the south
+        seam fails for ever with no bush to blame.
         """
         node = self.explored.get(here) or {}
-        bydest: dict = {}
-        for key, e in node.items():
-            to = (e or {}).get("to")
-            if to and to != here and not (e or {}).get("shut"):
-                bydest.setdefault(to, {})[key] = (e or {}).get("land")
         out = []
-        for dest, doors in bydest.items():
-            if len(doors) < 2:
+        for key, e in node.items():
+            dest = (e or {}).get("to")
+            if not dest or dest == here or (e or {}).get("shut"):
                 continue
-            lands = {v for v in doors.values() if v}
-            # two doors that drop you on the SAME tile are one door seen
-            # twice; different tiles are two genuinely different ways out
-            if len(doors) >= 2 and (len(lands) >= 2 or not lands):
-                where = ", ".join(
-                    f"{k}" + (f" (came out at {v})" if v else "")
-                    for k, v in sorted(doors.items()))
-                out.append(f"{dest} from {where}")
+            far = self.explored.get(dest) or {}
+            blocks = {(v or {}).get("to") for v in far.values()
+                      if (v or {}).get("to") and not (v or {}).get("shut")}
+            # ONLY A PASSAGE IF IT JOINS TWO PARTS OF *THIS* MAP. Without
+            # this every road with two ends qualified — Route 24 "joins"
+            # Route 25 — and the noise pushed the one that mattered out of
+            # the list entirely.
+            _mymap = here.split("|")[0]
+            others = sorted(b for b in blocks
+                            if b and b != here and b != dest
+                            and b.split("|")[0] == _mymap)
+            if others:
+                out.append(f"{dest} (in at {key}) also opens onto "
+                           + ", ".join(others))
         if not out:
             return ""
-        return ("\nA BUILDING YOU HAVE WALKED TWO WAYS OUT OF joins parts "
-                "of this map that cannot be walked between — going in one "
-                "door and out the other is how you get across, and no "
-                "amount of walking will do it: " + "; ".join(out[:3]) + ".")
+        return ("\nA BUILDING YOU HAVE WALKED THROUGH joins parts of this "
+                "map that cannot be walked between — going in one door and "
+                "out the other is how you get across, and no amount of "
+                "walking will do it: " + "; ".join(out[:3]) + ".")
 
     def _learn_doorsteps(self):
         """A building you have walked OUT of sits on the road you landed on.
