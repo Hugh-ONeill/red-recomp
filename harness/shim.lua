@@ -1393,13 +1393,21 @@ function OPS.cross(G, c)
     -- CUT_TREE at 5,10 — ten cells off the seam, twenty-one from the walk,
     -- and irrelevant. Falls back to seam distance if the stall point is
     -- unknown.
+    -- TWO LISTS, BOTH TRUE. What is beside the last cell reached is what
+    -- stopped this walk. What is elsewhere on the map is still worth
+    -- saying — a cuttable bush anywhere might be the thing that opens the
+    -- road — it just is not "against that edge", which is what the old
+    -- single list claimed about a tree ten cells off the seam.
+    local elsewhere = {}
     local function add(tag, x, y)
-      local d
-      if stallx and stally then
-        d = math.abs(x - stallx) + math.abs(y - stally)
-        if d > 8 then return end        -- not near where we actually stopped
-      else
-        d = seam_dist(x, y)
+      local d = (stallx and stally)
+        and (math.abs(x - stallx) + math.abs(y - stally))
+        or seam_dist(x, y)
+      if stallx and d > 8 then
+        if #elsewhere < 4 then
+          elsewhere[#elsewhere + 1] = ("%s at %d,%d"):format(tag, x, y)
+        end
+        return
       end
       blockers[#blockers + 1] = { s = ("%s at %d,%d"):format(tag, x, y),
                                   d = d }
@@ -1450,6 +1458,10 @@ function OPS.cross(G, c)
     if #blockers > 0 then
       said = said .. " Right where the walk stopped: "
         .. table.concat(blockers, ", ") .. "."
+    end
+    if #elsewhere > 0 then
+      said = said .. " Elsewhere on this map (not what stopped you, but "
+        .. "still there): " .. table.concat(elsewhere, ", ") .. "."
     end
     if #doors > 0 then
       said = said .. " Doors on that edge (a building can be a way "
