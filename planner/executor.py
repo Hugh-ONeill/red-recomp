@@ -1557,13 +1557,17 @@ class Executor:
             if k in taken or w.get("reachable"):
                 continue
             # A DOORWAY YOU CANNOT WALK TO IS STILL A DOORWAY YOU CAN SEE.
-            # This used to report one only when a reachable person stood
-            # within a single tile of it, so a trainer holding a corridor
-            # further back left the door unmentioned entirely — Mt Moon's
-            # ladder to the east exit never once appeared, in any round, in
-            # any attempt. Report the door, and name the nearest person as
-            # CONTEXT rather than as the cause: what is between you and it
-            # is not something this can know.
+            # Report the door, and name the nearest person as CONTEXT
+            # rather than as the cause: what is between you and it is not
+            # something this can know.
+            #
+            # HISTORY, CORRECTED (user, 2026-08-15): this widening used to
+            # be justified here by "Mt Moon's ladder to the east exit never
+            # once appeared, in any round, in any attempt". THAT EVENT NEVER
+            # HAPPENED — it was invented in an earlier session and then
+            # cited as precedent. The widening is kept on its own merit (a
+            # door you can see is information the model should have), NOT on
+            # that story. Do not treat the removed sentence as evidence.
             near = min(
                 ((abs((o.get("x") or 0) - (w.get("x") or 0))
                   + abs((o.get("y") or 0) - (w.get("y") or 0)),
@@ -2749,9 +2753,9 @@ class Executor:
         # as finished from everywhere else, and the run was told the places
         # with ways never taken were Pallet Town and its own bedroom. It
         # believed us and walked there.
-        # ONLY DOORS WITH SOMEBODY ON THEM. _unopened_doors deliberately
-        # reports an unreachable door even when no one is near it (Mt Moon's
-        # east ladder was invisible otherwise) — but on a SPLIT map that
+        # ONLY DOORS WITH SOMEBODY ON THEM. _unopened_doors reports an
+        # unreachable door even when no one is near it — but on a SPLIT map
+        # that
         # means every block inherits the whole city's unreachable doors, and
         # this list turns them into "ways you have NEVER taken". Cerulean's
         # badge-house back yard is one door and a patch of grass, and it was
