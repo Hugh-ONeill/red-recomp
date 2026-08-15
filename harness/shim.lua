@@ -1221,11 +1221,16 @@ function OPS.cross(G, c)
     -- back "nothing sits against that edge" about the very bush that was
     -- stopping the walk. Rank by how close a thing is to the edge in
     -- question and name the nearest handful; no threshold to get wrong.
+    -- `dir` here is the INPUT key (up/down/left/right); cmap turns it into
+    -- the compass name the message prints. Comparing against "south" never
+    -- matched, so seam_dist returned 9999 for everything, near_seam was
+    -- always false, and the report said "nothing sits against that edge"
+    -- about a Slowbro five tiles away and a CUT_TREE seven.
     local function seam_dist(x, y)
-      if dir == "north" then return y end
-      if dir == "south" then return (H - 1) - y end
-      if dir == "west"  then return x end
-      if dir == "east"  then return (W - 1) - x end
+      if dir == "up"    then return y end
+      if dir == "down"  then return (H - 1) - y end
+      if dir == "left"  then return x end
+      if dir == "right" then return (W - 1) - x end
       return 9999
     end
     local function near_seam(x, y)
