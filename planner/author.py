@@ -2570,6 +2570,23 @@ Reply with ONLY a JSON object, the reason FIRST:
 {"why": "one sentence", "reword": null}"""
 
 
+def _reword_chain(goal: str) -> list:
+    """Every earlier wording that led to this one, oldest first."""
+    try:
+        rows = [l.split("\t") for l in
+                Path("run/outline_rewordings").read_text().splitlines()
+                if l.strip()]
+    except OSError:
+        return []
+    by_new = {_norm_obj(r[2]): r for r in rows if len(r) > 2}
+    chain, cur = [], _norm_obj(goal)
+    while cur in by_new:
+        r = by_new.pop(cur)
+        chain.insert(0, (r[1], r[2]))
+        cur = _norm_obj(r[1])
+    return chain
+
+
 def _reword_history(goal: str) -> str:
     """Every earlier restatement that led to this wording, and failed.
 
@@ -2580,18 +2597,7 @@ def _reword_history(goal: str) -> str:
     last answer is ours: three rewordings that each start from nothing
     are three chances to write the same sentence.
     """
-    try:
-        rows = [l.split("\t") for l in
-                Path("run/outline_rewordings").read_text().splitlines()
-                if l.strip()]
-    except OSError:
-        return ""
-    by_new = {_norm_obj(r[2]): r for r in rows if len(r) > 2}
-    chain, cur = [], _norm_obj(goal)
-    while cur in by_new:
-        r = by_new.pop(cur)
-        chain.insert(0, (r[1], r[2]))
-        cur = _norm_obj(r[1])
+    chain = _reword_chain(goal)
     if not chain:
         return ""
     return ("\n\nYOU HAVE ALREADY REWRITTEN THIS OBJECTIVE, and what you "
@@ -2656,6 +2662,21 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
     if _norm_obj(new) == _norm_obj(goal):
         print("[wording] refused: that is the same sentence",
               file=sys.stderr)
+        return ""
+    # NO GOING BACK ROUND. Showing the lineage was not enough on its own:
+    # the first live use went "Rocket Hideout" -> "Silph Co. building" ->
+    # "Rocket Hideout", spending two of three rewordings on a round trip
+    # and landing exactly where it started. A wording this leg has already
+    # worn and failed in is not a restatement, whatever reasoning arrives
+    # with it — that is bookkeeping, and the harness can hold the ledger
+    # without having an opinion about which wording is right.
+    worn = set()
+    for a, b in _reword_chain(goal):
+        worn.add(_norm_obj(a))
+        worn.add(_norm_obj(b))
+    if _norm_obj(new) in worn:
+        print(f"[wording] refused: {new!r} is a wording this leg has "
+              f"already failed in", file=sys.stderr)
         return ""
     others = [t for _, t in ahead if _norm_obj(t) != _norm_obj(goal)]
     others += [t for _, t in behind]
