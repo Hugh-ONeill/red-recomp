@@ -166,6 +166,26 @@ class Gym:
             raise RuntimeError("game did not come up")
         self.b = Bridge()
         ex_mod.SCORE_BATTLES = True
+        # DISTILL-THEN-VERIFY, ON, HERE. executor's VERIFY_MACROS defaults
+        # off and only --verify-macros turns it on, so `if can_reset and
+        # VERIFY_MACROS` never fired and EVERY escalated macro was committed
+        # unverified — the verified=False branch, whose comment blames a
+        # restore that never got the chance to fail.
+        #
+        # Off is right for the record run: CLAIM_RULES says checkpoints are
+        # for development and refinement and NEVER inside it. This is
+        # refinement, and it already restores `eval_gate` around every
+        # trial, so the carve-out applies and the cost is paid where it
+        # buys something.
+        #
+        # It buys the gauntlet. `reach_pewter_city`'s stored macro cannot
+        # work (it ends `cross north` from indoors), so every trial
+        # escalates; escalation runs ONCE per session and writes its result
+        # into sg["macro"] for the trials after it. Unverified, that macro
+        # had never been shown to reproduce anything, and trials 2 and 3
+        # replayed it and failed — 0/3 or 1/3 for every candidate AND the
+        # baseline, which is a scoreboard that cannot tell specs apart.
+        ex_mod.VERIFY_MACROS = True
         # escalation available during SETUP only (plan_path=None: authored
         # fixes stay in-memory, the plan file is never touched by eval)
         self.ex = ex_mod.Executor(self.b, plan=self.plan, plan_path=None,
