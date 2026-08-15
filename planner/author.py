@@ -369,6 +369,60 @@ NEW_GAME_START = (
     "(map REDS_HOUSE_2F) with no Pokemon and nothing in the bag.")
 
 
+def flags_for(goal: str, cap: int = 12) -> str:
+    """Event-flag NAMES whose words overlap the objective's.
+
+    ENGINE_FLAGS was validation-only: a plan could be REJECTED for naming a
+    flag that does not exist, but nothing ever told the author which ones
+    DO. Facing "Obtain the Secret Key from the Rocket Hideout" it could not
+    know EVENT_ROCKET_DROPPED_LIFT_KEY was the thing this dungeon actually
+    sets, so it reached for an item name and guessed the wrong item — the
+    Secret Key is in the Cinnabar Mansion, hours away, and the subgoal
+    could never come true.
+
+    NAMES ONLY, and only ones already matching the objective's own words.
+    Which flags are SET is instrumentation and stays out of the model's
+    sight (CLAIM_RULES); a vocabulary list is spelling help for a predicate
+    it is already allowed to write. Same mechanical matching check_done
+    uses to ask "was this already done".
+    """
+    if not ENGINE_FLAGS:
+        return ""
+    words = {w for w in re.sub(r"[^A-Z]+", " ", (goal or "").upper()).split()
+             if len(w) > 3}
+    if not words:
+        return ""
+    hit = [f for f in ENGINE_FLAGS
+           if words & set(re.sub(r"[^A-Z]+", " ", f.upper()).split())]
+    if not hit:
+        return ""
+    # RANK, DO NOT SPELL-SORT. Alphabetically the twelve slots filled with
+    # EVENT_BEAT_ROCKET_HIDEOUT_1_TRAINER_0 .. _4_TRAINER_1 and pushed
+    # EVENT_ROCKET_DROPPED_LIFT_KEY — the one flag this dungeon is FOR —
+    # into "+7 more". Same failure as the sightings cap and the area-code
+    # cap: a list truncated by spelling hides the thing that matters.
+    # Numbered families collapse to one line; distinctive names come first.
+    fam: dict = {}
+    for f in hit:
+        base = re.sub(r"_\d+", "_N", f)
+        fam.setdefault(base, []).append(f)
+    def _score(base: str):
+        n = len(words & set(re.sub(r"[^A-Z]+", " ", base.upper()).split()))
+        bulk = 1 if ("TRAINER" in base or "_N" in base) else 0
+        return (-n, bulk, base)
+    ranked = []
+    for base in sorted(fam, key=_score):
+        grp = fam[base]
+        ranked.append(base + (f" x{len(grp)}" if len(grp) > 1 else "")
+                      if len(grp) > 1 else grp[0])
+    return ("\n\nEVENT FLAGS THIS GAME DEFINES WHOSE NAMES MENTION THIS "
+            "OBJECTIVE'S OWN WORDS (spelling only — this does not say "
+            "whether any of them has happened): " + ", ".join(ranked[:cap])
+            + (f" (+{len(ranked) - cap} more)" if len(ranked) > cap else "")
+            + ". A {\"flag\":...} condition is often the exact thing a "
+              "deed sets, where an item name is a guess.")
+
+
 def build_prompt(goal: str, start: str | None = None) -> str:
     return (
         f"GOAL: {goal}\n\n"
@@ -390,6 +444,7 @@ def build_prompt(goal: str, start: str | None = None) -> str:
           "the way it spells it — a wrong spelling is rejected with close "
           "matches to pick from. The spelling traps among the common ones:\n"
         + "\n".join(f"  {k}: {v}" for k, v in KEY_ITEMS.items())
+        + flags_for(goal)
         + f"\n\nBADGES: {', '.join(BADGES)}\n\n"
         "Author the ordered subgoal list now. Remember the granularity rule.")
 

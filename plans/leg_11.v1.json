@@ -1,0 +1,16 @@
+{
+  "goal": "Obtain the Secret Key from the Rocket Hideout",
+  "subgoals": [
+    {
+      "id": "get_secret_key",
+      "goal_text": "Interact with the desk in the bottom-right room of the Rocket Hideout B4F to obtain the Secret Key.",
+      "done_when": {
+        "has_item": {
+          "SECRET_KEY": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

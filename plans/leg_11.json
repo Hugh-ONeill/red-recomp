@@ -399,7 +399,50 @@
       "done_when": {
         "map": "ROCKET_HIDEOUT_B4F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB3F_RARE_CANDY",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B3F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB3F_TM_DOUBLE_EDGE",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B3F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB3F_TM_DOUBLE_EDGE",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B3F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 18,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B3F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 4
+      }
     },
     {
       "id": "get_secret_key",
