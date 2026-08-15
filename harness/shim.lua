@@ -826,6 +826,24 @@ local function bfs_to_edge(G, dir)
   local seen = { [key(p.cellX, p.cellY)] = true }
   local queue = { { x = p.cellX, y = p.cellY } }
   local head = 1
+  -- DIAGNOSTICS. When this returns nil the caller can only say "no path",
+  -- which has been true of four different causes this week. Count what was
+  -- actually walked, how close to the wanted edge it got, how many ledge
+  -- hops it used, and whether it TOUCHED the edge and was turned away by
+  -- landing_ok — those need opposite fixes and look identical from outside.
+  local nseen, nledge, edge_rejected = 1, 0, 0
+  local best, bestx, besty = 1e9, nil, nil
+  local function dist(x, y)
+    if dir == "up" then return y end
+    if dir == "down" then return (H - 1) - y end
+    if dir == "left" then return x end
+    return (W - 1) - x
+  end
+  local function note(x, y)
+    nseen = nseen + 1
+    local dd = dist(x, y)
+    if dd < best then best, bestx, besty = dd, x, y end
+  end
   while queue[head] do
     local cur = queue[head]; head = head + 1
     for _, d in pairs(DIRS) do
@@ -837,14 +855,18 @@ local function bfs_to_edge(G, dir)
                       or (d[1] < 0 and "left" or "right")
         if Collision.canMove(ow.map, ow.entities, probe, dname) then
           seen[key(nx, ny)] = true
-          if hit(nx, ny) and landing_ok(G, dir, nx, ny) then
-            return nx, ny
+          note(nx, ny)
+          if hit(nx, ny) then
+            if landing_ok(G, dir, nx, ny) then return nx, ny end
+            edge_rejected = edge_rejected + 1
           end
           queue[#queue + 1] = { x = nx, y = ny }
         else
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dname)
           if lx and not seen[key(lx, ly)] and not wblock[key(lx, ly)] then
             seen[key(lx, ly)] = true
+            nledge = nledge + 1
+            note(lx, ly)
             if hit(lx, ly) then return lx, ly end
             queue[#queue + 1] = { x = lx, y = ly }
           end
@@ -852,7 +874,15 @@ local function bfs_to_edge(G, dir)
       end
     end
   end
-  return nil
+  return nil, ("BFS from %d,%d walked %d cells (%d ledge hop%s); closest to "
+    .. "the %s edge was %s,%s, still %d cell%s short%s")
+    :format(p.cellX, p.cellY, nseen, nledge, nledge == 1 and "" or "s",
+            dir, tostring(bestx), tostring(besty), best,
+            best == 1 and "" or "s",
+            edge_rejected > 0
+              and ("; it DID reach the edge " .. edge_rejected
+                   .. "x but the landing on the far side was refused")
+              or "")
 end
 
 local OPS = {}
@@ -1180,9 +1210,9 @@ function OPS.cross(G, c)
     return (ow.map and ow.map.id) ~= startMap
   end
 
-  local ex, ey
+  local ex, ey, bfs_why
   for round = 1, 4 do
-    ex, ey = bfs_to_edge(G, dir)
+    ex, ey, bfs_why = bfs_to_edge(G, dir)
     if ex then break end
     U.wait(40)
     if G.stack:top() ~= ow then
@@ -1298,7 +1328,7 @@ function OPS.cross(G, c)
     return false, ("the %s seam of %s (to %s) cannot be walked to from "
       .. "here — no walkable path reaches it."):format(
         cmap[dir], tostring(startMap), tostring(dest and dest.map or "?"))
-      .. said
+      .. (bfs_why and (" " .. bfs_why .. ".") or "") .. said
   end
   if p.cellX ~= ex or p.cellY ~= ey then
     for round = 1, 3 do
