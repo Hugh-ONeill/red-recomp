@@ -1435,7 +1435,16 @@ local function enter_shop(G)
   local md = ow and ow.map and G.data and G.data.maps
               and G.data.maps[ow.map.id]
   for _, w in ipairs((md and md.warps) or {}) do
-    if w.x and w.y and map_has_counter(G, w.destMap) then
+    -- BOTH TESTS. A counter alone is not a shop that trades: BIKE_SHOP
+    -- has a BIKESHOP_CLERK, so "has a clerk" walked into the bike shop,
+    -- whose man only says "How do you like your new BICYCLE?" and opens
+    -- no menu. A MART in the id alone is not enough either -- that lets
+    -- in CELADON_MART_1F (receptionist), _ELEVATOR and _ROOF. Require a
+    -- mart AND a counter. Both are readable from the street: the buildings
+    -- carry their own signposts, which is why picking between them is
+    -- following a sign rather than reading the map table.
+    if w.x and w.y and tostring(w.destMap or ""):find("MART")
+       and map_has_counter(G, w.destMap) then
       local ok = OPS.use_warp(G, { x = w.x, y = w.y })
       return ok and true or false
     end
