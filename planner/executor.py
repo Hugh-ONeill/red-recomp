@@ -1573,6 +1573,40 @@ class Executor:
                 q.append((nxt, hop))
         return None
 
+    def _cross_by_recall(self, obs, sg, dirname):
+        """A seam you have crossed before is not a seam you cannot cross.
+
+        `cross` is a single-map walk: it looks for a path over open ground
+        from where you stand to the map's edge, and knows nothing about
+        doors. Cerulean's south seam lives in a part of the city that can
+        only be entered through a building, so from the main square the
+        walk genuinely fails — while the ledger plainly holds the crossing,
+        made from the other side. Recall is the whole point of the ledger:
+        if some block of THIS map has that compass exit walked, route there
+        over known ground and take it. Nothing new is assumed; the route is
+        built from edges this run has already walked.
+        """
+        here = self._where(obs)
+        mymap = here.split("|")[0]
+        for block, exits in (self.explored or {}).items():
+            if block == here or block.split("|")[0] != mymap:
+                continue
+            e = (exits or {}).get(dirname) or {}
+            to = e.get("to")
+            if not to or to == block or e.get("shut"):
+                continue
+            path = self._route(here, block)
+            if not path:
+                continue
+            self.log("cross_by_recall", frm=here, via=block, dir=dirname,
+                     to=to, hops=len(path))
+            self._walk_route(sg, path)
+            cur = self.settle() or obs
+            if self._where(cur) != block:
+                return None            # could not get to the crossing point
+            return self._send_safe("cross", dir=dirname) or cur
+        return None
+
     def _return_from_blackout(self, obs, sg):
         """Walk back to where the party fainted, over ground already walked.
 
@@ -5110,6 +5144,15 @@ Reply with ONLY a JSON array of ops, e.g.
                         obs = self.b.obs()
                         break
                     r = (obs or {}).get("result") or {}
+                    # the seam is unwalkable FROM HERE; the ledger may know
+                    # a part of this map it IS walkable from
+                    if (op == "cross" and not r.get("ok")
+                            and "cannot be walked to" in str(r.get("detail"))):
+                        _re_obs = self._cross_by_recall(obs, sg,
+                                                        step.get("dir"))
+                        if _re_obs is not None:
+                            obs = _re_obs
+                            r = (obs or {}).get("result") or {}
                     self.log("step", subgoal=sg["id"], op=op, params=step,
                              ok=r.get("ok"), detail=r.get("detail"),
                              map=(obs.get("map") or {}).get("id")
