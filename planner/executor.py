@@ -3025,6 +3025,9 @@ one at a time and will not leave you with an empty party. obs.daycare says
 who is in and what taking them back costs),
 {"op":"daycare_withdraw"} (collect the boarded Pokemon and pay the fee;
 needs a free party slot and the money),
+{"op":"heal"} (restore the WHOLE party at a Pokemon Center: walks in if
+you are outside one on this map and talks to the NURSE. Free, always. It
+fails plainly if this map has no Center),
 {"op":"wait"}. Battles are auto-handled.
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint

@@ -2218,6 +2218,91 @@ local function daycare_talk(G)
   return true
 end
 
+-- HEALING, AS ONE ACT. "Go to the Center and heal" was four things the
+-- model had to author every time: notice the party is hurt, route to the
+-- town with a Center, get through its door, and then find the NURSE
+-- specifically -- not the SUPER_NERD, and above all not the
+-- LINK_RECEPTIONIST, whose "we have to save the game" prompt once held a
+-- campaign for 23 escalations. Every one of those but the first is
+-- mechanical, and the nurse has needed special-casing in five separate
+-- places already; this puts her in one.
+--
+-- FINDING THE DOOR IS ALLOWED HERE (user ruling, 2026-08-15): Centers and
+-- marts are LABELLED IN THE OVERWORLD -- every one of the game's 11
+-- Centers has its own signpost object, the two cave-mouth ones on Route 4
+-- and Route 10 included -- so "that building is a Pokemon Center" is a
+-- thing a player reads off the screen, not something the harness smuggles
+-- out of the map table. Walking to a signed building is following a sign.
+-- That is why this needs no walked-door restriction, and it is the same
+-- reasoning that settles enter_shop. c.door stays as an override.
+function OPS.heal(G, c)
+  if not (G.overworld and G.stack:top() == G.overworld) then
+    return false, "not in overworld"
+  end
+  local function find_nurse()
+    for _, npc in ipairs((G.overworld.npcs) or {}) do
+      if tostring((npc.def or {}).name or ""):upper():find("NURSE") then
+        return npc
+      end
+    end
+  end
+  local function hurt()
+    local n = 0
+    for _, m in ipairs(((G.save or {}).party) or {}) do
+      if (tonumber(m.hp) or 0) < (tonumber((m.stats or {}).hp) or 0) then
+        n = n + 1
+      end
+    end
+    return n
+  end
+  local before = hurt()
+  local nurse = find_nurse()
+  local went_in = false
+  if not nurse then
+    local d = c.door
+    if not (d and d.x and d.y) then
+      local ow = G.overworld
+      local md = ow and ow.map and G.data and G.data.maps
+                  and G.data.maps[ow.map.id]
+      for _, w in ipairs((md and md.warps) or {}) do
+        if w.x and w.y
+           and tostring(w.destMap or ""):find("POKECENTER") then
+          d = { x = w.x, y = w.y }
+          break
+        end
+      end
+    end
+    if not (d and d.x and d.y) then
+      return false, "no Pokemon Center nurse here, and no Center door on "
+        .. "this map"
+    end
+    went_in = OPS.use_warp(G, { x = d.x, y = d.y }) and true or false
+    if not went_in then
+      return false, ("could not get through the Center door at %s,%s")
+        :format(tostring(d.x), tostring(d.y))
+    end
+    nurse = find_nurse()
+  end
+  if not nurse then
+    return false, "went through the door but found no nurse inside"
+  end
+  local ok, why = OPS.interact(G, { x = nurse.cellX, y = nurse.cellY,
+                                    answer = "yes", read_question = true })
+  if not ok then return false, why or "could not reach the nurse" end
+  for _ = 1, 60 do                       -- ride the heal ceremony out
+    if G.stack:top() == G.overworld then break end
+    U.tap(G, "a"); U.wait(6)
+  end
+  ui_back_out(G)
+  local after = hurt()
+  if after == 0 then
+    return true, (went_in and "went into the Center and healed" or "healed")
+      .. " — the whole party is at full HP"
+  end
+  return false, ("talked to the nurse but %d Pokemon %s still hurt")
+    :format(after, after == 1 and "is" or "are")
+end
+
 function OPS.daycare_deposit(G, c)
   if not (G.overworld and G.stack:top() == G.overworld) then
     return false, "not in overworld"
