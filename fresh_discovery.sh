@@ -63,7 +63,7 @@ if [ "$done_legs" = 0 ]; then
         run/status.txt run/heartbeat
   # these budgets belong to a chain, not to the directory
   : > run/outline_reorders
-  rm -f run/outline_skips run/outline_inserts \
+  rm -f run/outline_skips run/outline_inserts run/outline_rewordings \
         run/outline_pulls run/outline_pulls_failed
   echo "archived ${ts}.pre-discovery; ledgers cleared"
 fi
@@ -273,6 +273,31 @@ while :; do
       echo "=== leg $i needs something first: $missing ==="
       python planner/insert_leg.py "$i" "$missing"
       echo "$i:$missing" >> run/outline_inserts
+      shelve_plans_from "$i"
+      continue
+    fi
+    # LAST RUNG: IS THE OBJECTIVE ITSELF WRONG? The chain halted at
+    # "Obtain the Secret Key from the Rocket Hideout" — an item that is
+    # not in that dungeon, written before the run had been near it, with
+    # the hideout cleared and both its real key items in the bag. The
+    # three rungs above ask whether the work is done, blocked, or missing
+    # a step; none asks whether the sentence describes anything.
+    #
+    # A person playing does not fix their whole plan at the start with no
+    # way to change their mind when something is plainly not working
+    # (user, 2026-08-15). Holding the model to a line it wrote before it
+    # had been anywhere is not rigour. THE MODEL NOTICES AND THE MODEL
+    # REWRITES: the harness detects nothing and proposes no wording, it
+    # asks once and applies an answer it did not shape. The restatement
+    # still has to clear the already-done check, which is what stops a
+    # hard leg being reworded into one that is finished.
+    if [ "$(cat run/outline_rewordings 2>/dev/null | wc -l)" -lt 3 ] \
+        && said=$(python planner/author.py --check-wording \
+            --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
+            --start "$(python planner/state_text.py)" \
+            --observed run/explored.json \
+            --journal run/executor_log.jsonl --model "$MODEL"); then
+      python planner/reword_leg.py "$i" "$said"
       shelve_plans_from "$i"
       continue
     fi

@@ -1,0 +1,92 @@
+{
+  "goal": "Obtain the Secret Key from the Rocket Hideout",
+  "subgoals": [
+    {
+      "id": "go_to_elevator",
+      "goal_text": "Navigate to the elevator in the Rocket Hideout",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_ELEVATOR"
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "descend_to_b4f",
+      "goal_text": "Use the elevator to go down to the lowest floor (B4F)",
+      "done_when": {
+        "area": "ROCKET_HIDEOUT_B4F|17,1"
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "reach_giovanni_office",
+      "goal_text": "Walk to the far end of B4F to reach Giovanni's office",
+      "done_when": {
+        "player_at": {
+          "x": 22,
+          "y": 12,
+          "radius": 5
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "interact_with_giovanni",
+      "goal_text": "Talk to Giovanni to trigger the event where he leaves the Secret Key",
+      "done_when": {
+        "flag": "EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI"
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "pick_up_secret_key",
+      "goal_text": "Pick up the Secret Key left behind by Giovanni",
+      "done_when": {
+        "has_item": {
+          "SECRET_KEY": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

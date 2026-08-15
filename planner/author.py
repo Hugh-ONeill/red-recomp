@@ -2542,6 +2542,134 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
     return ""
 
 
+WORDING_SYS = """You are stuck on one objective of your own playthrough
+list, and every other question has already been asked and answered: it is
+not already done, no later objective of yours has to come first, and no
+missing prerequisite explains it.
+
+So the last question is about the SENTENCE. An objective is a description
+of something to do, and a description can be wrong. It can name a thing
+that is not where you thought it was, or name the wrong thing entirely,
+or ask for something that is not there at all. You wrote this line before
+you had been to any of these places.
+
+You are shown where the run stands, what it has done, what it hit while
+trying, and the rest of your list.
+
+If the wording is wrong, write the objective again in ONE line: the same
+intent, said accurately. Do not make it easier, and do not restate
+something you have already finished — you will be asked, and a
+restatement that turns out to be already done is thrown away.
+
+If the wording is fine and you have simply not managed it yet, say so.
+That is an ordinary answer and often the right one; the run stops and a
+person looks at it.
+
+Reply with ONLY a JSON object, the reason FIRST:
+{"why": "one sentence", "reword": "the objective, said accurately"}   or
+{"why": "one sentence", "reword": null}"""
+
+
+def _reword_history(goal: str) -> str:
+    """Every earlier restatement that led to this wording, and failed.
+
+    The first live run reworded "Obtain the Secret Key from the Rocket
+    Hideout" into "Obtain the Secret Key from Giovanni" — carrying the
+    wrong premise straight through, and naming a Giovanni already beaten.
+    Which belief is right is the model's business. Not handing it its own
+    last answer is ours: three rewordings that each start from nothing
+    are three chances to write the same sentence.
+    """
+    try:
+        rows = [l.split("\t") for l in
+                Path("run/outline_rewordings").read_text().splitlines()
+                if l.strip()]
+    except OSError:
+        return ""
+    by_new = {_norm_obj(r[2]): r for r in rows if len(r) > 2}
+    chain, cur = [], _norm_obj(goal)
+    while cur in by_new:
+        r = by_new.pop(cur)
+        chain.insert(0, (r[1], r[2]))
+        cur = _norm_obj(r[1])
+    if not chain:
+        return ""
+    return ("\n\nYOU HAVE ALREADY REWRITTEN THIS OBJECTIVE, and what you "
+            "wrote failed too:\n"
+            + "\n".join(f"  {a} -> {b}" for a, b in chain)
+            + "\nSo the last restatement did not find the problem either. "
+              "Whatever is wrong here, it is not what you changed.")
+
+
+def check_wording(goal: str, ahead: list, behind: list, start: str,
+                  journal: str, model: str, observed=None) -> str:
+    """The last rung: is the objective itself wrong?
+
+    The chain halted at "Obtain the Secret Key from the Rocket Hideout" —
+    an item that is not in that dungeon, written before the run had been
+    anywhere near it — with the hideout cleared, Giovanni beaten and both
+    of its real key items in the bag. Nothing could satisfy the line, and
+    the run had no way to say so: the three rungs ask whether the work is
+    done, blocked, or missing a step, and none of them asks whether the
+    sentence describes anything.
+
+    THE MODEL NOTICES AND THE MODEL REWRITES (user, 2026-08-15). The
+    harness does not detect an unwinnable objective and it does not
+    propose wording; it asks one question after the others have failed,
+    and applies an answer it did not shape.
+
+    The worry that this is an escape hatch from hard legs had the shape of
+    it wrong. A person playing does not fix their whole plan at the start
+    with no way to change their mind when something is plainly not working
+    (user, 2026-08-15) — holding the model to a sentence it wrote before
+    it had been anywhere is not rigour, it is a worse player. What honesty
+    requires is that the revision be the model's own, made from evidence,
+    and that is what this asks for.
+
+    The guard against rewording a hard leg into an easy one is therefore
+    not a judgment about difficulty — it is that the restatement must
+    survive the same already-done check as everything else. "Visit the
+    Rocket Hideout" is caught not because it is weaker but because it is
+    done.
+    """
+    body = (f"THE OBJECTIVE YOU ARE STUCK ON: {goal}\n\n"
+            f"WHERE THE RUN STANDS: {start}\n{journal}"
+            + _reword_history(goal)
+            + recent_events() + done_ledger_text()
+            + ("\n\nOBJECTIVES YOU HAVE FINISHED:\n"
+               + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
+            + "\n\nSTILL ON YOUR LIST, in order:\n"
+            + "\n".join(f"  {n}. {t}" for n, t in ahead))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": WORDING_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\{.*\}", reply, re.S)
+        ans = json.loads(m.group(0)) if m else {}
+    except (ValueError, KeyError, OSError, AttributeError):
+        return ""
+    new = str(ans.get("reword") or "").strip()
+    why = str(ans.get("why") or "")[:160]
+    if not new or new.lower() in ("none", "null"):
+        print(f"[wording] the wording stands: {why}", file=sys.stderr)
+        return ""
+    if _norm_obj(new) == _norm_obj(goal):
+        print("[wording] refused: that is the same sentence",
+              file=sys.stderr)
+        return ""
+    others = [t for _, t in ahead if _norm_obj(t) != _norm_obj(goal)]
+    others += [t for _, t in behind]
+    if _norm_obj(new) in {_norm_obj(t) for t in others} or _shadows(new, others):
+        print(f"[wording] refused: {new!r} is another line of your own list",
+              file=sys.stderr)
+        return ""
+    if check_already_done(new, start, model, observed=observed):
+        print(f"[wording] refused: {new!r} is already done", file=sys.stderr)
+        return ""
+    print(f"[wording] {goal!r} -> {new!r}: {why}", file=sys.stderr)
+    return new
+
+
 def check_done(goal: str, start: str, model: str,
                observed=None, gained: str = "") -> bool:
     """The model judges whether a failed leg's objective is already met.
@@ -2617,6 +2745,10 @@ def main():
     ap.add_argument("--deed", default=None,
                     help="a single objective for --check-already-done, "
                          "instead of sweeping the outline")
+    ap.add_argument("--check-wording", action="store_true",
+                    help="last rung: ask whether the stuck --goal describes "
+                         "anything doable, and let the model restate it; "
+                         "prints the new objective and exits 0, or exits 3")
     ap.add_argument("--recognize-done", action="store_true",
                     help="name accomplishments this run made that were "
                          "never on the outline at all, and what they open; "
@@ -2650,6 +2782,21 @@ def main():
                           gained=args.gained or "")
         print("DONE" if done else "NOT_DONE")
         sys.exit(0 if done else 3)
+    if args.check_wording:
+        if not (args.outline_path and args.leg):
+            ap.error("--check-wording needs --outline-path and --leg")
+        lines = [l.strip() for l in args.outline_path.read_text()
+                 .splitlines() if l.strip()]
+        ahead = [(n, lines[n - 1])
+                 for n in range(args.leg, len(lines) + 1)]
+        behind = [(n, lines[n - 1]) for n in range(1, args.leg)]
+        jt = journal_text(args.journal) if args.journal else ""
+        new = check_wording(args.goal, ahead, behind, args.start or "", jt,
+                            args.model, observed=args.observed)
+        if new:
+            print(new)
+            sys.exit(0)
+        sys.exit(3)
     if args.recognize_done:
         if not args.outline_path:
             ap.error("--recognize-done needs --outline-path")

@@ -21,7 +21,17 @@
         ]
       },
       "comment": "The bag is full. Picking up the Secret Key will fail unless space is made. Since the player is in Viridian Forest, they should toss an item or head to a mart.",
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 0
+      }
     },
     {
       "id": "go_to_celadon_city",
@@ -29,7 +39,42 @@
       "done_when": {
         "map": "CELADON_CITY"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 7,
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 5,
+          "y": 8,
+          "when": {
+            "map": "ROUTE_9"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_9"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
     },
     {
       "id": "enter_rocket_hideout",
@@ -37,7 +82,17 @@
       "done_when": {
         "map": "ROCKET_HIDEOUT_B1F"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 0
+      }
     },
     {
       "id": "go_to_elevator",
@@ -45,7 +100,17 @@
       "done_when": {
         "map": "ROCKET_HIDEOUT_ELEVATOR"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 0
+      }
     },
     {
       "id": "descend_to_b4f",
@@ -53,7 +118,17 @@
       "done_when": {
         "area": "ROCKET_HIDEOUT_B4F|17,1"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 0
+      }
     },
     {
       "id": "defeat_giovanni",
@@ -61,7 +136,17 @@
       "done_when": {
         "flag": "EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI"
       },
-      "escalation_rounds": 4
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 0
+      }
     },
     {
       "id": "take_secret_key",
