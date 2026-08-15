@@ -2947,9 +2947,28 @@ class Executor:
                             seen_m.add(m2)
                             q.append(p + [m2])
                 if path_m and len(path_m) > 1:
+                    # MARK THE LEGS THIS RUN HAS NEVER GOT THROUGH. The
+                    # path is a plain BFS over the printed map with no
+                    # tolls, so it confidently reads "ROUTE_5 ->
+                    # SAFFRON_CITY -> ROUTE_7 -> CELADON" while the same
+                    # ledger says Route 5 has been stood in 356 times and
+                    # Saffron reached zero. The ranking already prices
+                    # those legs; this sentence did not, and a rewrite
+                    # followed it into the guards twice.
+                    _vis = self._map_visits()
+                    _legs = []
+                    for _i, _m in enumerate(path_m):
+                        _legs.append(_m)
+                        _nxt = path_m[_i + 1] if _i + 1 < len(path_m) else None
+                        if (_nxt and _vis.get(_m, 0) >= 8
+                                and not _vis.get(_nxt)):
+                            _legs.append(
+                                f"[!! {_m} -> {_nxt} has NEVER opened: "
+                                f"stood in {_m} {_vis.get(_m, 0)}x and "
+                                f"reached {_nxt} 0x]")
                     route_line += (
                         f"\nTOWN-MAP ITINERARY from {here_map}: "
-                        + " -> ".join(path_m)
+                        + " -> ".join(_legs)
                         + ". Legs the evidence has proven blocked need a "
                           "tunnel, a building or a deed at that step.")
         if not (untried or tried):
