@@ -1251,6 +1251,30 @@ function OPS.cross(G, c)
           :format(tostring(w.destMap or "somewhere"), w.x, w.y)
       end
     end
+    -- A BUILDING WITH TWO DOORS INTO THIS MAP IS A PASSAGE, AND DISTANCE
+    -- TO THE SEAM IS THE WRONG WAY TO FIND IT. Cerulean's south road runs
+    -- through the trashed house, whose back wall Team Rocket knocked
+    -- through — and that house stands in the NORTH of the city, as far
+    -- from the south seam as it gets. BFS walks open ground, so it can
+    -- never find a route that leaves the map and comes back on the other
+    -- side; the south seam will fail forever and no bush explains why.
+    -- Two warps sharing a destination is the tell, and it is in the map's
+    -- own table: you can see both doors from the street.
+    local bydest = {}
+    for _, w in ipairs((md and md.warps) or {}) do
+      local d = tostring(w.destMap or "")
+      if d ~= "" and w.x and w.y then
+        bydest[d] = bydest[d] or {}
+        bydest[d][#bydest[d] + 1] = ("%d,%d"):format(w.x, w.y)
+      end
+    end
+    local passages = {}
+    for d, tiles in pairs(bydest) do
+      if #tiles > 1 and #passages < 4 then
+        passages[#passages + 1] = ("%s (doors at %s)")
+          :format(d, table.concat(tiles, " and "))
+      end
+    end
     table.sort(blockers, function(a, b) return (a.d or 0) < (b.d or 0) end)
     local btxt = {}
     for i = 1, math.min(#blockers, 5) do btxt[i] = blockers[i].s end
@@ -1263,6 +1287,13 @@ function OPS.cross(G, c)
     if #doors > 0 then
       said = said .. " Doors on that edge (a building can be a way "
         .. "THROUGH, not just a room): " .. table.concat(doors, ", ") .. "."
+    end
+    if #passages > 0 then
+      said = said .. " THIS MAP HAS PASSAGES — buildings with TWO doors "
+        .. "back onto it, which join parts of the map that cannot be "
+        .. "walked between: " .. table.concat(passages, "; ")
+        .. ". Going in one door and out the other is how you reach the "
+        .. "other side; walking cannot do it."
     end
     if said == "" then
       said = " Nothing this map lists sits against that edge."
