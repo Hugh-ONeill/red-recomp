@@ -2076,6 +2076,27 @@ class Executor:
         if self._ui_pending < 1:
             self._ui_pending += 1
             return obs
+        # ASK THE ONE WHO IS PLAYING. Backing out is safe for a menu nobody
+        # asked for, but a yes/no box is a DECISION, and pressing B is an
+        # answer — "No" to the Dome Fossil, "No" to a gift, "No" to a gate
+        # opening. It went the other way too: `answer="yes"` rode along on
+        # 302 of 560 interacts as boilerplate (it was attached to signposts
+        # and to a CUT_TREE), and on the DAY-CARE MAN that reflex boarded a
+        # level 40 CHARIZARD. Neither a blind yes nor a blind no is the
+        # model's judgement. The words are on screen; hand them over and
+        # use whatever comes back. Measured cost: a question box is rare —
+        # 2 in 15,347 records of a full day's run — so this is a handful of
+        # calls per playthrough, not a tax on every step.
+        if self._is_question(obs):
+            ans = self._ask_question(obs, sg, text)
+            if ans is not None:
+                self.b.send("tap", btn=("a" if ans else "b"))
+                obs = self.settle() or obs
+                self.log("question_answered", subgoal=sg.get("id"),
+                         text=str(text)[:200], answer=("yes" if ans else "no"),
+                         mode=(obs or {}).get("mode"))
+                self._ui_pending = 0
+                return obs
         n = 0
         while obs and obs.get("mode") == "ui" and n < tries:
             self.b.send("tap", btn="b")
@@ -2086,6 +2107,85 @@ class Executor:
                      text=str(text)[:160], mode=(obs or {}).get("mode"))
         self._ui_pending = 0
         return obs
+
+    @staticmethod
+    def _is_question(obs) -> bool:
+        """A yes/no box, as opposed to a menu or an info screen.
+
+        Same shape the shim tests with ui_is_choice: a cursor index and no
+        item list. A menu (bag, party, the PC) carries items and is NOT a
+        question — those the model opened on purpose and drives itself.
+        """
+        if (obs or {}).get("mode") != "ui":
+            return False
+        ui = (obs or {}).get("ui") or {}
+        return ui.get("index") is not None and not ui.get("items")
+
+    QUESTION_SYS = (
+        "You are playing Pokemon Red. The game has stopped on a YES/NO "
+        "question and is waiting for your answer. Answer it the way the "
+        "player you are would answer it, given what you are trying to do. "
+        "Reply with a JSON object and nothing else: "
+        "{\"why\":\"<one short sentence>\",\"answer\":\"yes\"} "
+        "or {\"why\":\"...\",\"answer\":\"no\"}."
+    )
+
+    def _ask_question(self, obs, sg, text):
+        """Put the open question to the model and return True/False/None.
+
+        None means it could not be asked or could not be understood — the
+        caller then falls back to backing out, which is what happened
+        before this existed.
+        """
+        words = str(text or "").strip()
+        if not words:
+            return None
+        cur = obs or {}
+        party = ", ".join(
+            f"{m.get('species')} L{m.get('level')}"
+            for m in (cur.get("party") or [])) or "no Pokemon"
+        bag = ", ".join(sorted((cur.get("bag") or {}).keys())) or "an empty bag"
+        dc = cur.get("daycare") or {}
+        where = ((cur.get("map") or {}).get("id")
+                 or (cur.get("map") or {}).get("name") or "somewhere")
+        user = (
+            f"THE QUESTION ON SCREEN:\n\"{words}\"\n\n"
+            f"WHERE YOU ARE: {where}\n"
+            f"WHAT YOU ARE TRYING TO DO RIGHT NOW: "
+            f"{sg.get('goal_text') or sg.get('id') or 'make progress'}\n"
+            f"YOUR PARTY: {party}\n"
+            f"YOUR BAG: {bag}\n"
+            + (f"AT THE DAY CARE: {dc.get('species')} L{dc.get('level')}, "
+               f"costs {dc.get('cost')} to collect\n" if dc.get("species")
+               else "")
+            + "\nSaying yes and saying no both DO something and neither can "
+              "be taken back by walking away. Answer it.")
+        try:
+            reply = brock_probe.chat(
+                [{"role": "system", "content": self.QUESTION_SYS},
+                 {"role": "user", "content": user}], self.model)
+        except Exception as e:
+            self.log("question_chat_error", subgoal=sg.get("id"), err=str(e))
+            return None
+        m = _re.search(r"\{.*\}", reply or "", _re.S)
+        if not m:
+            self.log("question_unparsed", subgoal=sg.get("id"),
+                     reply=str(reply)[:300])
+            return None
+        try:
+            d = json.loads(m.group(0))
+        except json.JSONDecodeError:
+            self.log("question_unparsed", subgoal=sg.get("id"),
+                     reply=str(reply)[:300])
+            return None
+        a = str(d.get("answer") or "").strip().lower()
+        if a not in ("yes", "no"):
+            self.log("question_unparsed", subgoal=sg.get("id"),
+                     reply=str(reply)[:300])
+            return None
+        self.log("question_asked", subgoal=sg.get("id"), text=words[:200],
+                 answer=a, why=str(d.get("why") or "")[:200])
+        return a == "yes"
 
     def _logged_exploration(self, obs, sg) -> str:
         txt = self.exploration_text(obs, self._target_key(sg))

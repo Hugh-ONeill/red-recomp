@@ -2485,24 +2485,20 @@ function OPS.interact(G, c)
         local who = c.name or (c.x and ("%s,%s"):format(tostring(c.x),
                                                         tostring(c.y)))
                     or "?"
-        if c.answer ~= nil and not seen_question[who] then
-          -- an answer to a question this run has never read. Record it,
-          -- decline, and quote it — the very next interact may answer.
+        if c.answer ~= nil and not seen_question[who] and not c.read_question
+        then
+          -- LEAVE IT OPEN. Neither pressing A nor pressing B here is the
+          -- model's judgement: `answer` arrived as boilerplate on 302 of
+          -- 560 interacts (signposts included), and declining is just as
+          -- much an answer as accepting. Stop with the box on screen and
+          -- the words in recent_text; the executor puts the question to
+          -- the model and presses whatever comes back.
           seen_question[who] = recent_text or true
-          local asked = recent_text
-          U.tap(G, "b"); U.wait(6)
-          for _ = 1, 30 do
-            if G.stack:top() == ow then break end
-            U.tap(G, "a"); U.wait(4)
-          end
-          return true, ("%s asked a QUESTION you had not read yet"):format(who)
-                        .. (asked and (" — \"" .. asked .. "\"") or "")
-                        .. (", so answer=\"" .. tostring(c.answer)
-                            .. "\" was NOT used and the question was "
-                            .. "DECLINED. Now that you can see what is "
-                            .. "being asked, interact again with the same "
-                            .. "answer to go through with it, or a "
-                            .. "different one.")
+          return true, ("%s is ASKING something and the box is STILL OPEN"
+            ):format(who)
+            .. ((recent_text and (" — \"" .. recent_text .. "\"")) or "")
+            .. (". answer=\"" .. tostring(c.answer) .. "\" was not used, "
+                .. "because it was set before the question could be read.")
         end
         if c.answer == "yes" then
           U.tap(G, "a"); U.wait(6)
@@ -2514,18 +2510,15 @@ function OPS.interact(G, c)
           -- and recent_text is cleared on return to free roam so the words
           -- were gone by the next observation too. The text is on screen;
           -- an honest choice needs to know what is being chosen.
+          -- Same again with no answer supplied: the old code declined
+          -- deterministically, which lost the Dome Fossil prompt in one
+          -- world. Hold the box; the question gets asked properly.
           local asked = recent_text
           seen_question[who] = asked or true
-          U.tap(G, "b"); U.wait(6)
-          for _ = 1, 30 do
-            if G.stack:top() == ow then break end
-            U.tap(G, "a"); U.wait(4)
-          end
-          return true, "it asked a QUESTION"
-                        .. (asked and (" — \"" .. asked .. "\"") or "")
-                        .. " and no answer was given, so it was DECLINED. "
-                        .. "Interact again with answer=\"yes\" to accept "
-                        .. "or answer=\"no\" to decline on purpose."
+          return true, ("%s is ASKING something and the box is STILL OPEN"
+            ):format(who)
+            .. ((asked and (" — \"" .. asked .. "\"")) or "")
+            .. ". No answer was supplied with the interact."
         end
       else
         U.tap(G, "a"); U.wait(4)
