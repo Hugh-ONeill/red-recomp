@@ -204,6 +204,7 @@ end
 -- before a choice box, which would leave the model answering a context-free
 -- yes/no; carry the prompt into the observation so the choice has meaning.
 local warp_reach            -- assigned after DIRS/ledge_landing
+local region_reach          -- ditto; identity fill, no one-way hops
 -- map id -> { "x,y" = region name }. Names are minted once and never
 -- rewritten, so a region cannot be renamed by the world opening up.
 local region_of = {}
@@ -353,8 +354,10 @@ local function observe(G, seq, result)
       -- Purely additive -- names are minted once and never rewritten, and
       -- space expanding never merges two names.
       do
+        -- identity comes from the two-way fill, NOT the warp fill above
+        local rreach = region_reach(G) or reach
         local bx, by
-        for k in pairs(reach) do
+        for k in pairs(rreach) do
           local cx, cy = k:match("^(-?%d+),(-?%d+)$")
           if cx then
             cx, cy = tonumber(cx), tonumber(cy)
@@ -366,14 +369,34 @@ local function observe(G, seq, result)
         local known = region_of[map.id]
         if not known then known = {}; region_of[map.id] = known end
         local here = (p.cellX or -1) .. "," .. (p.cellY or -1)
-        local name = known[here] or (bx and (bx .. "," .. by))
+        -- ONE REMEMBERED CELL RE-IDENTIFIES THE WHOLE REGION. Standing
+        -- cell first (after the tree is cut, main and the strip south of
+        -- it share one component and must still answer to their own
+        -- names); otherwise any already-named cell we can reach. Only
+        -- ground nobody has ever named falls through to a fresh mint.
+        local name = known[here]
+        if not name then
+          for k in pairs(rreach) do
+            if known[k] then name = known[k] break end
+          end
+        end
+        name = name or (bx and (bx .. "," .. by))
         if name then
           o.map.region = name
-          -- paint only the ground that has never been named
-          for k in pairs(reach) do
+          -- paint only the ground that has never been named, and only
+          -- ground you could walk back from -- otherwise one look from the
+          -- top of the ridge stamps the whole strip below with main's name
+          for k in pairs(rreach) do
             if known[k] == nil then known[k] = name end
           end
           known[here] = name
+          -- one cell per name is all the executor needs to store: the
+          -- component walk above re-spreads it on the next load.
+          local seen_name, anchors = {}, {}
+          for k, v in pairs(known) do
+            if not seen_name[v] then seen_name[v] = true; anchors[k] = v end
+          end
+          o.map.region_anchors = anchors
         end
       end
       -- LAST_MAP is gen1's "back outdoors where you came from" and it is
@@ -691,7 +714,17 @@ end
 -- Moon B1F) the right warp can be visible but walled off, and without this
 -- the model re-proposes it forever. Defined here because it needs DIRS and
 -- ledge_landing; observe() calls it through a forward-declared local.
-function warp_reach(G)
+-- reach WITHOUT one-way hops. A ledge you can drop off but not climb is a
+-- BOUNDARY, not a corridor: from the top of Cerulean's ridge the plain
+-- fill leaks into the strip below and swallows it, so main city and the
+-- southern section report one identity and the passage between them reads
+-- as a door back to where you started. Region names are minted from THIS
+-- fill -- what you can walk and walk back from, bounded by seams and
+-- one-way drops. Warp reachability still uses the leaky one: a warp you
+-- can only get to by dropping down IS reachable, it just is not here.
+region_reach = function(G) return warp_reach(G, true) end
+
+function warp_reach(G, no_ledges)
   local okc, Collision = pcall(require, "src.world.Collision")
   local ow, p = G.overworld, G.overworld and G.overworld.player
   if not (okc and ow and p and ow.map) then return nil end
@@ -720,7 +753,7 @@ function warp_reach(G)
         if Collision.canMove(ow.map, NOBODY, probe, dn) then
           seen[key(nx, ny)] = true
           q[#q + 1] = { x = nx, y = ny }
-        else
+        elseif not no_ledges then
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dn)
           if lx and not seen[key(lx, ly)] then
             seen[key(lx, ly)] = true
@@ -3064,6 +3097,24 @@ end
 -- report this map's pathing reality — reachable-set size, which edge cells
 -- are walkable/reachable, and which cells offer a ledge hop. Exists to
 -- debug traversal failures like Route 4's east seam.
+-- Re-teach the names this world already learned. Region identity is the
+-- one thing that must survive a restart: the run walked out of the
+-- trashed house once and learned that the far side is a different place,
+-- and without this it forgets that every time the executor relaunches and
+-- has to walk it again to find out. The executor hands back the anchors it
+-- stored; the component walk in observe spreads each one over its ground.
+function OPS.seed_regions(G, c)
+  local n = 0
+  for mid, cells in pairs(c.regions or {}) do
+    local known = region_of[mid]
+    if not known then known = {}; region_of[mid] = known end
+    for cell, name in pairs(cells) do
+      if known[cell] == nil then known[cell] = name; n = n + 1 end
+    end
+  end
+  return true, ("seeded %d remembered region cell(s)"):format(n)
+end
+
 function OPS.map_probe(G, c)
   if not (G.overworld and G.stack:top() == G.overworld) then
     return false, "not in overworld"

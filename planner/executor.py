@@ -552,6 +552,7 @@ class Executor:
         self.visits: dict = {}      # region -> times arrived
         self.frontier: dict = {}    # region -> every exit visible from it
         self.sightings: dict = {}   # region -> named objects seen there
+        self.region_anchors: dict = {}   # map -> {cell: region name}
         self.searched: dict = {}    # "*" -> {region: fully worked};
                                     # flag:/item: keys add per-target claims
         self.contested: dict = {}   # target -> {region: a fight ran here}
@@ -624,6 +625,7 @@ class Executor:
 
     def _note(self, obs):
         self.note_frontier(obs)
+        self.note_region_anchors(obs)
         self.note_sightings(obs)
         self.note_flag_site(obs)
         m = (obs or {}).get("map") or {}
@@ -651,6 +653,7 @@ class Executor:
             self.visits = data.get("visits", {})
             self.frontier = data.get("frontier", {})
             self.sightings = data.get("sightings", {})
+            self.region_anchors = data.get("region_anchors", {}) or {}
             self.searched = data.get("searched", {})
             self.contested = data.get("contested", {})
             # Money-dependent proofs do not survive a restart. "Fully
@@ -774,6 +777,7 @@ class Executor:
         except (OSError, ValueError):
             self.explored, self.dead_ends = {}, {}
             self.visits, self.frontier, self.sightings = {}, {}, {}
+            self.region_anchors = {}
             self.searched = {}
             self.contested = {}
 
@@ -783,6 +787,7 @@ class Executor:
                 {"explored": self.explored, "dead_ends": self.dead_ends,
                  "visits": self.visits, "frontier": self.frontier,
                  "sightings": self.sightings, "searched": self.searched,
+                 "region_anchors": self.region_anchors,
                  "contested": self.contested,
                  # touched outlives the process so "sighted but never
                  # touched" stays computable across attempts — the Mt Moon
@@ -893,6 +898,28 @@ class Executor:
             self.flag_sites[f] = here
             self.log("flag_fired", flag=f, region=here)
         self._save_memory()
+
+    def note_region_anchors(self, obs):
+        """Remember what this world calls its places, across restarts.
+
+        A region name is minted by standing somewhere unnamed, so without
+        this the run re-learns the map's identity every relaunch: it walked
+        out of the trashed house once and found that the far side of
+        Cerulean is a different place, and that discovery died with the
+        process. One cell per name is enough — the shim re-spreads it over
+        the component on load.
+        """
+        m = (obs or {}).get("map") or {}
+        anchors = m.get("region_anchors")
+        mid = m.get("id")
+        if not (anchors and mid):
+            return
+        store = self.region_anchors.setdefault(mid, {})
+        added = {c: n for c, n in anchors.items() if store.get(c) != n}
+        if added:
+            store.update(added)
+            self.log("region_anchors", map=mid, added=added)
+            self._save_memory()
 
     def note_sightings(self, obs):
         """Which named things were SEEN in this region.
@@ -2954,6 +2981,20 @@ class Executor:
         except TimeoutError as e:
             self.log("send_timeout", op=op, err=str(e))
             return None
+
+    def seed_regions(self):
+        """Hand the game back the place-names this world already learned.
+
+        Called once the bridge is up. Without it the names live only in the
+        game process and die with it, so every relaunch re-discovers that
+        the far side of a passage is a different place.
+        """
+        if not self.region_anchors:
+            return
+        r = self._send_safe("seed_regions", regions=self.region_anchors)
+        self.log("seed_regions",
+                 maps=len(self.region_anchors),
+                 detail=str(((r or {}).get("result") or {}).get("detail"))[:80])
 
     def settle(self) -> dict:
         """Resolve to a clean decision state before checking guards/predicates.
@@ -5522,6 +5563,7 @@ def main():
                   can_escalate=args.escalate, model=args.model,
                   run_id=args.run_id)
     ex.save_each = args.save_after_each
+    ex.seed_regions()          # the bridge is up; re-teach known place-names
     ok = True
     for plan_path in args.plans:
         plan = json.loads(plan_path.read_text())
