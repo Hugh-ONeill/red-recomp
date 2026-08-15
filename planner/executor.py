@@ -463,6 +463,27 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
             break
         turns += 1
         ctx["turn"] = turns
+        # WHO IS OUT is a decision the policy could not make. It fought
+        # with whoever was sent in, so party order was the only lever and
+        # a Pokemon too frail to survive a turn could never be in a battle
+        # at all. The spec — which the model writes — may now name a slot
+        # and the conditions for bringing it in; nothing here knows why a
+        # switch might be worth a turn.
+        ctx.setdefault("started_as", None)
+        if ctx["started_as"] is None:
+            for _n, _m in enumerate((obs.get("party") or []), 1):
+                if _m.get("species") == ((obs.get("battle") or {})
+                                         .get("me") or {}).get("species"):
+                    ctx["started_as"] = _n
+                    break
+        _to = battle_policy.should_switch(obs, spec, ctx)
+        if _to:
+            log("battle_turn", turn=turns, op="battle_switch",
+                params={"slot": _to}, why="spec switch rule")
+            obs = bridge.send("battle_switch", slot=_to)
+            if ((obs or {}).get("result") or {}).get("ok"):
+                obs = bridge.obs() or obs
+                continue
         # gen1 escape odds IMPROVE with each failed attempt (the formula
         # counts tries), so a small cap is self-defeating: capping at 3
         # left a no-attacking-PP Charmeleon fighting a wild Zubat with

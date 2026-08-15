@@ -53,6 +53,16 @@ DSL_DOC = """SPEC DSL (JSON object; every key optional; no other keys):
      only against that battle kind; only_if_best_physical limits the rule
      to fights where our best damage move is PHYSICAL — a Defense-drop
      like TAIL_WHIP does nothing for a special move like BUBBLE)
+  switch: list of mid-battle switch rules, each:
+      {"to": 1-6, "first_turns": 1-8, "max_uses": 1-6,
+       "vs": "trainer"|"wild"|"any", "hp_below": null or 0.0-1.0,
+       "only_if_lead": null or 1-6}
+    (bring party slot `to` in, in the battle's first `first_turns` turns,
+     up to max_uses times, only against that battle kind, only while the
+     ACTIVE mon's hp fraction is below hp_below if given, and only when
+     the mon that STARTED the battle was slot only_if_lead. A switch
+     costs the turn and the foe gets a free hit — whether that price is
+     worth paying, and what you would be paying it FOR, is yours)
   flee_wild: {"when_traversal": true/false, "hp_below": null or 0.0-1.0}
     (when_traversal: flee wild battles while traveling to save HP;
      hp_below: also flee ANY wild when own hp fraction is below this.

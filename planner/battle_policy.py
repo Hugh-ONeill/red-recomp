@@ -23,6 +23,17 @@ SPEC DSL v1 (all keys optional; unknown keys are validation errors):
              vs: "trainer"|"wild"|"any" (default "trainer")
              only_if_best_physical: bool  only when our best damage move is
                 physical (e.g. TAIL_WHIP helps TACKLE, not BUBBLE) } ]
+  switch: [ { to: int          bring in this party slot MID-BATTLE, e.g.
+              first_turns: int   only in the battle's first N turns (def. 1)
+              max_uses: int      per battle (default 1)
+              vs: "trainer"|"wild"|"any" (default "any")
+              hp_below: float|null  only when the ACTIVE mon's hp frac is
+                 below this — omit to switch regardless of health
+              only_if_lead: int|null  only when the mon that STARTED this
+                 battle was that slot } ]
+            A switch costs the turn and the foe gets a free hit. Whether
+            that price is worth paying, and what for, is yours to decide
+            and to write down as conditions.
   flee_wild: { when_traversal: bool   flee wilds during traversal subgoals
                hp_below: float|null } flee ANY wild when own hp frac below
   battle_items: [ { item: str          use a healing item IN battle (costs
@@ -66,6 +77,7 @@ DEFAULT_SPEC = {
     "ko_margin": 1.0,
     "avoid_status_moves": True,
     "setup": [],
+    "switch": [],
     "flee_wild": {"when_traversal": True, "hp_below": None},
     "battle_items": [],
     "field_heal": None,
@@ -96,6 +108,28 @@ def validate_spec(spec) -> list:
     for k in ("accuracy_weight", "prefer_ko", "avoid_status_moves"):
         if k in spec and not isinstance(spec[k], bool):
             probs.append(f"{k} must be true/false")
+    if "switch" in spec:
+        if not isinstance(spec["switch"], list):
+            probs.append("switch must be a list")
+        else:
+            for i, r in enumerate(spec["switch"]):
+                if not isinstance(r, dict) or not isinstance(r.get("to"), int):
+                    probs.append(f"switch[{i}] needs to=<party slot int>")
+                    continue
+                if not (1 <= r["to"] <= 6):
+                    probs.append(f"switch[{i}].to must be a slot in [1,6]")
+                if r.get("vs") not in (None, "trainer", "wild", "any"):
+                    probs.append(f"switch[{i}].vs must be trainer/wild/any")
+                for fk, lo, hi in (("max_uses", 1, 6), ("first_turns", 1, 8),
+                                   ("only_if_lead", 1, 6)):
+                    if fk in r and r[fk] is not None and not (
+                            isinstance(r[fk], int) and lo <= r[fk] <= hi):
+                        probs.append(f"switch[{i}].{fk} must be int "
+                                     f"in [{lo},{hi}]")
+                if r.get("hp_below") is not None and not (
+                        isinstance(r["hp_below"], (int, float))
+                        and 0.0 <= r["hp_below"] <= 1.0):
+                    probs.append(f"switch[{i}].hp_below must be 0.0-1.0")
     if "setup" in spec:
         if not isinstance(spec["setup"], list):
             probs.append("setup must be a list")
@@ -306,6 +340,60 @@ def choose_replacement(obs: dict, spec: dict | None = None) -> int | None:
         if f > best:
             best, slot = f, i + 1
     return slot
+
+
+def should_switch(obs: dict, spec: dict | None = None,
+                  ctx: dict | None = None) -> int | None:
+    """Spec-driven mid-battle switch: which party slot comes in, or None.
+
+    The policy could only ever fight with whoever was sent out, so the one
+    lever on who fights was party order, and a Pokemon too weak to survive
+    a turn could never be in a battle at all. That rules out a whole class
+    of play the game itself supports.
+
+    WHAT THE HARNESS SUPPLIES IS THE VERB. This asks the spec — which the
+    model writes (policy_author.py, CLAIM_RULES) — and does what it says.
+    No rule here knows why a switch might be worth a turn; the reasons are
+    the model's, and it has to write them down as conditions to get them.
+
+    A switch costs the turn and gives the foe a free hit. That is a fact
+    about the game, not a rule about play, and the model prices it.
+    """
+    spec = spec or DEFAULT_SPEC
+    ctx = ctx or {}
+    b = (obs or {}).get("battle") or {}
+    me = b.get("me") or {}
+    kind = b.get("kind") or "wild"
+    party = (obs or {}).get("party") or []
+    used = ctx.setdefault("switched", {})
+    for n, rule in enumerate(spec.get("switch") or []):
+        to = rule.get("to")
+        if not isinstance(to, int) or not (1 <= to <= len(party)):
+            continue
+        if used.get(n, 0) >= rule.get("max_uses", 1):
+            continue
+        if (ctx.get("turn") or 1) > rule.get("first_turns", 1):
+            continue
+        vs = rule.get("vs", "any")
+        if vs != "any" and vs != kind:
+            continue
+        hb = rule.get("hp_below")
+        if hb is not None and _hp_frac(me) >= hb:
+            continue
+        lead = rule.get("only_if_lead")
+        if lead is not None and ctx.get("started_as") != lead:
+            continue
+        cand = party[to - 1]
+        # switching to a fainted slot is not a decision, it is a no-op the
+        # game refuses — and a refused input burns the turn without ticking
+        # anything, the DISABLE deadlock all over again
+        if (cand.get("hp") or 0) <= 0:
+            continue
+        if cand.get("species") == me.get("species"):
+            continue        # already out
+        used[n] = used.get(n, 0) + 1
+        return to
+    return None
 
 
 def should_flee(obs: dict, spec: dict | None = None,
