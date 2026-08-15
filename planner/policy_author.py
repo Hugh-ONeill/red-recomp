@@ -244,14 +244,29 @@ class Gym:
 
     def _run_or_author(self, sg) -> bool:
         """Mirror record-config behavior inside eval trials: replay the
-        macro; on failure, escalate ONCE per eval session (in-memory) —
-        e.g. the shop leg ends inside the mart and the next subgoal's
-        macro assumes the street (itemauthor5: every trial died 'entering
-        the gym')."""
+        macro; on failure, escalate — but only while escalating is still
+        buying something.
+
+        The cap used to be ONE escalation per eval session, set before the
+        attempt: the shop leg ends inside the mart and the next subgoal's
+        macro assumes the street, so escalating once and carrying the fix
+        forward stopped every trial dying at "entering the gym"
+        (itemauthor5). That reasoning holds only when a fix is actually
+        PRODUCED. `reach_pewter_city` escalates by walking a known route,
+        which earns no macro, so there was nothing to carry forward and
+        the cap simply denied trials 2 and 3 the thing that worked in
+        trial 1 — pinning every candidate AND the baseline at 0-1/3, which
+        cannot rank anything.
+
+        So the cap now fires on a RESULT, not on an attempt: a stored fix,
+        or a proven failure. If escalation keeps succeeding without
+        producing a macro, each trial gets its own — which is what a
+        reseeded independent trial means."""
         ok = self.ex.run_subgoal(sg)
         if not ok and self.model and not sg.get("_esc_tried"):
-            sg["_esc_tried"] = True
             succ, ops = self.ex.escalate(sg)
+            if not succ:
+                sg["_esc_tried"] = True      # proven not to work; stop paying
             if succ:
                 # AN EMPTY SEQUENCE IS NOT A ROUTE — same rule as
                 # Executor.distill. Escalation can succeed having proposed
@@ -260,6 +275,7 @@ class Gym:
                 # of no ops, which changes nothing and then fails.
                 if ops:
                     sg["macro"] = ops
+                    sg["_esc_tried"] = True  # a fix exists; do not re-buy it
                 ok = True
         return ok
 

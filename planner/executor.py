@@ -4373,10 +4373,30 @@ Reply with ONLY a JSON array of ops, e.g.
                     # badge was "already true on arrival, nothing was done"
                     # under thirty WIPED lines for that same fight. The one
                     # success in the run rendered as a no-op.
+                    # ...BUT DO NOT CLAIM A MACRO FOR IT. What reached the
+                    # goal here was the harness walking its own route; the
+                    # accumulated `progress` came from EARLIER rounds and
+                    # did not cause this. Returning it committed those ops
+                    # as the subgoal's macro, so the next replay ran a
+                    # sequence nothing had shown to reach anything — and in
+                    # the spec gym, where escalation is capped at once per
+                    # session, trials 2 and 3 replayed it and failed.
+                    # That is 0/3 or 1/3 for every candidate AND the
+                    # baseline: a scoreboard that cannot tell specs apart.
+                    #
+                    # Same rule as distill's: a sequence that did not cause
+                    # the success is not a route. The subgoal is satisfied
+                    # either way, and an empty return leaves whatever macro
+                    # exists untouched rather than overwriting it with a
+                    # claim. Nor is the walked route itself a candidate —
+                    # the harness pathfinder authored that, and macro
+                    # provenance names the model.
                     self.log("escalate_success", subgoal=sg["id"],
                              round=rnd, proposed=0, walked=len(r0),
-                             distilled=len(progress), verified=False)
-                    return True, progress
+                             distilled=0, verified=False,
+                             dropped_progress=len(progress),
+                             why="reached by walking a known route")
+                    return True, []
             sig0 = self._snapshot(start)
             if rnd == 1 and sig0[0]:
                 visits[sig0[0]] = 1
