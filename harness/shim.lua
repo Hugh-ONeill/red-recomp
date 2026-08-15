@@ -434,11 +434,35 @@ local function observe(G, seq, result)
     -- literal offsets, NOT the DIRS table: DIRS is declared further down
     -- the file, so inside observe() it is nil (the same scoping trap that
     -- killed the driver when warp reachability was first added)
+    -- COUNTER STAFF ARE REACHABLE. "Reachable" meant a walkable tile
+    -- orthogonally adjacent, and a clerk or nurse behind a counter has
+    -- none -- so every shopkeeper and every nurse in Kanto was filtered
+    -- out of the observation and out of sightings. The Pokemon Center
+    -- listed its Cable Club receptionist, its gentleman and its PC, and
+    -- not the one person in the building who heals you; the bike shop
+    -- looked FULLY WORKED with a voucher unspent in the bag, because the
+    -- only two people it could see had both been spoken to. Gen 1 talks
+    -- ACROSS a counter, and OPS.interact already stands at distance 2 to
+    -- do it -- this just teaches the observation the same reach, with the
+    -- same guard (nobody on the tile between, or the press hits them).
+    local function occupied_cell(x, y)
+      for _, n in ipairs(G.overworld.npcs or {}) do
+        if n.cellX == x and n.cellY == y then return true end
+      end
+      return false
+    end
     local function adjacent_reachable(x, y)
-      return (objreach[(x - 1) .. "," .. y]
-              or objreach[(x + 1) .. "," .. y]
-              or objreach[x .. "," .. (y - 1)]
-              or objreach[x .. "," .. (y + 1)]) and true or false
+      if objreach[(x - 1) .. "," .. y] or objreach[(x + 1) .. "," .. y]
+         or objreach[x .. "," .. (y - 1)] or objreach[x .. "," .. (y + 1)]
+      then return true end
+      local over = { { x, y + 2, x, y + 1 }, { x, y - 2, x, y - 1 },
+                     { x - 2, y, x - 1, y }, { x + 2, y, x + 1, y } }
+      for _, o in ipairs(over) do
+        if objreach[o[1] .. "," .. o[2]] and not occupied_cell(o[3], o[4]) then
+          return true
+        end
+      end
+      return false
     end
     for _, npc in ipairs(G.overworld.npcs or {}) do
       local d = npc.def or {}
