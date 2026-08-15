@@ -1,0 +1,102 @@
+{
+ "goal": "Clear Team Rocket out of the Silph Co. building",
+ "subgoals": [
+  {
+   "id": "travel_to_saffron",
+   "goal_text": "Travel to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_1f",
+   "goal_text": "Defeat the Rocket Grunts on the first floor",
+   "done_when": {
+    "map": "SILPH_CO_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_2f",
+   "goal_text": "Defeat the Rocket Grunts on the second floor",
+   "done_when": {
+    "map": "SILPH_CO_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_3f",
+   "goal_text": "Defeat the Rocket Grunts on the third floor",
+   "done_when": {
+    "map": "SILPH_CO_4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_4f",
+   "goal_text": "Defeat the Rocket Grunts on the fourth floor",
+   "done_when": {
+    "map": "SILPH_CO_5F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_5f",
+   "goal_text": "Defeat the Rocket Grunts on the fifth floor",
+   "done_when": {
+    "map": "SILPH_CO_6F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_6f",
+   "goal_text": "Defeat the Rocket Grunts on the sixth floor",
+   "done_when": {
+    "map": "SILPH_CO_7F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_7f",
+   "goal_text": "Defeat the Rocket Grunts on the seventh floor",
+   "done_when": {
+    "map": "SILPH_CO_8F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_8f",
+   "goal_text": "Defeat the Rocket Grunts on the eighth floor",
+   "done_when": {
+    "map": "SILPH_CO_9F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_9f",
+   "goal_text": "Defeat the Rocket Grunts on the ninth floor",
+   "done_when": {
+    "map": "SILPH_CO_10F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni_silph",
+   "goal_text": "Defeat Giovanni in the Silph Co. building",
+   "done_when": {
+    "flag": "EVENT_BEAT_SILPH_CO_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

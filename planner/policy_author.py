@@ -194,7 +194,8 @@ class Gym:
                 print(f"[gym] setup: escalating {sg['id']}")
                 success, ops = self.ex.escalate(sg)
                 if success:
-                    sg["macro"] = ops   # in-memory only
+                    if ops:              # in-memory only; [] is not a route
+                        sg["macro"] = ops
                     ok = True
             if not ok:
                 raise RuntimeError(f"setup failed at {sg['id']}")
@@ -232,7 +233,13 @@ class Gym:
             sg["_esc_tried"] = True
             succ, ops = self.ex.escalate(sg)
             if succ:
-                sg["macro"] = ops
+                # AN EMPTY SEQUENCE IS NOT A ROUTE — same rule as
+                # Executor.distill. Escalation can succeed having proposed
+                # nothing (the pathfinder walked it, a fight settled it),
+                # and writing that back makes trials 2 and 3 replay a macro
+                # of no ops, which changes nothing and then fails.
+                if ops:
+                    sg["macro"] = ops
                 ok = True
         return ok
 

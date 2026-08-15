@@ -8,48 +8,15 @@
         "map": "ROCKET_HIDEOUT_ELEVATOR"
       },
       "escalation_rounds": 4,
-      "macro": [
-        {
-          "op": "use_warp",
-          "x": 4,
-          "y": 1,
-          "when": {
-            "map": "CELADON_MANSION_2F"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 4,
-          "y": 1,
-          "when": {
-            "map": "CELADON_MANSION_3F"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 2,
-          "y": 1,
-          "when": {
-            "map": "CELADON_MANSION_ROOF"
-          }
-        },
-        {
-          "op": "use_warp",
-          "x": 2,
-          "y": 1,
-          "when": {
-            "map": "CELADON_MANSION_2F"
-          }
-        }
-      ],
+      "macro": [],
       "subgoal_provenance": {
         "authored_by": "unknown (pre-audit)"
       },
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "campaign1",
+        "run": "campaign3",
         "via": "escalation",
-        "n_ops": 4
+        "n_ops": 0
       }
     },
     {
@@ -59,33 +26,16 @@
         "map": "ROCKET_HIDEOUT_B4F"
       },
       "escalation_rounds": 4,
-      "macro": [
-        {
-          "op": "use_warp",
-          "x": 23,
-          "y": 2,
-          "when": {
-            "map": "ROCKET_HIDEOUT_B1F"
-          }
-        }
-      ],
+      "macro": [],
       "subgoal_provenance": {
         "authored_by": "unknown (pre-audit)"
       },
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "campaign1",
+        "run": "campaign3",
         "via": "escalation",
-        "n_ops": 1
+        "n_ops": 0
       }
-    },
-    {
-      "id": "reach_giovanni_office",
-      "goal_text": "Walk to Giovanni's office on B4F.",
-      "done_when": {
-        "area": "ROCKET_HIDEOUT_B4F|22,12"
-      },
-      "escalation_rounds": 4
     },
     {
       "id": "defeat_giovanni",
@@ -100,14 +50,15 @@
       },
       "macro_provenance": {
         "authored_by": "gemma4:31b-it-q4_K_M",
-        "run": "campaign1",
+        "run": "campaign3",
         "via": "escalation",
         "n_ops": 0
-      }
+      },
+      "carried_forward": 2
     },
     {
-      "id": "take_secret_key",
-      "goal_text": "Pick up the Secret Key from the desk in Giovanni's office.",
+      "id": "collect_secret_key",
+      "goal_text": "Interact with the item on the floor in Giovanni's office to obtain the Secret Key.",
       "done_when": {
         "has_item": {
           "SECRET_KEY": 1

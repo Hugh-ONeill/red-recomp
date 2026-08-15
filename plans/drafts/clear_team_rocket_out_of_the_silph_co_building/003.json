@@ -1,0 +1,182 @@
+{
+ "goal": "Clear Team Rocket out of the Silph Co. building",
+ "subgoals": [
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Travel to Saffron City and enter the Silph Co. building",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_1f",
+   "goal_text": "Defeat the Team Rocket members on the first floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_2f",
+   "goal_text": "Take the elevator to the second floor",
+   "done_when": {
+    "map": "SILPH_CO_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_2f",
+   "goal_text": "Defeat the Team Rocket members on the second floor and return to the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_3f",
+   "goal_text": "Take the elevator to the third floor",
+   "done_when": {
+    "map": "SILPH_CO_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_3f",
+   "goal_text": "Defeat the Team Rocket members on the third floor and return to the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_4f",
+   "goal_text": "Take the elevator to the fourth floor",
+   "done_when": {
+    "map": "SILPH_CO_4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_4f",
+   "goal_text": "Defeat the Team Rocket members on the fourth floor and return to the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_5f",
+   "goal_text": "Take the elevator to the fifth floor",
+   "done_when": {
+    "map": "SILPH_CO_5F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_5f",
+   "goal_text": "Defeat the Team Rocket members on the fifth floor and return to the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_6f",
+   "goal_text": "Take the elevator to the sixth floor",
+   "done_when": {
+    "map": "SILPH_CO_6F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_6f",
+   "goal_text": "Defeat the Team Rocket members on the sixth floor and return to the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_7f",
+   "goal_text": "Take the elevator to the seventh floor",
+   "done_when": {
+    "map": "SILPH_CO_7F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_7f",
+   "goal_text": "Defeat the Team Rocket members on the seventh floor and return to the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_8f",
+   "goal_text": "Take the elevator to the eighth floor",
+   "done_when": {
+    "map": "SILPH_CO_8F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_8f",
+   "goal_text": "Defeat the Team Rocket members on the eighth floor and return to the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_9f",
+   "goal_text": "Take the elevator to the ninth floor",
+   "done_when": {
+    "map": "SILPH_CO_9F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_9f",
+   "goal_text": "Defeat the Team Rocket members on the ninth floor and return to the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_10f",
+   "goal_text": "Take the elevator to the tenth floor",
+   "done_when": {
+    "map": "SILPH_CO_10F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_10f",
+   "goal_text": "Defeat the Team Rocket members on the tenth floor and return to the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_11f",
+   "goal_text": "Take the elevator to the eleventh floor",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_rocket_boss",
+   "goal_text": "Defeat Giovanni to clear Team Rocket from the building",
+   "done_when": {
+    "flag": "EVENT_BEAT_SILPH_CO_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 3"
+}

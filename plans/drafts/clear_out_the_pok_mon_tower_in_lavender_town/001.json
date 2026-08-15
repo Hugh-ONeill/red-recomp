@@ -1,0 +1,38 @@
+{
+ "goal": "Clear out the Pok\u00e9mon Tower in Lavender Town",
+ "subgoals": [
+  {
+   "id": "reach_tower_7f",
+   "goal_text": "Ascend to the 7th floor of the Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_7F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_rival_tower",
+   "goal_text": "Defeat the Rival in the Pokemon Tower",
+   "done_when": {
+    "flag": "EVENT_BEAT_POKEMON_TOWER_RIVAL"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_tower_1f",
+   "goal_text": "Descend back to the 1st floor of the Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_tower",
+   "goal_text": "Exit the Pokemon Tower into Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

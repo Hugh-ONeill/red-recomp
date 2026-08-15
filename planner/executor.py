@@ -5369,9 +5369,33 @@ Reply with ONLY a JSON array of ops, e.g.
         self.log("escalate_end", subgoal=sg["id"], success=False)
         return False, sg.get("macro", [])
 
-    def distill(self, sg: dict, ops: list):
+    def distill(self, sg: dict, ops: list) -> bool:
         """Write the escalation's successful op sequence back as the macro,
-        with provenance (the claim needs to show the model authored it)."""
+        with provenance (the claim needs to show the model authored it).
+
+        AN EMPTY SEQUENCE IS NOT A ROUTE. Escalation can succeed having
+        proposed nothing: the harness's own pathfinder walks a route
+        (proposed=0, walked=1), a trainer engages on the way and the fight
+        settles the condition, or the condition was already true by the
+        time the ops resolved. All real successes — but none of them is a
+        sequence that reproduces the state from anywhere else, and this
+        method PERSISTS what it is given to the plan file.
+
+        Storing [] therefore did two bad things at once. It deleted
+        whatever macro was there (add and update, never delete), and it
+        wrote a macro that must fail every future replay, since replaying
+        no ops changes nothing and the done-check then decides. The record
+        run logged eight of these in one chain, one of them for
+        go_to_elevator, which then "finished in the wrong place" and sent
+        the plan backtracking.
+
+        The subgoal is still satisfied and the caller still proceeds; what
+        is refused is the claim that a route was learned.
+        """
+        if not ops:
+            self.log("distill_refused_empty", subgoal=sg["id"],
+                     kept_macro=len(sg.get("macro") or []))
+            return False
         sg["macro"] = ops
         # WHO WROTE THE SUBGOAL and WHO AUTHORED ITS MACRO are different
         # facts, and distillation used to collapse them: writing a macro
@@ -5385,6 +5409,7 @@ Reply with ONLY a JSON array of ops, e.g.
         if self.plan_path:
             self.plan_path.write_text(json.dumps(self.plan, indent=2))
         self.log("distilled", subgoal=sg["id"], n_ops=len(ops))
+        return True
 
     def run_subgoal(self, sg: dict) -> bool:
         done = sg.get("done_when")
@@ -5525,9 +5550,14 @@ Reply with ONLY a JSON array of ops, e.g.
                 self.log("escalate_timeout", subgoal=sg["id"], err=str(e))
                 success, ops = False, []
             if success:
-                self.distill(sg, ops)
                 ok = True
-                print(f"   distilled {sg['id']} ({len(ops)} ops)")
+                if self.distill(sg, ops):
+                    print(f"   distilled {sg['id']} ({len(ops)} ops)")
+                else:
+                    # say which it was: "0 ops" read as a distilled route
+                    # of length zero, which is the one thing it never is
+                    print(f"   {sg['id']} came true with no reproducible "
+                          f"ops — macro left as it was")
         return ok
 
     def run_plan(self, plan: dict) -> bool:

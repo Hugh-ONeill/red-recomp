@@ -1,0 +1,199 @@
+{
+  "goal": "Clear out the Pok\u00e9mon Tower in Lavender Town",
+  "subgoals": [
+    {
+      "id": "reach_tower_7f",
+      "goal_text": "Go up to the 7th floor of the Pok\u00e9mon Tower",
+      "done_when": {
+        "map": "POKEMON_TOWER_7F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_rival_tower",
+      "goal_text": "Defeat the Rival in the Pok\u00e9mon Tower",
+      "done_when": {
+        "flag": "EVENT_BEAT_POKEMON_TOWER_RIVAL"
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "exit_tower",
+      "goal_text": "Exit the Pok\u00e9mon Tower and return to Lavender Town",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER5F_CHANNELER2",
+          "when": {
+            "map": "POKEMON_TOWER_5F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER5F_CHANNELER3",
+          "when": {
+            "map": "POKEMON_TOWER_5F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER5F_CHANNELER4",
+          "when": {
+            "map": "POKEMON_TOWER_5F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER5F_CHANNELER5",
+          "when": {
+            "map": "POKEMON_TOWER_5F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER5F_NUGGET",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_5F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_5F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER4F_CHANNELER1",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER4F_AWAKENING",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER4F_CHANNELER3",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_4F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER3F_CHANNELER1",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_3F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER3F_CHANNELER2",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_3F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER3F_CHANNELER3",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_3F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_3F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 10,
+          "y": 17,
+          "when": {
+            "map": "POKEMON_TOWER_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 19
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

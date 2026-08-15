@@ -73,7 +73,7 @@ def main():
             ok = ex.run_subgoal(sg) if sg.get("macro") else False
             if not ok:
                 ok, ops = ex.escalate(sg)
-                if ok:
+                if ok and ops:       # [] is not a route (see distill)
                     sg["macro"] = ops
             print(f"   {sg['id']}: {'ok' if ok else 'FAILED'}")
             here = ((ex.settle() or {}).get("map") or {}).get("id")
