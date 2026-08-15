@@ -718,6 +718,29 @@ class Executor:
             # the entry can only be rewritten by STANDING there, which the
             # run will never choose to do while the exit is hidden. Repair
             # at load so the fix is not hostage to the bug.
+            # A ROAD YOU HAVE WALKED IS NOT A ROAD YOU CANNOT WALK. no_cross
+            # is a CONCLUSION ("the cross op searched the whole seam and
+            # failed"); the walked edge is an OBSERVATION. When they
+            # disagree the observation wins. Cerulean had both "east" and
+            # "south" filed as uncrossable while the ledger held south ->
+            # ROUTE_5 taken 14x with 70 visits on the far side — so the
+            # exits list offered only north and west, and the run could not
+            # be told to go to the DAY CARE because the way there was not
+            # among the ways it was shown. It was never refusing; it was
+            # never asked.
+            for _r, _dirs in list(self._no_cross.items()):
+                _walked = self.explored.get(_r) or {}
+                _drop = set()
+                for _d in list(_dirs):
+                    _e = _walked.get(_d) or {}
+                    _to = _e.get("to")
+                    if (_to and _to != _r and not _e.get("shut")
+                            and (self.visits.get(_to) or 0) > 0):
+                        _drop.add(_d)
+                if _drop:
+                    self._no_cross[_r] = set(_dirs) - _drop
+                    print(f"[memory] {_r}: crossed {','.join(sorted(_drop))} "
+                          f"before, so it is not uncrossable")
             for _r, _ex in list(self.frontier.items()):
                 _real = MAP_EDGES.get(_r.split("|")[0]) or {}
                 _add = [d for d in _real
@@ -4406,6 +4429,20 @@ Reply with ONLY a JSON array of ops, e.g.
                                    + ", ".join(f"{k} x{v}"
                                                for k, v in sorted(_bag.items()))
                                    + ".")
+                # AND WHAT IT IS WORTH. The bag reached the note and the
+                # wallet never did, so "you have a NUGGET" sat next to no
+                # number to compare it with. The run walked into the mart
+                # holding a NUGGET, two coins short of the 100 the day care
+                # wanted for its own CHARIZARD, and walked out again.
+                _money = (cur or {}).get("money")
+                if _money is not None:
+                    stuck_note += f"\nMONEY: {_money}."
+                _dc = (cur or {}).get("daycare") or {}
+                if _dc.get("species"):
+                    stuck_note += (
+                        f"\nAT THE DAY CARE: your {_dc.get('species')} "
+                        f"L{_dc.get('level')}, which costs {_dc.get('cost')} "
+                        f"to collect.")
                 _mv = []
                 for _m in (cur or {}).get("party") or []:
                     _names = ", ".join(
