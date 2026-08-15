@@ -1687,6 +1687,20 @@ class Executor:
             path = self._route(here, block)
             if not path:
                 continue
+            # THE EDGE UNDER OUR FEET WAS WRONG. If this compass crossing
+            # had really worked from here, the walk would not have failed.
+            # Cerulean records `20,0 east -> ROUTE_9` seven times because
+            # each was made while the bush was cut and the city was one
+            # component; regrown, it is false, and _route keeps choosing it
+            # because it is the shortest path on paper. Drop it — it is a
+            # conclusion about connectivity, not an observation, and it
+            # re-records itself the moment it genuinely works again.
+            _mine = (self.explored.get(here) or {}).get(dirname)
+            if _mine and _mine.get("to") == to:
+                del self.explored[here][dirname]
+                self.log("edge_dropped_wrong_block", region=here,
+                         exit=dirname, to=to, was=_mine.get("n"))
+                self._save_memory()
             self.log("cross_by_recall", frm=here, via=block, dir=dirname,
                      to=to, hops=len(path))
             self._walk_route(sg, path)

@@ -990,6 +990,10 @@ local function bfs_to_edge(G, dir)
   -- THREE values: the caller reads (ex, ey, why), so a two-value return
   -- put the diagnostic in ey and left why nil -- the message came back
   -- exactly as silent as before.
+  -- ...and WHERE it stalled, so the caller can name what is next to that
+  -- rather than what happens to sit near the edge. Route 2's report named
+  -- a CUT_TREE at 5,10 while the walk stopped at 18,2 — thirteen cells
+  -- away, across the map, and not the thing in the way.
   return nil, nil, ("BFS from %d,%d walked %d cells (%d ledge hop%s); closest to "
     .. "the %s edge was %s,%s, still %d cell%s short%s")
     :format(p.cellX, p.cellY, nseen, nledge, nledge == 1 and "" or "s",
@@ -998,7 +1002,7 @@ local function bfs_to_edge(G, dir)
             edge_rejected > 0
               and ("; it DID reach the edge " .. edge_rejected
                    .. "x but the landing on the far side was refused")
-              or "")
+              or ""), bestx, besty
 end
 
 local OPS = {}
@@ -1326,9 +1330,9 @@ function OPS.cross(G, c)
     return (ow.map and ow.map.id) ~= startMap
   end
 
-  local ex, ey, bfs_why
+  local ex, ey, bfs_why, stallx, stally
   for round = 1, 4 do
-    ex, ey, bfs_why = bfs_to_edge(G, dir)
+    ex, ey, bfs_why, stallx, stally = bfs_to_edge(G, dir)
     if ex then break end
     U.wait(40)
     if G.stack:top() ~= ow then
@@ -1383,9 +1387,22 @@ function OPS.cross(G, c)
       return seam_dist(x, y) <= 12
     end
     local blockers, doors = {}, {}
+    -- RANK BY DISTANCE TO WHERE THE WALK STOPPED, not to the edge. The
+    -- thing in the way is next to the last cell reached; anything else in
+    -- the band is scenery. Route 2 stalled at 18,2 and the report named a
+    -- CUT_TREE at 5,10 — ten cells off the seam, twenty-one from the walk,
+    -- and irrelevant. Falls back to seam distance if the stall point is
+    -- unknown.
     local function add(tag, x, y)
+      local d
+      if stallx and stally then
+        d = math.abs(x - stallx) + math.abs(y - stally)
+        if d > 8 then return end        -- not near where we actually stopped
+      else
+        d = seam_dist(x, y)
+      end
       blockers[#blockers + 1] = { s = ("%s at %d,%d"):format(tag, x, y),
-                                  d = seam_dist(x, y) }
+                                  d = d }
     end
     -- SAY WHICH BLOCKERS ARE PEOPLE. A wandering trainer standing in a
     -- corridor reads exactly like a wall in a BFS result, but this seam
@@ -1431,7 +1448,7 @@ function OPS.cross(G, c)
     blockers = btxt
     local said = ""
     if #blockers > 0 then
-      said = said .. " Standing against that edge: "
+      said = said .. " Right where the walk stopped: "
         .. table.concat(blockers, ", ") .. "."
     end
     if #doors > 0 then
