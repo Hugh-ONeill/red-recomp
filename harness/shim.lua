@@ -1399,18 +1399,23 @@ function OPS.cross(G, c)
     -- road — it just is not "against that edge", which is what the old
     -- single list claimed about a tree ten cells off the seam.
     local elsewhere = {}
-    local function add(tag, x, y)
+    -- ACTIONABLE ANYWHERE, INCIDENTAL ONLY IF CLOSE. Distance to the
+    -- stall point is the wrong discriminator on its own: Route 2's one
+    -- cuttable bush sits at 5,10 and gates the whole northern approach,
+    -- while the walk stalled at 18,2 against terrain on the far side of
+    -- the route — twenty-one cells away and still the thing to cut. A
+    -- bush is worth naming wherever it is; a wandering trainer is only
+    -- worth naming if it is next to where you actually stopped.
+    local function add(tag, x, y, actionable)
       local d = (stallx and stally)
         and (math.abs(x - stallx) + math.abs(y - stally))
         or seam_dist(x, y)
-      if stallx and d > 8 then
-        if #elsewhere < 4 then
-          elsewhere[#elsewhere + 1] = ("%s at %d,%d"):format(tag, x, y)
-        end
-        return
+      if actionable or not stallx or d <= 8 then
+        blockers[#blockers + 1] = { s = ("%s at %d,%d"):format(tag, x, y),
+                                    d = actionable and -1 or d }
+      elseif #elsewhere < 4 then
+        elsewhere[#elsewhere + 1] = ("%s at %d,%d"):format(tag, x, y)
       end
-      blockers[#blockers + 1] = { s = ("%s at %d,%d"):format(tag, x, y),
-                                  d = d }
     end
     -- SAY WHICH BLOCKERS ARE PEOPLE. A wandering trainer standing in a
     -- corridor reads exactly like a wall in a BFS result, but this seam
@@ -1439,7 +1444,7 @@ function OPS.cross(G, c)
         for cx = 0, math.min(W - 1, 71) do
           if near_seam(cx, cy) and lm:cellTile(cx, cy) == want
              and not lm:isWalkableCell(cx, cy) then
-            add("CUT_TREE (a bush CUT clears)", cx, cy)
+            add("CUT_TREE (a bush CUT clears)", cx, cy, true)
           end
         end
       end
