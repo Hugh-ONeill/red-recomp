@@ -1,0 +1,54 @@
+{
+ "goal": "Defeat Erika for the Rainbow Badge",
+ "subgoals": [
+  {
+   "id": "go_to_route_7",
+   "goal_text": "Travel to Route 7. Since the south exit of Route 5 is blocked, the player must go back to Cerulean City and take Route 9 to Route 10, then through Rock Tunnel to reach the other side, or use the Underground Path to bypass the guards.",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_city",
+   "goal_text": "Travel from Route 7 into Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_pokemon_center",
+   "goal_text": "Go to the Celadon Pokemon Center to heal the party.",
+   "done_when": {
+    "map": "CELADON_POKECENTER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_gym",
+   "goal_text": "Enter the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Defeat Gym Leader Erika in battle.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1080,6 +1080,26 @@ class Executor:
                 del rooms[r]
         return rooms
 
+    def _map_has_unopened_doors(self, mid: str) -> bool:
+        """Does this MAP still have a doorway nobody has walked through?
+
+        Same arithmetic the fully-worked test does, lifted so the revisit
+        refusal can ask it too. map_doors holds every warp SEEN on a map,
+        reachable or not, keyed by map rather than by area block — so a
+        ladder visible across a chasm counts, which is the whole point: a
+        floor you cannot walk across is not a floor you have finished.
+        """
+        if not mid:
+            return False
+        walked = set()
+        for r2, ex2 in (self.explored or {}).items():
+            if r2.split("|")[0] != mid:
+                continue
+            walked |= {k for k, e in ex2.items()
+                       if not (e or {}).get("shut")
+                       and (e or {}).get("to") != r2}
+        return bool(set(self.map_doors.get(mid, ())) - walked)
+
     @staticmethod
     def _untaken(cmap: dict, tried: set) -> set:
         """The touched set, minus items STILL LYING ON THE MAP.
@@ -3336,11 +3356,19 @@ Reply with ONLY a JSON array of ops, e.g.
                 # walked to. Refused re-entry to Pewter, a heal goal toured
                 # the museum, then crossed the forest back to Viridian, and
                 # the gym leg after it wandered to Route 22.
+                # ...AND NOT INTO A PLACE THAT STILL HAS UNOPENED DOORS.
+                # "Been there twice and it is still false, so it is not
+                # there" is sound for a room and wrong for a dungeon:
+                # ROCK_TUNNEL_1F had SIX doorways never walked when this
+                # refused the third entry, and Celadon is on the far side
+                # of them. Crossing a maze takes many trips, and the goal
+                # cannot come true until the last one.
                 if (dest_map and seen_n >= 2 and spent_r < 3
                         and tgt != f"map:{dest_map}"
                         and not (tgt or "").startswith(("party_healthy",
                                                         "item:"))
                         and not self._fought_at(tgt, obs, step, dest_map)
+                        and not self._map_has_unopened_doors(dest_map)
                         and self._untried_exits(obs)):
                     self._revisit_refusals[tgt] = spent_r + 1
                     trace.append(
