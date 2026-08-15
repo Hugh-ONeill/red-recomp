@@ -2749,12 +2749,24 @@ class Executor:
         # as finished from everywhere else, and the run was told the places
         # with ways never taken were Pallet Town and its own bedroom. It
         # believed us and walked there.
+        # ONLY DOORS WITH SOMEBODY ON THEM. _unopened_doors deliberately
+        # reports an unreachable door even when no one is near it (Mt Moon's
+        # east ladder was invisible otherwise) — but on a SPLIT map that
+        # means every block inherits the whole city's unreachable doors, and
+        # this list turns them into "ways you have NEVER taken". Cerulean's
+        # badge-house back yard is one door and a patch of grass, and it was
+        # advertising eight of main city's doorways; the run visited it 801
+        # times. A door with nobody named is not a door held shut HERE, it
+        # is a door somewhere else. The model still hears about it in the
+        # doorways line, which is where it belongs.
         held = {r: [f"{k}({who})" for k, _d, who in
                     [(x.split("->")[0], None,
                       x.split("(")[-1].rstrip(") ").replace(
                           " is standing there", ""))
-                     for x in v]]
+                     for x in v]
+                    if who and who != "None"]
                 for r, v in (self.shut_doors or {}).items() if r != here}
+        held = {r: v for r, v in held.items() if v}
         for region, exits in list(self.frontier.items()) + \
                 [(r, []) for r in held if r not in self.frontier]:
             if region == here:
