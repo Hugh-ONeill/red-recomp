@@ -679,6 +679,21 @@ local function observe(G, seq, result)
       }
     end
   end
+  -- WHERE YOU WAKE IF YOU FAINT. The game sets this every time you heal
+  -- and a player always knows it; the harness only ever mentioned it
+  -- AFTERWARDS, in the journal line about the blackout that already
+  -- happened. The run crossed most of Rock Tunnel with its respawn still
+  -- in PEWTER -- the far west corner -- having walked past the Pokemon
+  -- Center at the tunnel mouth without healing, and lost the whole
+  -- crossing to one faint. Whether that is worth a detour is its call;
+  -- not knowing the stake was ours.
+  do
+    local lh = G.save and G.save.lastHeal
+    if lh and lh.map then
+      o.respawn = { map = lh.map,
+                    outdoor = lh.outdoor and lh.outdoor.id or nil }
+    end
+  end
   o.money = G.save and G.save.money
   -- Set event flags, for the EXECUTOR's done_when predicates (SPD tier 0).
   -- Instrumentation, not model eyes: the model-facing obs builder must strip

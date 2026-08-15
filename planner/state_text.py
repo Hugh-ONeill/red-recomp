@@ -82,6 +82,18 @@ def money_text(m):
     return f", {int(m)} money"
 
 
+def respawn_text(r):
+    """Where a faint sends you back to — the stake on every fight.
+
+    Set by healing, so it can be hundreds of steps behind the party. It
+    was never stated before the fact, only mourned after.
+    """
+    if not r or not r.get("map"):
+        return ""
+    where = r.get("outdoor") or r.get("map")
+    return f" — if your party faints you wake at {where}"
+
+
 def daycare_text(dc):
     """The Pokemon that is NOT in the party because it is being raised.
 
@@ -107,7 +119,8 @@ if "region" in o:                    # last_state.json is already flattened
     print(f"standing in {m or 'an unknown location'} with "
           f"{party or 'no party'}, {badges}"
           + money_text(o.get("money")) + f", and {bag}"
-          + daycare_text(o.get("daycare")))
+          + daycare_text(o.get("daycare"))
+          + respawn_text(o.get("respawn")))
     raise SystemExit
 m = (o.get("map") or {}).get("id")
 if not m:                      # stale/missing obs: say so rather than
@@ -118,4 +131,5 @@ badges = ", ".join(o.get("badges") or []) or "no badges"
 bag = bag_text(o.get("bag"))
 print(f"standing in {m} with {party or 'no party'}, {badges}"
       + money_text(o.get("money")) + f", and {bag}"
-      + daycare_text(o.get("daycare")))
+      + daycare_text(o.get("daycare"))
+      + respawn_text(o.get("respawn")))

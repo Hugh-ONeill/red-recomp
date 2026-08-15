@@ -5731,6 +5731,8 @@ def _write_last_state(b, failed_plan=None, failed_subgoal=None):
             "badges": o.get("badges") or [],
             "bag": o.get("bag") or {},
             "money": o.get("money"),
+            # where a faint sends you — carried so the re-author sees it
+            "respawn": o.get("respawn"),
             # a party member that is NOT in the party — without this the
             # re-author sees one Magikarp and no reason for it
             "daycare": o.get("daycare"),
