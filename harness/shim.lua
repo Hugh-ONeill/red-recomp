@@ -1199,18 +1199,26 @@ function OPS.cross(G, c)
     local lm = ow.map
     local W = (lm and lm.widthCells) or 0
     local H = (lm and lm.heightCells) or 0
+    -- DISTANCE TO THE SEAM, not a fixed band. A five-cell strip missed
+    -- Cerulean's CUT_TREE by three cells — it sits at 19,28 on a map 36
+    -- tall, squarely across the southern approach — and the report came
+    -- back "nothing sits against that edge" about the very bush that was
+    -- stopping the walk. Rank by how close a thing is to the edge in
+    -- question and name the nearest handful; no threshold to get wrong.
+    local function seam_dist(x, y)
+      if dir == "north" then return y end
+      if dir == "south" then return (H - 1) - y end
+      if dir == "west"  then return x end
+      if dir == "east"  then return (W - 1) - x end
+      return 9999
+    end
     local function near_seam(x, y)
-      if dir == "north" then return y <= 4 end
-      if dir == "south" then return y >= H - 5 end
-      if dir == "west"  then return x <= 4 end
-      if dir == "east"  then return x >= W - 5 end
-      return false
+      return seam_dist(x, y) <= 12
     end
     local blockers, doors = {}, {}
     local function add(tag, x, y)
-      if #blockers < 8 then
-        blockers[#blockers + 1] = ("%s at %d,%d"):format(tag, x, y)
-      end
+      blockers[#blockers + 1] = { s = ("%s at %d,%d"):format(tag, x, y),
+                                  d = seam_dist(x, y) }
     end
     for _, npc in ipairs((ow.npcs) or {}) do
       local nx, ny = npc.cellX, npc.cellY
@@ -1243,6 +1251,10 @@ function OPS.cross(G, c)
           :format(tostring(w.destMap or "somewhere"), w.x, w.y)
       end
     end
+    table.sort(blockers, function(a, b) return (a.d or 0) < (b.d or 0) end)
+    local btxt = {}
+    for i = 1, math.min(#blockers, 5) do btxt[i] = blockers[i].s end
+    blockers = btxt
     local said = ""
     if #blockers > 0 then
       said = said .. " Standing against that edge: "
