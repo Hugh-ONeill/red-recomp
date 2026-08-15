@@ -79,25 +79,6 @@ else
       --out plans/outline.txt --model "$MODEL"
 fi
 
-# When the list is rearranged, every plan at or after the shift names the
-# wrong objective and must not be picked up as "keeping existing". The
-# rungs used to rm them, and one pull-forward took all eleven leg_11
-# rewrites with it — real evidence about a real dungeon, thrown away to
-# invalidate a filename. ADD AND UPDATE, NEVER DELETE: they move aside.
-shelve_plans_from() {
-  local n="$1" f stamp
-  stamp=$(date +%H%M%S)
-  mkdir -p plans/archive
-  while [ "$n" -le "${#LEGS[@]}" ]; do
-    for f in "$(printf 'plans/leg_%02d' "$n")".json \
-             "$(printf 'plans/leg_%02d' "$n")".v*.json; do
-      if [ -e "$f" ]; then
-        mv -f "$f" "plans/archive/${stamp}-$(basename "$f")"
-      fi
-    done
-    n=$((n + 1))
-  done
-}
 
 # WORK ALREADY FINISHED, CROSSED OFF BEFORE IT IS EVER ATTEMPTED. The
 # chain's only record of progress is a high-water mark, so an objective
@@ -126,7 +107,6 @@ sweep_ahead() {
       printf '%s\n' "$got" >> run/outline_skips
       # positions after this leg have shifted, so their plans name the
       # wrong objective now — the cleanup the reorder rung already does
-      shelve_plans_from $((at + 1))
     fi
   fi
   # ...AND THE WORK IT NEVER THOUGHT TO LIST. The sweep above can only
@@ -154,22 +134,28 @@ while :; do
     exit 0
   fi
   leg="${LEGS[$((i - 1))]}"
-  plan=$(printf 'plans/leg_%02d.json' "$i")
-  # RESUME FROM THE LATEST REWRITE, NOT THE ORIGINAL. campaign.sh rewrites a
-  # failing plan from evidence and writes leg_NN.vK.json, and within one run
-  # it carries on from there — but a RESTART handed it leg_NN.json again, so
-  # every rewrite was thrown away. Ten restarts today meant ten fresh trips
-  # to the day care for a Charizard already in the party, one of which lent
-  # the Magikarp away. Version sort so v10 beats v9.
-  # `|| true`: this script runs under set -euo pipefail, and ls exits
-  # non-zero when a leg has no rewrites yet — which killed the chain dead
-  # the moment it tried to start a FRESH leg (leg 11, right after the
-  # Rainbow Badge). 2>/dev/null hides the message, not the status.
-  latest=$(ls -1 "$(printf 'plans/leg_%02d' "$i")".v*.json 2>/dev/null \
-           | sort -V | tail -1 || true)
-  if [ -n "$latest" ] && [ -s "$latest" ]; then
-    echo "=== leg $i: resuming from the latest rewrite $latest ==="
-    plan="$latest"
+  # A PLAN BELONGS TO AN OBJECTIVE, NOT TO A SLOT. Plans were addressed by
+  # outline position, so any rearrangement left every plan from the shift
+  # onward naming the wrong objective — and the rungs "fixed" that by
+  # deleting them, one pull-forward taking all eleven leg_11 rewrites with
+  # it. But pulling a leg ahead only says THAT ONE was misordered against
+  # the others (user, 2026-08-15): the rest kept their order, their work
+  # and their evidence, and a pull is exactly the move that would have
+  # been right for the Silph Scope leg had the sweep not already crossed
+  # it off. find_plan asks each plan which objective it was written for,
+  # and takes the highest rewrite of the one that matches — so a reorder
+  # invalidates nothing, and RESUMING FROM THE LATEST REWRITE (ten
+  # restarts once meant ten fresh trips to the day care for a Charizard
+  # already in the party) comes free rather than by version-sorting names.
+  # A reworded objective matches nothing and is authored fresh, which is
+  # right: that leg really is a different one now.
+  plan=$(python planner/find_plan.py "$leg" 2>/dev/null || true)
+  if [ -z "$plan" ]; then
+    # first time this objective has been planned. The position in the
+    # name is only where it was written, never how it is found again.
+    slug=$(printf '%s' "$leg" | tr '[:upper:]' '[:lower:]' \
+           | tr -cs 'a-z0-9' '_' | cut -c1-40)
+    plan=$(printf 'plans/leg_%02d_%s.json' "$i" "${slug%_}")
   fi
 
   # the outline's own doubt about this leg rides along in the goal string
@@ -238,7 +224,6 @@ while :; do
     # the loop, not to walk round it.
     if [ "$(cat run/outline_pulls_failed 2>/dev/null | wc -l)" -lt 2 ] \
         && python planner/pull_leg.py undo "$i"; then
-      shelve_plans_from "$i"
       continue
     fi
     # Or the leg is stuck because a LATER leg of the model's own outline
@@ -257,7 +242,6 @@ while :; do
       echo "=== leg $i stuck behind leg $blocker: pulling it forward ==="
       python planner/pull_leg.py pull "$i" "$blocker"
       echo "$i<-$blocker" >> run/outline_reorders
-      shelve_plans_from "$i"
       continue
     fi
     # NOTHING ELSE WORKED: IS THE PLAN MISSING A STEP? A leg can be
@@ -273,7 +257,6 @@ while :; do
       echo "=== leg $i needs something first: $missing ==="
       python planner/insert_leg.py "$i" "$missing"
       echo "$i:$missing" >> run/outline_inserts
-      shelve_plans_from "$i"
       continue
     fi
     # LAST RUNG: IS THE OBJECTIVE ITSELF WRONG? The chain halted at
@@ -298,7 +281,6 @@ while :; do
             --observed run/explored.json \
             --journal run/executor_log.jsonl --model "$MODEL"); then
       python planner/reword_leg.py "$i" "$said"
-      shelve_plans_from "$i"
       continue
     fi
     echo "=== chain stopped at leg $i/${#LEGS[@]}: $leg ===" >&2
