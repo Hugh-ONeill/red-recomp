@@ -1,0 +1,416 @@
+{
+  "goal": "Obtain the Secret Key from the Rocket Hideout",
+  "subgoals": [
+    {
+      "id": "go_to_celadon",
+      "goal_text": "Travel to Celadon City.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 17,
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_BEAUTY3",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_COOLTRAINER_F4",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_COOLTRAINER_F3",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_ERIKA",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_BEAUTY2",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 2,
+          "y": 4,
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 7,
+          "y": 5,
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 5,
+          "y": 7,
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 17,
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 10
+      }
+    },
+    {
+      "id": "go_to_celadon_mart",
+      "goal_text": "Enter the Celadon Mart to sell items and clear bag space.",
+      "done_when": {
+        "map": "CELADON_MART_1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "CELADONCITY_GRAMPS1",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 10,
+          "y": 13,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 35,
+          "y": 32,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 10,
+          "y": 13,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "clear_bag_space",
+      "goal_text": "Sell or discard an item to make room in the bag, as it is currently full.",
+      "done_when": {
+        "any_of": [
+          {
+            "has_item": {
+              "POTION": 3
+            }
+          },
+          {
+            "has_item": {
+              "RARE_CANDY": 0
+            }
+          }
+        ]
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "enter_rocket_hideout",
+      "goal_text": "Find the secret entrance to the Rocket Hideout in Celadon City and enter it.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 16,
+          "y": 7,
+          "when": {
+            "map": "CELADON_MART_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 28,
+          "y": 19,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_6",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_13",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_23",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_24",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_25",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_26",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_27",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_28",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_30",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_31",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_32",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_33",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POSTER",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_35",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_36",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SLOT_MACHINE_6",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 4,
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 19
+      }
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Navigate through the hideout to reach the second basement level.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B2F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 2,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "descend_to_b3f",
+      "goal_text": "Navigate further down to the third basement level.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B3F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 21,
+          "y": 8,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "descend_to_b4f",
+      "goal_text": "Reach the lowest level of the Rocket Hideout.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B4F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_secret_key",
+      "goal_text": "Locate and pick up the Secret Key from the desk in the Rocket Hideout.",
+      "done_when": {
+        "has_item": {
+          "SECRET_KEY": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

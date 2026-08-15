@@ -773,6 +773,39 @@ local function ledge_landing(G, map, x, y, dirname)
   return nil
 end
 
+-- WHERE AN ARROW TILE ACTUALLY PUTS YOU. Rocket Hideout B2F/B3F and
+-- Viridian Gym are floored with spinners: stepping on one slides you along
+-- a fixed move list (engine/overworld/spinners.asm; the same static
+-- field.spinners table the engine reads), and the cell you stop on may be
+-- another arrow, which chains. A BFS that treats them as ordinary floor
+-- plans routes that cannot be walked -- it thinks it can step onto an
+-- arrow and stay there. Same shape as ledge_landing: read the table the
+-- engine reads, and report where you END UP.
+local function spinner_landing(G, map, x, y, depth)
+  local list = G.data and G.data.field and G.data.field.spinners
+               and G.data.field.spinners[map and map.id]
+  if not list then return nil end
+  for _, sp in ipairs(list) do
+    if sp.x == x and sp.y == y then
+      local cx, cy = x, y
+      for _, mv in ipairs(sp.moves or {}) do
+        local d = DIRS[mv.dir]
+        if d then
+          cx = cx + d[1] * (mv.count or 0)
+          cy = cy + d[2] * (mv.count or 0)
+        end
+      end
+      if (cx ~= x or cy ~= y) and (depth or 0) < 8 then
+        local lx, ly = spinner_landing(G, map, cx, cy, (depth or 0) + 1)
+        if lx then return lx, ly end
+      end
+      if map.inBounds and not map:inBounds(cx, cy) then return nil end
+      return cx, cy
+    end
+  end
+  return nil
+end
+
 -- Which cells can we currently WALK to (ledge hops included)? Used to mark
 -- warps reachable/unreachable in the observation: on partitioned maps (Mt
 -- Moon B1F) the right warp can be visible but walled off, and without this
@@ -815,8 +848,20 @@ function warp_reach(G, no_ledges)
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
                                    { __index = p })
         if Collision.canMove(ow.map, NOBODY, probe, dn) then
-          seen[key(nx, ny)] = true
-          q[#q + 1] = { x = nx, y = ny }
+          -- an arrow tile is not somewhere you stand: you arrive and are
+          -- slid on. One-way, like a ledge, so the two-way identity fill
+          -- (no_ledges) refuses to cross it at all.
+          local sx, sy = spinner_landing(G, ow.map, nx, ny)
+          if sx then
+            if not no_ledges and not seen[key(sx, sy)] then
+              seen[key(sx, sy)] = true
+              q[#q + 1] = { x = sx, y = sy }
+            end
+            seen[key(nx, ny)] = true
+          else
+            seen[key(nx, ny)] = true
+            q[#q + 1] = { x = nx, y = ny }
+          end
         elseif not no_ledges then
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dn)
           if lx and not seen[key(lx, ly)] then
@@ -959,7 +1004,7 @@ local function bfs_to_edge(G, dir)
   -- actually walked, how close to the wanted edge it got, how many ledge
   -- hops it used, and whether it TOUCHED the edge and was turned away by
   -- landing_ok — those need opposite fixes and look identical from outside.
-  local nseen, nledge, edge_rejected = 1, 0, 0
+  local nseen, nledge, edge_rejected, nspin = 1, 0, 0, 0
   local best, bestx, besty = 1e9, nil, nil
   local function dist(x, y)
     if dir == "up" then return y end
@@ -983,6 +1028,14 @@ local function bfs_to_edge(G, dir)
                       or (d[1] < 0 and "left" or "right")
         if Collision.canMove(ow.map, ow.entities, probe, dname) then
           seen[key(nx, ny)] = true
+          local sx, sy = spinner_landing(G, ow.map, nx, ny)
+          if sx and not seen[key(sx, sy)] then
+            seen[key(sx, sy)] = true
+            nspin = nspin + 1
+            note(sx, sy)
+            if hit(sx, sy) and landing_ok(G, dir, sx, sy) then return sx, sy end
+            queue[#queue + 1] = { x = sx, y = sy }
+          end
           note(nx, ny)
           if hit(nx, ny) then
             if landing_ok(G, dir, nx, ny) then return nx, ny end
@@ -1009,10 +1062,11 @@ local function bfs_to_edge(G, dir)
   -- rather than what happens to sit near the edge. Route 2's report named
   -- a CUT_TREE at 5,10 while the walk stopped at 18,2 — thirteen cells
   -- away, across the map, and not the thing in the way.
-  return nil, nil, ("BFS from %d,%d walked %d cells (%d ledge hop%s); closest to "
+  return nil, nil, ("BFS from %d,%d walked %d cells (%d ledge hop%s, %d arrow-tile "
+    .. "slide%s); closest to "
     .. "the %s edge was %s,%s, still %d cell%s short%s")
     :format(p.cellX, p.cellY, nseen, nledge, nledge == 1 and "" or "s",
-            dir, tostring(bestx), tostring(besty), best,
+            nspin, nspin == 1 and "" or "s", dir, tostring(bestx), tostring(besty), best,
             best == 1 and "" or "s",
             edge_rejected > 0
               and ("; it DID reach the edge " .. edge_rejected
