@@ -205,6 +205,23 @@ end
 -- yes/no; carry the prompt into the observation so the choice has meaning.
 local warp_reach            -- assigned after DIRS/ledge_landing
 local region_reach          -- ditto; identity fill, no one-way hops
+local ui_back_out           -- ditto; needed by need_overworld above it
+
+-- CLOSE THE BOX AND GET ON WITH IT. Fifteen ops refused outright with "not
+-- in overworld" whenever any menu or text box happened to be up — a sign
+-- still being read, a shop screen left open, the tail of somebody's
+-- speech. The model then re-issued the same op, hit the same box, and
+-- burned its rounds on a door it was standing next to. Pressing B is not a
+-- decision: it dismisses a screen nobody asked to be in and puts the
+-- player back where the op can run. A BATTLE is never dismissed this way —
+-- that is a real state with real choices, and it is handled elsewhere.
+local function need_overworld(G)
+  if G.overworld and G.stack:top() == G.overworld then return true end
+  local t = G.stack and G.stack:top()
+  if t and (t.enemy or t.kind) then return false end   -- in battle; leave it
+  if ui_back_out then ui_back_out(G) end
+  return (G.overworld and G.stack:top() == G.overworld) and true or false
+end
 -- map id -> { "x,y" = region name }. Names are minted once and never
 -- rewritten, so a region cannot be renamed by the world opening up.
 local region_of = {}
@@ -1038,15 +1055,15 @@ end
 function OPS.wait(G, c) U.wait(c.frames or 30) return true end
 
 function OPS.walk(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   return walk(G, c.dir, c.steps or 1)
 end
 
 function OPS.walk_to(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   local ow = G.overworld
   local startMap = ow.map and ow.map.id
@@ -1113,8 +1130,8 @@ end
 -- warp by x,y; the executor handles the walk-and-step-through. This is the
 -- door + map-transition primitive walk_to (in-map only) can't cover.
 function OPS.use_warp(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   local ow = G.overworld
   local startMap = ow.map and ow.map.id
@@ -1258,8 +1275,8 @@ end
 -- trigger the connection. This is how you travel between routes/towns when
 -- there is no door warp. Decision-free: the model picks the direction.
 function OPS.cross(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   local dmap = { north = "up", south = "down", west = "left", east = "right" }
   local cmap = { up = "north", down = "south", left = "west", right = "east" }
@@ -1528,7 +1545,7 @@ local function ui_close_shop(G)
   end
   return false
 end
-local function ui_back_out(G)
+ui_back_out = function(G)
   for _ = 1, 40 do
     local t = ui_top(G)
     if t == G.overworld or (t and (t.enemy or t.kind)) then return true end
@@ -1865,8 +1882,8 @@ end
 -- Use a bag item in the field (START -> ITEM -> item -> USE -> party
 -- slot). Healing items target c.slot (default the lead).
 function OPS.use_item(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   if not c.item then return false, "use_item needs item" end
   if bag_count(G, c.item) < 1 then
@@ -2053,8 +2070,8 @@ end
 -- knows it is a party-list fact (mechanics); WHETHER and WHERE to use it
 -- was the model's decision when it named the tile.
 function OPS.field_move(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   local mv = c.move
   if not mv then return false, "field_move needs move" end
@@ -2160,8 +2177,8 @@ end
 -- wheel is mechanics. Born at the captain's cabin: a 20-of-20 bag ate
 -- HM01 silently.
 function OPS.toss(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   if not c.item then return false, "toss needs item" end
   local have = bag_count(G, c.item)
@@ -2302,8 +2319,8 @@ local function pc_open_storage(G)
 end
 
 local function pc_move(G, c, row, giving)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   if not c.item then return false, "needs item" end
   local before = bag_count(G, c.item)
@@ -2419,8 +2436,8 @@ end
 -- That is why this needs no walked-door restriction, and it is the same
 -- reasoning that settles enter_shop. c.door stays as an override.
 function OPS.heal(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   local function find_nurse()
     for _, npc in ipairs((G.overworld.npcs) or {}) do
@@ -2487,8 +2504,8 @@ function OPS.heal(G, c)
 end
 
 function OPS.daycare_deposit(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   local save = G.save or {}
   local dc = save.daycare
@@ -2539,8 +2556,8 @@ function OPS.daycare_deposit(G, c)
 end
 
 function OPS.daycare_withdraw(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   local save = G.save or {}
   local dc = save.daycare
@@ -2581,8 +2598,8 @@ end
 -- level gate) holds. Decision-free: the model decides WHERE (which map)
 -- and the plan decides UNTIL; walking into grass is mechanics.
 function OPS.grind(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   local Collision = require("src.world.Collision")
   local ow = G.overworld
@@ -2848,8 +2865,8 @@ end
 -- the mechanical walk-adjacent-face-press is execution. Unblocks Poke Balls,
 -- NPCs, signs — anything the object list surfaces.
 function OPS.interact(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   local ow = G.overworld
   local tx, ty = c.x, c.y
@@ -3187,8 +3204,8 @@ function OPS.seed_regions(G, c)
 end
 
 function OPS.map_probe(G, c)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   local Collision = require("src.world.Collision")
   local ow, p, map = G.overworld, G.overworld.player, G.overworld.map
@@ -3257,8 +3274,8 @@ end
 -- clean persistence, unlike dev checkpoints): START -> SAVE -> YES ->
 -- ride the save text. The title's CONTINUE loads it next boot.
 function OPS.save_game(G)
-  if not (G.overworld and G.stack:top() == G.overworld) then
-    return false, "not in overworld"
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
   end
   U.tap(G, "start"); U.wait(8)
   local menu = ui_top(G)
