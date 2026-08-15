@@ -131,7 +131,18 @@ while :; do
   # achieved — the fossil leg walked out of Mt Moon HOLDING the fossil and
   # failed three rewrites anyway, and a fused objective ("the parcel from
   # Bill", two errands welded together) can only be settled this way.
-  python planner/leg_delta.py snap run/leg_start.json 2>/dev/null || true
+  # ...and snapshot ONCE PER LEG, not once per process. This ran on every
+  # chain start, so restarting mid-leg reset the baseline: leg 11 was
+  # judged NOT_DONE on evidence reading "gained a HYPER_POTION and beat one
+  # trainer" while the SILPH SCOPE and LIFT KEY — won in an earlier attempt
+  # of the same leg — sat in the bag unmentioned. The stamp records which
+  # leg the baseline belongs to; a genuinely new leg re-takes it.
+  if [ "$(cat run/leg_start.leg 2>/dev/null || echo '')" != "$i" ]; then
+    python planner/leg_delta.py snap run/leg_start.json 2>/dev/null || true
+    echo "$i" > run/leg_start.leg
+  else
+    echo "=== leg $i: keeping the baseline taken when this leg began ==="
+  fi
 
   cont=0; [ "$i" -gt 1 ] && cont=1
   if ! env RED_HEADED="${RED_HEADED:-1}" RED_SPEED="${RED_SPEED:-200}" \

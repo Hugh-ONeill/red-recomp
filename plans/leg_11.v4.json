@@ -1,0 +1,208 @@
+{
+  "goal": "Obtain the Secret Key from the Rocket Hideout",
+  "subgoals": [
+    {
+      "id": "clear_bag_space",
+      "goal_text": "The bag is full. Sell or discard an item to make room for the Secret Key.",
+      "done_when": {
+        "any_of": [
+          {
+            "has_item": {
+              "POTION": 2
+            }
+          },
+          {
+            "has_item": {
+              "RARE_CANDY": 1
+            }
+          }
+        ]
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "descend_to_b1f",
+      "goal_text": "Use the elevator to go down to the first basement level of the Rocket Hideout.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "elevator",
+          "floor": "B1F",
+          "when": {
+            "map": "ROCKET_HIDEOUT_ELEVATOR"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "elevator",
+          "floor": "B1F",
+          "when": {
+            "map": "ROCKET_HIDEOUT_ELEVATOR"
+          }
+        },
+        {
+          "op": "elevator",
+          "floor": "B1F",
+          "when": {
+            "map": "ROCKET_HIDEOUT_ELEVATOR"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 1,
+          "when": {
+            "map": "ROCKET_HIDEOUT_ELEVATOR"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 6
+      }
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Use the elevator to go down to the second basement level of the Rocket Hideout.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B2F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 1,
+          "when": {
+            "map": "ROCKET_HIDEOUT_ELEVATOR"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB1F_ROCKET5",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "descend_to_b3f",
+      "goal_text": "Use the elevator to go down to the third basement level of the Rocket Hideout.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B3F"
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "descend_to_b4f",
+      "goal_text": "Use the elevator to go down to the fourth basement level of the Rocket Hideout.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B4F"
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "reach_giovanni",
+      "goal_text": "Navigate to Giovanni's office at the far end of the basement.",
+      "done_when": {
+        "area": "ROCKET_HIDEOUT_B4F|17,1"
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "defeat_giovanni",
+      "goal_text": "Battle and defeat Giovanni.",
+      "done_when": {
+        "flag": "EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI"
+      },
+      "escalation_rounds": 4,
+      "macro": [],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "collect_secret_key",
+      "goal_text": "Interact with Giovanni to receive the Secret Key.",
+      "done_when": {
+        "has_item": {
+          "SECRET_KEY": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}
