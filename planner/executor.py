@@ -647,6 +647,7 @@ class Executor:
         try:
             data = json.loads(self.MEMORY.read_text())
             self.explored = data.get("explored", {})
+            self._learn_doorsteps()
             self.dead_ends = data.get("dead_ends", {})
             self.visits = data.get("visits", {})
             self.frontier = data.get("frontier", {})
@@ -1164,6 +1165,33 @@ class Executor:
         return [f"{w.get('x')},{w.get('y')}" for w in warps
                 if w.get("dest") == dest
                 and abs((w.get("x") or 0) - x) + abs((w.get("y") or 0) - y) == 1]
+
+    def _learn_doorsteps(self):
+        """A building you have walked OUT of sits on the road you landed on.
+
+        The printed town map draws routes, towns and landmarks — it does
+        not draw every doorway, so the DAY CARE is nowhere in map_doors and
+        _doorstep could not place it. A subgoal aimed at DAYCARE|2,1 then
+        had no anchor to steer toward: the run held "go to the day care" as
+        an objective for a whole leg while never once heading for Route 5,
+        because nothing connected the name to a place on the map.
+
+        Walking out of it is not printed-map knowledge, it is something
+        this run DID: it stood in the DAY CARE, stepped through the door,
+        and arrived on ROUTE_5. setdefault, so anything the town map
+        actually draws still wins.
+        """
+        for region, exits in (self.explored or {}).items():
+            inside = region.split("|")[0]
+            if not inside or inside in MAP_EDGES or inside in INTERIOR_ROAD:
+                continue
+            for e in (exits or {}).values():
+                to = (e or {}).get("to")
+                out = str(to).split("|")[0] if to else ""
+                if out and out in MAP_EDGES and out != inside:
+                    INTERIOR_ROAD.setdefault(inside, out)
+                    self.log("doorstep_learned", inside=inside, road=out)
+                    break
 
     def note_transition(self, before_obs, step, after_obs, reason=""):
         """Record: from this area, that exit led there."""
