@@ -4505,7 +4505,6 @@ Reply with ONLY a JSON array of ops, e.g.
                 _money = (cur or {}).get("money")
                 if _money is not None:
                     stuck_note += f"\nMONEY: {_money}."
-                stuck_note += self._passage_note(here_now)
                 _dc = (cur or {}).get("daycare") or {}
                 if _dc.get("species"):
                     stuck_note += (
@@ -4525,6 +4524,12 @@ Reply with ONLY a JSON array of ops, e.g.
             # out, so it earns nothing and the lead soaks every battle while
             # the condition never moves. The party screen says so; say it
             # here too, before the round is spent.
+            # NOT ONLY AFTER A WIPE. This first sat inside the blackout
+            # branch, so the one fact that unsticks a map-split city was
+            # withheld from every subgoal that had not yet got itself
+            # killed. Being stuck is the trigger; dying is not a
+            # prerequisite for being told how the city is put together.
+            stuck_note += self._passage_note(here_now)
             want2 = ((sg.get("done_when") or {}).get("slot_level") or {}
                      ).get("slot")
             if want2:
