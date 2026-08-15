@@ -1375,6 +1375,27 @@ end
 -- picks WHAT and HOW MANY; the menu driving is mechanics.
 local function ui_shop_up(G) return ui_is_menu(G) or ui_is_list(G) end
 
+-- WHERE THE NEAREST COUNTER IS. "No shop clerk on this map" is true and
+-- useless when you are standing in the street outside the mart: the run
+-- worked out for itself that a NUGGET covers the 100 the day care wanted,
+-- issued the sell, and was told only that this was the wrong place --
+-- with no hint that the right place was one door away. The door and its
+-- destination are both in the map the game already gives us, and the
+-- MART SIGN is on screen beside it.
+local function shop_door_hint(G)
+  local ow = G.overworld
+  local md = ow and ow.map and G.data and G.data.maps
+              and G.data.maps[ow.map.id]
+  for _, w in ipairs((md and md.warps) or {}) do
+    local d = tostring(w.destMap or "")
+    if d:find("MART") and w.x and w.y then
+      return (" The door into %s is at %d,%d on this map — go in and sell "
+              .. "at the counter."):format(d, w.x, w.y)
+    end
+  end
+  return ""
+end
+
 function OPS.buy(G, c)
   if not (c.item and c.count) then return false, "buy needs item, count" end
   -- TARGET semantics: own c.count total, not "c.count more". Escalation
@@ -1425,7 +1446,9 @@ function OPS.buy(G, c)
       local nm = ((npc.def or {}).name or ""):upper()
       if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
     end
-    if not clerk then return false, "no shop clerk on this map" end
+    if not clerk then
+      return false, "no shop clerk on this map." .. shop_door_hint(G)
+    end
     if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
       return false, "couldn't reach the clerk"
     end
@@ -1509,7 +1532,9 @@ function OPS.sell(G, c)
       local nm = ((npc.def or {}).name or ""):upper()
       if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
     end
-    if not clerk then return false, "no shop clerk on this map" end
+    if not clerk then
+      return false, "no shop clerk on this map." .. shop_door_hint(G)
+    end
     if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
       return false, "couldn't reach the clerk"
     end
