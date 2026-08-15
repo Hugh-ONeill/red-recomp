@@ -874,7 +874,10 @@ local function bfs_to_edge(G, dir)
       end
     end
   end
-  return nil, ("BFS from %d,%d walked %d cells (%d ledge hop%s); closest to "
+  -- THREE values: the caller reads (ex, ey, why), so a two-value return
+  -- put the diagnostic in ey and left why nil -- the message came back
+  -- exactly as silent as before.
+  return nil, nil, ("BFS from %d,%d walked %d cells (%d ledge hop%s); closest to "
     .. "the %s edge was %s,%s, still %d cell%s short%s")
     :format(p.cellX, p.cellY, nseen, nledge, nledge == 1 and "" or "s",
             dir, tostring(bestx), tostring(besty), best,
