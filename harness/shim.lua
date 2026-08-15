@@ -1394,6 +1394,26 @@ local function ui_shop_up(G) return ui_is_menu(G) or ui_is_list(G) end
 -- with no hint that the right place was one door away. The door and its
 -- destination are both in the map the game already gives us, and the
 -- MART SIGN is on screen beside it.
+-- ...AND THEN WALK IN. Being told "the door is at 25,25" costs a whole
+-- round to act on, and the run spent several standing in the street
+-- re-issuing sell. Walking to the counter was already execution here --
+-- OPS.sell walks to the clerk once inside, and OPS.interact walks itself
+-- adjacent before pressing -- so stepping through the door of the shop
+-- you just asked to trade at is the same mechanical errand, not a
+-- decision. WHAT to sell, and whether to sell at all, stays the model's.
+local function enter_shop(G)
+  local ow = G.overworld
+  local md = ow and ow.map and G.data and G.data.maps
+              and G.data.maps[ow.map.id]
+  for _, w in ipairs((md and md.warps) or {}) do
+    if tostring(w.destMap or ""):find("MART") and w.x and w.y then
+      local ok = OPS.use_warp(G, { x = w.x, y = w.y })
+      return ok and true or false
+    end
+  end
+  return false
+end
+
 local function shop_door_hint(G)
   local ow = G.overworld
   local md = ow and ow.map and G.data and G.data.maps
@@ -1459,7 +1479,18 @@ function OPS.buy(G, c)
       if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
     end
     if not clerk then
-      return false, "no shop clerk on this map." .. shop_door_hint(G)
+      -- one try at the door, then look again
+      if enter_shop(G) then
+        ow = G.overworld
+        for _, npc in ipairs(ow.npcs or {}) do
+          local nm = ((npc.def or {}).name or ""):upper()
+          if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
+        end
+      end
+    end
+    if not clerk then
+      return false, "no shop clerk here, and no mart door on this map "
+        .. "either." .. shop_door_hint(G)
     end
     if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
       return false, "couldn't reach the clerk"
@@ -1545,7 +1576,18 @@ function OPS.sell(G, c)
       if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
     end
     if not clerk then
-      return false, "no shop clerk on this map." .. shop_door_hint(G)
+      -- one try at the door, then look again
+      if enter_shop(G) then
+        ow = G.overworld
+        for _, npc in ipairs(ow.npcs or {}) do
+          local nm = ((npc.def or {}).name or ""):upper()
+          if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
+        end
+      end
+    end
+    if not clerk then
+      return false, "no shop clerk here, and no mart door on this map "
+        .. "either." .. shop_door_hint(G)
     end
     if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
       return false, "couldn't reach the clerk"
