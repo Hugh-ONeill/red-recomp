@@ -1,0 +1,39 @@
+{
+ "goal": "Defeat Erika for the Rainbow Badge",
+ "subgoals": [
+  {
+   "id": "travel_to_celadon",
+   "goal_text": "Travel from Cerulean City to Celadon City. Note that the direct route south from Cerulean is blocked; use the route via Route 9, Route 10, and the Underground Path or other known paths to reach Celadon.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_celadon_center",
+   "goal_text": "Visit the Pokemon Center in Celadon City to heal the party.",
+   "done_when": {
+    "map": "CELADON_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_gym",
+   "goal_text": "Enter the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Battle and defeat Gym Leader Erika.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}
