@@ -1401,12 +1401,29 @@ local function ui_shop_up(G) return ui_is_menu(G) or ui_is_list(G) end
 -- adjacent before pressing -- so stepping through the door of the shop
 -- you just asked to trade at is the same mechanical errand, not a
 -- decision. WHAT to sell, and whether to sell at all, stays the model's.
+-- Does this map actually have somebody to trade with? A "MART" substring
+-- said yes to CELADON_MART_ELEVATOR and CELADON_MART_ROOF, and said yes
+-- to CELADON_MART_1F, whose only staff is a RECEPTIONIST who sells
+-- nothing -- so the first door tried in Celadon could have been a lift.
+-- Ask the destination whether it has a counter instead of guessing from
+-- its name. This picks WHICH DOOR THE HARNESS WALKS THROUGH to carry out
+-- an instruction already given; nothing here is shown to the model, so it
+-- is navigation like the collision map, not knowledge handed over.
+local function map_has_counter(G, id)
+  local m = id and G.data and G.data.maps and G.data.maps[id]
+  for _, o in ipairs((m and m.objects) or {}) do
+    local nm = tostring(o.name or ""):upper()
+    if nm:find("CLERK") or nm:find("CASHIER") then return true end
+  end
+  return false
+end
+
 local function enter_shop(G)
   local ow = G.overworld
   local md = ow and ow.map and G.data and G.data.maps
               and G.data.maps[ow.map.id]
   for _, w in ipairs((md and md.warps) or {}) do
-    if tostring(w.destMap or ""):find("MART") and w.x and w.y then
+    if w.x and w.y and map_has_counter(G, w.destMap) then
       local ok = OPS.use_warp(G, { x = w.x, y = w.y })
       return ok and true or false
     end
@@ -1419,8 +1436,13 @@ local function shop_door_hint(G)
   local md = ow and ow.map and G.data and G.data.maps
               and G.data.maps[ow.map.id]
   for _, w in ipairs((md and md.warps) or {}) do
+    -- LOOSER THAN enter_shop ON PURPOSE. Walking through the wrong door
+    -- by itself is a wasted round; NAMING a door and letting the model
+    -- decide costs nothing. Celadon's only street door is MART_1F, whose
+    -- staff is a receptionist and whose counters are upstairs — not worth
+    -- auto-entering, very much worth mentioning.
     local d = tostring(w.destMap or "")
-    if d:find("MART") and w.x and w.y then
+    if w.x and w.y and (map_has_counter(G, w.destMap) or d:find("MART")) then
       return (" The door into %s is at %d,%d on this map — go in and sell "
               .. "at the counter."):format(d, w.x, w.y)
     end
@@ -1478,9 +1500,11 @@ function OPS.buy(G, c)
       local nm = ((npc.def or {}).name or ""):upper()
       if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
     end
+    local went_in = false
     if not clerk then
       -- one try at the door, then look again
-      if enter_shop(G) then
+      went_in = enter_shop(G)
+      if went_in then
         ow = G.overworld
         for _, npc in ipairs(ow.npcs or {}) do
           local nm = ((npc.def or {}).name or ""):upper()
@@ -1489,8 +1513,15 @@ function OPS.buy(G, c)
       end
     end
     if not clerk then
-      return false, "no shop clerk here, and no mart door on this map "
-        .. "either." .. shop_door_hint(G)
+      -- TWO DIFFERENT FAILURES, TWO DIFFERENT SENTENCES. Saying "no mart
+      -- door on this map either" after walking through one is a lie of
+      -- exactly the kind this harness keeps having to un-tell.
+      if went_in then
+        return false, "went into the shop, but found no clerk inside to "
+          .. "trade with"
+      end
+      return false, "no shop clerk here, and no door to a shop counter "
+        .. "on this map." .. shop_door_hint(G)
     end
     if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
       return false, "couldn't reach the clerk"
@@ -1575,9 +1606,11 @@ function OPS.sell(G, c)
       local nm = ((npc.def or {}).name or ""):upper()
       if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
     end
+    local went_in = false
     if not clerk then
       -- one try at the door, then look again
-      if enter_shop(G) then
+      went_in = enter_shop(G)
+      if went_in then
         ow = G.overworld
         for _, npc in ipairs(ow.npcs or {}) do
           local nm = ((npc.def or {}).name or ""):upper()
@@ -1586,8 +1619,15 @@ function OPS.sell(G, c)
       end
     end
     if not clerk then
-      return false, "no shop clerk here, and no mart door on this map "
-        .. "either." .. shop_door_hint(G)
+      -- TWO DIFFERENT FAILURES, TWO DIFFERENT SENTENCES. Saying "no mart
+      -- door on this map either" after walking through one is a lie of
+      -- exactly the kind this harness keeps having to un-tell.
+      if went_in then
+        return false, "went into the shop, but found no clerk inside to "
+          .. "trade with"
+      end
+      return false, "no shop clerk here, and no door to a shop counter "
+        .. "on this map." .. shop_door_hint(G)
     end
     if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
       return false, "couldn't reach the clerk"
