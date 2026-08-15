@@ -439,7 +439,7 @@ def outline_so_far(cap: int = 12) -> str:
     if n < len(legs):
         out += ("\n\nWHAT YOU PLANNED TO DO AFTER THIS ONE: "
                 + "; ".join(legs[n + 1:n + 1 + 4]) + ".")
-    return out
+    return out + done_ledger_text()
 
 
 def build_prompt(goal: str, start: str | None = None) -> str:
@@ -2057,6 +2057,136 @@ def _events_bearing(goal: str) -> str:
             "WORDS: " + ", ".join(sorted(hit)[:10]))
 
 
+DONE_LEDGER = Path("plans/outline.done")
+
+
+def done_ledger() -> list:
+    """Accomplishments the run has recognised, as (deed, what it opens).
+
+    Separate from outline.txt on purpose. The outline is a list of things
+    to DO and the chain walks it in order; this is a list of things DONE,
+    including work that was never on the list at all, and nothing is ever
+    scheduled from it.
+    """
+    try:
+        rows = [l.split("\t") for l in DONE_LEDGER.read_text().splitlines()
+                if l.strip()]
+    except OSError:
+        return []
+    return [(r[0].strip(), (r[1].strip() if len(r) > 1 else "")) for r in rows]
+
+
+def done_ledger_add(rows: list) -> list:
+    """Append accomplishments not already recorded; return what was new."""
+    have = {_norm_obj(d) for d, _ in done_ledger()}
+    new = []
+    for deed, opens in rows:
+        deed = str(deed).strip()
+        if not deed or _norm_obj(deed) in have:
+            continue
+        have.add(_norm_obj(deed))
+        new.append((deed, str(opens or "").strip()))
+    if new:
+        with DONE_LEDGER.open("a") as fh:
+            for deed, opens in new:
+                fh.write(f"{deed}\t{opens}\n")
+    return new
+
+
+def done_ledger_text(label: str = "ALSO ACCOMPLISHED, though it was never "
+                                  "on your list", cap: int = 12) -> str:
+    rows = done_ledger()[-cap:]
+    if not rows:
+        return ""
+    return ("\n\n" + label + ":\n"
+            + "\n".join(f"  {d}" + (f" — {o}" if o else "") for d, o in rows))
+
+
+RECOGNIZE_SYS = """Look over what this run has done and name the
+ACCOMPLISHMENTS in it. Not everything worth finishing was written on your
+list: things get done early, in passing, or while chasing something else,
+and some of them open doors that were shut.
+
+You are shown what the run holds, what the game has recorded it doing, and
+your own list of objectives. Name only accomplishments that are NOT
+already on that list — restating a listed objective is not what this is
+for — and only ones you can point at: the item is in the bag, the badge is
+earned, the event has fired.
+
+For each, say what it now makes possible, in one clause. If nothing
+qualifies, say so; that is the ordinary answer.
+
+Phrase each the way your list is phrased. Reply with ONLY a JSON object:
+{"why": "one sentence",
+ "done": [{"did": "Obtain <the thing>", "opens": "what it now allows"}]}
+or {"why": "one sentence", "done": []}"""
+
+
+def recognize_done(start: str, model: str, listed: list) -> list:
+    """Name accomplishments the outline never thought to list.
+
+    The sweep above asks which LISTED objectives are finished. This asks
+    the wider question: what has this run achieved that it never wrote
+    down? The Silph Scope came out of the Rocket Hideout during a leg that
+    named the wrong key, and no line anywhere said so — the run held a
+    thing that opens the Pokemon Tower and had no way to think of it as an
+    accomplishment, only as an item.
+
+    Nothing here is ever scheduled. It is recognition, and it feeds the
+    picture every later pass reads: what is done, and what that opens.
+    """
+    body = ("WHERE THE RUN STANDS: " + start + recent_events()
+            + done_ledger_text("ACCOMPLISHMENTS YOU HAVE ALREADY RECOGNISED")
+            + "\n\nYOUR LIST OF OBJECTIVES, in order:\n"
+            + "\n".join(f"  {n}. {t}" for n, t in listed))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": RECOGNIZE_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\{.*\}", reply, re.S)
+        ans = json.loads(m.group(0)) if m else {}
+    except (ValueError, KeyError, OSError, AttributeError):
+        return []
+    got = ans.get("done")
+    if not isinstance(got, list) or not got:
+        return []
+    rows = [(str(r.get("did") or "").strip(),
+             str(r.get("opens") or "").strip())
+            for r in got if isinstance(r, dict)]
+    return done_ledger_add([(d, o) for d, o in rows
+                            if d and not _shadows(d, [t for _, t in listed])])
+
+
+_STOP = {"the", "a", "an", "and", "for", "from", "of", "to", "in", "at",
+         "out", "on", "with", "your", "all", "get", "s"}
+
+
+def _sig(t: str) -> set:
+    return {w for w in _norm_obj(t).split() if w not in _STOP}
+
+
+def _shadows(deed: str, listed: list) -> bool:
+    """Does this claimed accomplishment stand in for one still on the list?
+
+    A ledger entry is fed back to every later pass, so a wrong one is not
+    a wrong answer once — it is a premise from then on. The first live run
+    of this produced "Defeat Giovanni — the path to the Earth Badge" from
+    a run that had beaten the Rocket Hideout Giovanni and never been to
+    the Viridian gym, with "Defeat Giovanni for the Earth Badge" sitting
+    on the list unfinished. That is the same confusion that had already
+    cost the run a leg, about to be written down as settled fact.
+
+    So: a deed whose words are contained in an objective still to do is
+    not recognised here. If that objective IS done, the sweep crosses it
+    off and records it with its own full wording — one record either way,
+    and never one that quietly answers a question still open.
+    """
+    d = _sig(deed)
+    if len(d) < 2:
+        return True
+    return any(d <= _sig(t) for t in listed)
+
+
 ALREADY_SYS = """You are checking your own playthrough list for work you
 have ALREADY FINISHED. An objective still on the list is not proof it is
 still outstanding — you may have done it early, or in passing, or while
@@ -2146,6 +2276,7 @@ def sweep_already_done(ahead: list, start: str, model: str,
     body = ("WHERE THE RUN STANDS: " + start + recent_events()
             + ("\n\nOBJECTIVES YOU HAVE FINISHED, in order:\n"
                + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
+            + done_ledger_text()
             + "\n\nSTILL ON YOUR LIST, in order:\n"
             + "\n".join(f"  {n}. {t}" for n, t in ahead))
     try:
@@ -2232,6 +2363,7 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
             + ", ".join(done[:60])
             + ("\n\nOBJECTIVES YOU HAVE ALREADY FINISHED:\n"
                + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
+            + done_ledger_text()
             + "\n\nSTILL ON THE DOCKET, in order:\n"
             + "\n".join(f"  {n}. {t}" for n, t in ahead))
     turned_down: list = []
@@ -2333,6 +2465,10 @@ def main():
     ap.add_argument("--deed", default=None,
                     help="a single objective for --check-already-done, "
                          "instead of sweeping the outline")
+    ap.add_argument("--recognize-done", action="store_true",
+                    help="name accomplishments this run made that were "
+                         "never on the outline at all, and what they open; "
+                         "records them in plans/outline.done")
     ap.add_argument("--check-blocker", action="store_true",
                     help="ask the model whether a later outline leg must "
                          "come before the stuck --goal; prints the leg "
@@ -2362,6 +2498,16 @@ def main():
                           gained=args.gained or "")
         print("DONE" if done else "NOT_DONE")
         sys.exit(0 if done else 3)
+    if args.recognize_done:
+        if not args.outline_path:
+            ap.error("--recognize-done needs --outline-path")
+        lines = [l.strip() for l in args.outline_path.read_text()
+                 .splitlines() if l.strip()]
+        got = recognize_done(args.start or "a brand new game", args.model,
+                             list(enumerate(lines, 1)))
+        for deed, opens in got:
+            print(f"{deed}" + (f" — {opens}" if opens else ""))
+        sys.exit(0 if got else 3)
     if args.check_already_done:
         st = args.start or "a brand new game"
         if args.deed:

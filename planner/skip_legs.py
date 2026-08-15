@@ -35,8 +35,24 @@ for n in want:
 if not kept:
     sys.exit(3)
 
+# CROSSED OFF IS NOT FORGOTTEN. An objective that leaves the list because
+# it is finished is still something this run accomplished, and the record
+# of what is done — outline.done, which nothing ever schedules from — is
+# what later passes read to know which doors are open.
+ledger = Path("plans/outline.done")
+try:
+    seen = {l.split("\t")[0].strip().lower()
+            for l in ledger.read_text().splitlines() if l.strip()}
+except OSError:
+    seen = set()
+
 # highest first, so each removal leaves the lower positions where they were
-for n in kept:
-    print(f"crossed off leg {n}: {lines[n - 1]}")
-    del lines[n - 1]
+with ledger.open("a") as fh:
+    for n in kept:
+        text = lines[n - 1]
+        print(f"crossed off leg {n}: {text}")
+        if text.strip().lower() not in seen:
+            fh.write(f"{text}\t\n")
+            seen.add(text.strip().lower())
+        del lines[n - 1]
 p.write_text("\n".join(lines) + "\n")

@@ -70,7 +70,7 @@ if [ -s plans/outline.txt ]; then
   echo "keeping existing plans/outline.txt"
 else
   # a new outline invalidates every leg plan written for the old one
-  rm -f plans/leg_[0-9]*.json plans/outline.notes
+  rm -f plans/leg_[0-9]*.json plans/outline.notes plans/outline.done
   echo "--- authoring the outline"
   echo "goal: $GOAL"
   python planner/author.py --outline --goal "$GOAL" \
@@ -92,24 +92,37 @@ fi
 # then a yes/no on each objective it names, refused outright for any that
 # names a map the run has never stood on). The harness only crosses off.
 sweep_ahead() {
-  local at="$1" got nums n
-  [ "$(cat run/outline_skips 2>/dev/null | wc -l)" -lt 8 ] || return 0
-  got=$(python planner/author.py --check-already-done \
-      --goal "$leg" --outline-path plans/outline.txt --leg "$at" \
-      --start "$(python planner/state_text.py)" \
-      --observed run/explored.json --model "$MODEL") || return 0
-  [ -n "$got" ] || return 0
-  nums=$(printf '%s\n' "$got" | cut -f1 | tr '\n' ' ')
-  python planner/skip_legs.py $nums || return 0
-  printf '%s\n' "$got" >> run/outline_skips
-  # positions after this leg have shifted, so their plans name the wrong
-  # objective now — same cleanup the reorder and insert rungs do
-  n=$((at + 1))
-  while [ "$n" -le "${#LEGS[@]}" ]; do
-    rm -f "$(printf 'plans/leg_%02d' "$n")".json \
-          "$(printf 'plans/leg_%02d' "$n")".v*.json
-    n=$((n + 1))
-  done
+  local at="$1" st got nums n
+  st=$(python planner/state_text.py)
+  if [ "$(cat run/outline_skips 2>/dev/null | wc -l)" -lt 8 ] \
+      && got=$(python planner/author.py --check-already-done \
+          --goal "$leg" --outline-path plans/outline.txt --leg "$at" \
+          --start "$st" --observed run/explored.json --model "$MODEL") \
+      && [ -n "$got" ]; then
+    nums=$(printf '%s\n' "$got" | cut -f1 | tr '\n' ' ')
+    if python planner/skip_legs.py $nums; then
+      printf '%s\n' "$got" >> run/outline_skips
+      # positions after this leg have shifted, so their plans name the
+      # wrong objective now — the cleanup the reorder rung already does
+      n=$((at + 1))
+      while [ "$n" -le "${#LEGS[@]}" ]; do
+        rm -f "$(printf 'plans/leg_%02d' "$n")".json \
+              "$(printf 'plans/leg_%02d' "$n")".v*.json
+        n=$((n + 1))
+      done
+    fi
+  fi
+  # ...AND THE WORK IT NEVER THOUGHT TO LIST. The sweep above can only
+  # cross off objectives that were written down. The Silph Scope came out
+  # of the hideout during a leg that named the wrong key, so no line
+  # anywhere said so: the run held a thing that opens the Pokemon Tower
+  # and had no way to think of it as an accomplishment, only as an item.
+  # Nothing is ever scheduled from outline.done — it is recognition, and
+  # it says what each deed opens, which is what makes the next objective
+  # thinkable.
+  python planner/author.py --recognize-done \
+      --goal "$leg" --outline-path plans/outline.txt \
+      --start "$st" --model "$MODEL" || true
 }
 
 # The outline is re-read EVERY iteration: a stuck leg may pull a later
