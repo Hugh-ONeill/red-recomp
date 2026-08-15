@@ -3,7 +3,7 @@
   "subgoals": [
     {
       "id": "go_to_daycare",
-      "goal_text": "Travel to the Day Care.",
+      "goal_text": "Travel to the Day Care to retrieve Charizard.",
       "done_when": {
         "area": "DAYCARE|2,1"
       },
@@ -11,14 +11,14 @@
     },
     {
       "id": "retrieve_charizard",
-      "goal_text": "Talk to the man at the Day Care and pay 100 to get Charizard back.",
+      "goal_text": "Talk to the man in the Day Care to get Charizard back.",
       "done_when": {
         "party_size": 2
       },
       "escalation_rounds": 4
     },
     {
-      "id": "go_to_celadon_city",
+      "id": "go_to_celadon",
       "goal_text": "Travel to Celadon City.",
       "done_when": {
         "map": "CELADON_CITY"
@@ -26,17 +26,10 @@
       "escalation_rounds": 4
     },
     {
-      "id": "visit_celadon_pokecenter",
-      "goal_text": "Enter the Pokemon Center in Celadon City.",
+      "id": "heal_at_celadon",
+      "goal_text": "Visit the Pokemon Center in Celadon City to heal the party.",
       "done_when": {
-        "map": "CELADON_POKECENTER"
-      },
-      "escalation_rounds": 4
-    },
-    {
-      "id": "heal_party",
-      "goal_text": "Fully heal the party at the Pokemon Center.",
-      "done_when": {
+        "map": "CELADON_POKECENTER",
         "party_healthy": true
       },
       "escalation_rounds": 4

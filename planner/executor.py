@@ -647,7 +647,6 @@ class Executor:
         try:
             data = json.loads(self.MEMORY.read_text())
             self.explored = data.get("explored", {})
-            self._learn_doorsteps()
             self.dead_ends = data.get("dead_ends", {})
             self.visits = data.get("visits", {})
             self.frontier = data.get("frontier", {})
@@ -731,6 +730,20 @@ class Executor:
                           f"{','.join(_add)} in {_r}")
             self._rebuild_area_aliases()
             self._prune_dead_ends()
+            # LAST, AND IT MAY NOT COST THE LEDGER. Placing buildings on
+            # roads is a convenience; the ledger is the run's memory of a
+            # whole day's walking. When this sat mid-load and raised, it
+            # took every section after it down with it.
+            try:
+                self._learn_doorsteps()
+            except Exception as e:
+                self._doorsteps_learned = []
+                print(f"[warn] doorstep placement skipped: {e}")
+            if self._doorsteps_learned:
+                print(f"[memory] placed {len(self._doorsteps_learned)} "
+                      f"building(s) on the road walked out onto: "
+                      + ", ".join(f"{i}->{r}"
+                                  for i, r in self._doorsteps_learned[:6]))
             edges = sum(len(v) for v in self.explored.values())
             if edges:
                 print(f"[memory] {len(self.explored)} areas, {edges} known "
@@ -1181,6 +1194,7 @@ class Executor:
         and arrived on ROUTE_5. setdefault, so anything the town map
         actually draws still wins.
         """
+        self._doorsteps_learned = []
         for region, exits in (self.explored or {}).items():
             inside = region.split("|")[0]
             if not inside or inside in MAP_EDGES or inside in INTERIOR_ROAD:
@@ -1190,7 +1204,15 @@ class Executor:
                 out = str(to).split("|")[0] if to else ""
                 if out and out in MAP_EDGES and out != inside:
                     INTERIOR_ROAD.setdefault(inside, out)
-                    self.log("doorstep_learned", inside=inside, road=out)
+                    # NO self.log HERE. This runs from _load_memory, which
+                    # runs from __init__, before the log file is opened, so
+                    # self.log raised AttributeError on logf — and since
+                    # _load_memory guards only OSError/ValueError that took
+                    # the WHOLE ledger load down with it. dead_ends, visits,
+                    # frontier and sightings never loaded, and the next save
+                    # would have written that emptiness over a day of walked
+                    # map. Collect; the caller reports once there is a log.
+                    self._doorsteps_learned.append((inside, out))
                     break
 
     def note_transition(self, before_obs, step, after_obs, reason=""):

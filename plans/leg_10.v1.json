@@ -11,7 +11,7 @@
     },
     {
       "id": "retrieve_charizard",
-      "goal_text": "Talk to the man in the Day Care and pay 100 to get Charizard back.",
+      "goal_text": "Talk to the man at the Day Care and pay 100 to get Charizard back.",
       "done_when": {
         "party_size": 2
       },
@@ -35,7 +35,7 @@
     },
     {
       "id": "heal_party",
-      "goal_text": "Heal the party at the Celadon Pokemon Center.",
+      "goal_text": "Heal the party at the Pokemon Center.",
       "done_when": {
         "party_healthy": true
       },

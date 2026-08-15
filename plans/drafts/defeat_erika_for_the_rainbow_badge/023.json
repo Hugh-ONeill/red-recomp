@@ -1,0 +1,55 @@
+{
+ "goal": "Defeat Erika for the Rainbow Badge",
+ "subgoals": [
+  {
+   "id": "go_to_daycare",
+   "goal_text": "Travel to the Day Care to retrieve Charizard.",
+   "done_when": {
+    "map": "DAYCARE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "retrieve_charizard",
+   "goal_text": "Talk to the man at the Day Care to get Charizard back.",
+   "done_when": {
+    "party_size": 2
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Visit the Pokemon Center in Celadon City to heal the party.",
+   "done_when": {
+    "map": "CELADON_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_erika_gym",
+   "goal_text": "Enter the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Defeat Gym Leader Erika in battle.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}
