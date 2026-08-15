@@ -1,0 +1,78 @@
+{
+  "goal": "Obtain the Secret Key from the Rocket Hideout",
+  "subgoals": [
+    {
+      "id": "clear_bag_space",
+      "goal_text": "Toss or sell an item to make room in the bag, as it is currently full (20/20).",
+      "done_when": {
+        "any_of": [
+          {
+            "has_item": {
+              "SECRET_KEY": 1
+            }
+          },
+          {
+            "player_at": {
+              "x": 0,
+              "y": 0,
+              "radius": 100
+            }
+          }
+        ]
+      },
+      "comment": "The bag is full. Picking up the Secret Key will fail unless space is made. Since the player is in Viridian Forest, they should toss an item or head to a mart.",
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_celadon_city",
+      "goal_text": "Travel to Celadon City",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_rocket_hideout",
+      "goal_text": "Enter the Rocket Hideout via the back entrance of the Celadon Game Corner",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_elevator",
+      "goal_text": "Reach the elevator in the Rocket Hideout",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_ELEVATOR"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b4f",
+      "goal_text": "Use the elevator to reach the lowest floor (B4F)",
+      "done_when": {
+        "area": "ROCKET_HIDEOUT_B4F|17,1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_giovanni",
+      "goal_text": "Defeat Giovanni in battle",
+      "done_when": {
+        "flag": "EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "take_secret_key",
+      "goal_text": "Interact with Giovanni or the nearby item to obtain the Secret Key",
+      "done_when": {
+        "has_item": {
+          "SECRET_KEY": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

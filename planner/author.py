@@ -2147,6 +2147,33 @@ def _never_stood_in(goal: str, observed) -> str | None:
     return None
 
 
+def _badge_not_earned(goal: str, start: str) -> str | None:
+    """A badge this objective names that the run is not wearing.
+
+    Companion to _never_stood_in, and the same principle: refusing a claim
+    the record disproves is not judgment, it is not lying to yourself.
+
+    "Defeat Giovanni for the Earth Badge" was judged ALREADY DONE by a run
+    holding four badges, none of them the Earth Badge, because the leg had
+    just fired EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI — a different Giovanni in
+    a different building. The judging prompt all but invites it: it says an
+    objective is about its outcome and not the ceremony after it, which is
+    right, and here the outcome was a badge nobody had. The leg was crossed
+    off, so nothing will ever bring it back, and the Elite Four would have
+    been reached one badge short with no record of why.
+
+    Badges are the least ambiguous fact in the game and they are in the
+    state text, so this costs nothing and needs no knowledge: an objective
+    that names a badge is not done while that badge is not held.
+    """
+    g = re.sub(r"[^A-Z]+", "", goal.upper())
+    have = re.sub(r"[^A-Z]+", "", (start or "").upper())
+    for b in BADGES:
+        if b in g and b not in have:
+            return b
+    return None
+
+
 def _events_bearing(goal: str) -> str:
     """Events THIS RUN HAS FIRED whose names touch the objective's words.
 
@@ -2335,6 +2362,11 @@ def check_already_done(deed: str, start: str, model: str,
     if never:
         print(f"[already-done] refused: '{deed[:60]}' names {never} and the "
               f"run has never once stood on it", file=sys.stderr)
+        return False
+    badge = _badge_not_earned(deed, start)
+    if badge:
+        print(f"[already-done] refused: '{deed[:60]}' names {badge} and the "
+              f"run is not wearing it", file=sys.stderr)
         return False
     body = (f"THE OBJECTIVE: {deed}\n\nWHERE THE RUN STANDS: {start}"
             + recent_events() + _events_bearing(deed))
@@ -2534,6 +2566,11 @@ def check_done(goal: str, start: str, model: str,
     if never:
         print(f"[check-done] refused: this objective names {never} and the "
               f"run has never once stood on it")
+        return False
+    badge = _badge_not_earned(goal, start)
+    if badge:
+        print(f"[check-done] refused: this objective names {badge} and the "
+              f"run is not wearing it")
         return False
     reply = brock_probe.chat(
         [{"role": "system", "content": CHECKDONE_SYS},

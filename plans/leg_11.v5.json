@@ -1,0 +1,38 @@
+{
+  "goal": "Defeat Giovanni for the Earth Badge",
+  "subgoals": [
+    {
+      "id": "go_to_viridian_city",
+      "goal_text": "Travel to Viridian City",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_viridian_center",
+      "goal_text": "Heal the party at the Pokemon Center",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_viridian_gym",
+      "goal_text": "Enter the Viridian City Gym",
+      "done_when": {
+        "map": "VIRIDIAN_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_giovanni",
+      "goal_text": "Defeat Giovanni in battle to earn the Earth Badge",
+      "done_when": {
+        "badge": "EARTHBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}
