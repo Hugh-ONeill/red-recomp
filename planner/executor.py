@@ -3626,8 +3626,25 @@ Reply with ONLY a JSON array of ops, e.g.
                     # east sat two ladders down.
                     d0 = step.get("dir")
                     here0 = self._where(obs)
-                    if d0:
+                    # ...BUT NOT IF YOU HAVE ALREADY CROSSED IT. "One
+                    # failure proves no cell of this component crosses it"
+                    # is only sound for a road never yet walked. Cerulean's
+                    # south seam had been crossed 14 times with 70 visits on
+                    # Route 5 when a single failed attempt filed it as
+                    # uncrossable — and every later exits list hid it, so
+                    # the way to the DAY CARE stopped being offered at all.
+                    # A road that has opened before is a road something is
+                    # standing in TODAY, which is a different fact.
+                    _prev = (self.explored.get(here0) or {}).get(d0) or {}
+                    _crossed_before = (
+                        _prev.get("to") and _prev.get("to") != here0
+                        and not _prev.get("shut")
+                        and (self.visits.get(_prev["to"]) or 0) > 0)
+                    if d0 and not _crossed_before:
                         self._no_cross.setdefault(here0, set()).add(d0)
+                    elif d0:
+                        self.log("cross_failed_but_known", region=here0,
+                                 exit=d0, to=_prev.get("to"))
                     fr = self.frontier.get(here0)
                     if d0 and fr and d0 in fr:
                         fr.remove(d0)
