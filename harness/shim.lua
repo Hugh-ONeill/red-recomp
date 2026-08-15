@@ -242,6 +242,12 @@ local last_text = nil
 -- are declined and quoted (that path already existed); the next interact
 -- can answer them for real. Signposts are unaffected — they never ask.
 local seen_question = {}
+-- WHAT AN ELEVATOR PANEL OFFERS, once it has been pressed. map id ->
+-- { "1F", "2F", ... }. A lift's warp tiles are rewritten at runtime from
+-- this menu, so its floors are not warps in the map data and no amount of
+-- door-counting can find them; the menu on screen is where they exist.
+-- Learned only by a press that worked, never read ahead of the body.
+local lift_floors = {}
 -- ...and ALL of it, not just the last page. A speech breaks into pages on
 -- \f, and keeping only the page showing when the box closed threw away
 -- everything said before it. The Saffron gate guard says "I'm on guard
@@ -346,6 +352,8 @@ local function observe(G, seq, result)
     local hb = (md and md.height) or map.height
     o.map = { id = map.id, name = map.name,
               width = wb and wb * 2, height = hb and hb * 2 }
+    -- the floors this car's panel was seen to offer (see lift_floors)
+    o.map.lift_floors = lift_floors[tostring(map.id)]
     if md and md.warps then
       o.map.warps = {}
       local reach = warp_reach(G) or {}
@@ -642,10 +650,22 @@ local function observe(G, seq, result)
   -- bag: player-visible (the START menu ITEM screen); badges live in the
   -- same inventory table but are not bag items
   o.bag = {}
+  -- WHICH OF THEM ARE KEY ITEMS. Player-visible: the game refuses to toss
+  -- or sell one and says so out loud ("That's too important to toss!"),
+  -- which is how OPS.toss already knows. It was never published, so the
+  -- executor could only see {ITEM: count} and had no way to tell a
+  -- POTION from a BIKE_VOUCHER — and what you are carrying is the thing
+  -- that changes what people say to you when you come back.
+  o.key_items = {}
+  local function note_key(k)
+    local def = G.data and G.data.items and G.data.items[k]
+    if def and def.keyItem then o.key_items[#o.key_items + 1] = k end
+  end
   for k, v in pairs((G.save and G.save.inventory) or {}) do
     if type(k) == "string" and not k:match("BADGE$")
        and (tonumber(v) or 0) > 0 then
       o.bag[k] = v
+      note_key(k)
     end
   end
   -- What the PC is holding. Player-visible: it is the WITHDRAW ITEM list,
@@ -656,8 +676,15 @@ local function observe(G, seq, result)
   for k, v in pairs((G.save and G.save.pcItems) or {}) do
     if type(k) == "string" and (tonumber(v) or 0) > 0 then
       o.pc_items[k] = v
+      -- A KEY ITEM IN THE PC IS STILL ONE YOU HAVE (user, 2026-08-15).
+      -- The bag holds 20 kinds and fills, storing is the answer, and the
+      -- run has never once used the PC — but the moment it does, a
+      -- deposited SILPH SCOPE would read as never acquired and every
+      -- conversation it unlocks would look untouched again.
+      note_key(k)
     end
   end
+  table.sort(o.key_items)
   -- WHO IS AT THE DAY CARE. Same reason as pc_items: the run answered
   -- "yes" to the DAYCARE_GENTLEMAN while hunting for a way to Celadon and
   -- handed over a level 40 CHARIZARD, leaving a level 6 MAGIKARP to beat
@@ -2712,6 +2739,16 @@ function OPS.elevator(G, c)
     offer[#offer + 1] = lab
     if lab == want or lab:find(want, 1, true) then idx = i end
   end
+  -- A PANEL IS A DOORWAY THAT DOES NOT LOOK LIKE ONE. The car has two
+  -- warp tiles and both of them lead to the floor you are already on,
+  -- because gen1 REWRITES an elevator's warp destinations at runtime from
+  -- this menu. So the floors are not warps in the map data at all and the
+  -- door-counter is structurally blind to them: it reported nothing
+  -- unopened inside CELADON_MART_ELEVATOR, a car serving five floors that
+  -- the run rode four times and left four times.
+  -- The menu on screen is the only place the floors exist, so record them
+  -- the moment they are on screen. Learned by pressing, never read ahead.
+  lift_floors[tostring((G.overworld.map or {}).id)] = offer
   if not idx then
     ui_back_out(G)
     return false, ("no floor called %s — it offers %s")
@@ -2725,7 +2762,95 @@ function OPS.elevator(G, c)
   end
   ui_back_out(G)
   return true, ("rode to %s — you are still IN the car; walk out of its "
-    .. "door to arrive"):format(want)
+    .. "door to arrive. This panel offers %s")
+    :format(want, table.concat(offer, ", "))
+end
+
+-- CHOOSE WHO GOES OUT FIRST. There was no way to. Battles are played by a
+-- policy rather than turn by turn, so the model's only lever on which
+-- Pokemon fights is WHICH ONE LEADS — the first unfainted slot is sent
+-- out — and nothing in the vocabulary could move a party member. The run
+-- spent a whole day on CHARIZARD because CHARIZARD is slot 1, carrying an
+-- EEVEE L25 and a MAGIKARP L9 it could neither field nor train: the
+-- Magikarp cannot reach 20 without being sent out, and nothing else
+-- raises it. That is a missing verb, not a missing idea.
+--
+-- Decision-free like the rest: WHICH two slots, and whether to swap at
+-- all, is entirely the model's. The op drives the menu the player would.
+function OPS.party_swap(G, c)
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
+  end
+  local party = (G.save or {}).party or {}
+  local a = math.floor(tonumber(c.a) or 0)
+  local b = math.floor(tonumber(c.b) or 0)
+  if a < 1 or b < 1 or a > #party or b > #party then
+    return false, ("party_swap needs a= and b=, party slots 1..%d")
+      :format(#party)
+  end
+  if a == b then
+    return false, "those are the same slot"
+  end
+  local an = tostring((party[a] or {}).species or "?")
+  local bn = tostring((party[b] or {}).species or "?")
+  U.tap(G, "start"); U.wait(8)
+  local menu = ui_top(G)
+  if not (menu and menu.screenId == "StartMenu") then
+    ui_back_out(G); return false, "start menu never opened"
+  end
+  local row
+  for i, it in ipairs(menu.items or {}) do
+    local l = it.label or ""
+    if l:find("POK") and l:find("MON") then row = i break end
+  end
+  if not row or not ui_cursor_to(G, "index", row) then
+    ui_back_out(G); return false, "no POKeMON row"
+  end
+  U.tap(G, "a"); U.wait(10)
+  local pm = ui_top(G)
+  if not (pm and pm.screenId == "PartyMenu") then
+    ui_back_out(G); return false, "party menu never opened"
+  end
+  ui_cursor_to(G, "index", a)
+  U.tap(G, "a"); U.wait(8)
+  -- SWITCH lives on the same PartyMenu-INTERNAL submenu the field moves
+  -- use (subItems/subIndex, not a pushed screen) — see OPS.field_move,
+  -- which lost an afternoon to reading the mon rows instead.
+  local pm2 = G.stack:top()
+  local subs = pm2 and pm2.subItems
+  local srow, seen = nil, {}
+  for i, it in ipairs(subs or {}) do
+    local lab = ((it.label or it.text or it.action or "") .. ""):upper()
+    seen[#seen + 1] = lab
+    if lab:find("SWITCH", 1, true) then srow = i break end
+  end
+  if not srow then
+    ui_back_out(G)
+    return false, "SWITCH was not offered in the menu (it lists: "
+      .. table.concat(seen, ", ") .. ")"
+  end
+  for _ = 1, 40 do
+    if not pm2.subIndex or pm2.subIndex == srow then break end
+    U.tap(G, pm2.subIndex > srow and "up" or "down"); U.wait(3)
+  end
+  U.tap(G, "a"); U.wait(8)
+  -- now the list is waiting for the partner
+  ui_cursor_to(G, "index", b)
+  U.tap(G, "a"); U.wait(10)
+  ui_back_out(G)
+  -- VERIFY AGAINST THE PARTY, not against the menu. A cursor that did not
+  -- land leaves the order untouched and every tap still "succeeds".
+  local after = (G.save or {}).party or {}
+  local moved = tostring((after[a] or {}).species or "?") == bn
+                and tostring((after[b] or {}).species or "?") == an
+  if not moved then
+    return false, ("the order did not change — slot %d is still %s")
+      :format(a, tostring((after[a] or {}).species or "?"))
+  end
+  return true, ("%s is now slot %d and %s is slot %d%s")
+    :format(bn, a, an, b,
+            (a == 1 or b == 1)
+              and " — slot 1 is who gets sent out first" or "")
 end
 
 function OPS.daycare_deposit(G, c)

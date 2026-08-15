@@ -602,6 +602,8 @@ class Executor:
         self.flag_sites: dict = {}          # flag -> area it fired in
         self.shut_doors: dict = {}   # region -> doors seen but unreachable
         self._last_obs_dormant = 0   # objects this map has yet to reveal
+        self._last_key_items: list = []
+        self._touch_bag: dict = {}   # region -> key items held when pressed
         self.hints: dict = {}        # region -> things people said here
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
@@ -709,6 +711,7 @@ class Executor:
                         anyd[r] = True
             self._tried_objs = {r: set(v) for r, v in
                                 (data.get("touched") or {}).items()}
+            self._touch_bag = data.get("touch_bag") or {}
             self._no_cross = {r: set(v) for r, v in
                               (data.get("no_cross") or {}).items()}
             self.flag_sites = data.get("flag_sites") or {}
@@ -808,6 +811,7 @@ class Executor:
                 {"explored": self.explored, "dead_ends": self.dead_ends,
                  "visits": self.visits, "frontier": self.frontier,
                  "sightings": self.sightings, "searched": self.searched,
+                 "touch_bag": self._touch_bag,
                  "region_anchors": self.region_anchors,
                  "contested": self.contested,
                  # touched outlives the process so "sighted but never
@@ -970,6 +974,9 @@ class Executor:
 
     def note_frontier(self, obs):
         self._last_obs_dormant = ((obs or {}).get("map") or {}).get("dormant")
+        # what is in the bag that the game will not let you throw away —
+        # published by the shim, which reads the engine's own keyItem flag
+        self._last_key_items = list((obs or {}).get("key_items") or [])
         """Every exit visible from where we stand — the inventory that makes
         'all ways out are dead' a justified conclusion rather than a guess."""
         here = self._where(obs)
@@ -1136,6 +1143,27 @@ class Executor:
         present = {o.get("name") for o in (cmap.get("objects") or [])
                    if o.get("kind") == "item" and o.get("name")}
         return tried - present if present else tried
+
+    def _key_items(self) -> list:
+        return list(self._last_key_items)
+
+    def _stamp_touch(self, region: str):
+        """Record WHAT WAS BEING CARRIED when this area was last pressed.
+
+        `_tried_objs` is a lifetime ledger, so a person spoken to once is
+        filtered out of "people here you have never spoken to" forever.
+        The BIKE_SHOP clerk went that way: talked to before the voucher
+        existed, invisible ever since, with the voucher still in the bag
+        (user, twice).
+
+        The ledger is NOT invalidated and the run is never told it has not
+        spoken to someone it has — that would be a lie, and fourteen
+        places read this ledger besides. All that is kept is a number, so
+        the room can say something true instead: everything here has been
+        pressed, and that was when you were carrying these.
+        """
+        if region and "None" not in region:
+            self._touch_bag[region] = self._key_items()
 
     def note_searched(self, target: str, region: str):
         """This area has been fully worked: every exit taken, everything
@@ -2855,12 +2883,27 @@ class Executor:
         def _named(o):
             n, x, y = o.get("name"), o.get("x"), o.get("y")
             return f"{n} ({x},{y})" if x is not None and y is not None else n
+        # THE PANEL IS THE WAY OUT OF A LIFT. A car's two warp tiles both
+        # lead back to the floor you got on at, because gen1 rewrites them
+        # from the floor menu — so the doorway count says a five-floor lift
+        # has nothing unopened in it, and the run rode CELADON_MART_ELEVATOR
+        # four times and left four times. Once the panel has been pressed
+        # the floors are known (obs.map.lift_floors, learned from the menu
+        # on screen, never read ahead), and a car that says what it serves
+        # is not an empty room.
+        lift = (m.get("lift_floors") or [])
+        lift_line = ""
+        if lift:
+            lift_line = ("\nThe panel in this car offers: "
+                         + ", ".join(str(f) for f in lift)
+                         + ". Riding it is the only way to those floors — "
+                           "the doors in here lead back where you got on.")
         loot = [_named(o) for o in (m.get("objects") or [])
                 if o.get("reachable") and o.get("name")
                 and o.get("name") not in taken_objs]
         reach = [_named(o) for o in (m.get("objects") or [])
                  if o.get("reachable") and o.get("name")]
-        loot_line = pp_line
+        loot_line = pp_line + lift_line
         if loot:
             loot_line += (f"\nTHINGS within reach here you have NOT touched "
                          f"yet: {', '.join(loot[:12])}. Press A on them before "
@@ -2875,6 +2918,22 @@ class Executor:
             # the layout and stop; what to make of it is the model's.
             loot_line += (f"\nWHAT IS HERE AND WHERE, all of it pressed at "
                           f"least once: {', '.join(reach[:16])}.")
+            # ...BUT PRESSED WHEN? What someone says can depend on what you
+            # are carrying, and this ledger is for a lifetime. The BIKE_SHOP
+            # clerk was spoken to before the BIKE_VOUCHER existed and has
+            # been filtered out of every prompt since, voucher still in the
+            # bag. Nothing here is re-opened and nothing is un-said — the
+            # room simply states the one fact that makes "pressed once" a
+            # weaker claim than it looks, and what to make of that is the
+            # model's, exactly as with the layout line above.
+            then = self._touch_bag.get(here)
+            now = self._key_items()
+            fresh = [k for k in now if k not in (then or [])]
+            if then is not None and fresh:
+                loot_line += (f"\nThat was when you were carrying "
+                              f"{len(then)} key item(s); you now carry "
+                              f"{len(now)}, having picked up "
+                              f"{', '.join(sorted(fresh)[:6])} since.")
         # ASK SOMEBODY. When a room stops yielding, the cheapest move left is
         # the one a person makes: talk to whoever is standing around. This
         # game states its own rules in dialogue, every line gets kept (see
@@ -3286,7 +3345,12 @@ needs a free party slot and the money),
 {"op":"elevator","floor":"B4F"} (ride an elevator: presses its panel and
 picks that floor from the list it offers. Some panels want a key and say
 so. After the ride you are STILL INSIDE the car — walk out of its door to
-arrive on that floor),
+arrive on that floor. A car's floors are NOT doors you can see from
+inside it: pressing the panel is the only way to learn where it goes),
+{"op":"party_swap","a":1,"b":3} (swap two party slots. SLOT 1 IS WHO GETS
+SENT OUT FIRST, in every battle, so this is how you choose who fights and
+who is protected — and a Pokemon that never gets sent out never gains a
+level. obs.party is in slot order),
 {"op":"heal"} (restore the WHOLE party at a Pokemon Center: walks in if
 you are outside one on this map and talks to the NURSE. Free, always. It
 fails plainly if this map has no Center),
@@ -3578,6 +3642,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # touched" and was recorded as fully searched.
                 if step.get("name"):
                     tried.add(step["name"])
+                    self._stamp_touch(here_r)
             # A seam PROVEN uncrossable is refused, not retried. The trace
             # said so every time and the model kept proposing cross(east)
             # from the Route 4 stub anyway — advice failed, so this is
@@ -5178,6 +5243,7 @@ Reply with ONLY a JSON array of ops, e.g.
                             o2 = self.handle_battle(sg, o2)
                             o2 = self.settle()
                         touched.add(name)
+                        self._stamp_touch(here_s)
                         cur = o2 or cur
                         if pred_holds(done, cur):
                             break
