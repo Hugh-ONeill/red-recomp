@@ -1,0 +1,255 @@
+{
+  "goal": "Defeat Erika for the Rainbow Badge",
+  "subgoals": [
+    {
+      "id": "go_to_celadon_city",
+      "goal_text": "Travel from Route 8 to Celadon City.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 3,
+          "when": {
+            "map": "ROUTE_8"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "UNDERGROUNDPATHROUTE8_GIRL",
+          "answer": "yes",
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_8"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 4,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_8"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 5,
+          "when": {
+            "map": "UNDERGROUND_PATH_WEST_EAST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "UNDERGROUNDPATHROUTE7_MIDDLE_AGED_MAN",
+          "answer": "yes",
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_7"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_7"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "ROUTE_7"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 7
+      }
+    },
+    {
+      "id": "go_to_celadon_center",
+      "goal_text": "Enter the Pokemon Center in Celadon City.",
+      "done_when": {
+        "map": "CELADON_POKECENTER"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 41,
+          "y": 9,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "heal_at_celadon_center",
+      "goal_text": "Fully heal the party at the Pokemon Center.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "heal",
+          "when": {
+            "map": "CELADON_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "enter_celadon_gym",
+      "goal_text": "Enter the Celadon Gym.",
+      "done_when": {
+        "map": "CELADON_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_erika",
+      "goal_text": "Battle and defeat Gym Leader Erika using Charizard's fire moves.",
+      "done_when": {
+        "badge": "RAINBOWBADGE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "CELADONCITY_GIRL",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 47,
+          "y": 20,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 35,
+          "y": 32,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 27,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_ERIKA",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_ERIKA",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 2,
+          "y": 4,
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 7,
+          "y": 5,
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 5,
+          "y": 7,
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 7,
+          "y": 5,
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "walk_to",
+          "x": 4,
+          "y": 3
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_ERIKA",
+          "answer": "yes"
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 12
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

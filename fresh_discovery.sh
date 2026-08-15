@@ -96,8 +96,12 @@ while :; do
   # every rewrite was thrown away. Ten restarts today meant ten fresh trips
   # to the day care for a Charizard already in the party, one of which lent
   # the Magikarp away. Version sort so v10 beats v9.
+  # `|| true`: this script runs under set -euo pipefail, and ls exits
+  # non-zero when a leg has no rewrites yet — which killed the chain dead
+  # the moment it tried to start a FRESH leg (leg 11, right after the
+  # Rainbow Badge). 2>/dev/null hides the message, not the status.
   latest=$(ls -1 "$(printf 'plans/leg_%02d' "$i")".v*.json 2>/dev/null \
-           | sort -V | tail -1)
+           | sort -V | tail -1 || true)
   if [ -n "$latest" ] && [ -s "$latest" ]; then
     echo "=== leg $i: resuming from the latest rewrite $latest ==="
     plan="$latest"
