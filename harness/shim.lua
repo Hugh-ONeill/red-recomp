@@ -1460,8 +1460,14 @@ function OPS.cross(G, c)
         .. table.concat(blockers, ", ") .. "."
     end
     if #elsewhere > 0 then
-      said = said .. " Elsewhere on this map (not what stopped you, but "
-        .. "still there): " .. table.concat(elsewhere, ", ") .. "."
+      -- NOT "on this map" — everything here already passed the near-seam
+      -- filter, so this is only what lies near that edge but away from
+      -- where the walk stalled. Route 2 has SIX cut bushes and this list
+      -- can only ever hold the ones close to the seam; claiming the map
+      -- would be the same over-reach the old "standing against that edge"
+      -- line made, one level up.
+      said = said .. " Also near that edge, though not what stopped you: "
+        .. table.concat(elsewhere, ", ") .. "."
     end
     if #doors > 0 then
       said = said .. " Doors on that edge (a building can be a way "
