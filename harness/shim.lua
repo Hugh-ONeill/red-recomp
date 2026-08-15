@@ -204,6 +204,9 @@ end
 -- before a choice box, which would leave the model answering a context-free
 -- yes/no; carry the prompt into the observation so the choice has meaning.
 local warp_reach            -- assigned after DIRS/ledge_landing
+-- map id -> { "x,y" = region name }. Names are minted once and never
+-- rewritten, so a region cannot be renamed by the world opening up.
+local region_of = {}
 local recent_text = nil
 -- The LAST thing anybody said, kept after the box closes. recent_text is
 -- wiped the moment control returns, which is correct for "is a prompt open
@@ -332,6 +335,23 @@ local function observe(G, seq, result)
       -- smallest reachable cell. "Did I actually get somewhere else?" is a
       -- question about the COMPONENT, not about distance (coming out the
       -- same cave door lands tiles away but in the same region — thin7).
+      --
+      -- ...BUT A PLACE KEEPS THE NAME IT WAS FIRST GIVEN. The bare
+      -- fingerprint is DYNAMIC: it is the smallest cell reachable RIGHT
+      -- NOW, so the moment the walkable space grows -- a tree cut, an NPC
+      -- stepping aside, a boulder pushed -- the minimum moves and the same
+      -- physical spot reports a different region. Every edge, visit,
+      -- sighting and frontier entry filed under the old name is orphaned by
+      -- that, which is what AREA_ALIASES exists to paper over. Worse for
+      -- Cerulean specifically: cutting the tree would fuse the main city
+      -- and the southern strip into one label and lose the distinction the
+      -- run spent all morning learning.
+      --
+      -- So: remember which region each cell was assigned to, and when we
+      -- are standing on a cell that already has a name, keep it. Only
+      -- genuinely unnamed ground gets the current component's fingerprint.
+      -- Purely additive -- names are minted once and never rewritten, and
+      -- space expanding never merges two names.
       do
         local bx, by
         for k in pairs(reach) do
@@ -343,7 +363,18 @@ local function observe(G, seq, result)
             end
           end
         end
-        if bx then o.map.region = bx .. "," .. by end
+        local known = region_of[map.id]
+        if not known then known = {}; region_of[map.id] = known end
+        local here = (p.cellX or -1) .. "," .. (p.cellY or -1)
+        local name = known[here] or (bx and (bx .. "," .. by))
+        if name then
+          o.map.region = name
+          -- paint only the ground that has never been named
+          for k in pairs(reach) do
+            if known[k] == nil then known[k] = name end
+          end
+          known[here] = name
+        end
       end
       -- LAST_MAP is gen1's "back outdoors where you came from" and it is
       -- what every route GATE uses for its outward doors. Left raw, the
