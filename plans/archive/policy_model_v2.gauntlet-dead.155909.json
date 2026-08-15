@@ -1,0 +1,106 @@
+{
+  "name": "Gen1_Squirtle_EarlyGame_v2",
+  "stab": 1.5,
+  "accuracy_weight": true,
+  "prefer_ko": true,
+  "ko_margin": 1.2,
+  "avoid_status_moves": false,
+  "setup": [
+    {
+      "move": "TAIL_WHIP",
+      "max_uses": 2,
+      "first_turns": 3,
+      "min_hp_frac": 0.5,
+      "vs": "trainer",
+      "only_if_best_physical": true
+    }
+  ],
+  "switch": [],
+  "flee_wild": {
+    "when_traversal": true,
+    "hp_below": 0.2
+  },
+  "battle_items": [
+    {
+      "item": "POTION",
+      "hp_below": 0.3,
+      "max_uses": 3
+    }
+  ],
+  "field_heal": {
+    "item": "POTION",
+    "hp_below": 0.6
+  },
+  "field_cure": [
+    {
+      "status": "PSN",
+      "item": "ANTIDOTE"
+    },
+    {
+      "status": "PAR",
+      "item": "PARLYZ_HEAL"
+    }
+  ],
+  "catch": {
+    "ball": "POKE_BALL",
+    "throw_at_hp_frac": 0.3,
+    "max_balls": 5
+  },
+  "replacement": {
+    "order": "healthiest"
+  },
+  "provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "policyauthor",
+    "via": "policy_author",
+    "rounds": 4,
+    "eval": {
+      "rival_wins": 6,
+      "rival_trials": 6,
+      "pewter": 0,
+      "badge": 0,
+      "gauntlet_trials": 3,
+      "blackouts": 0,
+      "agree": 7,
+      "scored": 13,
+      "dmg_gap": 70.0,
+      "rival_detail": [
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)"
+      ],
+      "gauntlet_detail": [
+        "FAILED at the forest crossing (lead ended 30/38 hp)",
+        "FAILED at the forest crossing (lead ended 36/38 hp)",
+        "FAILED at the forest crossing (lead ended 34/38 hp)"
+      ]
+    },
+    "baseline_typed_v0": {
+      "rival_wins": 5,
+      "rival_trials": 6,
+      "pewter": 0,
+      "badge": 0,
+      "gauntlet_trials": 3,
+      "blackouts": 0,
+      "agree": 0,
+      "scored": 10,
+      "dmg_gap": 10.0,
+      "rival_detail": [
+        "L (ended 20/20 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)",
+        "W (ended 22/22 hp)"
+      ],
+      "gauntlet_detail": [
+        "FAILED at the forest crossing (lead ended 38/38 hp)",
+        "FAILED at the forest crossing (lead ended 30/38 hp)",
+        "FAILED at the forest crossing (lead ended 36/38 hp)"
+      ]
+    }
+  }
+}
