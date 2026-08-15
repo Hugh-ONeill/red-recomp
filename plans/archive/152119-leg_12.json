@@ -22,14 +22,13 @@
       },
       "comment": "The bag is full. Picking up the Secret Key will fail unless space is made. Since the player is in Viridian Forest, they should toss an item or head to a mart.",
       "escalation_rounds": 4,
-      "macro": [],
       "subgoal_provenance": {
         "authored_by": "unknown (pre-audit)"
       },
       "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
+        "authored_by": "none \u2014 escalation succeeded with no reproducible ops (see distill_refused_empty)",
         "run": "campaign1",
-        "via": "escalation",
+        "via": "no-op",
         "n_ops": 0
       }
     },
@@ -83,14 +82,13 @@
         "map": "ROCKET_HIDEOUT_B1F"
       },
       "escalation_rounds": 4,
-      "macro": [],
       "subgoal_provenance": {
         "authored_by": "unknown (pre-audit)"
       },
       "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
+        "authored_by": "none \u2014 escalation succeeded with no reproducible ops (see distill_refused_empty)",
         "run": "campaign1",
-        "via": "escalation",
+        "via": "no-op",
         "n_ops": 0
       }
     },
@@ -101,14 +99,13 @@
         "map": "ROCKET_HIDEOUT_ELEVATOR"
       },
       "escalation_rounds": 4,
-      "macro": [],
       "subgoal_provenance": {
         "authored_by": "unknown (pre-audit)"
       },
       "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
+        "authored_by": "none \u2014 escalation succeeded with no reproducible ops (see distill_refused_empty)",
         "run": "campaign1",
-        "via": "escalation",
+        "via": "no-op",
         "n_ops": 0
       }
     },
@@ -119,14 +116,13 @@
         "area": "ROCKET_HIDEOUT_B4F|17,1"
       },
       "escalation_rounds": 4,
-      "macro": [],
       "subgoal_provenance": {
         "authored_by": "unknown (pre-audit)"
       },
       "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
+        "authored_by": "none \u2014 escalation succeeded with no reproducible ops (see distill_refused_empty)",
         "run": "campaign1",
-        "via": "escalation",
+        "via": "no-op",
         "n_ops": 0
       }
     },
@@ -137,14 +133,13 @@
         "flag": "EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI"
       },
       "escalation_rounds": 4,
-      "macro": [],
       "subgoal_provenance": {
         "authored_by": "unknown (pre-audit)"
       },
       "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
+        "authored_by": "none \u2014 escalation succeeded with no reproducible ops (see distill_refused_empty)",
         "run": "campaign1",
-        "via": "escalation",
+        "via": "no-op",
         "n_ops": 0
       }
     },

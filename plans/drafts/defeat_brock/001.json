@@ -1,442 +1,441 @@
 {
- "goal": "Defeat Brock",
- "subgoals": [
-  {
-   "id": "go_to_route_1",
-   "goal_text": "Walk from current location to Route 1",
-   "done_when": {
-    "map": "ROUTE_1"
-   },
-   "escalation_rounds": 4,
-   "macro": [
+  "goal": "Defeat Brock",
+  "subgoals": [
     {
-     "op": "use_warp",
-     "x": 3,
-     "y": 7,
-     "when": {
-      "map": "VIRIDIAN_MART"
-     }
+      "id": "go_to_route_1",
+      "goal_text": "Walk from current location to Route 1",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
     },
     {
-     "op": "cross",
-     "dir": "south",
-     "when": {
-      "map": "VIRIDIAN_CITY"
-     }
+      "id": "traverse_route_1",
+      "goal_text": "Walk through Route 1 to reach Viridian City",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_viridian_forest",
+      "goal_text": "Walk from Viridian City into Viridian Forest",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 43,
+          "when": {
+            "map": "ROUTE_2"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTSOUTHGATE_GIRL",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTSOUTHGATE_LITTLE_GIRL",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST_SOUTH_GATE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "train_bulbasaur_forest",
+      "goal_text": "Battle wild Pokemon in Viridian Forest until Bulbasaur reaches level 12",
+      "done_when": {
+        "lead_level": 12
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "grind",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_POTION",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_ANTIDOTE",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_POKE_BALL",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 7
+      }
+    },
+    {
+      "id": "exit_viridian_forest",
+      "goal_text": "Walk through Viridian Forest to reach Route 2",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_YOUNGSTER1",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_YOUNGSTER5",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_YOUNGSTER2",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_YOUNGSTER3",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFOREST_YOUNGSTER4",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTNORTHGATE_SUPER_NERD",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANFORESTNORTHGATE_GRAMPS",
+          "answer": "yes",
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 0,
+          "when": {
+            "map": "VIRIDIAN_FOREST_NORTH_GATE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 9
+      }
+    },
+    {
+      "id": "go_to_route_3",
+      "goal_text": "Walk from Route 2 to Route 3",
+      "done_when": {
+        "map": "ROUTE_3"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_pewter_city",
+      "goal_text": "Walk from Route 3 to Pewter City",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "none \u2014 escalation succeeded with no reproducible ops (see distill_refused_empty)",
+        "run": "campaign1",
+        "via": "no-op",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "heal_at_pewter",
+      "goal_text": "Go to the Pewter City Pokemon Center and heal Bulbasaur",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 25,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERPOKECENTER_JIGGLYPUFF",
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERPOKECENTER_GENTLEMAN",
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "interact",
+          "x": 3,
+          "y": 1,
+          "answer": "yes",
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter City Gym",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PEWTERPOKECENTER_LINK_RECEPTIONIST",
+          "answer": "yes",
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 16,
+          "y": 17,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Battle and defeat Brock to earn the Boulder Badge",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_GYM_GUIDE",
+          "answer": "yes",
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_BROCK",
+          "answer": "yes",
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
     }
-   ],
-   "subgoal_provenance": {
-    "authored_by": "unknown (pre-audit)"
-   },
-   "macro_provenance": {
-    "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "campaign1",
-    "via": "escalation",
-    "n_ops": 2
-   }
-  },
-  {
-   "id": "traverse_route_1",
-   "goal_text": "Walk through Route 1 to reach Viridian City",
-   "done_when": {
-    "map": "VIRIDIAN_CITY"
-   },
-   "escalation_rounds": 4,
-   "macro": [
-    {
-     "op": "cross",
-     "dir": "north",
-     "when": {
-      "map": "ROUTE_1"
-     }
-    }
-   ],
-   "subgoal_provenance": {
-    "authored_by": "unknown (pre-audit)"
-   },
-   "macro_provenance": {
-    "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "campaign1",
-    "via": "escalation",
-    "n_ops": 1
-   }
-  },
-  {
-   "id": "go_to_viridian_forest",
-   "goal_text": "Walk from Viridian City into Viridian Forest",
-   "done_when": {
-    "map": "VIRIDIAN_FOREST"
-   },
-   "escalation_rounds": 4,
-   "macro": [
-    {
-     "op": "cross",
-     "dir": "north",
-     "when": {
-      "map": "VIRIDIAN_CITY"
-     }
-    },
-    {
-     "op": "use_warp",
-     "x": 3,
-     "y": 43,
-     "when": {
-      "map": "ROUTE_2"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFORESTSOUTHGATE_GIRL",
-     "answer": "yes",
-     "when": {
-      "map": "VIRIDIAN_FOREST_SOUTH_GATE"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFORESTSOUTHGATE_LITTLE_GIRL",
-     "answer": "yes",
-     "when": {
-      "map": "VIRIDIAN_FOREST_SOUTH_GATE"
-     }
-    },
-    {
-     "op": "use_warp",
-     "x": 5,
-     "y": 0,
-     "when": {
-      "map": "VIRIDIAN_FOREST_SOUTH_GATE"
-     }
-    }
-   ],
-   "subgoal_provenance": {
-    "authored_by": "unknown (pre-audit)"
-   },
-   "macro_provenance": {
-    "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "campaign1",
-    "via": "escalation",
-    "n_ops": 5
-   }
-  },
-  {
-   "id": "train_bulbasaur_forest",
-   "goal_text": "Battle wild Pokemon in Viridian Forest until Bulbasaur reaches level 12",
-   "done_when": {
-    "lead_level": 12
-   },
-   "escalation_rounds": 4,
-   "macro": [
-    {
-     "op": "grind",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "grind",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFOREST_POTION",
-     "answer": "yes",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFOREST_ANTIDOTE",
-     "answer": "yes",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "grind",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFOREST_POKE_BALL",
-     "answer": "yes",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "grind",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    }
-   ],
-   "subgoal_provenance": {
-    "authored_by": "unknown (pre-audit)"
-   },
-   "macro_provenance": {
-    "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "campaign1",
-    "via": "escalation",
-    "n_ops": 7
-   }
-  },
-  {
-   "id": "exit_viridian_forest",
-   "goal_text": "Walk through Viridian Forest to reach Route 2",
-   "done_when": {
-    "map": "ROUTE_2"
-   },
-   "escalation_rounds": 4,
-   "macro": [
-    {
-     "op": "interact",
-     "name": "VIRIDIANFOREST_YOUNGSTER1",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFOREST_YOUNGSTER5",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFOREST_YOUNGSTER2",
-     "answer": "yes",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFOREST_YOUNGSTER3",
-     "answer": "yes",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFOREST_YOUNGSTER4",
-     "answer": "yes",
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "use_warp",
-     "x": 1,
-     "y": 0,
-     "when": {
-      "map": "VIRIDIAN_FOREST"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFORESTNORTHGATE_SUPER_NERD",
-     "answer": "yes",
-     "when": {
-      "map": "VIRIDIAN_FOREST_NORTH_GATE"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "VIRIDIANFORESTNORTHGATE_GRAMPS",
-     "answer": "yes",
-     "when": {
-      "map": "VIRIDIAN_FOREST_NORTH_GATE"
-     }
-    },
-    {
-     "op": "use_warp",
-     "x": 5,
-     "y": 0,
-     "when": {
-      "map": "VIRIDIAN_FOREST_NORTH_GATE"
-     }
-    }
-   ],
-   "subgoal_provenance": {
-    "authored_by": "unknown (pre-audit)"
-   },
-   "macro_provenance": {
-    "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "campaign1",
-    "via": "escalation",
-    "n_ops": 9
-   }
-  },
-  {
-   "id": "go_to_route_3",
-   "goal_text": "Walk from Route 2 to Route 3",
-   "done_when": {
-    "map": "ROUTE_3"
-   },
-   "escalation_rounds": 4
-  },
-  {
-   "id": "go_to_pewter_city",
-   "goal_text": "Walk from Route 3 to Pewter City",
-   "done_when": {
-    "map": "PEWTER_CITY"
-   },
-   "escalation_rounds": 4,
-   "macro": [],
-   "subgoal_provenance": {
-    "authored_by": "unknown (pre-audit)"
-   },
-   "macro_provenance": {
-    "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "campaign1",
-    "via": "escalation",
-    "n_ops": 0
-   }
-  },
-  {
-   "id": "heal_at_pewter",
-   "goal_text": "Go to the Pewter City Pokemon Center and heal Bulbasaur",
-   "done_when": {
-    "party_healthy": true
-   },
-   "escalation_rounds": 4,
-   "macro": [
-    {
-     "op": "use_warp",
-     "x": 13,
-     "y": 25,
-     "when": {
-      "map": "PEWTER_CITY"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "PEWTERPOKECENTER_JIGGLYPUFF",
-     "when": {
-      "map": "PEWTER_POKECENTER"
-     }
-    },
-    {
-     "op": "interact",
-     "name": "PEWTERPOKECENTER_GENTLEMAN",
-     "when": {
-      "map": "PEWTER_POKECENTER"
-     }
-    },
-    {
-     "op": "interact",
-     "x": 3,
-     "y": 1,
-     "answer": "yes",
-     "when": {
-      "map": "PEWTER_POKECENTER"
-     }
-    }
-   ],
-   "subgoal_provenance": {
-    "authored_by": "unknown (pre-audit)"
-   },
-   "macro_provenance": {
-    "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "campaign1",
-    "via": "escalation",
-    "n_ops": 4
-   }
-  },
-  {
-   "id": "enter_pewter_gym",
-   "goal_text": "Enter the Pewter City Gym",
-   "done_when": {
-    "map": "PEWTER_GYM"
-   },
-   "escalation_rounds": 4,
-   "macro": [
-    {
-     "op": "interact",
-     "name": "PEWTERPOKECENTER_LINK_RECEPTIONIST",
-     "answer": "yes",
-     "when": {
-      "map": "PEWTER_POKECENTER"
-     }
-    },
-    {
-     "op": "menu",
-     "index": 1
-    },
-    {
-     "op": "use_warp",
-     "x": 4,
-     "y": 7,
-     "when": {
-      "map": "PEWTER_POKECENTER"
-     }
-    },
-    {
-     "op": "use_warp",
-     "x": 16,
-     "y": 17,
-     "when": {
-      "map": "PEWTER_CITY"
-     }
-    }
-   ],
-   "subgoal_provenance": {
-    "authored_by": "unknown (pre-audit)"
-   },
-   "macro_provenance": {
-    "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "campaign1",
-    "via": "escalation",
-    "n_ops": 4
-   }
-  },
-  {
-   "id": "defeat_brock",
-   "goal_text": "Battle and defeat Brock to earn the Boulder Badge",
-   "done_when": {
-    "badge": "BOULDERBADGE"
-   },
-   "escalation_rounds": 4,
-   "macro": [
-    {
-     "op": "interact",
-     "name": "PEWTERGYM_GYM_GUIDE",
-     "answer": "yes",
-     "when": {
-      "map": "PEWTER_GYM"
-     }
-    },
-    {
-     "op": "menu",
-     "index": 1
-    },
-    {
-     "op": "interact",
-     "name": "PEWTERGYM_BROCK",
-     "answer": "yes",
-     "when": {
-      "map": "PEWTER_GYM"
-     }
-    }
-   ],
-   "subgoal_provenance": {
-    "authored_by": "unknown (pre-audit)"
-   },
-   "macro_provenance": {
-    "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "campaign1",
-    "via": "escalation",
-    "n_ops": 3
-   }
-  }
- ],
- "authored_by": "gemma4:31b-it-q4_K_M"
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
 }

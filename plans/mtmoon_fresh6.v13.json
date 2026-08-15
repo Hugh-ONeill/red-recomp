@@ -1,72 +1,71 @@
 {
- "goal": "Travel from Pewter City through Mt Moon and reach Cerulean City",
- "subgoals": [
-  {
-   "id": "descend_to_b1f",
-   "goal_text": "Move from the first floor of Mt Moon down to the basement (B1F).",
-   "done_when": {
-    "map": "MT_MOON_B1F"
-   },
-   "escalation_rounds": 4
-  },
-  {
-   "id": "descend_to_b2f",
-   "goal_text": "Move from B1F down to the bottom floor (B2F).",
-   "done_when": {
-    "map": "MT_MOON_B2F"
-   },
-   "escalation_rounds": 4
-  },
-  {
-   "id": "defeat_super_nerd",
-   "goal_text": "Find and defeat the Super Nerd guarding the fossils on B2F.",
-   "done_when": {
-    "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
-   },
-   "escalation_rounds": 4,
-   "macro": [],
-   "subgoal_provenance": {
-    "authored_by": "unknown (pre-audit)"
-   },
-   "macro_provenance": {
-    "authored_by": "gemma4:31b-it-q4_K_M",
-    "run": "campaign4",
-    "via": "escalation",
-    "n_ops": 0
-   }
-  },
-  {
-   "id": "exit_mt_moon",
-   "goal_text": "Navigate through Mt Moon B2F and exit the cave to the north.",
-   "done_when": {
-    "map": "MT_MOON_POKECENTER"
-   },
-   "escalation_rounds": 4
-  },
-  {
-   "id": "heal_at_mt_moon_center",
-   "goal_text": "Visit the Pokemon Center inside Mt Moon to restore the party's HP.",
-   "done_when": {
-    "party_healthy": true
-   },
-   "escalation_rounds": 4
-  },
-  {
-   "id": "reach_route_4",
-   "goal_text": "Leave the Mt Moon Pokemon Center and enter Route 4.",
-   "done_when": {
-    "map": "ROUTE_4"
-   },
-   "escalation_rounds": 4
-  },
-  {
-   "id": "reach_cerulean_city",
-   "goal_text": "Travel east across Route 4 to arrive in Cerulean City.",
-   "done_when": {
-    "map": "CERULEAN_CITY"
-   },
-   "escalation_rounds": 4
-  }
- ],
- "authored_by": "gemma4:31b-it-q4_K_M"
+  "goal": "Travel from Pewter City through Mt Moon and reach Cerulean City",
+  "subgoals": [
+    {
+      "id": "descend_to_b1f",
+      "goal_text": "Move from the first floor of Mt Moon down to the basement (B1F).",
+      "done_when": {
+        "map": "MT_MOON_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Move from B1F down to the bottom floor (B2F).",
+      "done_when": {
+        "map": "MT_MOON_B2F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_super_nerd",
+      "goal_text": "Find and defeat the Super Nerd guarding the fossils on B2F.",
+      "done_when": {
+        "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "none \u2014 escalation succeeded with no reproducible ops (see distill_refused_empty)",
+        "run": "campaign4",
+        "via": "no-op",
+        "n_ops": 0
+      }
+    },
+    {
+      "id": "exit_mt_moon",
+      "goal_text": "Navigate through Mt Moon B2F and exit the cave to the north.",
+      "done_when": {
+        "map": "MT_MOON_POKECENTER"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_mt_moon_center",
+      "goal_text": "Visit the Pokemon Center inside Mt Moon to restore the party's HP.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_route_4",
+      "goal_text": "Leave the Mt Moon Pokemon Center and enter Route 4.",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_cerulean_city",
+      "goal_text": "Travel east across Route 4 to arrive in Cerulean City.",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
 }

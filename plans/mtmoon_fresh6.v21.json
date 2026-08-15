@@ -62,14 +62,13 @@
         "flag": "EVENT_BEAT_MT_MOON_3_SUPER_NERD"
       },
       "escalation_rounds": 4,
-      "macro": [],
       "subgoal_provenance": {
         "authored_by": "unknown (pre-audit)"
       },
       "macro_provenance": {
-        "authored_by": "gemma4:31b-it-q4_K_M",
+        "authored_by": "none \u2014 escalation succeeded with no reproducible ops (see distill_refused_empty)",
         "run": "campaign3",
-        "via": "escalation",
+        "via": "no-op",
         "n_ops": 0
       }
     },
