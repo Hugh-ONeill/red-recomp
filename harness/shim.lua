@@ -1572,7 +1572,8 @@ function OPS.buy(G, c)
       return false, "no shop clerk here, and no door to a shop counter "
         .. "on this map." .. shop_door_hint(G)
     end
-    if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
+    if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY,
+                             stop_at_menu = true }) then
       return false, "couldn't reach the clerk"
     end
     if not ui_press_until(G, ui_is_menu, "a", 60) then
@@ -1678,7 +1679,8 @@ function OPS.sell(G, c)
       return false, "no shop clerk here, and no door to a shop counter "
         .. "on this map." .. shop_door_hint(G)
     end
-    if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY }) then
+    if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY,
+                             stop_at_menu = true }) then
       return false, "couldn't reach the clerk"
     end
     if not ui_press_until(G, ui_is_menu, "a", 60) then
@@ -2798,6 +2800,15 @@ function OPS.interact(G, c)
     for _ = 1, 60 do
       local t = G.stack:top()
       note_page()
+      -- STOP AT A COUNTER'S OWN MENU. This loop taps A on anything that is
+      -- not a yes/no box, and a shop's BUY/SELL/QUIT is a MENU -- so
+      -- talking to a mart clerk A-mashed straight into it, picked BUY
+      -- (whatever the cursor sat on), and dived into the buy list. By the
+      -- time interact returned there was no menu left, and sell reported
+      -- "shop menu never opened" after the clerk had plainly said "Hi
+      -- there! May I help you?". Callers that intend to DRIVE a counter
+      -- ask to be handed it instead.
+      if c.stop_at_menu and ui_shop_up(G) then return true end
       if t == ow then return true end
       if t and (t.enemy or t.kind) then return true, "battle started" end
       if ui_is_choice(G) then
