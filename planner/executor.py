@@ -3520,6 +3520,16 @@ Reply with ONLY a JSON array of ops, e.g.
                 except TimeoutError:
                     obs = self.b.obs()
                     break
+                # SAME RECALL FALLBACK AS THE MACRO PATH. Ops are dispatched
+                # from two places and this one was missed, so a cross issued
+                # here still died on "no walkable path" with the crossing
+                # sitting in the ledger.
+                _rr = (obs or {}).get("result") or {}
+                if (op == "cross" and not _rr.get("ok")
+                        and "cannot be walked to" in str(_rr.get("detail"))):
+                    _alt = self._cross_by_recall(obs, sg, step.get("dir"))
+                    if _alt is not None:
+                        obs = _alt
                 if obs and obs.get("mode") == "battle":
                     pre_map = (obs.get("map") or {}).get("id") or before[0]
                     # A room that starts fights is NOT inert. The revisit
