@@ -1406,9 +1406,21 @@ local function ui_shop_up(G) return ui_is_menu(G) or ui_is_list(G) end
 -- to CELADON_MART_1F, whose only staff is a RECEPTIONIST who sells
 -- nothing -- so the first door tried in Celadon could have been a lift.
 -- Ask the destination whether it has a counter instead of guessing from
--- its name. This picks WHICH DOOR THE HARNESS WALKS THROUGH to carry out
--- an instruction already given; nothing here is shown to the model, so it
--- is navigation like the collision map, not knowledge handed over.
+-- its name.
+--
+-- ON THE EDGE, AND FLAGGED AS SUCH (user, 2026-08-15). This reads the
+-- objects of a map nobody has entered. The defence was "the harness reads,
+-- it never tells" -- but the read decides WHERE THE BODY GOES, and the
+-- next observation is a mart with a clerk in front of it, so the knowledge
+-- reaches the model through the world instead of through a sentence. BFS
+-- over the collision map is not the same: BFS routes to a place the MODEL
+-- named, while this picks which of several destinations to walk into.
+-- Judged acceptable because "sell this" plausibly implies "at a counter",
+-- and the cost of guessing wrong is a wasted round rather than a lost
+-- Pokemon -- but it is the one place in this harness that reads ahead of
+-- what has been walked. Everything else (doorstep placement, the passage
+-- note, the seam blocker report) is built from walked evidence only.
+-- See ~/TODO.md for the tightenings on the table.
 local function map_has_counter(G, id)
   local m = id and G.data and G.data.maps and G.data.maps[id]
   for _, o in ipairs((m and m.objects) or {}) do
