@@ -1308,7 +1308,8 @@ class Executor:
                     self._doorsteps_learned.append((inside, out))
                     break
 
-    def note_transition(self, before_obs, step, after_obs, reason=""):
+    def note_transition(self, before_obs, step, after_obs, reason="",
+                        op_detail=""):
         """Record: from this area, that exit led there."""
         src, dst = self._where(before_obs), self._where(after_obs)
         if "None" in src or "None" in dst:
@@ -1323,6 +1324,9 @@ class Executor:
         # gone. The shim now says so when it cannot name the door. Take the
         # visit, take the region, write no edge.
         _d = str(((after_obs or {}).get("result") or {}).get("detail") or "")
+        # ...or straight from the op, because a caller that settles after
+        # sending has already replaced result with the settle's own.
+        _d += " " + str(op_detail or "")
         if "door unknown" in _d:
             self.visits[dst] = self.visits.get(dst, 0) + 1
             self.log("crossed_door_unknown", frm=src, to=dst)
@@ -2041,15 +2045,22 @@ class Executor:
                 pre = self.b.obs()
                 if "," in key:
                     x, y = key.split(",")
-                    self._send_safe("use_warp", x=int(x), y=int(y))
+                    _res = self._send_safe("use_warp", x=int(x), y=int(y))
                     step = {"x": int(x), "y": int(y)}
                 else:
-                    self._send_safe("cross", dir=key)
+                    _res = self._send_safe("cross", dir=key)
                     step = {"dir": key}
                 o = self.settle()
+                # KEEP THE OP'S OWN VERDICT. settle() overwrites result with
+                # its own, so "crossed mid-walk (door unknown)" was thrown
+                # away here and the walk filed an edge for a tile it never
+                # stood on — the Day Care door recorded as leading to the
+                # Route 5 gate, seven times in a row, from the lane that
+                # cannot reach that tile at all.
+                _det = ((_res or {}).get("result") or {}).get("detail") or ""
                 if o and pre and ((pre.get("map") or {}).get("id")
                                   != (o.get("map") or {}).get("id")):
-                    self.note_transition(pre, step, o)
+                    self.note_transition(pre, step, o, op_detail=_det)
                 fought = False
                 while o and o.get("mode") == "battle":
                     o = self.handle_battle(sg, o)
