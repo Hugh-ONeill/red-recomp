@@ -8,7 +8,6 @@ Defeat Misty for the Cascade Badge
 Clear S.S. Anne and obtain HM01
 Defeat Lt. Surge for the Thunder Badge
 Defeat Erika for the Rainbow Badge
-Defeat Giovanni for the Earth Badge
 Obtain the Secret Key from the Rocket Hideout
 Clear Team Rocket out of the Silph Co. building
 Obtain HM03 Surf from the Safari Zone
@@ -21,5 +20,6 @@ Navigate through the Safari Zone
 Obtain the HM03 Surf from the Safari Zone
 Defeat Blaine for the volcano Badge
 Assemble a final team of six
+Defeat Giovanni for the Earth Badge
 Conquer the Elite Four
 Defeat the Champion
