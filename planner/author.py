@@ -1663,6 +1663,84 @@ Reply with ONLY a JSON array of strings."""
 OUTLINE_NOTES = []
 
 
+# AN OBJECTIVE THAT HEDGES IS NOT AN OBJECTIVE. OUTLINE_SYS already asks
+# for "a thing that is either done or not done — a milestone you could tell
+# someone you had reached", and a draft still produced "Defeat Giovanni (if
+# not already done) and reach Cinnabar Island". That is unwritable as a
+# done_when and it is a duplicate wearing a disclaimer. Dropped from the
+# draft rather than argued with: whatever else that draft said still counts,
+# and the real objective underneath ("reach Cinnabar Island") is one the
+# other five drafts also name.
+_HEDGES = re.compile(
+    r"\bif (?:not )?already\b|\bif (?:you )?(?:need|necessary|possible)"
+    r"|\(if\b|\bor equivalent\b|-equivalent\b|\bas needed\b|\bif able\b",
+    re.I)
+
+
+def _stem(w: str) -> str:
+    """Crude enough for objective wording: surfing -> surf, fossils -> fossil.
+
+    Exists because "Obtain the HM for Surf" and "Obtain the HM for surfing"
+    reached one outline as two objectives, and the review flagged both as
+    duplicates of each other while the design kept them anyway.
+    """
+    for suf in ("ing", "es", "s"):
+        if len(w) > 4 and w.endswith(suf):
+            return w[: -len(suf)]
+    return w
+
+
+def _names(text: str) -> frozenset:
+    """What an objective is ABOUT: its names, stemmed, verbs thrown away.
+
+    INITIALISMS SURVIVE HERE AND NOWHERE ELSE. _norm_obj strips the dots,
+    so "S.S. Ticket" arrives as "s s ticket" and both letters fall out as
+    noise — which meant "Obtain the S.S. Ticket" and "Clear the S.S. Anne"
+    had NOTHING in common as far as every guard here could tell, and the
+    gate-before-what-it-gates rule could not fire on the exact case it was
+    written for. Consecutive single letters are glued back into one token.
+    """
+    merged, run = [], []
+    for w in _norm_obj(text).split():
+        if len(w) == 1:
+            run.append(w)
+            continue
+        if run:
+            merged.append("".join(run))
+            run = []
+        merged.append(w)
+    if run:
+        merged.append("".join(run))
+    return frozenset(_stem(w) for w in merged
+                     if len(w) > 1 and w not in _STOP and w not in _GENERIC)
+
+
+def _objective_key(text: str) -> frozenset:
+    return _names(text)
+
+
+def _dedupe_outline(legs: list) -> list:
+    """Drop objectives that are the same thing twice, keeping the first.
+
+    EQUAL KEYS ONLY, never containment. "Defeat Giovanni" and "Defeat
+    Giovanni for the Earth Badge" would be a containment match, and in this
+    game they are TWO DIFFERENT FIGHTS — the Rocket hideout and the Viridian
+    gym — so a containment rule would silently delete one of them. Equality
+    catches the case that actually happened and cannot reach that one.
+    """
+    out, seen = [], {}
+    for leg in legs:
+        key = _objective_key(leg)
+        if key and key in seen:
+            print(f"[outline] dropped {leg!r}: the same objective as "
+                  f"{seen[key]!r}")
+            continue
+        if key:
+            seen[key] = leg
+        out.append(leg)
+    return out
+
+
 def _outline_draw(goal: str, model: str, rounds: int = 3) -> list | None:
     for _ in range(rounds):
         reply = brock_probe.chat(
@@ -1679,6 +1757,11 @@ def _outline_draw(goal: str, model: str, rounds: int = 3) -> list | None:
             continue
         legs = [str(x).strip() for x in legs
                 if isinstance(x, (str, int, float)) and str(x).strip()]
+        kept = [x for x in legs if not _HEDGES.search(x)]
+        for x in legs:
+            if _HEDGES.search(x):
+                print(f"[outline] dropped a hedged objective: {x!r}")
+        legs = kept
         if len(legs) >= 3:
             return legs
     return None
@@ -1755,7 +1838,9 @@ def outline(goal: str, model: str, rounds: int = 3,
     # ...then ask the finished list what it assumes it already has. Before
     # the review, so anything added is ordered with everything else.
     legs = _outline_upkeep(goal, legs, model)
-    return _outline_review(goal, legs, model) or legs
+    # LAST, after every pass that can add: the review inserts too, and one
+    # outline reached the end holding Surf three times.
+    return _dedupe_outline(_outline_review(goal, legs, model) or legs)
 
 
 OUTLINE_MERGE_SYS = """You wrote several drafts of a Pokemon Red
@@ -2082,7 +2167,7 @@ def _outline_upkeep_once(goal: str, legs: list, model: str,
         # shape of "X for the thing X gives you", and it also catches the
         # duplicate that slipped the sig test earlier — "Obtain HM01 Cut"
         # anchored to "Clear S.S. Anne and obtain HM01".
-        if anchor and (sig & _sig(anchor)) - _GENERIC:
+        if anchor and (_names(item) & _names(anchor)):
             print(f"[upkeep] refused {item!r}: it hangs off "
                   f"{anchor!r}, which is what gives it to you")
             continue
@@ -2229,6 +2314,28 @@ def _outline_review(goal: str, legs: list, model: str) -> list | None:
         else:
             pos = 0 if after <= 0 else len(out)
             where = "at the start" if after <= 0 else "at the end"
+        # A GATE CANNOT GO AFTER THE THING IT GATES. This channel names
+        # objectives "the game will not let you past until they are done",
+        # and then it chose where to put one — and put "Obtain the S.S.
+        # Ticket" NINE places after "Clear the S.S. Anne", with the
+        # reason "you cannot board the S.S. Anne without the ticket"
+        # written on it. The reasoning was right and the position
+        # contradicted it. So: if anything ALREADY EARLIER shares a name
+        # with what is being inserted, the insert belongs in front of the
+        # earliest of them instead. Its own anchor is exempt — placing a
+        # thing next to a related thing is what an anchor is for; this is
+        # about the ones it would end up behind.
+        anchor = legs[after - 1] if 1 <= after <= n else None
+        key = _names(txt)
+        if key:
+            for j, earlier in enumerate(out[:pos]):
+                if earlier == anchor or not (key & _names(earlier)):
+                    continue
+                print(f"[outline] {txt!r} was to go {where}, but "
+                      f"{earlier!r} comes before it and needs it — "
+                      f"moving it in front of that instead")
+                pos, where = j, f"before {earlier!r}"
+                break
         out.insert(pos, txt)
         added += 1
         why = a.get("why") or ""
