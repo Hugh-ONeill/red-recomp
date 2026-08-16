@@ -1904,7 +1904,47 @@ must come after (0 = before everything)."""
 
 
 def _outline_upkeep(goal: str, legs: list, model: str,
-                    cap: int = 8) -> list:
+                    cap: int = 8, rounds: int = 3) -> list:
+    """Repeat the question until it stops finding anything.
+
+    ONE PASS IS NOT ENOUGH, and the reason is a dependency rather than a
+    failure of attention. Asked once, the live outline came back with
+    Potions, Poke Balls and three HMs — every one a real gap, and Poke
+    Balls in particular an objective an earlier framing experiment had
+    LOST — but nothing about the party. Asked again with those on the
+    list, the very next answer was "Capture enough Pokemon to fill a
+    party", placed immediately after Poke Balls. It would not schedule
+    catching before the means to catch. So the round runs again on its own
+    output and stops when a pass adds nothing.
+    """
+    out, budget = list(legs), cap
+    for r in range(rounds):
+        before = len(out)
+        out = _outline_upkeep_once(goal, out, model, budget)
+        gained = len(out) - before
+        budget -= gained
+        if gained <= 0 or budget <= 0:
+            break
+        print(f"[upkeep] round {r + 1} added {gained}; asking again")
+    # WHICH LEGS ARE UPKEEP, kept beside the outline rather than baked into
+    # the objective text: a plan is addressed by its objective's WORDING,
+    # so decorating the line would orphan every plan written for it. Same
+    # sidecar shape as plans/outline.done. Written once, after the last
+    # round, so it holds everything every round added.
+    was = set(legs)
+    upkeep = [l for l in out if l not in was]
+    if upkeep:
+        try:
+            UPKEEP_PATH.write_text("\n".join(upkeep) + "\n")
+        except OSError:
+            pass
+        print(f"[upkeep] {len(upkeep)} upkeep objective(s) recorded in "
+              f"{UPKEEP_PATH}; these never stop the chain")
+    return out
+
+
+def _outline_upkeep_once(goal: str, legs: list, model: str,
+                         cap: int = 8) -> list:
     """Ask the outline what it takes for granted, and let it add.
 
     Measured, not assumed: a run that plans only story beats plays the
@@ -1971,14 +2011,6 @@ def _outline_upkeep(goal: str, legs: list, model: str,
         added.append(item)
         print(f"[upkeep] + {item!r} {where}")
     if added:
-        # WHICH LEGS ARE UPKEEP, kept beside the outline rather than baked
-        # into the objective text: a plan is addressed by its objective's
-        # WORDING, so decorating the line would orphan every plan written
-        # for it. Same sidecar shape as plans/outline.done.
-        try:
-            UPKEEP_PATH.write_text("\n".join(added) + "\n")
-        except OSError:
-            pass
         print(f"[upkeep] {len(added)} objective(s) added; "
               f"{len(result)} in the outline now")
     else:
