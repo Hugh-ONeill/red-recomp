@@ -1988,21 +1988,31 @@ def _objective_key(text: str) -> frozenset:
 def _dedupe_outline(legs: list) -> list:
     """Drop objectives that are the same thing twice, keeping the first.
 
-    EQUAL KEYS ONLY, never containment. "Defeat Giovanni" and "Defeat
-    Giovanni for the Earth Badge" would be a containment match, and in this
-    game they are TWO DIFFERENT FIGHTS — the Rocket hideout and the Viridian
-    gym — so a containment rule would silently delete one of them. Equality
-    catches the case that actually happened and cannot reach that one.
+    TWO NAMES IN COMMON, or the same names outright. Equality alone was
+    too weak by a mile: one pass produced FIVE S.S. Ticket objectives, each
+    naming a different and mostly wrong source — Celadon City, the Celadon
+    Game Corner, the Captain, the Game Corner, "the Chief of Saffron City"
+    — and every pair differed in that last name, so none of them matched.
+    They all share {ss, ticket}.
+
+    Containment is still refused, and two-names is what lets us refuse it:
+    "Defeat Giovanni" and "Defeat Giovanni for the Earth Badge" are TWO
+    DIFFERENT FIGHTS in this game, the Rocket hideout and the Viridian gym,
+    and they share only {giovanni} — one name — so they both survive, while
+    the tickets collapse. That pair is the reason this threshold is two and
+    not one.
     """
-    out, seen = [], {}
+    out, kept = [], []
     for leg in legs:
         key = _objective_key(leg)
-        if key and key in seen:
+        hit = next(((k, t) for k, t in kept
+                    if key and (k == key or len(k & key) >= 2)), None)
+        if hit:
             print(f"[outline] dropped {leg!r}: the same objective as "
-                  f"{seen[key]!r}")
+                  f"{hit[1]!r} ({', '.join(sorted(hit[0] & key)) or 'same'})")
             continue
         if key:
-            seen[key] = leg
+            kept.append((key, leg))
         out.append(leg)
     return out
 
@@ -2281,7 +2291,15 @@ defeat beat win battle fight clear navigate cross enter exit
 reach travel visit go return wake help
 pokemon pokemons badge badges item items thing things
 first second third next new
+city town island area house place way path sail
 """.split())
+# ...that last line is about FALSE MATCHES, not about verbs. The two-name
+# dedupe collapsed "Obtain the Secret Key from the house in Celadon City"
+# into "Obtain the S.S. Ticket from Celadon City" — two different things
+# reaching the threshold on {celadon, city} — and "Sail from Vermilion City
+# to Cinnabar Island" into "Sail to the Fuchsia City" on {sail, city}. The
+# distinctive half of "Celadon City" is Celadon; "city" is scaffolding that
+# every third objective carries, and it was doing half the matching.
 
 OUTLINE_UPKEEP_SYS = """You wrote a Pokemon Red playthrough outline. Now
 read it back the way a player would, and answer one question about it:
