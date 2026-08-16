@@ -1714,6 +1714,9 @@ def outline(goal: str, model: str, rounds: int = 3,
         if not legs:
             print("[outline] merge unusable, keeping draft 1")
             legs = drafts[0]
+    # ...then ask the finished list what it assumes it already has. Before
+    # the review, so anything added is ordered with everything else.
+    legs = _outline_upkeep(goal, legs, model)
     return _outline_review(goal, legs, model) or legs
 
 
@@ -1869,6 +1872,117 @@ def _merge_confirm(goal: str, out: list, doubts: list, ndrafts: int,
             OUTLINE_NOTES.append(
                 (d, f"left out on purpose when composing the outline, "
                     f"though {seen[d.lower()]} of {ndrafts} drafts had it"))
+    return result
+
+
+UPKEEP_PATH = Path("plans/outline.upkeep")
+
+OUTLINE_UPKEEP_SYS = """You wrote a Pokemon Red playthrough outline. Now
+read it back the way a player would, and answer one question about it:
+
+WHAT DOES THIS LIST ASSUME YOU ALREADY HAVE, that nothing on the list ever
+gets you?
+
+An outline of story beats can be complete as a list of beats and still be
+unplayable, because the things that make the beats survivable never
+appear on it. Whatever you find, say it as OBJECTIVES in the same voice as
+the ones already there, each placed where it has to happen — not at the
+end, but before the thing that needs it.
+
+Rules:
+- You may only ADD. Nothing already on the list may be reworded, moved or
+  removed; those decisions were already made.
+- Add nothing that is already there in different words.
+- Add nothing you cannot tell whether you have done. An objective is a
+  thing that becomes true, not an attitude.
+- If the list genuinely assumes nothing it does not get, reply with an
+  empty array. That is a real answer.
+
+Reply with ONLY a JSON array; each element is
+{"item": "<the objective>", "after": N} where N is the outline position it
+must come after (0 = before everything)."""
+
+
+def _outline_upkeep(goal: str, legs: list, model: str,
+                    cap: int = 8) -> list:
+    """Ask the outline what it takes for granted, and let it add.
+
+    Measured, not assumed: a run that plans only story beats plays the
+    whole game on its starter — 0 balls thrown, 1 extra party member, 4
+    species across two runs (DONE.md 2026-08-14b) — and the "have fun,
+    catch lots of Pokemon" framing changed the wording of the outline and
+    nothing about the play. The reason is structural: what gets a
+    done_when gets done, and catching never had one. Asked DIRECTLY
+    whether it meant to finish on its starter, the same model called the
+    omission glaring and interleaved a team-building path through its own
+    list unprompted, which is what this round is.
+
+    ADD-ONLY, and that is not a style choice. The free-rewrite outline
+    audit was measured NET-NEGATIVE on a cold list: with no play evidence
+    to check against it is a second guess at recall, and it deleted Bill —
+    the one objective that opens Cerulean. Same reasoning as
+    _outline_review's tied hands. A wrong added leg is recoverable; a
+    right leg deleted before play is just gone.
+    """
+    body = (f"THE GOAL: {goal}\n\nTHE OUTLINE YOU WROTE:\n"
+            + "\n".join(f"  {i}. {leg}" for i, leg in enumerate(legs, 1)))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": OUTLINE_UPKEEP_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\[.*\]", reply, re.S)
+        if not m:
+            return legs
+        adds = json.loads(m.group(0))
+    except (ValueError, KeyError, OSError):
+        return legs
+    if not isinstance(adds, list):
+        return legs
+    result, added = list(legs), []
+    for a in adds:
+        if len(added) >= cap:
+            print(f"[upkeep] stopping at {cap} additions; "
+                  f"{len(adds) - cap} more were offered")
+            break
+        if not isinstance(a, dict):
+            continue
+        item = str(a.get("item") or "").strip()
+        if not item:
+            continue
+        # ALREADY THERE IN OTHER WORDS. The same test the done-ledger uses
+        # against still-listed objectives: a new entry whose significant
+        # words are contained in one already on the list is that one.
+        sig = _sig(item)
+        if sig and any(sig <= _sig(l) or _sig(l) <= sig for l in result):
+            print(f"[upkeep] already on the list in other words: {item!r}")
+            continue
+        try:
+            after = int(a.get("after") or 0)
+        except (TypeError, ValueError):
+            after = 0
+        if after < 1:
+            pos, where = 0, "at the start"
+        elif after >= len(legs):
+            pos, where = len(result), "at the end"
+        else:
+            pos = result.index(legs[after - 1]) + 1
+            where = f"after {legs[after - 1]!r}"
+        result.insert(pos, item)
+        added.append(item)
+        print(f"[upkeep] + {item!r} {where}")
+    if added:
+        # WHICH LEGS ARE UPKEEP, kept beside the outline rather than baked
+        # into the objective text: a plan is addressed by its objective's
+        # WORDING, so decorating the line would orphan every plan written
+        # for it. Same sidecar shape as plans/outline.done.
+        try:
+            UPKEEP_PATH.write_text("\n".join(added) + "\n")
+        except OSError:
+            pass
+        print(f"[upkeep] {len(added)} objective(s) added; "
+              f"{len(result)} in the outline now")
+    else:
+        print("[upkeep] nothing added")
     return result
 
 

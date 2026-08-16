@@ -64,7 +64,7 @@ if [ "$done_legs" = 0 ]; then
   # these budgets belong to a chain, not to the directory
   : > run/outline_reorders
   rm -f run/outline_skips run/outline_inserts run/outline_rewordings \
-        run/leg_audit_redo \
+        run/leg_audit_redo run/outline_upkeep_missed \
         run/outline_pulls run/outline_pulls_failed
   echo "archived ${ts}.pre-discovery; ledgers cleared"
 fi
@@ -72,8 +72,11 @@ fi
 if [ -s plans/outline.txt ]; then
   echo "keeping existing plans/outline.txt"
 else
-  # a new outline invalidates every leg plan written for the old one
-  rm -f plans/leg_[0-9]*.json plans/outline.notes plans/outline.done
+  # a new outline invalidates every leg plan written for the old one —
+  # and its upkeep sidecar, which names legs by wording this outline may
+  # not use. A stale one would mark the wrong legs non-fatal.
+  rm -f plans/leg_[0-9]*.json plans/outline.notes plans/outline.done \
+        plans/outline.upkeep
   echo "--- authoring the outline"
   echo "goal: $GOAL"
   python planner/author.py --outline --goal "$GOAL" \
@@ -280,6 +283,24 @@ while :; do
             --observed run/explored.json \
             --journal run/executor_log.jsonl --model "$MODEL"); then
       python planner/reword_leg.py "$i" "$said"
+      continue
+    fi
+    # AN UPKEEP LEG NEVER STOPS THE CHAIN. The upkeep round adds
+    # objectives the story beats take for granted — catch something to
+    # soak hits, get a type that covers the next gym — and those are
+    # conditions the world may simply not offer in four attempts: the
+    # species does not appear, the grass is the wrong grass, the balls run
+    # out. A run that cannot train should still play on; a run that stops
+    # has failed at the one thing it exists to do. So the whole ladder
+    # still runs on an upkeep leg — it gets its attempts, its rewrites and
+    # its rungs — and only the LAST step differs: it is left behind rather
+    # than fatal, and the sweep can still recognise it later if the run
+    # picks the thing up in passing. Critical legs keep exiting 1.
+    if grep -Fxq "$leg" plans/outline.upkeep 2>/dev/null; then
+      echo "=== leg $i/${#LEGS[@]} not achieved, and it is UPKEEP — " \
+           "playing on: $leg ===" >&2
+      echo "$leg" >> run/outline_upkeep_missed
+      echo "$i" > "$PROGRESS"
       continue
     fi
     echo "=== chain stopped at leg $i/${#LEGS[@]}: $leg ===" >&2
