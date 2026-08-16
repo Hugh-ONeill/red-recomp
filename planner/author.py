@@ -3090,6 +3090,11 @@ def _events_bearing(goal: str) -> str:
 
 
 DONE_LEDGER = Path("plans/outline.done")
+# Set by check_wording when the restatement it was given turns out to name
+# something already accomplished. That is not a rejection — it is the model
+# telling us, in its own words, what the objective MEANS, and then the
+# evidence saying that thing has happened. See check_wording.
+WORDING_SAYS_DONE = [False]
 
 
 def done_ledger() -> list:
@@ -3575,7 +3580,18 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
               file=sys.stderr)
         return ""
     if check_already_done(new, start, model, observed=observed):
-        print(f"[wording] refused: {new!r} is already done", file=sys.stderr)
+        # NOT A REFUSAL — A VERDICT ON THE ORIGINAL. Asked to restate
+        # "Retrieve the Pokemon from the Poke Mart", the model answered
+        # "Retrieve the Pokemon from Professor Oak's lab", and the ledger
+        # says that is done. Both halves came from the model: what the
+        # objective means, and that the meaning is satisfied. Discarding
+        # the second half and stopping the chain threw away the answer and
+        # kept the problem — twice, at leg 7 one night and leg 3 the next.
+        # A leg that is genuinely blocked still stops; this fires only when
+        # the model has named the objective as something accomplished.
+        print(f"[wording] {new!r} is already done — so is {goal!r}, under "
+              f"another name; the leg is spent, not stuck", file=sys.stderr)
+        WORDING_SAYS_DONE[0] = True
         return ""
     print(f"[wording] {goal!r} -> {new!r}: {why}", file=sys.stderr)
     return new
@@ -3711,7 +3727,9 @@ def main():
         if new:
             print(new)
             sys.exit(0)
-        sys.exit(3)
+        # 4 = "this objective is already accomplished under another name";
+        # the chain crosses the leg off instead of halting on it
+        sys.exit(4 if WORDING_SAYS_DONE[0] else 3)
     if args.recognize_done:
         if not args.outline_path:
             ap.error("--recognize-done needs --outline-path")

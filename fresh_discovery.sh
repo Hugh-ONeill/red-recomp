@@ -276,14 +276,35 @@ while :; do
     # asks once and applies an answer it did not shape. The restatement
     # still has to clear the already-done check, which is what stops a
     # hard leg being reworded into one that is finished.
-    if [ "$(cat run/outline_rewordings 2>/dev/null | wc -l)" -lt 3 ] \
-        && said=$(python planner/author.py --check-wording \
-            --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
-            --start "$(python planner/state_text.py)" \
-            --observed run/explored.json \
-            --journal run/executor_log.jsonl --model "$MODEL"); then
-      python planner/reword_leg.py "$i" "$said"
-      continue
+    if [ "$(cat run/outline_rewordings 2>/dev/null | wc -l)" -lt 3 ]; then
+      set +e
+      said=$(python planner/author.py --check-wording \
+          --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
+          --start "$(python planner/state_text.py)" \
+          --observed run/explored.json \
+          --journal run/executor_log.jsonl --model "$MODEL")
+      wrc=$?
+      set -e
+      if [ $wrc = 0 ] && [ -n "$said" ]; then
+        python planner/reword_leg.py "$i" "$said"
+        continue
+      fi
+      # EXIT 4: the restatement the model gave names something the run has
+      # ALREADY DONE. Both halves of that came from the model — what the
+      # objective means, and that the meaning is satisfied — so the leg is
+      # SPENT, not stuck, and stopping the chain on it throws away the
+      # answer while keeping the problem. This is the case that killed two
+      # runs: leg 7 "Reach Vermilion City" one night, leg 3 "Retrieve the
+      # Pokemon from the Poke Mart" the next. A leg that is genuinely
+      # blocked reaches the exit below unchanged.
+      if [ $wrc = 4 ]; then
+        echo "=== leg $i/${#LEGS[@]} is done under another name — " \
+             "crossing it off: $leg ===" >&2
+        echo "$leg" >> run/outline_skips
+        echo "$i" > "$PROGRESS"
+        sweep_ahead "$i"
+        continue
+      fi
     fi
     # AN UPKEEP LEG NEVER STOPS THE CHAIN. The upkeep round adds
     # objectives the story beats take for granted — catch something to
