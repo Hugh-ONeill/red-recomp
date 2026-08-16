@@ -1685,7 +1685,7 @@ def _outline_draw(goal: str, model: str, rounds: int = 3) -> list | None:
 
 
 def outline(goal: str, model: str, rounds: int = 3,
-            draws: int = 3) -> list | None:
+            draws: int = 3, max_draws: int = 6) -> list | None:
     """The MODEL decides what the legs are.
 
     Handing it "win your first/second/third badge" is our decomposition of
@@ -1697,14 +1697,52 @@ def outline(goal: str, model: str, rounds: int = 3,
     One draw is high-variance — the same prompt gave nine non-badge
     objectives one day and none the next — so we take several and let the
     model compose the final list from its own drafts (_outline_merge).
+
+    HOW MANY IS SEVERAL: keep drawing while each new draft still says
+    something the others did not, and stop when one adds nothing (user,
+    2026-08-16, generalising the upkeep round's loop). A fixed three was a
+    guess against exactly the variance this docstring describes: three
+    draws that happen to agree waste two, and three that all miss the same
+    objective have no way to notice.
+
+    THE DRY TEST IS DELIBERATELY CONSERVATIVE and will often not fire.
+    Novelty is significant-word CONTAINMENT, so it catches an elaboration
+    ("Help Bill" inside "Help Bill with his experiment") but NOT a synonym
+    swap: "Defeat Brock for the Boulder Badge" and "Beat Brock for the
+    Boulder Badge" each hold a word the other lacks, and count as two.
+    Loosening it to a word-overlap RATIO would collapse "Defeat Brock for
+    the Boulder Badge" into "Defeat Misty for the Cascade Badge" — they
+    share half their significant words and differ only in the proper nouns
+    — and losing a gym from the outline is a far worse failure than
+    drawing a sixth draft nobody needed. So in practice this usually runs
+    to max_draws and the early stop is a bonus, not the mechanism. The
+    cost of that is minutes, once per chain; the cost of a false match is
+    an objective that never gets planned.
     """
     OUTLINE_NOTES.clear()
-    drafts = []
-    for i in range(draws):
+    drafts, seen_sigs, tries = [], [], 0
+    while len(drafts) < max_draws and tries < max_draws + 2:
+        tries += 1
         d = _outline_draw(goal, model, rounds)
-        if d:
-            print(f"[outline] draft {len(drafts) + 1}: {len(d)} objectives")
-            drafts.append(d)
+        if not d:
+            continue
+        fresh = []
+        for o in d:
+            sig = _sig(o)
+            if sig and any(sig <= s or s <= sig for s in seen_sigs):
+                continue
+            fresh.append(o)
+            if sig:
+                seen_sigs.append(sig)
+        drafts.append(d)
+        print(f"[outline] draft {len(drafts)}: {len(d)} objectives, "
+              f"{len(fresh)} not in any earlier draft"
+              + (f" ({', '.join(repr(f) for f in fresh[:3])}"
+                 + (", ..." if len(fresh) > 3 else "") + ")" if fresh else ""))
+        if len(drafts) >= draws and not fresh:
+            print(f"[outline] draft {len(drafts)} added nothing new — "
+                  f"stopping at {len(drafts)} drafts")
+            break
     if not drafts:
         return None
     if len(drafts) == 1:
