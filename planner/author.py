@@ -1669,9 +1669,12 @@ Include all eight, word for word, and put each one where you judge it
 belongs. Which order they go in, what has to happen between them, and
 everything else the playthrough needs, is still entirely yours.
 
-Expect about TWENTY objectives, those eight among them. If you have far
-fewer, you have folded several into one and skipped the errands between
-the badges — unfold them.
+Expect about THIRTY objectives, those eight among them. THE COUNT IS THE
+POINT. Eight of the thirty are badges, so the other twenty-odd are the
+journey between them — the caves crossed, the people helped, the things
+fetched, the towns arrived in. A list much shorter than thirty has folded
+that journey away, and the journey is the half that a run gets stuck in.
+Unfold it.
 
 Reply with ONLY a JSON array of strings."""
 
@@ -2136,7 +2139,8 @@ count is how often you said it, not how true it is.
 When several entries name the SAME thing in different words, keep exactly
 one of them — dropping the whole cluster loses the thing itself. Leave a
 thing out only when you no longer believe the thing. Expect to keep about
-twenty."""
+THIRTY: eight of those are badges, and all the rest is the journey between
+them, which is the part worth keeping."""
 
 
 def _outline_merge(goal: str, drafts: list, model: str) -> list | None:
