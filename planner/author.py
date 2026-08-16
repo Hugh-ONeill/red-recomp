@@ -1706,7 +1706,14 @@ def _stem(w: str) -> str:
     reached one outline as two objectives, and the review flagged both as
     duplicates of each other while the design kept them anyway.
     """
-    for suf in ("ing", "es", "s"):
+    # PLURALS ONLY. Stripping "-ing" as well turned FLYING into FLY, and in
+    # this game a TYPE and a MOVE routinely share a name — Fly/Flying,
+    # Surf, Cut, Fire, Psychic — so "the party holds a FLYING type" was
+    # judged the same objective as "a party Pokemon knows the move FLY" and
+    # deleted. It bought "Obtain the HM for surfing" matching "...for Surf",
+    # which is a DUPLICATE, and a duplicate leg completes instantly while a
+    # deleted one never runs at all. Wrong trade; taken back.
+    for suf in ("es", "s"):
         if len(w) > 4 and w.endswith(suf):
             return w[: -len(suf)]
     return w
@@ -2492,7 +2499,7 @@ pokemon pokemons badge badges item items thing things
 first second third next new
 city town island area house place way path sail
 party member team level type types move moves hold holds know knows
-every least is at with capable
+every least is at with capable or and the a an of from
 """.split())
 # ...that last line is about FALSE MATCHES, not about verbs. The two-name
 # dedupe collapsed "Obtain the Secret Key from the house in Celadon City"
