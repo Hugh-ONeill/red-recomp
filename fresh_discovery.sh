@@ -317,10 +317,13 @@ while :; do
     # the upkeep rule saved the chain by dropping it for good. Deferring
     # beats dropping. Bounded twice over: six pushes per chain, and no
     # objective put off more than twice (author.py refuses the third).
-    # grep -c prints "0" AND exits 1 when the file exists with no match,
-    # so a bare `|| echo 0` yields TWO lines and --pushed gets "0\n0".
-    pushed=$( { grep -Fc "$leg" run/outline_pushes 2>/dev/null || echo 0; } \
-              | head -1 )
+    # grep -c prints "0" AND exits 1 when the file exists with no match.
+    # A bare `|| echo 0` yields TWO lines; piping that through `head -1`
+    # yields SIGPIPE on the echo, which under `set -o pipefail` + `set -e`
+    # KILLED THE WHOLE CHAIN (exit 141, mid-ladder, leg 5). No pipe: the
+    # substitution already captures grep's "0", and the `||` only has to
+    # stop the non-zero status from tripping set -e.
+    pushed=$(grep -Fc "$leg" run/outline_pushes 2>/dev/null) || pushed=0
     if [ "$(cat run/outline_pushes 2>/dev/null | wc -l)" -lt 6 ] \
         && at=$(python planner/author.py --check-later \
             --goal "$leg" --outline-path plans/outline.txt --leg "$i" \
