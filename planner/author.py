@@ -1783,8 +1783,8 @@ An empty gap is a real answer. Reply with ONLY a JSON array of strings, in
 the order they should be done."""
 
 
-def _fill_gap(goal: str, before: str | None, after: str | None,
-              model: str, cap: int = 6, spine: tuple = ()) -> list:
+def _gap_draw(goal: str, before: str | None, after: str | None,
+              model: str, cap: int, spine: tuple) -> list:
     """What has to happen between two fixed points of the spine.
 
     The whole-list passes kept getting the ORDER wrong — Silph Co. before
@@ -1828,6 +1828,46 @@ def _fill_gap(goal: str, before: str | None, after: str | None,
             continue
         out.append(t)
     return out
+
+
+def _fill_gap(goal: str, before: str | None, after: str | None,
+              model: str, cap: int = 8, spine: tuple = (),
+              draws: int = 3, max_draws: int = 4) -> list:
+    """Ask each gap SEVERAL TIMES and pool, for the same reason drafts are.
+
+    One ask per gap was measured and it starved: the first four gaps of a
+    live run came back EMPTY — the stretch holding Mt. Moon, Oak's parcel,
+    Bill and the Pokedex, which is exactly where this run keeps walling —
+    and the finished outline had lost Mt Moon, Bill, the Silph Scope, the
+    Poke Flute, three HMs, Rock Tunnel and Poke Balls against the
+    whole-list pipeline's. The whole-list pipeline pools 35-48 distinct
+    objectives out of six drafts before it chooses anything; this asked
+    eleven questions once each and kept whatever came back. Same variance,
+    fewer samples.
+
+    Pooled in FIRST-SEEN order, never ranked by how many draws agreed: the
+    merge prompt's own rule is that count is how often you said it, not how
+    true it is, and a gate only one draw remembered is still a gate.
+    """
+    pooled, seen = [], set()
+    for r in range(max_draws):
+        got = _gap_draw(goal, before, after, model, cap, spine)
+        fresh = 0
+        for t in got:
+            k = _objective_key(t)
+            if k and k in seen:
+                continue
+            if k:
+                seen.add(k)
+            pooled.append(t)
+            fresh += 1
+        if r + 1 >= draws and not fresh:
+            break
+    if len(pooled) > cap:
+        print(f"[gap] kept {cap} of {len(pooled)} pooled; dropped: "
+              + ", ".join(repr(t) for t in pooled[cap:]))
+        pooled = pooled[:cap]
+    return pooled
 
 
 SPINE_SYS = """Here are the eight gym badges of Pokemon Red, listed
