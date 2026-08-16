@@ -21,6 +21,36 @@ RUN = Path(os.environ.get("RED_BRIDGE_DIR",
                           Path.home() / "Developer/red-recomp/run"))
 
 
+def _lua(v) -> str:
+    """Serialize a Python value as a Lua literal.
+
+    Scalars always worked; NESTED TABLES NEVER DID. A dict fell through to
+    f"{k}={v}" and went out as Python's own repr -- {'6,2': '3,1'} -- which
+    is not Lua, so load() returned nil, the shim never acknowledged the
+    command, and the executor sat out its full 120s timeout. The only op
+    that sends a table is seed_regions, which hands the shim back the region
+    NAMES it minted in earlier processes; it has therefore never once
+    landed. Two costs, both silent: 28 dead two-minute waits in a single
+    overnight run (56 minutes), and a shim that starts every process with no
+    memory of what regions were called, free to re-mint a new name for
+    ground already walked under an old one.
+    """
+    if isinstance(v, bool):
+        return "true" if v else "false"        # before int: bool IS an int
+    if v is None:
+        return "nil"
+    if isinstance(v, (int, float)):
+        return repr(v)
+    if isinstance(v, str):
+        return repr(v)                         # python str repr is Lua-legal
+    if isinstance(v, dict):
+        return "{" + ", ".join(f"[{_lua(str(k))}]={_lua(x)}"
+                               for k, x in v.items()) + "}"
+    if isinstance(v, (list, tuple)):
+        return "{" + ", ".join(_lua(x) for x in v) + "}"
+    return repr(str(v))
+
+
 class Bridge:
     def __init__(self, run_dir: Path = RUN, timeout: float = 120.0):
         self.run = Path(run_dir)
@@ -44,12 +74,7 @@ class Bridge:
         self.seq += 1
         fields = [f"seq={self.seq}", f"op={op!r}"]
         for k, v in kw.items():
-            if isinstance(v, bool):
-                fields.append(f"{k}={str(v).lower()}")   # Lua booleans
-            elif isinstance(v, str):
-                fields.append(f"{k}={v!r}")
-            else:
-                fields.append(f"{k}={v}")
+            fields.append(f"{k}={_lua(v)}")
         body = "return {" + ", ".join(fields) + "}"
         tmp = self.run / "cmd.lua.tmp"
         tmp.write_text(body)
