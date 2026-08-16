@@ -332,7 +332,23 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
                 return False
         elif key == "has_item":
             bag = obs.get("bag") or {}
-            for item, n in (want or {}).items():
+            # {"ITEM": n} is the shape, but "ITEM" and ["A","B"] are the
+            # obvious things to write and a plan is not hand-checked before
+            # it runs. Read them as "one of each" rather than raising:
+            # pred_holds is called from run_subgoal, so a TypeError here
+            # kills the whole executor mid-plan, and an unattended run must
+            # never die of a predicate it could have understood.
+            if isinstance(want, str):
+                want = {want: 1}
+            elif isinstance(want, (list, tuple, set)):
+                want = {str(i): 1 for i in want}
+            elif not isinstance(want, dict):
+                want = {}
+            for item, n in want.items():
+                try:
+                    n = int(n)
+                except (TypeError, ValueError):
+                    n = 1
                 if not bag or bag.get(item, 0) < n:
                     return False
         elif key == "player_at":
