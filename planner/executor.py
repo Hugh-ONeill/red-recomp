@@ -5609,10 +5609,36 @@ Reply with ONLY a JSON array of ops, e.g.
                 continue
         for idx, sg in enumerate(subgoals):
             if idx < resume:
-                print(f"== subgoal: {sg['id']} (holds from where the "
-                      f"party stands — honored)")
-                self.log("subgoal_prior_done", subgoal=sg["id"])
-                continue
+                # A POSITION CANNOT VOUCH FOR AN ACHIEVEMENT BEFORE IT.
+                # This block already refuses to use a flag as resume
+                # EVIDENCE, and then skipped flag subgoals anyway once a
+                # later positional one held: leg 3's plan was
+                #   reach_pallet_town {map} / enter_oaks_lab {area} /
+                #   deliver_parcel {flag EVENT_GOT_POKEDEX} /
+                #   reach_viridian_city {map VIRIDIAN_CITY}
+                # and the party STANDING in Viridian honored all four, so
+                # the parcel was never delivered, the Pokedex never got,
+                # and the leg marched on to Pewter with the parcel still
+                # in the bag. Its own comment says position is not an
+                # achievement; this makes the skip obey that.
+                #
+                # Walking somewhere twice is cheap and idempotent, which
+                # is why positional waypoints are safely honored. A deed
+                # is neither. So a non-positional subgoal before the
+                # resume point is honored only if it actually HOLDS.
+                dw0 = sg.get("done_when")
+                positional = (isinstance(dw0, dict)
+                              and pred_keys(dw0) <= {"map", "area",
+                                                     "player_at"})
+                if positional or (dw0 and pred_holds(dw0, at0)):
+                    print(f"== subgoal: {sg['id']} (holds from where the "
+                          f"party stands — honored)")
+                    self.log("subgoal_prior_done", subgoal=sg["id"])
+                    continue
+                print(f"== subgoal: {sg['id']} (earlier in the plan, but "
+                      f"it is a DEED and it has not happened)")
+                self.log("subgoal_deed_not_skipped", subgoal=sg["id"],
+                         done_when=dw0)
             has_macro = bool(sg.get("macro"))
             print(f"== subgoal: {sg['id']}" + ("" if has_macro else " (no macro)"))
             ok = self._attempt(sg)

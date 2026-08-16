@@ -10,24 +10,9 @@
       "escalation_rounds": 4,
       "macro": [
         {
-          "op": "interact",
-          "name": "PC",
-          "answer": "yes",
-          "when": {
-            "map": "REDS_HOUSE_2F"
-          }
-        },
-        {
-          "op": "menu",
-          "index": 2
-        },
-        {
           "op": "use_warp",
           "x": 7,
-          "y": 1,
-          "when": {
-            "map": "REDS_HOUSE_2F"
-          }
+          "y": 1
         }
       ],
       "subgoal_provenance": {
@@ -37,7 +22,7 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "campaign1",
         "via": "escalation",
-        "n_ops": 3
+        "n_ops": 1
       }
     },
     {
@@ -111,12 +96,40 @@
       "escalation_rounds": 4,
       "macro": [
         {
+          "op": "use_warp",
+          "x": 12,
+          "y": 11,
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
           "op": "interact",
           "name": "OAKSLAB_CHARMANDER_POKE_BALL",
           "answer": "yes",
           "when": {
             "map": "OAKS_LAB"
           }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_SQUIRTLE_POKE_BALL",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_CHARMANDER_POKE_BALL",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
         }
       ],
       "subgoal_provenance": {
@@ -126,7 +139,7 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "campaign1",
         "via": "escalation",
-        "n_ops": 1
+        "n_ops": 5
       }
     }
   ],

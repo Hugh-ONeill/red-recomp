@@ -1,0 +1,118 @@
+{
+  "goal": "Clear Team Rocket out of the Silph Co. building",
+  "subgoals": [
+    {
+      "id": "travel_to_saffron",
+      "goal_text": "Travel from Celadon City to Saffron City",
+      "done_when": {
+        "map": "SAFFRON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_silph_co",
+      "goal_text": "Enter the Silph Co. building",
+      "done_when": {
+        "map": "SILPH_CO_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "clear_1f",
+      "goal_text": "Defeat the Rocket Grunts on the 1st floor and reach the elevator",
+      "done_when": {
+        "map": "SILPH_CO_ELEVATOR"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "clear_2f",
+      "goal_text": "Go to the 2nd floor and defeat the Rocket Grunts",
+      "done_when": {
+        "map": "SILPH_CO_2F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "clear_3f",
+      "goal_text": "Go to the 3rd floor and defeat the Rocket Grunts",
+      "done_when": {
+        "map": "SILPH_CO_3F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "clear_4f",
+      "goal_text": "Go to the 4th floor and defeat the Rocket Grunts",
+      "done_when": {
+        "map": "SILPH_CO_4F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "clear_5f",
+      "goal_text": "Go to the 5th floor and defeat the Rocket Grunts",
+      "done_when": {
+        "map": "SILPH_CO_5F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "clear_6f",
+      "goal_text": "Go to the 6th floor and defeat the Rocket Grunts",
+      "done_when": {
+        "map": "SILPH_CO_6F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "clear_7f",
+      "goal_text": "Go to the 7th floor and defeat the Rocket Grunts",
+      "done_when": {
+        "map": "SILPH_CO_7F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "clear_8f",
+      "goal_text": "Go to the 8th floor and defeat the Rocket Grunts",
+      "done_when": {
+        "map": "SILPH_CO_8F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "clear_9f",
+      "goal_text": "Go to the 9th floor and defeat the Rocket Grunts",
+      "done_when": {
+        "map": "SILPH_CO_9F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_giovanni",
+      "goal_text": "Reach the 11th floor where Giovanni is located",
+      "done_when": {
+        "map": "SILPH_CO_11F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_giovanni_silph",
+      "goal_text": "Defeat Giovanni to clear Team Rocket from the building",
+      "done_when": {
+        "flag": "EVENT_BEAT_SILPH_CO_GIOVANNI"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_silph_co",
+      "goal_text": "Leave the Silph Co. building",
+      "done_when": {
+        "map": "SAFFRON_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}
