@@ -2013,6 +2013,19 @@ def _dedupe_outline(legs: list) -> list:
         if hit:
             print(f"[outline] dropped {leg!r}: the same objective as "
                   f"{hit[1]!r} ({', '.join(sorted(hit[0] & key)) or 'same'})")
+            # KEEP WHAT THE LOSER KNEW. First-occurrence-wins threw away
+            # "Retrieve the S.S. Ticket from Bill" in favour of the plain
+            # "Obtain the S.S. Ticket" that came before it — and BILL is
+            # the whole difference between an objective a plan can act on
+            # and one it cannot, since his errand is the only thing that
+            # opens Cerulean. Which wording is RIGHT is not ours to judge
+            # (the specific one is sometimes specifically wrong: another
+            # pass had the ticket coming from "the Chief of Saffron
+            # City"), so nothing is overwritten. The dropped phrasing is
+            # handed to whoever writes that leg's plan, as a note.
+            OUTLINE_NOTES.append(
+                (hit[1], f"also written as {leg!r} when the outline was "
+                         f"drafted; the two were judged the same objective"))
             continue
         if key:
             kept.append((key, leg))
