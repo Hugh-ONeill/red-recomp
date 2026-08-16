@@ -1746,6 +1746,176 @@ def _check_badges(legs: list) -> list:
     return out
 
 
+SKELETON = (
+    "Defeat Brock for the Boulder Badge",
+    "Defeat Misty for the Cascade Badge",
+    "Defeat Lt. Surge for the Thunder Badge",
+    "Defeat Erika for the Rainbow Badge",
+    "Defeat Koga for the Soul Badge",
+    "Defeat Sabrina for the Marsh Badge",
+    "Defeat Blaine for the Volcano Badge",
+    "Defeat Giovanni for the Earth Badge",
+    "Defeat the Elite Four",
+    "Defeat the Champion",
+)
+
+GAP_SYS = """You are filling in a Pokemon Red playthrough. The SPINE of it
+is fixed and given to you — the badges in the order they are taken, and the
+end of the game after them. You are not being asked to change it or to
+judge it.
+
+You are asked about ONE GAP in it: what has to happen between the objective
+before the gap and the objective after it, for the one after to be possible
+at all.
+
+Think about what stands between them: a road that is shut until somebody is
+helped, a thing that must be fetched or handed over, a move you cannot get
+past without, a person who wants something first. Those are the objectives
+that belong in this gap. Anything a player must do to make the next badge
+reachable belongs here; anything they merely COULD do does not.
+
+Write each as a short phrase in the player's own terms, a thing that is
+either done or not done. Do not restate the objectives on either side of
+the gap, and do not write the steps inside an objective — those are
+authored later, from the objective alone.
+
+An empty gap is a real answer. Reply with ONLY a JSON array of strings, in
+the order they should be done."""
+
+
+def _fill_gap(goal: str, before: str | None, after: str | None,
+              model: str, cap: int = 6, spine: tuple = ()) -> list:
+    """What has to happen between two fixed points of the spine.
+
+    The whole-list passes kept getting the ORDER wrong — Silph Co. before
+    Brock, the S.S. Ticket before the Bill errand that hands it over, Rock
+    Tunnel ten objectives late — because nothing anchored an errand to the
+    badge it serves. Asked per gap, an errand cannot land in the wrong half
+    of the game: it is authored INTO a position rather than assigned one
+    afterwards. What goes in each gap is still entirely the model's.
+    """
+    where = (f"AFTER: {before}\nBEFORE: {after}" if before and after
+             else f"BEFORE THE FIRST BADGE: {after}" if after
+             else f"AFTER THE LAST: {before}")
+    body = ("THE GOAL: " + goal + "\n\nTHE SPINE:\n"
+            + "\n".join(f"  {i}. {s}"
+                          for i, s in enumerate(spine or SKELETON, 1))
+            + f"\n\nTHE GAP YOU ARE FILLING:\n{where}\n\n"
+            "What has to happen in that gap?")
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": GAP_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\[.*\]", reply, re.S)
+        if not m:
+            return []
+        got = json.loads(m.group(0))
+    except (ValueError, KeyError, OSError):
+        return []
+    if not isinstance(got, list):
+        return []
+    out = []
+    for x in got[:cap]:
+        if not isinstance(x, (str, int, float)):
+            continue
+        t = str(x).strip()
+        if not t or _HEDGES.search(t):
+            continue
+        # never a restatement of either post it is nailed between
+        k = _names(t)
+        if k and any(k & _names(s) for s in (before, after) if s):
+            print(f"[gap] dropped {t!r}: it restates the badge beside it")
+            continue
+        out.append(t)
+    return out
+
+
+SPINE_SYS = """Here are the eight gym badges of Pokemon Red, listed
+alphabetically by leader. Put them in the order you would take them.
+
+Reply with ONLY a JSON array of the eight strings, copied exactly as they
+are written below, in the order you would do them."""
+
+
+def _ask_spine(goal: str, model: str, tries: int = 3) -> tuple | None:
+    """The ORDER of the badges, from the model, not from us.
+
+    The user's point (2026-08-16): if handing over the badge order feels
+    like too much, don't hand it over — ask for it, because the model will
+    simply produce it. That keeps the spine model-authored while still
+    giving the gap-filling passes something fixed to hang errands between,
+    which is the whole benefit. We supply only the eight NAMES, which the
+    draft prompt already seeds as vocabulary.
+
+    Refused rather than patched if the answer is not all eight: quietly
+    substituting our own order is exactly the thing this exists to avoid.
+    """
+    want = {frozenset(_names(b)): b for b in SEEDED_BADGES}
+    for _ in range(tries):
+        try:
+            reply = brock_probe.chat(
+                [{"role": "system", "content": SPINE_SYS},
+                 {"role": "user", "content": "THE GOAL: " + goal
+                  + "\n\nTHE EIGHT, ALPHABETICALLY BY LEADER:\n"
+                  + "\n".join(f"  {b}" for b in SEEDED_BADGES)}], model)
+            m = re.search(r"\[.*\]", reply, re.S)
+            if not m:
+                continue
+            got = json.loads(m.group(0))
+        except (ValueError, KeyError, OSError):
+            continue
+        if not isinstance(got, list):
+            continue
+        order, seen = [], set()
+        for x in got:
+            k = frozenset(_names(str(x)))
+            hit = next((w for w in want if w & k), None)
+            if hit and hit not in seen:
+                seen.add(hit)
+                order.append(want[hit])
+        if len(order) == len(SEEDED_BADGES):
+            print("[spine] the model ordered its own badges:")
+            for i, b in enumerate(order, 1):
+                print(f"  {i}. {b}")
+            return tuple(order) + ("Defeat the Elite Four",
+                                   "Defeat the Champion")
+        print(f"[spine] answer named {len(order)} of {len(SEEDED_BADGES)} "
+              f"badges — asking again")
+    return None
+
+
+def outline_skeleton(goal: str, model: str) -> list:
+    """Spine given, gaps asked for — the user's design, 2026-08-16.
+
+    An alternative to outline(), not a replacement, so the two can be put
+    side by side. What it hands over is the badge ORDER on top of the badge
+    NAMES that outline() already seeds; the user's call, on the grounds
+    that the order is on the pamphlet and the Cerulean badge house recites
+    it. Everything between the badges — which errands exist, what they are
+    called, what order they go in inside a gap — is asked for, never
+    supplied.
+    """
+    spine = _ask_spine(goal, model)
+    if not spine:
+        print("[spine] the model would not order its badges; "
+              "falling back to the whole-list outline")
+        return outline(goal, model)
+    legs = []
+    for i, post in enumerate(spine):
+        before = spine[i - 1] if i else None
+        got = _fill_gap(goal, before, post, model, spine=spine)
+        for t in got:
+            print(f"[gap] {'before ' + post if not before else 'between'}"
+                  f"{'' if not before else f' {before} and {post}'}: {t!r}")
+        legs.extend(got)
+        legs.append(post)
+    tail = _fill_gap(goal, spine[-1], None, model, spine=spine)
+    for t in tail:
+        print(f"[gap] after {spine[-1]}: {t!r}")
+    legs.extend(tail)
+    return legs
+
+
 def _names(text: str) -> frozenset:
     """What an objective is ABOUT: its names, stemmed, verbs thrown away.
 
@@ -3190,6 +3360,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--goal", required=True)
     ap.add_argument("--out", type=Path, default=None)
+    ap.add_argument("--outline-skeleton", action="store_true",
+                    help="author the outline from the fixed badge spine, "
+                         "asking what must happen in each gap between "
+                         "badges (alternative to --outline)")
     ap.add_argument("--outline", action="store_true",
                     help="write the model's own list of objectives instead "
                          "of a subgoal plan (one line per leg)")
@@ -3338,8 +3512,11 @@ def main():
         sys.exit(3)
     if args.out is None:
         ap.error("--out is required except with --check-done")
-    if args.outline:
-        legs = outline(args.goal, args.model, draws=args.draws)
+    if args.outline or args.outline_skeleton:
+        legs = (outline_skeleton(args.goal, args.model)
+                if args.outline_skeleton
+                else outline(args.goal, args.model,
+                             draws=args.draws))
         if not legs:
             sys.exit("author failed to produce an outline")
         args.out.write_text("\n".join(legs) + "\n")
