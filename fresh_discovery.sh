@@ -64,6 +64,7 @@ if [ "$done_legs" = 0 ]; then
   # these budgets belong to a chain, not to the directory
   : > run/outline_reorders
   rm -f run/outline_skips run/outline_inserts run/outline_rewordings \
+        run/leg_audit_redo \
         run/outline_pulls run/outline_pulls_failed
   echo "archived ${ts}.pre-discovery; ledgers cleared"
 fi
@@ -284,6 +285,48 @@ while :; do
     echo "=== chain stopped at leg $i/${#LEGS[@]}: $leg ===" >&2
     exit 1
   fi
+  # THE PLAN MEETING ITS CONDITIONS IS NOT THE OBJECTIVE HAPPENING. The
+  # ladder audits a leg that FAILS and never audited one that succeeded:
+  # campaign.sh returning 0 means only that the subgoals met their own
+  # DONE_WHENs, and PROGRESS was written on the strength of that. Leg 11
+  # closed as "Obtain the Secret Key from the Rocket Hideout" with no
+  # SECRET_KEY in the bag, and leg 12 as "Clear out the Pokemon Tower"
+  # with no POKE_FLUTE. Both counted. So the progress figure was a count
+  # of plans satisfied, not of objectives achieved — and the gained-delta
+  # that would have shown it was only ever printed on the failure path.
+  #
+  # BOUNDED AT ONE REDO, AND IT MUST NEVER BLOCK. The claim run is set off
+  # once and finishes the game unattended, with no chance to edit code
+  # mid-run, so a gate that can refuse a leg forever is worse than a leg
+  # counted generously. One rejection buys a fresh plan and one more
+  # cycle; a second accepts and moves on, loudly and in writing. Keyed by
+  # objective TEXT, because positions shift under the reorder rungs.
+  gained=$(python planner/leg_delta.py diff run/leg_start.json \
+      2>/dev/null || true)
+  [ -n "$gained" ] && echo "    gained: $gained"
+  redone=0
+  grep -Fxq "$leg" run/leg_audit_redo 2>/dev/null && redone=1
+  if [ "$redone" = 0 ] \
+      && ! python planner/author.py --check-done --goal "$goal" \
+          --start "$(python planner/state_text.py)" --gained "$gained" \
+          --observed run/explored.json --model "$MODEL"; then
+    printf '%s\n' "$leg" >> run/leg_audit_redo
+    echo "=== leg $i: the plan met its conditions but the objective is "
+    echo "    NOT confirmed — authoring a new plan and running it once more"
+    # the plan proved too weak to mean its own objective: every version of
+    # it goes aside so a fresh one is written. Archived, never deleted.
+    mkdir -p plans/archive; astamp=$(date +%H%M%S)
+    for f in $(python planner/find_plan.py "$leg" 2>/dev/null || true); do
+      base="${f%.json}"; base="${base%%.v[0-9]*}"
+      for g in "$base".json "$base".v*.json; do
+        [ -e "$g" ] && mv -f "$g" "plans/archive/${astamp}-weak-$(basename "$g")"
+      done
+    done
+    sweep_ahead "$i"
+    continue
+  fi
+  [ "$redone" = 1 ] && echo "    (objective still unconfirmed after a "\
+      "second plan — counting it and moving on)"
   echo "$i" > "$PROGRESS"
   echo "=== leg $i/${#LEGS[@]} complete: $leg ==="
   sweep_ahead "$i"
