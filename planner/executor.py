@@ -1339,10 +1339,31 @@ class Executor:
         if dw.get("has_item"):
             return "item:" + ",".join(sorted(dw["has_item"]))
         for k in ("party_size", "lead_level", "party_min_level",
-                  "slot_level", "party_healthy", "knows_move"):
+                  "slot_level", "party_healthy", "knows_move",
+                  "party_type", "has_species", "dex_owned"):
             if k in dw:
                 return f"{k}:{dw[k]}"
         return "subgoal:" + sg.get("id", "?")
+
+    # WHAT THIS SUBGOAL IS FOR is not always a PLACE. Everything the
+    # escalation context says — prefer untried exits, you have been here 7
+    # times already, these rooms still have ways you have never taken,
+    # press A on things before you leave — is advice for FINDING somewhere
+    # or something. Handed to a subgoal whose condition is a LEVEL, it
+    # reads as an instruction to stop doing the one thing that can satisfy
+    # it. Watched live: train_charmander_12 stood on Route 22, which has
+    # wild Pokemon in it, was told it had been in this exact area 7 times
+    # already and that untried exits "are the only way to find anything
+    # new", and walked west to open doors at the Pewter museum — nine
+    # escalations deep on a condition that needed it to stand in grass.
+    PARTY_TARGETS = ("party_size:", "lead_level:", "party_min_level:",
+                     "slot_level:", "knows_move:", "party_type:",
+                     "has_species:", "dex_owned:")
+
+    @classmethod
+    def _is_party_goal(cls, tgt: str) -> bool:
+        """Is this subgoal satisfied by FIGHTING, not by arriving?"""
+        return str(tgt or "").startswith(cls.PARTY_TARGETS)
 
     @staticmethod
     def _where(obs) -> str:
@@ -2004,6 +2025,13 @@ class Executor:
         # crossed into ROUTE_3 pinned it to the Route 4 stub — 38
         # crossings, 38 walk-backs — with Pewter reachable the whole time.
         tgt = self._cur_target or ""
+        # A TRAINING GOAL HAS NOWHERE TO WALK BACK TO. The frontier escort
+        # exists to carry a search to unopened ground; a subgoal that needs
+        # a level is not searching, and being dragged to the nearest room
+        # with an untried door is being dragged out of the grass. Same
+        # reasoning as the transit exemption directly below.
+        if self._is_party_goal(tgt):
+            return None
         if tgt.startswith(("map:", "area:")):
             dest = tgt.split(":", 1)[1]
             if "|" in dest:
@@ -2662,8 +2690,72 @@ class Executor:
                  target=self._target_key(sg), memory=txt[:6000])
         return txt
 
+    def training_text(self, obs, target: str = "") -> str:
+        """What to say when the condition is satisfied by FIGHTING.
+
+        Everything exploration_text says is advice for finding a place or a
+        thing, and handed to a level goal it argues against the only action
+        that can succeed — see PARTY_TARGETS. This says the opposite, out
+        of the same evidence: what the party is, how far off the condition
+        is, and that standing still and battling is the move.
+
+        No map knowledge is smuggled in. Where the grass is on this floor
+        is not stated because the observation does not carry it; the grind
+        op walks to it, which is mechanics the run already owns.
+        """
+        dw_val = target.split(":", 1)[1] if ":" in target else ""
+        kind = target.split(":", 1)[0]
+        party = (obs or {}).get("party") or []
+        lines = [f"\nTHIS IS NOT SOMEWHERE TO GO — IT IS SOMETHING TO "
+                 f"BECOME. The condition is {kind} {dw_val}, and no door "
+                 f"satisfies it. Walking somewhere new is not progress "
+                 f"here; fighting is."]
+        if party:
+            lines.append("YOUR PARTY RIGHT NOW: " + "; ".join(
+                f"{i}. {m.get('species')} L{m.get('level')} "
+                f"{m.get('hp')}/{m.get('max_hp')}hp"
+                + (f" [{m.get('status')}]" if m.get("status") else "")
+                for i, m in enumerate(party, 1)))
+        else:
+            lines.append("YOUR PARTY IS EMPTY.")
+        hurt = [m for m in party
+                if (m.get("hp") or 0) <= 0.34 * (m.get("max_hp") or 1)]
+        if hurt:
+            lines.append(
+                "SOME OF THEM ARE IN NO STATE TO FIGHT: "
+                + ", ".join(f"{m.get('species')} at {m.get('hp')}hp"
+                            for m in hurt)
+                + ". A Pokemon Center heals the party for nothing; a wipe "
+                  "costs the walk back from wherever you last healed.")
+        lines.append(
+            "HOW TO DO IT: {\"op\":\"grind\"} walks into this floor's wild "
+            "grass and paces until something appears, and every wild battle "
+            "is experience for whoever you send out. It fails plainly if "
+            "this floor has no grass, and then somewhere with grass is "
+            "where to go. To level ONE Pokemon, put it in slot 1 first "
+            "({\"op\":\"party_swap\"}) — the lead is who gets sent out, and "
+            "only what fights, earns.")
+        if kind in ("party_size", "has_species", "party_type", "dex_owned"):
+            lines.append(
+                "THIS ONE NEEDS A BALL, NOT A KNOCKOUT: set battle_policy "
+                "\"catch\" on this subgoal so wild battles throw balls "
+                "instead of fainting the thing you are trying to keep, and "
+                "check you are carrying some.")
+        # the ONE navigational fact that still matters: a run with no
+        # healing behind it is one wipe from losing the walk as well
+        rs = (obs or {}).get("respawn") or {}
+        if rs.get("map"):
+            lines.append(f"IF THE PARTY FAINTS you wake at {rs['map']}.")
+        return "\n".join(lines)
+
     def exploration_text(self, obs, target: str = "") -> str:
         """Untried vs already-taken exits from where we stand."""
+        # A LEVEL IS NOT A PLACE. Everything below answers "where do I go
+        # next", which is the wrong question for a subgoal satisfied by
+        # battling — and answered loudly enough that a training leg walked
+        # out of the grass to open doors at a museum.
+        if self._is_party_goal(target):
+            return self.training_text(obs, target)
         here = self._where(obs)
         taken = self.explored.get(here, {})
         m = (obs or {}).get("map") or {}
