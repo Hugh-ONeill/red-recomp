@@ -1931,6 +1931,11 @@ Rules:
 - You may only ADD. Nothing already on the list may be reworded, moved or
   removed; those decisions were already made.
 - Add nothing that is already there in different words.
+- Add nothing that HAPPENS BY ITSELF when something already on the list is
+  done. If finishing the objective above it hands you the thing, then it
+  is not missing and it is not a step — it is that objective, written
+  twice. Ask of each one: could I finish the neighbouring objective and
+  still not have this?
 - Add nothing you cannot tell whether you have done. An objective is a
   thing that becomes true, not an attitude.
 - If the list genuinely assumes nothing it does not get, reply with an
@@ -2039,12 +2044,32 @@ def _outline_upkeep_once(goal: str, legs: list, model: str,
         except (TypeError, ValueError):
             after = 0
         if after < 1:
-            pos, where = 0, "at the start"
-        elif after >= len(legs):
-            pos, where = len(result), "at the end"
+            pos, where, anchor = 0, "at the start", None
+        elif after > len(legs):
+            pos, where, anchor = len(result), "at the end", None
         else:
-            pos = result.index(legs[after - 1]) + 1
-            where = f"after {legs[after - 1]!r}"
+            # after == len(legs) lands here too, not in the branch above:
+            # "at the end" and "after the last objective" are the same
+            # position, but only one of them knows what it hangs off, and
+            # the granted-by-its-anchor check needs to know
+            anchor = legs[after - 1]
+            pos = result.index(anchor) + 1
+            where = f"after {anchor!r}"
+        # GRANTED BY THE THING IT HANGS OFF. Asked what its outline assumed,
+        # one live pass answered "Obtain the Badge for Brock" after "Defeat
+        # Brock" — and then the same for Misty, Surge, Erika, Koga and
+        # Sabrina, spending six of its eight additions on objectives the
+        # neighbouring one completes for you, and hitting the cap with real
+        # upkeep still unsaid. The prompt now forbids it; this is the
+        # backstop, and it is narrow on purpose: only an addition anchored
+        # DIRECTLY to an objective it shares a name with. That is the exact
+        # shape of "X for the thing X gives you", and it also catches the
+        # duplicate that slipped the sig test earlier — "Obtain HM01 Cut"
+        # anchored to "Clear S.S. Anne and obtain HM01".
+        if anchor and (sig & _sig(anchor)):
+            print(f"[upkeep] refused {item!r}: it hangs off "
+                  f"{anchor!r}, which is what gives it to you")
+            continue
         result.insert(pos, item)
         added.append(item)
         print(f"[upkeep] + {item!r} {where}")
