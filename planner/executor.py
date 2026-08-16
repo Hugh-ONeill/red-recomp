@@ -4373,30 +4373,28 @@ Reply with ONLY a JSON array of ops, e.g.
                     # badge was "already true on arrival, nothing was done"
                     # under thirty WIPED lines for that same fight. The one
                     # success in the run rendered as a no-op.
-                    # ...BUT DO NOT CLAIM A MACRO FOR IT. What reached the
-                    # goal here was the harness walking its own route; the
-                    # accumulated `progress` came from EARLIER rounds and
-                    # did not cause this. Returning it committed those ops
-                    # as the subgoal's macro, so the next replay ran a
-                    # sequence nothing had shown to reach anything — and in
-                    # the spec gym, where escalation is capped at once per
-                    # session, trials 2 and 3 replayed it and failed.
-                    # That is 0/3 or 1/3 for every candidate AND the
-                    # baseline: a scoreboard that cannot tell specs apart.
+                    # ...BUT PROVE THE MACRO BEFORE CLAIMING IT. What
+                    # reached the goal here was the harness walking its own
+                    # route; `progress` came from EARLIER rounds and did not
+                    # cause this. Returning it unchecked committed ops that
+                    # nothing had shown to reach anything, and in the spec
+                    # gym trials 2 and 3 then replayed them and failed.
                     #
-                    # Same rule as distill's: a sequence that did not cause
-                    # the success is not a route. The subgoal is satisfied
-                    # either way, and an empty return leaves whatever macro
-                    # exists untouched rather than overwriting it with a
-                    # claim. Nor is the walked route itself a candidate —
-                    # the harness pathfinder authored that, and macro
-                    # provenance names the model.
+                    # Dropping them outright is no better: setup leaned on
+                    # that macro, and without it every later attempt had to
+                    # re-walk a gate its own `searched` ledger now refuses.
+                    # The answer is the one this code already wanted —
+                    # replay them from the clean checkpoint and keep them
+                    # only if they reproduce the goal. Proven, they are a
+                    # route whoever walked it first; unproven, they are not.
+                    kept = self._verified_ops(sg, progress, can_reset)
                     self.log("escalate_success", subgoal=sg["id"],
                              round=rnd, proposed=0, walked=len(r0),
-                             distilled=0, verified=False,
-                             dropped_progress=len(progress),
+                             distilled=len(kept),
+                             verified=bool(kept) and kept == progress,
+                             dropped_progress=len(progress) - len(kept),
                              why="reached by walking a known route")
-                    return True, []
+                    return True, kept
             sig0 = self._snapshot(start)
             if rnd == 1 and sig0[0]:
                 visits[sig0[0]] = 1
@@ -5388,6 +5386,42 @@ Reply with ONLY a JSON array of ops, e.g.
                      progress_ops=len(progress))
         self.log("escalate_end", subgoal=sg["id"], success=False)
         return False, sg.get("macro", [])
+
+    def _verified_ops(self, sg: dict, progress: list, can_reset: bool) -> list:
+        """The subset of `progress` proven to reach the goal on a replay.
+
+        Escalation can reach a subgoal without its own ops being what did
+        it — the harness walks a known route, or a fight settles the
+        condition on the way. Committing the ops anyway claims a route
+        that was never demonstrated; dropping them loses one that may be
+        real. Replaying them from the clean checkpoint answers it.
+
+        Returns [] when there is nothing to check, nothing to restore
+        from, or the replay does not reproduce the goal. Callers treat []
+        as "no macro earned" — distill() then leaves any existing macro
+        alone rather than overwriting it with a claim.
+
+        VERIFY_MACROS gates the restore: CLAIM_RULES allows checkpoints in
+        development and refinement and forbids them inside the record run,
+        so in the record run this returns the ops unchecked, exactly as
+        before, and only the spec gym pays for proof.
+        """
+        if not progress:
+            return []
+        if not (can_reset and VERIFY_MACROS):
+            return progress
+        rr = self._send_safe("checkpoint_restore", token="esc") or {}
+        if not (rr.get("result") or {}).get("ok"):
+            self.log("escalate_verify_norestore", subgoal=sg["id"])
+            return progress
+        v_ok, _, _ = self._run_traced(sg, progress)
+        if v_ok:
+            self.log("escalate_verified_walk", subgoal=sg["id"],
+                     ops=len(progress))
+            return progress
+        self.log("escalate_unverified_walk", subgoal=sg["id"],
+                 dropped=len(progress))
+        return []
 
     def distill(self, sg: dict, ops: list) -> bool:
         """Write the escalation's successful op sequence back as the macro,
