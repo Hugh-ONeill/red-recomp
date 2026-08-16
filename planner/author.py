@@ -1945,6 +1945,103 @@ def _stage_outline(legs: list, model: str) -> dict:
     return out
 
 
+STAGE_MISSING_SYS = """You wrote a Pokemon Red playthrough outline and
+grouped it into stages. You are being shown ONE stage of it, with the rest
+of the outline around it for context.
+
+The question is only about that stage: IS ANYTHING MISSING FROM IT? Not
+from the playthrough as a whole — from this stretch. Something that
+happens here, that a player passing through would have to do, that the
+list does not say.
+
+Rules:
+- You may only ADD, and only within this stage. Nothing already written is
+  to be reworded, moved or removed.
+- Add nothing that is already there in different words, anywhere in the
+  outline — look at the whole list, not just the stage.
+- Add nothing that HAPPENS BY ITSELF when something already listed is
+  done.
+- Add nothing you cannot tell whether you have done. An objective is a
+  thing that becomes true.
+- "Nothing is missing" is a real answer; reply with an empty array.
+
+Reply with ONLY a JSON array; each element is
+{"item": "<the objective>", "after": N}, where N is the number of the
+objective in THIS STAGE it comes after (0 = first in the stage)."""
+
+
+def _stage_missing(goal: str, legs: list, stages: dict, model: str,
+                   cap: int = 4) -> list:
+    """Ask each stage what it is missing.
+
+    THE WINDOW IS THE WHOLE POINT. Asked about the outline entire, this
+    question returned badge no-ops and then "a Pokemon capable of defeating
+    X" eight times. Asked badge-to-badge, phrased as what GATES the next
+    badge, the first four gaps came back empty — the stretch holding Mt.
+    Moon, the parcel and Bill. A stage is the unit in between: wide enough
+    to have contents worth reading back, narrow enough that "what else
+    happens here" has an answer. The model chose the boundaries itself.
+    """
+    out = list(legs)
+    order = []
+    for leg in legs:
+        st = stages.get(leg)
+        if st and st not in order:
+            order.append(st)
+    for st in order:
+        here = [l for l in out if stages.get(l) == st]
+        if not here:
+            continue
+        body = ("THE GOAL: " + goal + "\n\nTHE WHOLE OUTLINE:\n"
+                + "\n".join(f"  {i}. {l}" + (f"   <- {st}"
+                                             if stages.get(l) == st else "")
+                            for i, l in enumerate(out, 1))
+                + f"\n\nTHE STAGE YOU ARE CHECKING: {st}\n"
+                + "\n".join(f"  {i}. {l}" for i, l in enumerate(here, 1))
+                + "\n\nIs anything missing from that stage?")
+        try:
+            reply = brock_probe.chat(
+                [{"role": "system", "content": STAGE_MISSING_SYS},
+                 {"role": "user", "content": body}], model)
+            m = re.search(r"\[.*\]", reply, re.S)
+            adds = json.loads(m.group(0)) if m else []
+        except (ValueError, KeyError, OSError):
+            continue
+        if not isinstance(adds, list):
+            continue
+        got = 0
+        for a in adds:
+            if got >= cap:
+                print(f"[stage:{st}] cap reached, {len(adds) - cap} more "
+                      f"were offered")
+                break
+            if not isinstance(a, dict):
+                continue
+            item = str(a.get("item") or "").strip()
+            if not item or _HEDGES.search(item):
+                continue
+            k = _objective_key(item)
+            if k and any(k == _objective_key(l)
+                         or len(k & _objective_key(l)) >= 2 for l in out):
+                print(f"[stage:{st}] already in the outline: {item!r}")
+                continue
+            try:
+                after = int(a.get("after") or 0)
+            except (TypeError, ValueError):
+                after = 0
+            if after < 1:
+                pos = out.index(here[0])
+            else:
+                anchor = here[min(after, len(here)) - 1]
+                pos = out.index(anchor) + 1
+            out.insert(pos, item)
+            stages[item] = st
+            here = [l for l in out if stages.get(l) == st]
+            got += 1
+            print(f"[stage:{st}] + {item!r}")
+    return out
+
+
 SPINE_SYS = """Here are the eight gym badges of Pokemon Red, listed
 alphabetically by leader. Put them in the order you would take them.
 
@@ -2208,6 +2305,11 @@ def outline(goal: str, model: str, rounds: int = 3,
     legs = _dedupe_outline(_outline_review(goal, legs, model) or legs)
     stages = _stage_outline(legs, model)
     if stages:
+        # ...and now that the outline has chapters, ask each of them what
+        # it is missing. Last pass of all: everything before it has had its
+        # say, so what is still absent here is absent on purpose or by
+        # oversight, and this is the question that tells them apart.
+        legs = _dedupe_outline(_stage_missing(goal, legs, stages, model))
         try:
             STAGES_PATH.write_text("".join(
                 f"{stages[l]}\t{l}\n" for l in legs if l in stages))
