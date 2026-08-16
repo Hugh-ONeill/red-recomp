@@ -76,7 +76,7 @@ else
   # and its upkeep sidecar, which names legs by wording this outline may
   # not use. A stale one would mark the wrong legs non-fatal.
   rm -f plans/leg_[0-9]*.json plans/outline.notes plans/outline.done \
-        plans/outline.upkeep
+        plans/outline.upkeep plans/outline.stages
   echo "--- authoring the outline"
   echo "goal: $GOAL"
   python planner/author.py --outline --goal "$GOAL" \
