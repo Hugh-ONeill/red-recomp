@@ -65,6 +65,7 @@ if [ "$done_legs" = 0 ]; then
   : > run/outline_reorders
   rm -f run/outline_skips run/outline_inserts run/outline_rewordings \
         run/leg_audit_redo run/outline_upkeep_missed \
+        run/outline_pushes \
         run/outline_pulls run/outline_pulls_failed
   echo "archived ${ts}.pre-discovery; ledgers cleared"
 fi
@@ -305,6 +306,31 @@ while :; do
         sweep_ahead "$i"
         continue
       fi
+    fi
+    # RIGHT, BUT NOT YET. Every rung above asks whether something ELSE
+    # must happen first; none can say "this one, later". An outline's
+    # ordering mistakes are almost all TOO EARLY — a model writing a
+    # playthrough puts a thing down when it thinks of it — and a merely
+    # premature objective could until now only be reworded, skipped or
+    # fatal. Live case: "the party holds a WATER or GRASS type" sat before
+    # Vermilion, where wild water Pokemon need a rod nobody has yet, and
+    # the upkeep rule saved the chain by dropping it for good. Deferring
+    # beats dropping. Bounded twice over: six pushes per chain, and no
+    # objective put off more than twice (author.py refuses the third).
+    # grep -c prints "0" AND exits 1 when the file exists with no match,
+    # so a bare `|| echo 0` yields TWO lines and --pushed gets "0\n0".
+    pushed=$( { grep -Fc "$leg" run/outline_pushes 2>/dev/null || echo 0; } \
+              | head -1 )
+    if [ "$(cat run/outline_pushes 2>/dev/null | wc -l)" -lt 6 ] \
+        && at=$(python planner/author.py --check-later \
+            --goal "$leg" --outline-path plans/outline.txt --leg "$i" \
+            --pushed "$pushed" \
+            --start "$(python planner/state_text.py)" \
+            --journal run/executor_log.jsonl --model "$MODEL"); then
+      # PROGRESS is deliberately NOT advanced: the objective that was next
+      # has slid into this position, and that is the one to run now.
+      python planner/push_leg.py "$i" "$at"
+      continue
     fi
     # AN UPKEEP LEG NEVER STOPS THE CHAIN. The upkeep round adds
     # objectives the story beats take for granted — catch something to

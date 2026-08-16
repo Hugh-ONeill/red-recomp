@@ -3597,6 +3597,84 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
     return new
 
 
+LATER_SYS = """A Pokemon Red playthrough leg has been tried and failed,
+and the question now is whether it was simply TOO EARLY.
+
+Not whether it is done. Not whether some other leg has to happen first —
+that has already been asked. This asks something else: is this objective
+one you still mean to do, but LATER, once the run is somewhere else or
+carrying something it does not carry yet?
+
+The commonest reason a plan cannot be executed is that it was written in
+the wrong place in the journey. Catching a water Pokemon means nothing
+before you own a rod. A key item in a city you cannot enter yet is not a
+task, it is a task-in-waiting.
+
+Answer with ONLY {"why": "<one sentence>", "after": N} — the number of the
+objective this one should now come AFTER — or {"why": "...", "after":
+null} if it belongs where it is and failed for some other reason.
+
+Write the why FIRST. Name the thing the later position gives you that
+here and now does not: a place, an item, a move, a person. If you cannot
+name it, the answer is null."""
+
+
+def check_later(goal: str, n: int, ahead: list, start: str, journal: str,
+                model: str, pushed: int = 0) -> int:
+    """Is this objective right, but not yet? Then move it, don't drop it.
+
+    The inverse of confirm_blocker and the commoner case: an outline's
+    ordering mistakes are almost all TOO EARLY, because a model writing a
+    playthrough puts a thing down when it thinks of it. Before this rung
+    the ladder had four ways to say "something else first" and none to say
+    "this, but later", so an objective that was merely premature could
+    only be reworded, skipped, or fatal. Live: "the party holds a WATER or
+    GRASS type" sat before Vermilion, where wild water Pokemon need a rod
+    nobody has — the upkeep rule saved the chain by dropping it for good,
+    which is the right call for a chain and the wrong one for the
+    objective.
+
+    The harness proposes nothing and evaluates nothing. It refuses a
+    non-answer, a push that is not actually later, and a leg that has
+    already been deferred twice — and applies anything else verbatim.
+    """
+    if pushed >= 2:
+        print(f"[later] refused: {goal!r} has already been put off twice",
+              file=sys.stderr)
+        return 0
+    body = (f"THE OBJECTIVE THAT FAILED: {n}. {goal}\n\n"
+            f"WHERE THE RUN STANDS: {start}\n{journal}"
+            + "\n\nYOUR LIST FROM HERE ON:\n"
+            + "\n".join(f"  {i}. {t}" for i, t in ahead))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": LATER_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\{.*\}", reply, re.S)
+        ans = json.loads(m.group(0)) if m else {}
+    except (ValueError, KeyError, OSError, AttributeError):
+        return 0
+    why = str(ans.get("why") or "")[:200]
+    after = ans.get("after")
+    if after in (None, "", "null"):
+        print(f"[later] stays where it is: {why}", file=sys.stderr)
+        return 0
+    try:
+        after = int(after)
+    except (TypeError, ValueError):
+        return 0
+    last = ahead[-1][0] if ahead else n
+    if after <= n:
+        print(f"[later] refused: {after} is not later than {n} — {why}",
+              file=sys.stderr)
+        return 0
+    if after > last:
+        after = last
+    print(f"[later] {goal!r} moves to after leg {after}: {why}",
+          file=sys.stderr)
+    return after
+
+
 def check_done(goal: str, start: str, model: str,
                observed=None, gained: str = "") -> bool:
     """The model judges whether a failed leg's objective is already met.
@@ -3676,6 +3754,12 @@ def main():
     ap.add_argument("--deed", default=None,
                     help="a single objective for --check-already-done, "
                          "instead of sweeping the outline")
+    ap.add_argument("--check-later", action="store_true",
+                    help="ask whether the failed leg is right but too "
+                         "early; prints the position it should follow")
+    ap.add_argument("--pushed", type=int, default=0,
+                    help="how many times this objective has been put off "
+                         "already (--check-later refuses a third)")
     ap.add_argument("--check-wording", action="store_true",
                     help="last rung: ask whether the stuck --goal describes "
                          "anything doable, and let the model restate it; "
@@ -3730,6 +3814,20 @@ def main():
         # 4 = "this objective is already accomplished under another name";
         # the chain crosses the leg off instead of halting on it
         sys.exit(4 if WORDING_SAYS_DONE[0] else 3)
+    if args.check_later:
+        if not (args.outline_path and args.leg):
+            ap.error("--check-later needs --outline-path and --leg")
+        lines = [l.strip() for l in args.outline_path.read_text()
+                 .splitlines() if l.strip()]
+        ahead = [(n, lines[n - 1])
+                 for n in range(args.leg, len(lines) + 1)]
+        jt = journal_text(args.journal) if args.journal else ""
+        at = check_later(args.goal, args.leg, ahead, args.start or "", jt,
+                         args.model, pushed=args.pushed)
+        if at:
+            print(at)
+            sys.exit(0)
+        sys.exit(3)
     if args.recognize_done:
         if not args.outline_path:
             ap.error("--recognize-done needs --outline-path")
