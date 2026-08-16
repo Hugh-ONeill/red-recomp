@@ -260,6 +260,17 @@ def pred_keys(pred: dict | None) -> set:
     return out
 
 
+# WHAT THE SHIM ACTUALLY SAYS when an interact leaves a yes/no box open.
+# Two guards were written against the phrase "asked a QUESTION", which the
+# shim has never emitted — `grep 'asked a QUESTION' harness/shim.lua` is
+# zero — so both were dead from the day they were added. The cost was
+# exactly what their own comments predicted: pressing the Mt Moon DOME
+# FOSSIL asked "You want the DOME FOSSIL?", the press was recorded as a
+# TRY, the room swept itself as fully worked, and neither fossil was ever
+# offered again. Match on the string that exists, from one place.
+ASKING = "is ASKING something and the box is STILL OPEN"
+
+
 def pred_holds(pred: dict | None, obs: dict) -> bool:
     if not pred:
         return True
@@ -4148,7 +4159,7 @@ Reply with ONLY a JSON array of ops, e.g.
             if blackout and op == "interact" and step.get("name"):
                 self._tried_objs.get(self._where(pre_obs),
                                      set()).discard(step["name"])
-            if ("asked a QUESTION" in str(r.get("detail") or "")
+            if (ASKING in str(r.get("detail") or "")
                     and op == "interact" and step.get("name")):
                 self._tried_objs.get(self._where(pre_obs),
                                      set()).discard(step["name"])
@@ -4305,7 +4316,7 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"do not try this counter again.")
             elif before == after:
                 det0 = str(r.get("detail") or "")
-                if "asked a QUESTION" in det0:
+                if ASKING in det0:
                     note += f": {det0}"
                 else:
                     note += ": ran but had NO visible effect (nothing changed)"
@@ -4379,6 +4390,22 @@ Reply with ONLY a JSON array of ops, e.g.
                 if before[0]:
                     rec["when"] = {"map": before[0]}
                 clean.append(rec)
+            # A QUESTION ON SCREEN ENDS THE MACRO. The shim deliberately
+            # leaves a yes/no box open rather than answer it with an
+            # `answer:` that was written before the question could be read
+            # — and then the NEXT op in the same macro ran anyway, into a
+            # game that was not in the overworld. At the Mt Moon fossils
+            # that meant pressing the DOME FOSSIL asked "You want the DOME
+            # FOSSIL?", the very next op pressed the HELIX FOSSIL and
+            # stacked a second question onto the first, and nothing ever
+            # answered either. Stopping here hands the box to the UI
+            # handler, which puts the words to the model and presses what
+            # comes back — the only path by which either fossil is takeable.
+            if ASKING in str(r.get("detail") or ""):
+                trace.append(
+                    "— stopped here: a question is on screen and must be "
+                    "answered before anything else can run.")
+                break
             if not ignore_done and pred_holds(done, self.settle()):
                 return True, trace, clean
         return pred_holds(done, self.settle()), trace, clean
