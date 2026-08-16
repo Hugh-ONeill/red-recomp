@@ -18,6 +18,29 @@ local BRIDGE = os.getenv("RED_BRIDGE_DIR")
   or ((os.getenv("HOME") or ".") .. "/Developer/red-recomp/run")
 os.execute('mkdir -p "' .. BRIDGE .. '" 2>/dev/null')
 
+-- DIAGNOSTIC, off unless RED_DIALOG_TRACE=1. One line per text-advance
+-- iteration into run/dialog_trace.log, so a box that will not close can be
+-- read back frame by frame instead of guessed at. Bill's speech ends the
+-- only way out of Cerulean and the run lost it to "a box was up and would
+-- not close" with nothing recorded about WHICH box. Never read by the
+-- model, never on in a claim run.
+local DLG_TRACE = os.getenv("RED_DIALOG_TRACE") == "1"
+local function dlg_trace(G, where, i)
+  if not DLG_TRACE then return end
+  local f = io.open(BRIDGE .. "/dialog_trace.log", "a")
+  if not f then return end
+  local t = G and G.stack and G.stack:top()
+  local ow = G and G.overworld
+  f:write(("%-10s %3d top=%s ow=%s screen=%s kind=%s pages=%s idx=%s "
+           .. "items=%s title=%s choice=%s\n"):format(
+    where, i, tostring(t), tostring(t == ow),
+    tostring(t and t.screenId), tostring(t and t.kind),
+    tostring(t and t.pages and #t.pages), tostring(t and t.pageIndex),
+    tostring(t and t.items and #t.items), tostring(t and t.title),
+    tostring(t and (t.choice ~= nil or t.yesNo ~= nil or t.isChoice))))
+  f:close()
+end
+
 -- ------------------------------------------------------------ op watchdog
 -- Every bridge-side activity must be FRAME-BOUNDED: brock19 wedged >120s
 -- inside one op mid-forest and the whole stack died on an uncaught bridge
@@ -1695,10 +1718,21 @@ local function ui_close_shop(G)
   end
   return false
 end
+-- Same undersized-budget bug as settle_dialog (see there): 40 taps of B is
+-- under two pages of typing, so backing out of anything wordy reported
+-- failure with the box merely half-read. Progress-budgeted the same way.
 ui_back_out = function(G)
-  for _ = 1, 40 do
+  local stall, seen_top, seen_idx = 0, nil, nil
+  for i = 1, 400 do
     local t = ui_top(G)
+    dlg_trace(G, "back_out", i)
     if t == G.overworld or (t and (t.enemy or t.kind)) then return true end
+    if t == seen_top and (t and t.pageIndex) == seen_idx then
+      stall = stall + 1
+      if stall > 100 then return false end
+    else
+      stall, seen_top, seen_idx = 0, t, (t and t.pageIndex)
+    end
     U.tap(G, "b"); U.wait(6)
   end
   return false
@@ -3307,9 +3341,30 @@ function OPS.interact(G, c)
       end
     end
   end
+  -- BUDGET THE SPEECH IN PROGRESS, NOT IN TAPS. This was a flat 60
+  -- iterations of tap-A-and-wait-4, and a page of text takes far longer than
+  -- four frames to type: Bill's four-page speech measured FORTY-TWO
+  -- iterations per page, so the loop ran out on page 3 and returned "dialog
+  -- still open". The next op in the same macro then refused with "a box was
+  -- up and would not close" -- and that macro was
+  -- [talk to Bill, run the Cell Separation System], the only unlock for the
+  -- Cerulean guard and so the only road south out of the city. One
+  -- undersized constant walled a whole run for two days.
+  -- Stop when the box stops CHANGING (top of stack and page both still for
+  -- ~400 frames), with a generous ceiling behind it. Nothing about which
+  -- button or which box is decided here; only how long to keep pressing.
+  local SETTLE_TAPS, SETTLE_STALL = 600, 100
   local function settle_dialog()
-    for _ = 1, 60 do
+    local stall, seen_top, seen_idx = 0, nil, nil
+    for _i = 1, SETTLE_TAPS do
       local t = G.stack:top()
+      dlg_trace(G, "settle", _i)
+      if t == seen_top and (t and t.pageIndex) == seen_idx then
+        stall = stall + 1
+        if stall > SETTLE_STALL then return true, "dialog still open" end
+      else
+        stall, seen_top, seen_idx = 0, t, (t and t.pageIndex)
+      end
       note_page()
       -- STOP AT A COUNTER'S OWN MENU. This loop taps A on anything that is
       -- not a yes/no box, and a shop's BUY/SELL/QUIT is a MENU -- so
