@@ -1543,6 +1543,28 @@ class Executor:
             # five of them in pockets it cannot reach — and the room read
             # as fully accounted for. Record a refusal only for a door we
             # actually stood at.
+            # COULD NOT WALK THERE IS NOT A FACT ABOUT THE DOOR. The shut
+            # flag already exempts this case ("it clears on its own") — but
+            # exempting the flag while still writing n=1 achieves the same
+            # blacklisting by the other route, because an edge with n>=1 is
+            # a TAKEN exit and drops off the untried frontier for good.
+            # Mt Moon 1F's third ladder (5,5) died exactly this way: one
+            # walk failed, `couldn't reach the warp tile — somebody is
+            # standing by it: MTMOON1F_HIKER at (5,6)`, and the ledger
+            # recorded 5,5 -> itself. The tile is open ground with all four
+            # approaches walkable, so the walk should have gone round; the
+            # named NPC was the nearest one, not a proven cause. After that
+            # the router would never elect it again and the model was told
+            # it leads back where you stand, so nothing ever retried it —
+            # while B1F 5,5, its far end, sits in the unreached stretch
+            # holding 23,3 (the fossils) and 27,3 (the way out to Cerulean).
+            # Its twin 17,11 survived only by being re-elected and firing.
+            # Record NOTHING and let it stay untried; a door that truly
+            # refuses gets recorded on the attempt where we stood at it.
+            if "couldn't reach" in (reason or ""):
+                self.log("exit_unreached", frm=src, via=str(key),
+                         why=str(reason)[:120])
+                return
             _w = ((before_obs or {}).get("map") or {}).get("warps") or []
             if step.get("x") is not None and not any(
                     w.get("x") == step.get("x") and w.get("y") == step.get("y")
