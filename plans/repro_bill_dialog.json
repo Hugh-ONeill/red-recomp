@@ -1,0 +1,43 @@
+{
+  "goal": "Reproduce the Bill's-house dialog wall (diagnostic, not a leg)",
+  "note": "Macro-only. Run WITHOUT --escalate so no model is involved: every op here is fixed, so whatever happens is the harness's doing. Mirrors the exact three ops the run proposed at t+451 of leg 7.",
+  "subgoals": [
+    {
+      "id": "to_route_24",
+      "goal_text": "North out of Cerulean onto Route 24",
+      "macro": [{"op": "cross", "dir": "north"}],
+      "done_when": {"map": "ROUTE_24"}
+    },
+    {
+      "id": "to_route_25",
+      "goal_text": "East along Route 24 onto Route 25",
+      "macro": [{"op": "cross", "dir": "east"}],
+      "done_when": {"map": "ROUTE_25"}
+    },
+    {
+      "id": "into_bills_house",
+      "goal_text": "Through the door at the end of Route 25 into Bill's house",
+      "macro": [{"op": "use_warp", "x": 45, "y": 3}],
+      "done_when": {"map": "BILLS_HOUSE"}
+    },
+    {
+      "id": "talk_to_bill",
+      "goal_text": "Press A on the Pokemon that claims to be Bill",
+      "macro": [{"op": "interact", "name": "BILLSHOUSE_BILL_POKEMON", "answer": "yes"}],
+      "done_when": {"flag": "EVENT_BILL_SAID_USE_CELL_SEPARATOR"}
+    },
+    {
+      "id": "run_separator",
+      "goal_text": "Run the Cell Separation System while he is in the teleporter",
+      "macro": [{"op": "interact", "name": "CELL_SEPARATION_SYSTEM", "answer": "yes"}],
+      "done_when": {"flag": "EVENT_USED_CELL_SEPARATOR_ON_BILL"}
+    },
+    {
+      "id": "take_the_ticket",
+      "goal_text": "Talk to Bill again and take the S.S. Ticket",
+      "macro": [{"op": "interact", "name": "BILLSHOUSE_BILL1", "answer": "yes"}],
+      "done_when": {"flag": "EVENT_GOT_SS_TICKET"}
+    }
+  ],
+  "authored_by": "harness diagnostic (not model-authored; never part of a claim run)"
+}

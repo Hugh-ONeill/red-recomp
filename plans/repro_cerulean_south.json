@@ -1,0 +1,17 @@
+{
+  "goal": "Check the Cerulean seal actually opens once the ticket is in the bag (diagnostic, not a leg)",
+  "note": "story5.lua:650 swaps GUARD2 off the trashed-house door when the Rocket thief is beaten OR Bill's errand is finished. The road out is THROUGH that house, not around it: maps.lua gives CERULEAN_TRASHED_HOUSE warps (2,7)/(3,7) -> Cerulean warp 1 = (27,11) and (3,0) -> Cerulean warp 8 = (27,9), the two sides of the fence. A bare `cross south` can never do this; only the door can. ONE subgoal on purpose: positional subgoals get honored-and-skipped on a --continue resume, so a multi-step positional plan never runs its ops.",
+  "subgoals": [
+    {
+      "id": "through_the_house_to_route_5",
+      "goal_text": "In the trashed-house door the guard was under, out the back, then south to Route 5",
+      "macro": [
+        {"op": "use_warp", "x": 27, "y": 11},
+        {"op": "use_warp", "x": 3, "y": 0},
+        {"op": "cross", "dir": "south"}
+      ],
+      "done_when": {"map": "ROUTE_5"}
+    }
+  ],
+  "authored_by": "harness diagnostic (not model-authored; never part of a claim run)"
+}

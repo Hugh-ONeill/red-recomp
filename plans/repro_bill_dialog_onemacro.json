@@ -1,0 +1,40 @@
+{
+  "goal": "Reproduce the Bill's-house dialog wall, ONE macro (diagnostic, not a leg)",
+  "note": "The exact macro the run proposed at t+451 of leg 7 of the 2026-08-15 regression run: both interacts in a SINGLE macro with no state-advance between them. That is what the split-subgoal version does not test. Macro-only, no --escalate, no model.",
+  "subgoals": [
+    {
+      "id": "to_route_24",
+      "goal_text": "North out of Cerulean onto Route 24",
+      "macro": [{"op": "cross", "dir": "north"}],
+      "done_when": {"map": "ROUTE_24"}
+    },
+    {
+      "id": "to_route_25",
+      "goal_text": "East along Route 24 onto Route 25",
+      "macro": [{"op": "cross", "dir": "east"}],
+      "done_when": {"map": "ROUTE_25"}
+    },
+    {
+      "id": "into_bills_house",
+      "goal_text": "Through the door at the end of Route 25 into Bill's house",
+      "macro": [{"op": "use_warp", "x": 45, "y": 3}],
+      "done_when": {"map": "BILLS_HOUSE"}
+    },
+    {
+      "id": "bill_errand_one_macro",
+      "goal_text": "Talk to the Pokemon claiming to be Bill and run the separator, in one go",
+      "macro": [
+        {"op": "interact", "name": "BILLSHOUSE_BILL_POKEMON", "answer": "yes"},
+        {"op": "interact", "name": "CELL_SEPARATION_SYSTEM", "answer": "yes"}
+      ],
+      "done_when": {"flag": "EVENT_USED_CELL_SEPARATOR_ON_BILL"}
+    },
+    {
+      "id": "take_the_ticket",
+      "goal_text": "Talk to Bill again and take the S.S. Ticket",
+      "macro": [{"op": "interact", "name": "BILLSHOUSE_BILL1", "answer": "yes"}],
+      "done_when": {"has_item": {"S_S_TICKET": 1}}
+    }
+  ],
+  "authored_by": "harness diagnostic (not model-authored; never part of a claim run)"
+}
