@@ -1623,6 +1623,21 @@ class Executor:
             self._arrived = (dst, (ap["x"], ap["y"]))
             self._came_from = src
             self._reversals = 0
+        # A DOOR THIS ROOM DOES NOT HAVE. The edge is keyed on the tile the
+        # op AIMED at, and once — leaving the Mt Moon Pokemon Center — that
+        # was 18,5, which is a ROUTE_4 tile: the Center's own two door tiles
+        # (3,7 and 4,7) were left untried while a coordinate it does not
+        # contain sat in its ledger as a taken exit. One occurrence in a
+        # whole run, but the cost is permanent: a room whose real doors read
+        # untried for ever is for ever the freshest thing on the frontier,
+        # and the walk-back keeps electing it. Same rule the mid-walk case
+        # already follows — honest ignorance beats a wrong edge.
+        _mw = ((before_obs or {}).get("map") or {}).get("warps") or []
+        if (step.get("x") is not None and _mw
+                and not any(w.get("x") == step.get("x")
+                            and w.get("y") == step.get("y") for w in _mw)):
+            self.log("edge_key_foreign", frm=src, via=str(key), to=dst)
+            return
         node = self.explored.setdefault(src, {})
         # A door's destination is deterministic, so a walk that lands
         # somewhere CONTRADICTING the recorded edge means one of the two
