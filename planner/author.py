@@ -2491,6 +2491,8 @@ reach travel visit go return wake help
 pokemon pokemons badge badges item items thing things
 first second third next new
 city town island area house place way path sail
+party member team level type types move moves hold holds know knows
+every least is at with capable
 """.split())
 # ...that last line is about FALSE MATCHES, not about verbs. The two-name
 # dedupe collapsed "Obtain the Secret Key from the house in Celadon City"
