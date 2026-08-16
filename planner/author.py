@@ -1915,6 +1915,22 @@ def _merge_confirm(goal: str, out: list, doubts: list, ndrafts: int,
 
 UPKEEP_PATH = Path("plans/outline.upkeep")
 
+# THE WORDS EVERY OBJECTIVE IS MADE OF. What tells you an addition is
+# granted by the objective it hangs off is a shared NAME — Brock, HM01,
+# the Silph Scope — never a shared verb. Matching on any word at all
+# refused "Obtain a Potion" and "Obtain a team of Pokemon" for hanging off
+# "Obtain a starter Pokemon", on the strength of the word "obtain": the
+# first is a shop trip and the second is the entire reason the upkeep
+# round exists, and both were thrown away by a test that could not tell a
+# verb from a name. Subtracted from the overlap before it counts.
+_GENERIC = frozenset("""
+obtain get retrieve acquire find fetch collect deliver bring give
+defeat beat win battle fight clear navigate cross enter exit
+reach travel visit go return wake help
+pokemon pokemons badge badges item items thing things
+first second third next new
+""".split())
+
 OUTLINE_UPKEEP_SYS = """You wrote a Pokemon Red playthrough outline. Now
 read it back the way a player would, and answer one question about it:
 
@@ -2066,7 +2082,7 @@ def _outline_upkeep_once(goal: str, legs: list, model: str,
         # shape of "X for the thing X gives you", and it also catches the
         # duplicate that slipped the sig test earlier — "Obtain HM01 Cut"
         # anchored to "Clear S.S. Anne and obtain HM01".
-        if anchor and (sig & _sig(anchor)):
+        if anchor and (sig & _sig(anchor)) - _GENERIC:
             print(f"[upkeep] refused {item!r}: it hangs off "
                   f"{anchor!r}, which is what gives it to you")
             continue
