@@ -1873,6 +1873,78 @@ def _fill_gap(goal: str, before: str | None, after: str | None,
     return pooled
 
 
+STAGES_PATH = Path("plans/outline.stages")
+
+STAGE_SYS = """Here is a Pokemon Red playthrough outline you wrote. Group
+it into STAGES — the stretches a player would think of as one leg of the
+journey, usually a region and the work done while you are there.
+
+You are not reordering it and not rewriting it. Every objective keeps its
+place and its wording; you are only saying where one stretch ends and the
+next begins.
+
+Reply with ONLY a JSON array; each element is {"stage": "<a short name>",
+"upto": N} where N is the number of the LAST objective in that stage. The
+stages must cover the whole list in order, ending at the last objective."""
+
+
+def _stage_outline(legs: list, model: str) -> dict:
+    """Ask the model where its own outline changes chapter.
+
+    Written because the outline's ORDER is wrong in the small and right in
+    the large: one live list put HM01 Cut nine places before the S.S. Anne
+    that hands it over, while getting the region-by-region march exactly
+    right. Stages are the unit on which that distinction can be acted on —
+    across them the order is evidence, within them it is a guess. Recorded
+    beside the outline rather than in it, so outline.txt stays one
+    objective per line and every reader of it is untouched.
+    """
+    body = ("THE OUTLINE:\n"
+            + "\n".join(f"  {i}. {l}" for i, l in enumerate(legs, 1)))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": STAGE_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\[.*\]", reply, re.S)
+        if not m:
+            return {}
+        got = json.loads(m.group(0))
+    except (ValueError, KeyError, OSError):
+        return {}
+    if not isinstance(got, list):
+        return {}
+    out, at = {}, 0
+    for s in got:
+        if not isinstance(s, dict):
+            continue
+        name = str(s.get("stage") or "").strip()
+        try:
+            upto = int(s.get("upto"))
+        except (TypeError, ValueError):
+            continue
+        upto = min(max(upto, at + 1), len(legs))
+        if not name or upto <= at:
+            continue
+        for i in range(at, upto):
+            out[legs[i]] = name
+        at = upto
+    # anything past the last stage keeps going under its name rather than
+    # falling out: a leg with no stage would be in no block at all
+    if at < len(legs) and out:
+        last = out[legs[at - 1]]
+        for i in range(at, len(legs)):
+            out[legs[i]] = last
+        print(f"[stages] the last {len(legs) - at} objective(s) were left "
+              f"unassigned — kept in {last!r}")
+    if out:
+        seen = []
+        for l in legs:
+            if out.get(l) and (not seen or seen[-1] != out[l]):
+                seen.append(out[l])
+        print(f"[stages] {len(seen)} stages: " + " -> ".join(seen))
+    return out
+
+
 SPINE_SYS = """Here are the eight gym badges of Pokemon Red, listed
 alphabetically by leader. Put them in the order you would take them.
 
@@ -2133,7 +2205,15 @@ def outline(goal: str, model: str, rounds: int = 3,
     legs = _outline_upkeep(goal, legs, model)
     # LAST, after every pass that can add: the review inserts too, and one
     # outline reached the end holding Surf three times.
-    return _dedupe_outline(_outline_review(goal, legs, model) or legs)
+    legs = _dedupe_outline(_outline_review(goal, legs, model) or legs)
+    stages = _stage_outline(legs, model)
+    if stages:
+        try:
+            STAGES_PATH.write_text("".join(
+                f"{stages[l]}\t{l}\n" for l in legs if l in stages))
+        except OSError:
+            pass
+    return legs
 
 
 OUTLINE_MERGE_SYS = """You wrote several drafts of a Pokemon Red
