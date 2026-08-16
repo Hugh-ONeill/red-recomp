@@ -1651,8 +1651,27 @@ you want something built up gradually, write the separate acquisitions
 where they each actually happen, instead of one objective at the end that
 names the total.
 
-Expect about TWENTY objectives. If you have far fewer, you have folded
-several into one and skipped the errands between the badges — unfold them.
+THE EIGHT GYM BADGES are given to you below, because they are printed on
+the box and recited by anyone who has one, and because remembering them is
+not the part of this worth your effort. LISTED ALPHABETICALLY BY LEADER,
+which is deliberately NOT the order to fight them in:
+
+  Defeat Blaine for the Volcano Badge
+  Defeat Brock for the Boulder Badge
+  Defeat Erika for the Rainbow Badge
+  Defeat Giovanni for the Earth Badge
+  Defeat Koga for the Soul Badge
+  Defeat Lt. Surge for the Thunder Badge
+  Defeat Misty for the Cascade Badge
+  Defeat Sabrina for the Marsh Badge
+
+Include all eight, word for word, and put each one where you judge it
+belongs. Which order they go in, what has to happen between them, and
+everything else the playthrough needs, is still entirely yours.
+
+Expect about TWENTY objectives, those eight among them. If you have far
+fewer, you have folded several into one and skipped the errands between
+the badges — unfold them.
 
 Reply with ONLY a JSON array of strings."""
 
@@ -1688,6 +1707,43 @@ def _stem(w: str) -> str:
         if len(w) > 4 and w.endswith(suf):
             return w[: -len(suf)]
     return w
+
+
+# The eight, in the same words OUTLINE_SYS hands over, so a merge that
+# drops one can be noticed. Alphabetical by leader here too — this list is
+# a checklist, never an itinerary.
+SEEDED_BADGES = (
+    "Defeat Blaine for the Volcano Badge",
+    "Defeat Brock for the Boulder Badge",
+    "Defeat Erika for the Rainbow Badge",
+    "Defeat Giovanni for the Earth Badge",
+    "Defeat Koga for the Soul Badge",
+    "Defeat Lt. Surge for the Thunder Badge",
+    "Defeat Misty for the Cascade Badge",
+    "Defeat Sabrina for the Marsh Badge",
+)
+
+
+def _check_badges(legs: list) -> list:
+    """Every seeded badge objective survives to the final outline.
+
+    The merge chooses, and choosing can drop. A missing gym is not a leg
+    the ladder can rescue — nothing downstream knows it was ever meant to
+    be there — so a dropped one is put back and SAID OUT LOUD. It goes at
+    the end because the harness has no business deciding where a gym sits;
+    the review runs after this and may move it, and failing that a leg out
+    of place still gets played, while a leg that is gone never does.
+    """
+    have = [_names(l) for l in legs]
+    out = list(legs)
+    for want in SEEDED_BADGES:
+        key = _names(want)
+        if any(key & h for h in have):
+            continue
+        print(f"[outline] !! {want!r} was seeded and the outline lost it — "
+              f"putting it back at the end")
+        out.append(want)
+    return out
 
 
 def _names(text: str) -> frozenset:
@@ -1837,6 +1893,7 @@ def outline(goal: str, model: str, rounds: int = 3,
             legs = drafts[0]
     # ...then ask the finished list what it assumes it already has. Before
     # the review, so anything added is ordered with everything else.
+    legs = _check_badges(legs)
     legs = _outline_upkeep(goal, legs, model)
     # LAST, after every pass that can add: the review inserts too, and one
     # outline reached the end holding Surf three times.
