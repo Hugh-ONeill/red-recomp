@@ -77,6 +77,22 @@ PREDICATES = {
         "win — when the journal shows your hits dealing very little, teaching "
         "a move is a subgoal you can aim at, not just a thing that happens on "
         "its own",
+    "has_species": "a NAMED species is in the party (e.g. "
+        "{\"has_species\":\"PIDGEY\"}, or a list for several). Pair it with "
+        "any_of when more than one species would do: {\"any_of\":["
+        "{\"has_species\":\"PIDGEY\"},{\"has_species\":\"RATTATA\"}]}. Set "
+        "battle_policy \"catch\" on the subgoal so wild battles throw balls "
+        "instead of knocking the target out, and remember you can only catch "
+        "what lives where you are standing",
+    "party_type": "the party contains a Pokemon of a TYPE (e.g. "
+        "{\"party_type\":\"WATER\"}, or a list to require several). Use this "
+        "rather than has_species when what you need is COVERAGE and any "
+        "species of that type would serve — it does not commit the plan to "
+        "one encounter that may not show up. The psychic type is spelled "
+        "PSYCHIC_TYPE",
+    "dex_owned": "at least N species OWNED in the Pokedex (e.g. "
+        "{\"dex_owned\":10}). Owning counts a species you have caught or "
+        "evolved into, not one merely seen in battle",
     "any_of": "EITHER/OR: a LIST of predicates, satisfied as soon as ANY "
         "one of them holds (e.g. {\"any_of\":[{\"has_item\":"
         "{\"HELIX_FOSSIL\":1}},{\"has_item\":{\"DOME_FOSSIL\":1}}]}). Use "
@@ -214,6 +230,15 @@ ENGINE_ITEMS = _engine_names("engine_items.txt")
 # can be spell-checked the same way. Manual tier: the TM's own description
 # names the move it teaches, and a Pokemon's summary screen lists its moves.
 ENGINE_MOVES = _engine_names("engine_moves.txt")
+# Every species and every type the engine defines. Same tier as the rest:
+# the Pokedex names species, the status screen prints types. These exist so
+# that "catch a WATER type before the next gym" is a condition a plan can
+# actually be held to — before them the only writeable upkeep was
+# party_size, under which "catch a Rattata to soak hits" and "catch a
+# water type to cover the gym" are the same subgoal and both are satisfied
+# by whatever walks into the grass first.
+ENGINE_SPECIES = _engine_names("engine_species.txt")
+ENGINE_TYPES = _engine_names("engine_types.txt")
 
 # The game's printed outdoor map (data/generated/maps.lua connections),
 # shared with the executor — used to name roads the run has stood beside
@@ -548,6 +573,39 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                              f"game defines{hint}")
             elif k == "badge" and v not in BADGES:
                 probs.append(f"{tag} ({sid}) badge '{v}' unknown")
+            elif k == "has_species" and ENGINE_SPECIES:
+                names = ([v] if isinstance(v, str)
+                         else list(v or []) if isinstance(v, (list, tuple))
+                         else list((v or {}).keys()))
+                for sp in names:
+                    sp = str(sp).upper()
+                    if sp not in ENGINE_SPECIES:
+                        near = difflib.get_close_matches(
+                            sp, ENGINE_SPECIES, n=3, cutoff=0.6)
+                        hint = (f" — did you mean {', '.join(near)}?"
+                                if near else "")
+                        probs.append(f"{tag} ({sid}) '{sp}' is not a species "
+                                     f"this game defines{hint}")
+            elif k == "party_type" and ENGINE_TYPES:
+                names = [v] if isinstance(v, str) else list(v or [])
+                for ty in names:
+                    ty = str(ty).upper()
+                    if ty in ENGINE_TYPES:
+                        continue
+                    # the engine calls it PSYCHIC_TYPE so the type and the
+                    # move of the same name cannot be confused; nobody
+                    # writing a plan would guess that
+                    if ty + "_TYPE" in ENGINE_TYPES:
+                        probs.append(f"{tag} ({sid}) the type is spelled "
+                                     f"{ty}_TYPE here, not {ty}")
+                        continue
+                    near = difflib.get_close_matches(ty, ENGINE_TYPES,
+                                                     n=3, cutoff=0.5)
+                    hint = (f" — did you mean {', '.join(near)}?"
+                            if near else f" — types are: "
+                            f"{', '.join(sorted(ENGINE_TYPES))}")
+                    probs.append(f"{tag} ({sid}) '{ty}' is not a type this "
+                                 f"game defines{hint}")
             elif k == "knows_move" and ENGINE_MOVES:
                 # The TM is TM_MEGA_PUNCH; the MOVE it teaches is MEGA_PUNCH.
                 # Naming the TM here would be checked against a move list it

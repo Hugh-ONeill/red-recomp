@@ -303,6 +303,36 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             lead = (obs.get("party") or [{}])[0]
             if (lead.get("level") or 0) < want:
                 return False
+        # THE THREE THAT MAKE UPKEEP WRITEABLE. A plan could always say
+        # "party_size 3" but never WHICH three, so "catch a water type to
+        # cover the next gym" and "catch a Rattata to soak hits" were the
+        # same subgoal to the harness and both were satisfied by whatever
+        # wandered into the grass first. Every one of these reads something
+        # the game prints on a screen: the status page shows a Pokemon's
+        # types under its name, the Pokedex shows OWN and SEEN.
+        elif key == "has_species":
+            have = {str(m.get("species") or "").upper()
+                    for m in (obs.get("party") or [])}
+            need = ([want] if isinstance(want, str)
+                    else list(want or []) if isinstance(want, (list, tuple))
+                    else list((want or {}).keys()))
+            if not all(str(s).upper() in have for s in need):
+                return False
+        elif key == "party_type":
+            have = {str(t).upper()
+                    for m in (obs.get("party") or [])
+                    for t in (m.get("types") or [])}
+            need = [want] if isinstance(want, str) else list(want or [])
+            if not all(str(t).upper() in have for t in need):
+                return False
+        elif key == "dex_owned":
+            # the Route 2 aide wants ten before he parts with FLASH
+            try:
+                need = int(want)
+            except (TypeError, ValueError):
+                need = 0
+            if ((obs.get("pokedex") or {}).get("owned") or 0) < need:
+                return False
         elif key == "area":
             # An ENCLOSED AREA, not just a floor: "MAP|region", the same id
             # the graph, sightings and searched-rooms use. Mt Moon B2F has
