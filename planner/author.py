@@ -2500,17 +2500,33 @@ city town island area house place way path sail
 # distinctive half of "Celadon City" is Celadon; "city" is scaffolding that
 # every third objective carries, and it was doing half the matching.
 
-OUTLINE_UPKEEP_SYS = """You wrote a Pokemon Red playthrough outline. Now
-read it back the way a player would, and answer one question about it:
+OUTLINE_UPKEEP_SYS = """You wrote a Pokemon Red playthrough outline. It
+is a list of things that HAPPEN. This question is about the PARTY that has
+to survive them.
 
-WHAT DOES THIS LIST ASSUME YOU ALREADY HAVE, that nothing on the list ever
-gets you?
+Read it back and answer: WHAT SHOULD BE TRUE OF YOUR PARTY, AND WHEN, that
+this list never makes true?
 
-An outline of story beats can be complete as a list of beats and still be
-unplayable, because the things that make the beats survivable never
-appear on it. Whatever you find, say it as OBJECTIVES in the same voice as
-the ones already there, each placed where it has to happen — not at the
-end, but before the thing that needs it.
+A trainer who only ever walks the story arrives at the end with one
+exhausted starter. The catching, the training and the type coverage happen
+along the way — but only if they are written down, because this list is
+worked through IN ORDER, one objective at a time, and nothing is pursued
+outside its own turn. There is no quietly levelling up in the background.
+
+SAY IT AS A STATE THAT BECOMES TRUE, NOT AS A CAPABILITY. These are the
+kinds of thing a plan can be held to, and they are the only kinds:
+  - every party member is at least level N
+  - the party has at least N Pokemon
+  - a NAMED species is in the party (or any one of several)
+  - the party holds a TYPE: WATER, FLYING, GHOST, GROUND and the rest
+  - N species are owned in the Pokedex
+  - a party Pokemon knows a particular MOVE
+
+"Obtain a Pokemon capable of defeating Brock" is not one of these. Nobody
+can tell whether it has been done, so nothing can act on it. "Every party
+member at least level 12", "a WATER type in the party", "catch a PIDGEY or
+a RATTATA" all say the same kind of thing in a way that is either true or
+not.
 
 Rules:
 - You may only ADD. Nothing already on the list may be reworded, moved or
@@ -2518,13 +2534,11 @@ Rules:
 - Add nothing that is already there in different words.
 - Add nothing that HAPPENS BY ITSELF when something already on the list is
   done. If finishing the objective above it hands you the thing, then it
-  is not missing and it is not a step — it is that objective, written
-  twice. Ask of each one: could I finish the neighbouring objective and
-  still not have this?
-- Add nothing you cannot tell whether you have done. An objective is a
-  thing that becomes true, not an attitude.
-- If the list genuinely assumes nothing it does not get, reply with an
-  empty array. That is a real answer.
+  is not missing — it is that objective, written twice.
+- Put each one where it is needed, BEFORE the thing that needs it, not at
+  the end.
+- If the list genuinely leaves nothing for the party to become, reply with
+  an empty array. That is a real answer.
 
 Reply with ONLY a JSON array; each element is
 {"item": "<the objective>", "after": N} where N is the outline position it
@@ -2532,7 +2546,7 @@ must come after (0 = before everything)."""
 
 
 def _outline_upkeep(goal: str, legs: list, model: str,
-                    cap: int = 8, rounds: int = 3) -> list:
+                    cap: int = 12, rounds: int = 3) -> list:
     """Repeat the question until it stops finding anything.
 
     ONE PASS IS NOT ENOUGH, and the reason is a dependency rather than a
@@ -2572,7 +2586,7 @@ def _outline_upkeep(goal: str, legs: list, model: str,
 
 
 def _outline_upkeep_once(goal: str, legs: list, model: str,
-                         cap: int = 8) -> list:
+                         cap: int = 12) -> list:
     """Ask the outline what it takes for granted, and let it add.
 
     Measured, not assumed: a run that plans only story beats plays the
