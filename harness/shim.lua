@@ -209,9 +209,36 @@ local function party(G)
     for j, mv in ipairs(mon.moves or {}) do
       m.moves[j] = type(mv) == "table" and scalars(mv, 0) or tostring(mv)
     end
+    -- WHAT TYPE IT IS. The status screen prints it under the name, so it is
+    -- as player-visible as the level beside it -- but nothing published it,
+    -- and a run cannot aim at "get something that resists this" while the
+    -- only thing it knows about its party is species and numbers. Read off
+    -- the species table the game reads.
+    do
+      local def = G.data and G.data.pokemon and G.data.pokemon[mon.species]
+      if def and def.types then
+        m.types = {}
+        for k, t in ipairs(def.types) do m.types[k] = tostring(t) end
+      end
+    end
     out[i] = m
   end
   return out
+end
+
+-- HOW MANY SPECIES ARE OWNED AND SEEN. The Pokedex screen shows both
+-- totals on its own summary line, so this is on-screen tier. It is also
+-- load-bearing: the Route 2 aide trades HM05 FLASH for TEN OWNED, and with
+-- no way to count them that gate cannot be written as a subgoal at all --
+-- the run can only bump into it. Counts only; which species those are is
+-- already in the party list for anything in the party.
+local function pokedex(G)
+  local dex = G.save and G.save.pokedex
+  if not dex then return nil end
+  local owned, seen = 0, 0
+  for _ in pairs(dex.owned or {}) do owned = owned + 1 end
+  for _ in pairs(dex.seen or {}) do seen = seen + 1 end
+  return { owned = owned, seen = seen }
 end
 
 local function badges(G)
@@ -670,6 +697,7 @@ local function observe(G, seq, result)
   end
   o.party = party(G)
   o.badges = badges(G)
+  o.pokedex = pokedex(G)
   -- bag: player-visible (the START menu ITEM screen); badges live in the
   -- same inventory table but are not bag items
   o.bag = {}
