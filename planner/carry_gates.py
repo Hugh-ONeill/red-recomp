@@ -117,6 +117,61 @@ def carry(old: dict, new: dict) -> tuple:
     return merged, [sg["id"] for sg in missing]
 
 
+def carry_macros(old: dict, new: dict) -> list:
+    """Attach the old plan's distilled MACROS to the rewrite, in place.
+
+    A macro is the run's accumulated skill: an op sequence escalation
+    proved and distill wrote back. A rewrite is authored from scratch and
+    author.py never writes macros, so every rewrite arrived empty and the
+    leg re-derived routes it already had. leg_03.v1 carried seven — five
+    ops to Route 2, seven into the forest, a twelve-op training macro,
+    four out, Pewter, the gym, Brock — and leg_03.v2 had none, after
+    which the run spent eight escalations in two legs and was still in
+    Viridian with a level 5 CHARMANDER.
+
+    MATCHED BY CONDITION, NOT BY ID, exactly as gates are: ids are renamed
+    freely between passes (reach_pallet_town -> go_to_pallet_town in the
+    very next rewrite), while done_when is the contract a macro satisfies.
+
+    ONLY ONTO SUBGOALS THE REWRITE LEFT EMPTY. If the new plan already
+    carries a macro for that condition it is the newer evidence and wins;
+    nothing the model wrote is overwritten.
+
+    Not bounded like the gates. MAX_CARRIES exists because re-inserting a
+    gate overrides a decision the model made to drop it — but a plan
+    author cannot express "do not use that route", since authored plans
+    have no macros at all. There is no decision here to override. A macro
+    that has stopped working simply fails on replay and escalation takes
+    over, which is what would have happened with no macro anyway.
+    """
+    by_cond = {}
+    for sg in old.get("subgoals") or []:
+        m = sg.get("macro")
+        if isinstance(m, list) and m:
+            by_cond.setdefault(
+                json.dumps(sg.get("done_when") or {}, sort_keys=True),
+                (m, sg.get("macro_provenance")))
+    if not by_cond:
+        return []
+    done = []
+    for sg in new.get("subgoals") or []:
+        if sg.get("macro"):
+            continue
+        hit = by_cond.get(json.dumps(sg.get("done_when") or {},
+                                     sort_keys=True))
+        if not hit:
+            continue
+        macro, prov = hit
+        sg["macro"] = macro
+        # the model authored this route in an earlier pass, and the marker
+        # has to keep saying so — provenance travels with the macro
+        if prov:
+            sg["macro_provenance"] = dict(prov)
+            sg["macro_provenance"]["carried_from_rewrite"] = True
+        done.append(f"{sg['id']}({len(macro)})")
+    return done
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print(__doc__)
@@ -129,10 +184,15 @@ def main() -> int:
         print(f"[gates] could not merge: {e}")   # worth failing the campaign
         return 0
     merged, carried = carry(old, new)
-    if carried:
+    macros = carry_macros(old, merged)
+    if carried or macros:
         new_p.write_text(json.dumps(merged, indent=1))
+    if carried:
         print(f"[gates] carried {len(carried)} event gate(s) forward into "
               f"{new_p.name}: {', '.join(carried)}")
+    if macros:
+        print(f"[gates] carried {len(macros)} distilled macro(s) forward "
+              f"into {new_p.name}: {', '.join(macros)}")
     return 0
 
 
