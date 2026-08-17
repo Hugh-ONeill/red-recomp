@@ -896,6 +896,45 @@ class Executor:
                 return words
         return None
 
+    # THE TOUCH RULE, in one place because it has now been got wrong in
+    # two. A thing is written into the lifetime touched ledger ONLY for an
+    # interaction that COMPLETED. Not one that never happened, not one that
+    # asked a question nobody answered, not one whose fight was lost.
+    #
+    # The ledger is monotone and every consumer trusts it — the untouched
+    # list, the fully-worked proof, the escort's ranking, the sweep's own
+    # "everything reachable here has been tried". A false entry there is
+    # not a missing hint, it is a WRONG FACT that nothing downstream can
+    # question, and it is unrecoverable by design.
+    #
+    # It cost the Mt Moon fossils: the blind sweep pressed both, was asked
+    # "You want the DOME FOSSIL?", declined (no answer given IS a decline),
+    # and recorded them as done. The room read fully worked and the run
+    # left the mountain with neither.
+    #
+    # _run_traced implements the same rule the other way round — it marks
+    # provisionally before the op and RETRACTS on the three conditions
+    # below. Both directions are fine; having neither, as the sweep did, is
+    # not. If a fourth condition is ever found, it belongs in both.
+    def _record_touch(self, region, name, res_obs) -> bool:
+        """Write a touch, if the interaction earned it. Returns whether."""
+        if not (region and name) or "None" in str(region):
+            return False
+        r = ((res_obs or {}).get("result") or {})
+        if not r.get("ok"):
+            return False                       # it never happened
+        if ASKING in str(r.get("detail") or ""):
+            return False                       # it asked; nothing answered
+        self._tried_objs.setdefault(region, set()).add(name)
+        self._stamp_touch(region)
+        self._mark_touch(region, name, res_obs)
+        return True
+
+    def _retract_touch(self, region, name) -> None:
+        """Un-write a provisional touch the interaction did not earn."""
+        if region and name:
+            self._tried_objs.get(region, set()).discard(name)
+
     def _walked_dest(self, map_id: str, key: str):
         """Where this run has actually come out when it took that door.
 
@@ -5070,8 +5109,8 @@ Reply with ONLY a JSON array of ops, e.g.
                     # the nerd's flag was declared unreachable in the very
                     # room he stands in.
                     if op == "interact" and step.get("name"):
-                        self._tried_objs.get(self._where(pre_obs),
-                                             set()).discard(step["name"])
+                        self._retract_touch(self._where(pre_obs),
+                                            step["name"])
                     obs = self.handle_battle(sg, obs)
                     obs = self.settle()
                     post_map = ((obs or {}).get("map") or {}).get("id")
@@ -5222,12 +5261,10 @@ Reply with ONLY a JSON array of ops, e.g.
             # never offered either fossil again. An interaction whose
             # outcome was a faint has not been made.
             if blackout and op == "interact" and step.get("name"):
-                self._tried_objs.get(self._where(pre_obs),
-                                     set()).discard(step["name"])
+                self._retract_touch(self._where(pre_obs), step["name"])
             if (ASKING in str(r.get("detail") or "")
                     and op == "interact" and step.get("name")):
-                self._tried_objs.get(self._where(pre_obs),
-                                     set()).discard(step["name"])
+                self._retract_touch(self._where(pre_obs), step["name"])
             if not r.get("ok"):
                 self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
                 note += f": FAILED — {r.get('detail')}"
@@ -5237,8 +5274,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 # worked — a false searched proof that stops the run ever
                 # coming back for them.
                 if op == "interact" and step.get("name"):
-                    self._tried_objs.get(self._where(obs),
-                                         set()).discard(step["name"])
+                    self._retract_touch(self._where(obs), step["name"])
                 # Some failures are DEFINITIVE about this place, not about
                 # the attempt: a shop that does not stock the item will
                 # never stock it. Without recording that, shopping_for_potions
@@ -6580,13 +6616,11 @@ Reply with ONLY a JSON array of ops, e.g.
                         # Declining stays the safe default; what changes is
                         # that a thing which asked something is not recorded
                         # as spent, and the model is told it is still open.
-                        _det = str(((o2 or {}).get("result") or {})
-                                   .get("detail") or "")
-                        if ASKING in _det:
-                            asked_back.append(name)
-                        else:
-                            touched.add(name)
-                            self._stamp_touch(here_s)
+                        if not self._record_touch(here_s, name, o2):
+                            _det = str(((o2 or {}).get("result") or {})
+                                       .get("detail") or "")
+                            if ASKING in _det:
+                                asked_back.append(name)
                         cur = o2 or cur
                         if pred_holds(done, cur):
                             break
