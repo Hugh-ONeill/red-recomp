@@ -89,10 +89,12 @@ PREDICATES = {
         "rather than has_species when what you need is COVERAGE and any "
         "species of that type would serve — it does not commit the plan to "
         "one encounter that may not show up. The psychic type is spelled "
-        "PSYCHIC_TYPE",
+        "PSYCHIC_TYPE. Set battle_policy \"catch\" on the subgoal, or wild "
+        "battles knock out the very thing you are trying to keep",
     "dex_owned": "at least N species OWNED in the Pokedex (e.g. "
         "{\"dex_owned\":10}). Owning counts a species you have caught or "
-        "evolved into, not one merely seen in battle",
+        "evolved into, not one merely seen in battle — so set battle_policy "
+        "\"catch\" on the subgoal and carry balls",
     "any_of": "EITHER/OR: a LIST of predicates, satisfied as soon as ANY "
         "one of them holds (e.g. {\"any_of\":[{\"has_item\":"
         "{\"HELIX_FOSSIL\":1}},{\"has_item\":{\"DOME_FOSSIL\":1}}]}). Use "

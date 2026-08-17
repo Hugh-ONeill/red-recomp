@@ -3364,13 +3364,24 @@ class Executor:
         # so catch_backup ran the TRAVERSAL policy, which fights and flees
         # but never throws a ball. It KO'd every wild it met and the goal
         # could not be satisfied at all.
+        # ...AND EVERY CONDITION A BALL CAN SATISFY, THROUGH any_of. This
+        # listed party_size alone, so the three predicates added later —
+        # party_type, has_species, dex_owned — fell through to the
+        # traversal policy and the run KO'd its way across Route 24 with 13
+        # balls in the bag and "the party holds a WATER or GRASS type"
+        # unsatisfiable by anything it was doing. Worse, the test was `in
+        # dw`, which cannot see into an either/or: the live subgoal read
+        # {"any_of":[{"party_type":"WATER"},{"party_type":"GRASS"}]} and
+        # would have missed party_size there too. pred_keys exists for
+        # exactly this and recurses into any_of.
         name = subgoal.get("battle_policy")
         if not name:
             dw = subgoal.get("done_when") or {}
-            name = ("catch" if "party_size" in dw
-                    else "default" if ("lead_level" in dw
-                                       or "party_min_level" in dw
-                                       or "slot_level" in dw)
+            keys = pred_keys(dw)
+            name = ("catch" if keys & {"party_size", "party_type",
+                                       "has_species", "dex_owned"}
+                    else "default" if keys & {"lead_level", "party_min_level",
+                                              "slot_level"}
                     else "traversal")
             if name not in BATTLE_POLICIES:      # never crash on a bad key
                 name = "traversal"
