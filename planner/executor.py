@@ -4194,7 +4194,11 @@ Reply with ONLY a JSON array of ops, e.g.
                 mons = (obs or {}).get("party") or []
                 healed = bool(mons) and all(
                     m.get("max_hp") and m.get("hp") == m["max_hp"] for m in mons)
-                if healed and after[6] > before[6]:
+                # index 7 is the party's HP SUM; 6 is (bag kinds, bag total).
+                # Testing the bag here meant a wipe inside a Lua op — grind,
+                # cross, walk_to, where mode never reads "battle" — was only
+                # ever caught when the bag happened to grow on the same step.
+                if healed and after[7] > before[7]:
                     blackout = after[0]
                     self._faint_at = self._where(pre_obs)
                     if self._cur_target:
