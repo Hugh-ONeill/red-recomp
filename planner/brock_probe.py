@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import socket
 import time
 import urllib.request
 from pathlib import Path
@@ -92,7 +93,52 @@ rather than repeating it. Output only the JSON object."""
 NUM_CTX = 24576
 
 
-def chat(msgs, model):
+def chat(msgs, model, retries=2):
+    """Ask the model, and do not lose a whole round to one bad second.
+
+    Every caller wrapped this in `except Exception` and gave up on the spot
+    — the escalation loop BROKE OUT with all its remaining rounds unspent,
+    so one refused connection while ollama was reloading a model cost a
+    subgoal its entire budget. Nothing here retried, at any level.
+
+    Bounded on purpose: a hung server must not turn a 5-minute timeout into
+    a quarter of an hour, so the backoff is short and the count is small.
+    A timeout is retried at most once, since it has already cost its full
+    300 seconds by the time we see it.
+    """
+    last, attempt = None, 0
+    while True:
+        try:
+            return _chat_once(msgs, model)
+        except Exception as e:
+            last = e
+            # a timeout has already spent its full 300s, so it gets one
+            # more go and no more; a refused or dropped connection is
+            # cheap and gets the full budget
+            budget = 1 if _is_timeout(e) else retries
+            if attempt >= budget:
+                break
+            wait = 2 * (attempt + 1)
+            print(f"[ollama] {type(e).__name__}: {e} — retrying in {wait}s "
+                  f"(retry {attempt + 1} of {budget})")
+            time.sleep(wait)
+            attempt += 1
+    raise last
+
+
+def _is_timeout(e) -> bool:
+    """urllib wraps a socket timeout in URLError, so isinstance alone
+    misses the one case the budget above exists to bound."""
+    seen = 0
+    while e is not None and seen < 5:
+        if isinstance(e, (TimeoutError, socket.timeout)):
+            return True
+        e = getattr(e, "reason", None)
+        seen += 1
+    return False
+
+
+def _chat_once(msgs, model):
     body = json.dumps({"model": model, "messages": msgs, "stream": False,
                        "think": False, "keep_alive": "30m",
                        "options": {"temperature": 0.3,
