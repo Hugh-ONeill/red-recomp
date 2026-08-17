@@ -1533,7 +1533,7 @@ class Executor:
         self._touch_mark.setdefault(region, {})[name] = {
             "then": self._world_mark(obs), "n": 0, "at": None}
 
-    def _worth_another_word(self, region: str, obs) -> list:
+    def _worth_another_word(self, region: str, obs, backfill=True) -> list:
         """Things pressed HERE, back when the world was something else.
 
         THE TOWN MAP HAS NEVER BEEN OBTAINED IN ANY RUN, and this is why.
@@ -1558,6 +1558,11 @@ class Executor:
         only TOUCH_REOFFERS times per thing per run.
         """
         now = self._world_mark(obs)
+        if not backfill:
+            return sorted(
+                n for n, rec in (self._touch_mark.get(region) or {}).items()
+                if isinstance(rec, dict) and rec.get("then") != now
+                and (rec.get("n") or 0) < self.TOUCH_REOFFERS)
         # EVERYTHING ALREADY IN THE LIFETIME LEDGER JOINS FROM HERE. The
         # marks are new and the touches are not: 170 things had been pressed
         # before this existed, Daisy among them, and without a backfill they
@@ -2094,6 +2099,32 @@ class Executor:
             self._arrived = (dst, (ap["x"], ap["y"]))
             self._came_from = src
             self._reversals = 0
+            # THE FAR SIDE OF A DOOR IS A DOOR YOU HAVE OPENED. An edge is
+            # keyed on the tile you DEPARTED from, so walking city -> house
+            # writes 27,11 on the city and house -> city writes 3,0 on the
+            # house. The city-side tile of the house's back door never gets
+            # an entry at all, because you only ever ARRIVE on it — so
+            # Cerulean's (27,9) was still being reported as a doorway never
+            # opened after the run had come out through it THIRTY-TWO times,
+            # and it is the way south. Compare (9,9) at the badge house,
+            # which IS recorded, purely because the run once happened to
+            # leave through it.
+            # Only when the tile you landed on IS a doorway AND that doorway
+            # leads back where you came from: then there is no ambiguity
+            # about which door you just used.
+            _ak = f"{ap['x']},{ap['y']}"
+            _smap = src.split("|")[0]
+            for _w in ((after_obs or {}).get("map") or {}).get("warps") or []:
+                if f"{_w.get('x')},{_w.get('y')}" != _ak:
+                    continue
+                if str(_w.get("dest") or "") != _smap:
+                    continue
+                _back = self.explored.setdefault(dst, {})
+                if _ak not in _back:
+                    _back[_ak] = {"to": src, "n": 1}
+                    self.log("reverse_edge", frm=dst, via=_ak, to=src)
+                    self._save_memory()
+                break
         # A DOOR THIS ROOM DOES NOT HAVE. The edge is keyed on the tile the
         # op AIMED at, and once — leaving the Mt Moon Pokemon Center — that
         # was 18,5, which is a ROUTE_4 tile: the Center's own two door tiles
@@ -3483,14 +3514,31 @@ class Executor:
         # travel goals never earn per-target entries, so keying the advice
         # by target meant the model was never told a room was finished
         # during exactly the legs where it cycled through worked rooms.
+        # FULLY WORKED IS A CLAIM WITH A DATE ON IT. note_searched means
+        # "every exit taken, everything touched" AS OF WHEN IT WAS CHECKED,
+        # and the whole point of the re-offer ledger is that a room stops
+        # being finished when the world moves — a person with nothing to say
+        # in the morning hands you the TOWN MAP in the afternoon. Saying
+        # both in one prompt ("nothing is left to find here" beside "worth
+        # another word") is the harness contradicting itself, and the model
+        # has to pick one. So the worked claim yields: where there is
+        # something worth another word, it is not made.
+        # The searched LEDGER is untouched — dead ends, the revisit refusal
+        # and the escort all still read it, and it stays monotone.
+        again = self._worth_another_word(here, obs)
         worked = self._worked_for(target)
-        done_rooms = [r for r in worked if r != here]
+        done_rooms = [r for r in worked if r != here
+                      and not self._worth_another_word(r, obs, backfill=False)]
         searched_line = ""
-        if worked.get(here):
+        if worked.get(here) and not again:
             searched_line = ("\nYou have ALREADY fully worked this exact "
                              "area — every exit taken, everything touched. "
                              "Do not search it again; pass through or go "
                              "somewhere new.")
+        elif worked.get(here):
+            searched_line = ("\nYou had fully worked this exact area — every "
+                             "exit taken, everything touched — but that was "
+                             "before what has happened since; see below.")
         elif done_rooms:
             searched_line = ("\nAlready fully worked (walk through if you "
                              "must, but nothing is left to find in them): "
@@ -3723,7 +3771,6 @@ class Executor:
         # Daisy's line turns on. Per-object marks can. Same rule as above:
         # nothing is un-said, the touch stands, and which of these is worth
         # a second word is the model's call.
-        again = self._worth_another_word(here, obs)
         if again:
             if self._note_reoffer(here, again, obs):
                 self._save_memory()
