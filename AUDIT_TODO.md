@@ -504,7 +504,7 @@ changes a decision the run makes today.
   is true about Vermilion and false about the road, and it sends the run
   door-hunting in the city it is standing in. Open.
 
-- [ ] **EXPLORE — a thing touched once is retired for ever.**
+- [x] **EXPLORE — a thing touched once is retired for ever.**
   The Town Map has never been obtained in any run. During `pick_starter`, on
   leg 1, the model pressed `BLUESHOUSE_DAISY1` ("AAAAAAA is out at Grandpa's
   lab" — the pre-Pokedex line, no gift) and `BLUESHOUSE_TOWN_MAP` (the wall
@@ -514,7 +514,28 @@ changes a decision the run makes today.
   free-round re-talk written for exactly this is gated on
   `target_key.startswith("flag:")`, so it never fires in Blue's house.
   The general class: this game's design is that people change what they say
-  once the world changes, and the harness retires them after one visit. NEXT.
+  once the world changes, and the harness retires them after one visit.
+  **DONE (`935d24a`).** Correction found while building it: Daisy's gate is
+  `EVENT_GOT_STARTER`, not the Pokedex — and the line the log recorded her
+  saying is the branch the script takes when that flag is FALSE, so the run
+  talked to her minutes before picking the starter that unlocks her gift.
+  Nothing is un-said: the touch stands, the lifetime ledger stays monotone
+  (fourteen readers depend on it), and a per-object mark of what the world
+  was at press time drives one new line — *WORTH ANOTHER WORD* — that states
+  the fact and leaves the judgment where it belongs.
+  `_touch_bag` had already tried this keyed on KEY ITEMS, which cannot see a
+  badge and cannot see the starter. The mark is `[badges, flag count, bag
+  kinds]`, which can. Bounded twice: only while the mark differs, and three
+  times per thing per run — counted per WORLD STATE, not per render, or a
+  subgoal stuck in one room burns all three before the model acts on one.
+  Already-touched things backfill at the current mark, so nothing floods on
+  the first boot.
+  *Checked for a cheaper signal first, per the user's question:* there is no
+  importance marker anywhere — flags are a flat `name -> bool` table with no
+  metadata. The one derivable split, `check_flag` vs `set_flag` in the
+  recomp's scripts, is **59 gates to 9 records**, so it barely discriminates.
+  Ranking the event was the wrong idea; ranking the delta against the thing
+  you touched is the right one.
 
 - [x] **STRUCT — a second test: `tests/replay_smoke.py`.** The contract test
   proves the SHAPE of an observation; this proves the executor still PLAYS —
