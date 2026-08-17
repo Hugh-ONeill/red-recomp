@@ -869,6 +869,41 @@ class Executor:
                 return to
         return None
 
+    def _taken_here(self, region) -> dict:
+        """Exits this region counts as ALREADY TAKEN.
+
+        A DOOR IS A TILE, AND A TILE BELONGS TO THE MAP. The walked ledger
+        is keyed by REGION, and one map can end up under several region
+        labels — Cerulean carried four. The label the run actually lives in
+        had 426 visits and all eleven exits taken; a label it had stood in
+        TWICE inherited the whole city's doorway list and reported ten of
+        them as ways never tried. So every round, from the 426-visit label,
+        the model was told there was somewhere new two legs away whose
+        first step was the trashed-house door it had already opened 37
+        times — and it went, and did it again, for hours. It was doing
+        exactly what it was told.
+
+        A coordinate key is the same tile whichever label you are standing
+        in, so "taken" for those is a fact about the MAP. Directions stay
+        region-local: on a genuinely split map the stub side cannot reach
+        the far seam, and telling it that seam is taken would delete the
+        one discovery that opens the map (Route 4's two halves are the
+        standing example).
+
+        The region's own entry always wins, so counts and shut-flags the
+        run earned here are never overwritten by a neighbour's.
+        """
+        own = dict(self.explored.get(region) or {})
+        mid = str(region).split("|")[0]
+        for r2, ex2 in (self.explored or {}).items():
+            if r2 == region or r2.split("|")[0] != mid:
+                continue
+            for k, e in (ex2 or {}).items():
+                # coordinates only; a direction is not a tile
+                if "," in k and k not in own:
+                    own[k] = e
+        return own
+
     def _frontier_left(self, region) -> list:
         """Exits of `region` never taken — the ONE definition.
 
@@ -880,7 +915,7 @@ class Executor:
         printed map — was advertised to the model every round as a way it
         had never tried. A wall is not an unopened door.
         """
-        done = set((self.explored.get(region) or {}).keys())
+        done = set(self._taken_here(region))
         shut = self._no_cross.get(region, set())
         return [e for e in (self.frontier.get(region) or [])
                 if e not in done and e not in shut]
@@ -2047,7 +2082,7 @@ class Executor:
         beside it and belongs to ground the party has never stood on.
         """
         here = self._where(obs)
-        taken = self.explored.get(here, {}) or {}
+        taken = self._taken_here(here)
         m = (obs or {}).get("map") or {}
         folk = [o for o in (m.get("objects") or [])
                 if o.get("reachable") and o.get("x") is not None]
@@ -2082,7 +2117,7 @@ class Executor:
         """Ways out of here never taken — doors and roads alike. Map edges
         count: a town's road out is the exit an event most often hides on."""
         m = (obs or {}).get("map") or {}
-        taken = self.explored.get(self._where(obs), {}) or {}
+        taken = self._taken_here(self._where(obs))
         # a proven-uncrossable seam is not an exit — leaving it "untried"
         # here meant the searched proof could never fire for a stub region
         # and the escort ranked it as frontier forever
@@ -3136,7 +3171,7 @@ class Executor:
         if self._is_party_goal(target):
             return self.training_text(obs, target)
         here = self._where(obs)
-        taken = self.explored.get(here, {})
+        taken = self._taken_here(here)
         m = (obs or {}).get("map") or {}
         # candidates are DOORS *and* MAP EDGES. Listing only warps meant a
         # town's road out never appeared as untried, so the run kept
