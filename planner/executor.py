@@ -2397,7 +2397,15 @@ class Executor:
                             f"({k})->{_d or 'UNKNOWN'}"))
         for d, t in (m.get("connections") or {}).items():
             if d not in taken and d not in blocked:
-                out.append((t in seen_maps, f"walk {d} -> {t}"))
+                # A SEAM IS A DOOR WITH NO DOORFRAME. Doors already say
+                # UNKNOWN until walked; a map edge was still naming the map
+                # on its far side, out of the same table, and that is the
+                # Town Map's answer arriving by another route now that
+                # edges_text is gated on holding one. You can SEE a road
+                # leave — the seam is on screen — but not what it is called.
+                _t = self._walked_dest(m.get("id"), d)
+                out.append((bool(_t) and _t.split("|")[0] in seen_maps,
+                            f"walk {d} -> {_t or 'UNKNOWN'}"))
         # FRONTIER FIRST: an exit into a map never visited can teach
         # something; one back into a map already seen mostly cannot. Pallet's
         # buildings kept winning over the road north purely by listing order,
@@ -3416,8 +3424,10 @@ class Executor:
         warps = [{"key": f"{w.get('x')},{w.get('y')}", "dest": w.get("dest"),
                   "reachable": w.get("reachable")}
                  for w in (m.get("warps") or [])]
-        warps += [{"key": d, "dest": t, "reachable": True}
-                  for d, t in (m.get("connections") or {}).items()]
+        # dest resolved from what has been WALKED, never from the table
+        warps += [{"key": d, "dest": self._walked_dest(m.get("id"), d),
+                   "reachable": True}
+                  for d in (m.get("connections") or {})]
         # A FLOOR YOU CANNOT WALK ACROSS IS NOT A FLOOR YOU HAVE FINISHED.
         # The frontier is built from warps in regions the run has STOOD in,
         # so a part of a map it has never entered contributes nothing and
@@ -3530,10 +3540,11 @@ class Executor:
                 # drawn on the Town Map. A DOOR does not: until this run has
                 # walked through it, nobody has seen the far side.
                 if not k[0].isdigit():
+                    _wd = w.get("dest")
                     untried.append(
-                        (w.get("dest") in {a.split("|")[0]
-                                           for a in self.visits},
-                         f"walk {k} out of here -> {w.get('dest')}"))
+                        (bool(_wd) and _wd.split("|")[0] in {
+                            a.split("|")[0] for a in self.visits},
+                         f"walk {k} out of here -> {_wd or 'UNKNOWN'}"))
                 else:
                     _d = self._walked_dest(m.get("id"), k)
                     untried.append(
@@ -6416,13 +6427,16 @@ Reply with ONLY a JSON array of ops, e.g.
                            if (cur.get("map") or {}).get("warps") else "")
                         + (f"\nEdges from this map (cross that dir to reach): "
                            + ", ".join(
-                               f"{d}->{m}"
+                               f"{d}->"
+                               + (self._walked_dest(
+                                   (cur.get("map") or {}).get("id"), d)
+                                  or "UNKNOWN")
                                + (" (PROVEN uncrossable from THIS part of "
                                   "the map — the connection exists on the "
                                   "far side of a barrier)"
                                   if d in self._sealed(self._where(cur))
                                   else "")
-                               for d, m in conns.items())
+                               for d in conns)
                            if conns else "")
                         + (f"\nObjects here you can interact: {objs}" if objs
                            else "")
