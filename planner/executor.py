@@ -2291,6 +2291,19 @@ class Executor:
                 # carrying then — the guard wanting a drink is the case
                 # this whole run has been stuck behind.
                 e["shut_at"] = self._world_mark(after_obs)
+                # ...AND WHETHER WE COULD EVEN GET TO IT. "Being able to
+                # reach it is itself the change" is the right rule and the
+                # code could not apply it: it compared reachable-NOW against
+                # nothing, so every reachable shut door counted as reopened
+                # for ever and the shut flag meant nothing for the doors it
+                # most applies to. Record the THEN, so the comparison the
+                # comment describes can actually be made.
+                if step.get("x") is not None:
+                    _bw = ((before_obs or {}).get("map") or {}).get("warps") or []
+                    e["shut_reach"] = any(
+                        w.get("x") == step.get("x")
+                        and w.get("y") == step.get("y")
+                        and w.get("reachable") for w in _bw)
             self.log("exit_refused", frm=src, via=str(key),
                      times=node[key]["n"],
                      twins=len(self._twin_keys(before_obs, step)))
@@ -2448,6 +2461,10 @@ class Executor:
         # here meant the searched proof could never fire for a stub region
         # and the escort ranked it as frontier forever
         blocked = self._sealed(self._where(obs))
+        # a door reached for twice in this state of the world and never got
+        # through is not untried — the same rule _frontier_left applies, and
+        # it went into only one of the two definitions when it was written
+        blocked = set(blocked) | set(self._spent_exits(self._where(obs)))
         seen_maps = {a.split("|")[0] for a in self.visits}
         out = []
         for w in (m.get("warps") or []):
@@ -2466,9 +2483,15 @@ class Executor:
             # every one of its doorways "taken", five of which had never
             # been walked at all. If you can walk to it now and could not
             # then, that is new, whatever the bag says.
+            # reachable NOW and not reachable THEN is new; reachable in
+            # both is the same door refusing you again. Legacy entries have
+            # no `shut_reach` and default to "it was reachable then", which
+            # leaves the world mark as their only way back — the same rule
+            # _frontier_left applies.
             reopened = (was.get("shut")
                         and (was.get("shut_at") != self._world_mark(obs)
-                             or w.get("reachable")))
+                             or (w.get("reachable")
+                                 and not was.get("shut_reach", True))))
             if (k not in taken or reopened) and k not in blocked:
                 # A DOORWAY PATHFINDING CANNOT REACH IS NOT AUTO-EXPLORABLE.
                 # It was briefly listed here so the run would try a blocked
