@@ -9,13 +9,20 @@
 # resumes the on-disk save instead of new_game.
 set -euo pipefail
 cd "$(dirname "$0")"
+# Tell stop_all.sh what this rig started, so it never has to guess
+# from a process-name pattern (rig.sh).
+# shellcheck source=rig.sh
+. ./rig.sh
+rig_register run
 # RED_HEADED=1 opens a real window (run.sh --headed) and RED_SPEED sets the
 # clock: 200x is a blur to watch, 10-20x is followable by eye.
 setsid ./run.sh ${RED_HEADED:+--headed} "${RED_SPEED:-200}" &
 GAME_PID=$!
+rig_register game "-$GAME_PID"     # setsid made it a group; kill the group
 # kill the whole process group: xvfb-run's cleanup does not reliably reach
 # love, which otherwise survives as an orphan on the dead Xvfb display
-trap 'kill -- -"$GAME_PID" 2>/dev/null || true' EXIT
+trap 'kill -- -"$GAME_PID" 2>/dev/null || true;
+      [ -n "${EXEC_PID:-}" ] && kill "$EXEC_PID" 2>/dev/null || true' EXIT
 for _ in $(seq 1 60); do [ -f run/obs.json ] && break; sleep 1; done
 [ -f run/obs.json ] || { echo "game did not come up" >&2; exit 1; }
 # THE MODEL-AUTHORED SPEC IS THE ONE THAT PLAYS. battle_policy's own
@@ -33,4 +40,13 @@ if [ -n "$POLICY" ] && [ -s "$POLICY" ]; then
   pol=(--policy-spec "$POLICY")
   echo "[policy] $POLICY"
 fi
-python planner/executor.py --bootstrap "$@" "${pol[@]}"
+# BACKGROUNDED SO IT CAN BE REGISTERED AND SO THE TRAP CAN REACH IT.
+# Run in the foreground, a SIGTERM to this script ran the EXIT trap (killing
+# the game) and then LEFT THE EXECUTOR ALIVE, talking to a bridge whose game
+# had gone — which is precisely the "executor that outlived its game"
+# contamination stop_all.sh was written for. `wait` still propagates its
+# exit status, which campaign.sh reads.
+python planner/executor.py --bootstrap "$@" "${pol[@]}" &
+EXEC_PID=$!
+rig_register executor "$EXEC_PID"
+wait "$EXEC_PID"

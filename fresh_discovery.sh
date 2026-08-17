@@ -16,6 +16,11 @@
 # Usage: fresh_discovery.sh [attempts-per-leg]   (default 4)
 set -euo pipefail
 cd "$(dirname "$0")"
+# Tell stop_all.sh what this rig started, so it never has to guess
+# from a process-name pattern (rig.sh).
+# shellcheck source=rig.sh
+. ./rig.sh
+rig_register chain
 ATTEMPTS="${1:-4}"
 MODEL="${RED_MODEL:-gemma4:31b-it-q4_K_M}"
 # What the run is FOR, in the player's own words. It is the only thing the
@@ -59,7 +64,12 @@ if [ "$done_legs" = 0 ]; then
   # falls back to it — a three-badge obs certifies the Brock, Misty and
   # Surge legs complete on a badgeless new game. Same false-completion
   # class as the stale-flag resume teleport.
-  rm -f run/explored.json run/last_state.json run/obs.json \
+  # .prev goes with it: the ledger is now written tmp+rename with the last
+  # good copy kept beside it, and a fresh chain that cleared the live file
+  # but left the fallback would load a previous chain's whole walked map
+  # and call it this one's.
+  rm -f run/explored.json run/explored.json.prev run/explored.json.tmp \
+        run/last_state.json run/obs.json \
         run/status.txt run/heartbeat
   # these budgets belong to a chain, not to the directory
   : > run/outline_reorders

@@ -12,6 +12,11 @@
 # Usage: campaign.sh <attempts> <plan1> [plan2 ...] [-- extra executor args]
 set -euo pipefail
 cd "$(dirname "$0")"
+# Tell stop_all.sh what this rig started, so it never has to guess
+# from a process-name pattern (rig.sh).
+# shellcheck source=rig.sh
+. ./rig.sh
+rig_register campaign
 
 ATTEMPTS="${1:?usage: campaign.sh <attempts> <plan...> [-- extra args]}"; shift
 PLANS=(); EXTRA=()
