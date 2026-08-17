@@ -3956,6 +3956,53 @@ class Executor:
                 f"something the next. You HAVE pressed them; that is not in "
                 f"doubt. Whether any of them is worth a second word now is "
                 f"yours to judge.")
+        # ...AND WHAT YOU WERE TOLD SOMEWHERE ELSE. The hint block above is
+        # keyed on the room you are STANDING IN, so an instruction is
+        # readable exactly once and then filed where it can never be read
+        # again. Watched live: the clean-room run forced its way into the
+        # Viridian mart, swept the room, took OAK'S PARCEL, and was told
+        # "Okay! Say hi to PROF.OAK for me!" — the whole gate, since the
+        # parcel is the only thing that moves the old man off the road
+        # north. It walked out, and from that moment the sentence was
+        # invisible: it bounced between Route 1 and the city border
+        # carrying the answer in its bag.
+        # The PLAN AUTHOR has had the remote version of this for weeks
+        # ("WHAT PEOPLE HAVE SAID, and where they said it"). The escalation
+        # loop, which is the half actually walking around, never did.
+        # Nearest first over walked ground, and bounded — this is a prompt
+        # that already lives near a truncation cliff.
+        said_away = []
+        for _rg, _lines in (self.hints or {}).items():
+            if _rg == here or not _lines:
+                continue
+            _p = self._route(here, _rg)
+            if _p is None:
+                continue
+            said_away.append((len(_p), _rg, list(_lines)))
+        if said_away:
+            # DO NOT PICK WHICH SENTENCE MATTERS. Two goes at ranking got
+            # it wrong in opposite directions: last-two-lines-of-three-rooms
+            # gave the Pokemon Centre nurse's boilerplate and dropped the
+            # mart entirely; one-line-per-room reached the mart and took
+            # "No! POTIONs are all sold out" over the clerk's "Say hi to
+            # PROF.OAK for me!", because the clerk spoke FIRST. There is no
+            # mechanical way to tell which sentence is the gate — that is
+            # exactly the judgment this harness is not supposed to make.
+            # So rank ROOMS by distance, which is mechanical, and inside a
+            # room say everything, bounded by a total line count.
+            said_away.sort(key=lambda t: (t[0], t[1]))
+            _body = []
+            for _n, _rg, _ls in said_away:
+                for _l in _ls:
+                    _body.append(f"  ({_rg}, {_n} leg(s) away) {_l}")
+                if len(_body) >= 8:
+                    break
+            _body = _body[:8]
+            hint_line += ("\nWHAT YOU WERE TOLD ELSEWHERE, nearest first. "
+                          "People say a thing once and this game explains "
+                          "its own gates out loud, so a sentence you heard "
+                          "in another room is often the reason this one is "
+                          "not working:\n" + "\n".join(_body))
         # ASK SOMEBODY. When a room stops yielding, the cheapest move left is
         # the one a person makes: talk to whoever is standing around. This
         # game states its own rules in dialogue, every line gets kept (see
