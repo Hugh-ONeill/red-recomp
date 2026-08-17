@@ -3114,8 +3114,18 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
         print(f"[blocker] refused: leg {n} is already done", file=sys.stderr)
         return None
     gap = n - leg if leg else 0
-    if gap > PULL_NEAR and not confirm_blocker(goal, n, text, gap, start,
-                                               journal, model):
+    # EVERY PULL IS CONFIRMED, NEAR OR FAR. This ran only for pulls further
+    # than PULL_NEAR, on the reasoning that a long reach is the suspicious
+    # one — true, and it left the CIRCULAR pull entirely unguarded, because
+    # the refusal that catches "leg N provides the very thing the stuck leg
+    # is for" lives inside confirm_blocker. Live: "Reach Vermilion City"
+    # was judged stuck behind "Retrieve the HM01 from the S.S. Anne", a gap
+    # of ONE — and the ship is docked in Vermilion, so the pull put the
+    # cargo before the port. Adjacent legs are where circularity is most
+    # likely, not least: legs N and N+1 are usually about the same stretch
+    # of the game. Distance still raises the burden inside confirm_blocker;
+    # it is no longer what decides whether to ask at all.
+    if not confirm_blocker(goal, n, text, gap, start, journal, model):
         return None
     return n
 
