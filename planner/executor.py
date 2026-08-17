@@ -4855,6 +4855,49 @@ Reply with ONLY a JSON array of ops, e.g.
         return None
 
     @staticmethod
+    def _goods_delta(pre_obs: dict, obs: dict) -> str:
+        """What this op did to the bag and the wallet, in words.
+
+        THE RUN BOUGHT FIFTEEN POKE BALLS WITHOUT MEANING TO, and was
+        never told. It had proposed no `buy` op at all — its whole
+        vocabulary that run was interact, use_warp, cross, menu and grind —
+        but `menu(index=1)` selects BUY and the boilerplate `answer="yes"`
+        on the next interact presses A through "That'll be 200. OK?". One
+        ball per cycle, fifteen cycles, 3175 money down to 175, and every
+        trace line said the same thing:
+
+            interact(VIRIDIANMART_CLERK,answer=yes): ok (map->None, moved,
+            dialog still open)
+
+        The harness KNEW. `_snapshot` carries the bag, so the change was
+        detected and used internally to keep the op from being marked
+        inert, and `money` is right there in the observation. It simply
+        was not in the sentence: the change list names map, party and
+        movement and nothing else. So the run walked toward Brock broke,
+        the way brock37 did at level 8 with 93 money, and nothing it was
+        ever shown could have told it why.
+
+        This states the delta and stops. Whether fifteen balls were worth
+        3000 is the model's call; it just has to be able to see the bill.
+        """
+        b0 = (pre_obs or {}).get("bag")
+        b1 = (obs or {}).get("bag")
+        parts = []
+        if isinstance(b0, dict) and isinstance(b1, dict):
+            for k in sorted(set(b0) | set(b1)):
+                d = (b1.get(k) or 0) - (b0.get(k) or 0)
+                if d:
+                    parts.append(f"{k} {d:+d} (now {b1.get(k) or 0})")
+        m0 = (pre_obs or {}).get("money")
+        m1 = (obs or {}).get("money")
+        # money is NOT in the snapshot, so a wallet that moves on its own —
+        # a blackout halving it — would otherwise be reported by nothing at
+        # all. Read it from the observation directly and say it either way.
+        if isinstance(m0, int) and isinstance(m1, int) and m0 != m1:
+            parts.append(f"money {m1 - m0:+d} ({m1} left)")
+        return ("  [" + "; ".join(parts) + "]") if parts else ""
+
+    @staticmethod
     def _snapshot(obs):
         p = (obs or {}).get("player") or {}
         return ((obs or {}).get("map", {}).get("id") if obs else None,
@@ -5639,6 +5682,12 @@ Reply with ONLY a JSON array of ops, e.g.
             # warp tile" and his explanation — the one that says the gate
             # wants a drink — was dropped every time. A failed op is
             # exactly when this game explains itself.
+            # WHATEVER IT COST, ON EVERY BRANCH. Deliberately outside the
+            # ok/no-effect/failed split, because a purchase that rides an
+            # op is exactly as real when the op is reported as failing —
+            # and "the world did not change" is flatly false about a wallet
+            # that just lost 200.
+            note += self._goods_delta(pre_obs, obs)
             if heard:
                 note += f' — it said: "{heard[:160]}"'
             trace.append(note)
