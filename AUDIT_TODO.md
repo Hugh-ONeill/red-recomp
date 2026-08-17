@@ -554,6 +554,45 @@ changes a decision the run makes today.
   Ranking the event was the wrong idea; ranking the delta against the thing
   you touched is the right one.
 
+- [x] **EXPLORE — the far side of a door was never recorded as opened.**
+  An edge is keyed on the tile you DEPARTED from, so city -> house writes
+  `27,11` on the city and house -> city writes `3,0` on the house. The
+  city-side tile of the back door never gets an entry, because you only ever
+  ARRIVE on it. Cerulean's `(27,9)` was still reported as never opened after
+  the run had come out through it **32 times** — and it is the way south.
+  (Compare `(9,9)` at the badge house, which IS recorded, purely because the
+  run once happened to leave through it.) User spotted it in the rendered
+  output. **DONE (`862c7aa`)** — recorded on arrival, only when the tile
+  landed on IS a doorway AND leads back where you came from. It also
+  unblocks the fully-worked test, which prunes any room whose map still has
+  an unopened doorway.
+
+- [x] **EXPLORE — "fully worked" and "worth another word" contradicted each other.**
+  User's question. `note_searched` means "every exit taken, everything
+  touched" *as of when it was checked*, and the re-offer ledger exists
+  because a room stops being finished when the world moves. Printing both in
+  one prompt makes the model pick. **DONE (`862c7aa`)** — the worked CLAIM
+  yields where something is worth another word ("you HAD fully worked this
+  area, but that was before what has happened since"), and rooms with a live
+  re-offer drop out of the finished list. The searched LEDGER is untouched
+  and still monotone.
+  *Declined the wider version:* expiring worked-ness on any flag would
+  un-finish every room in the game each time a trainer is beaten, and the
+  escort would drag the run back through all of them — the churn the ledger
+  exists to prevent.
+
+- [x] **EXPLORE — a seam proof never expired, while a shut door always did.**
+  Followed from the question above. `shut_at` re-offers a door once the world
+  mark differs; `_no_cross` was a bare set, proven once and shut for ever.
+  Seven live proofs, one of them `ROUTE_5|1,0 south` — the Saffron guards,
+  the seam that opens when the run has the drink, which nothing would ever
+  have offered again. **DONE (`06b446a`)** — parallel `_no_cross_at` mark and
+  one `_sealed(region)`, same shape as the touch marks; the set and the saved
+  ledger are unchanged. Backfilled at the current mark so nothing re-opens on
+  the first boot. A re-offered seam that is still shut costs one attempt and
+  re-proves itself; the enforcement that once refused the op is already
+  disabled, so nothing can trap the run.
+
 - [x] **STRUCT — a second test: `tests/replay_smoke.py`.** The contract test
   proves the SHAPE of an observation; this proves the executor still PLAYS —
   bootstrap, settle, a macro replayed step by step, a predicate satisfied,
