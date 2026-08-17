@@ -458,6 +458,25 @@ def choose(obs: dict, spec: dict | None = None,
     # throw. The foe's first-seen hp stands in for its max.
     ca = spec.get("catch")
     if ctx.get("intent") == "catch" and kind == "wild" and ca:
+        # IS THIS EVEN THE THING WE CAME FOR? The catch branch checked only
+        # that the foe was wild and a ball was in the bag, so a subgoal
+        # reading "the party holds a WATER or GRASS type" threw at whatever
+        # walked into it — a WEEDLE joined the party and the objective it
+        # was authored for stayed unmet, with the balls meant for an Oddish
+        # spent on bugs. `want` comes from the subgoal's own done_when
+        # (species from has_species, types from party_type, read through
+        # any_of); a goal that just wants MORE Pokemon sends None and
+        # nothing changes. Run rather than fight: knocking it out is a
+        # wasted battle either way, and the grass will offer another.
+        want = ctx.get("want")
+        if want:
+            sp = str(foe.get("species") or "").upper()
+            ty = {str(t).upper() for t in (foe.get("types") or [])}
+            if not ((want.get("species") and sp in want["species"])
+                    or (want.get("types") and ty & want["types"])):
+                return {"op": "battle_run",
+                        "_why": f"{sp or 'this'} is not what this subgoal "
+                                f"is for"}
         hp0 = ctx.setdefault("foe_hp0", foe.get("hp") or 1)
         frac = (foe.get("hp") or 0) / max(1, hp0)
         balls = ctx.get("balls", 0)

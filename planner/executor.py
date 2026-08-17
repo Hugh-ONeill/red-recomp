@@ -489,7 +489,8 @@ def _journal_damage(before_b: dict, after_obs: dict, move_id: str):
             DAMAGE_JOURNAL.setdefault(key, []).append(hp0)
 
 
-def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
+def _run_policy(spec, bridge, obs, log, max_turns, intent="fight",
+                want=None):
     """Drive a battle turn-by-turn with a battle_policy spec (rules as data).
     The spec also owns the wild-flee decision (should_flee); trainers can
     never be fled, and if fleeing fails 3 times we fight it out. With
@@ -500,7 +501,7 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight"):
     picks = 0
     op_fails = 0
     ctx = {"turn": 0, "used": {}, "intent": intent,
-           "journal": DAMAGE_JOURNAL}
+           "journal": DAMAGE_JOURNAL, "want": want}
     while obs and turns < max_turns:
         if obs.get("mode") != "battle":
             # the active mon may have fainted into the forced party pick
@@ -614,16 +615,23 @@ def battle_slot1(bridge, obs, log, max_turns):
     return obs
 
 
+# WHAT it is trying to catch rides along with the intent. The catch branch
+# used to look only at "is this wild and do I have a ball", so a subgoal
+# reading party_type WATER-or-GRASS threw at the first thing that appeared
+# — which is how a WEEDLE joined the party while the objective it was
+# authored for went unmet, and how balls that were meant for an Oddish were
+# spent on bugs. The model gets no turn inside a wild battle, so it cannot
+# work around this itself; the target has to travel with the policy.
 BATTLE_POLICIES = {
-    "default": lambda b, o, lg, mt: _run_policy(
+    "default": lambda b, o, lg, mt, want=None: _run_policy(
         ACTIVE_SPEC, b, o, lg, mt, intent="fight"),
-    "typed_v0": lambda b, o, lg, mt: _run_policy(
+    "typed_v0": lambda b, o, lg, mt, want=None: _run_policy(
         battle_policy.SPECS["typed_v0"], b, o, lg, mt, intent="fight"),
-    "slot1": battle_slot1,
-    "traversal": lambda b, o, lg, mt: _run_policy(
+    "slot1": lambda b, o, lg, mt, want=None: battle_slot1(b, o, lg, mt),
+    "traversal": lambda b, o, lg, mt, want=None: _run_policy(
         ACTIVE_SPEC, b, o, lg, mt, intent="traversal"),
-    "catch": lambda b, o, lg, mt: _run_policy(
-        ACTIVE_SPEC, b, o, lg, mt, intent="catch"),
+    "catch": lambda b, o, lg, mt, want=None: _run_policy(
+        ACTIVE_SPEC, b, o, lg, mt, intent="catch", want=want),
 }
 
 
@@ -1375,6 +1383,40 @@ class Executor:
     def _is_party_goal(cls, tgt: str) -> bool:
         """Is this subgoal satisfied by FIGHTING, not by arriving?"""
         return str(tgt or "").startswith(cls.PARTY_TARGETS)
+
+    @staticmethod
+    def _catch_target(subgoal) -> dict | None:
+        """WHAT this subgoal is trying to catch, from its own done_when.
+
+        Nothing is invented: has_species names species, party_type names
+        types, and both may sit inside an any_of, which is exactly how the
+        live "WATER or GRASS" objective was written. A goal that only wants
+        MORE Pokemon (party_size) or more of the dex (dex_owned) is
+        satisfied by anything, and returns None so the policy behaves as it
+        always has.
+        """
+        def walk(pred):
+            out = []
+            for k, v in (pred or {}).items():
+                if k == "any_of":
+                    for alt in (v or []):
+                        out += walk(alt)
+                else:
+                    out.append((k, v))
+            return out
+
+        species, types = set(), set()
+        for k, v in walk(subgoal.get("done_when") or {}):
+            vals = ([v] if isinstance(v, str)
+                    else list(v) if isinstance(v, (list, tuple, set))
+                    else list(v.keys()) if isinstance(v, dict) else [])
+            if k == "has_species":
+                species |= {str(x).upper() for x in vals}
+            elif k == "party_type":
+                types |= {str(x).upper() for x in vals}
+        if not (species or types):
+            return None
+        return {"species": species, "types": types}
 
     @staticmethod
     def _where(obs) -> str:
@@ -3434,7 +3476,8 @@ class Executor:
                 obs = self.settle() or obs
         self.status(doing=f"BATTLE ({name} policy)", obs=obs)
         obs = BATTLE_POLICIES[name](self.b, obs, self.log,
-                                    self.max_battle_turns)
+                                    self.max_battle_turns,
+                                    self._catch_target(subgoal))
         # spec-rule field cure/heal after the battle (no turn cost) for the
         # neediest party mon: the model's rules decide when an item beats
         # walking on. Cure first — poison keeps chipping until it is.
