@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -225,6 +226,20 @@ import brock_probe   # reuse the live model driver (chat/parse) for escalation
 def model_view(obs: dict) -> dict:
     o = dict(obs or {})
     o.pop("flags", None)
+    # HARNESS BOOKKEEPING IS NOT A THING THE PLAYER CAN SEE. `flags` and the
+    # oracle probe were stripped and two others were not: `region_anchors`
+    # is our own region-naming scratchpad, and `events` is the raw engine
+    # emit-name list — the same instrumentation tier as the flags right
+    # above, arriving under a different key.
+    o.pop("events", None)
+    # region_anchors sits under `map`, not at the top level — popping it
+    # here did nothing until this was checked against a real observation.
+    # dict() the map first: `o` is a SHALLOW copy, so editing map in place
+    # would strip it from the executor's own observation too.
+    if isinstance(o.get("map"), dict):
+        _m = dict(o["map"])
+        _m.pop("region_anchors", None)
+        o["map"] = _m
     if isinstance(o.get("battle"), dict):
         b = dict(o["battle"])
         b.pop("probe", None)
@@ -938,6 +953,13 @@ class Executor:
                 for k, rec in (self._exit_tries.get(region) or {}).items()
                 if isinstance(rec, dict) and rec.get("at") == now
                 and (rec.get("n") or 0) >= 2}
+
+    @staticmethod
+    def _holding_town_map(obs) -> bool:
+        """Is the printed map actually in the bag? It is an item in this
+        game, gettable from Daisy in Blue's house, and until the run has it
+        the layout of Kanto is not something the player can read."""
+        return "TOWN_MAP" in ((obs or {}).get("bag") or {})
 
     def _sealed(self, region) -> set:
         """Seams still proven uncrossable AS OF NOW.
@@ -3938,6 +3960,39 @@ class Executor:
                           + ". A thing in a passage can BE the blockage — "
                           "going back and pressing A on it can open ground "
                           "no exit reaches.")
+        # ...AND ROOMS WHOSE PEOPLE ARE WORTH ANOTHER WORD. The re-offer
+        # line only ever fired for the room being stood in, which is the
+        # half that cannot reach the case it was built for: Daisy is in
+        # PALLET TOWN and the run has no reason to go back there, so the
+        # TOWN MAP would have stayed in her house for ever anyway. The
+        # untouched-rooms list right above already solves the same problem
+        # for things never pressed; this is the same list for things pressed
+        # when the world was different.
+        # Nothing is un-said and nothing is pointed at: it names rooms, not
+        # people, and says only that the world has moved since. Whether any
+        # of it is worth the walk is the model's.
+        aloud = []
+        for region in list(self._touch_mark):
+            if region == here:
+                continue
+            names = self._worth_another_word(region, obs, backfill=False)
+            if not names:
+                continue
+            path = self._route(here, region)
+            if not path:
+                continue
+            aloud.append((len(path),
+                          f"{region} ({', '.join(names[:3])} — "
+                          f"{len(path)} leg(s) away)"))
+        if aloud:
+            aloud.sort(key=lambda p: p[0])
+            loot_line += ("\nROOMS WHERE SOMEBODY IS WORTH ANOTHER WORD — "
+                          "you pressed these when you were carrying "
+                          "different things, before things had happened "
+                          "that have happened since: "
+                          + "; ".join(t for _, t in aloud[:4])
+                          + ". People in this game hand over what they would "
+                          "not hand over yesterday.")
         # A destination in NO walked region deserves saying so out loud.
         # Silence here left the model hunting Cerulean on the west stub of
         # Route 4 three attempts running: it had visit counts and dead
@@ -3973,7 +4028,12 @@ class Executor:
         if want_map and want_map in MAP_EDGES:
             att = ", ".join(f"its {d} side touches {m}"
                             for d, m in sorted(MAP_EDGES[want_map].items()))
-            route_line += f"\nTHE TOWN MAP: {want_map} attaches to — {att}."
+            # THE SAME ARTIFACT, UNDER ITS OWN NAME. author.py now gates
+            # its two printed-map blocks on the TOWN MAP being in the bag;
+            # handing the identical adjacency over here, at escalation time,
+            # would gate one door and leave the other open.
+            if self._holding_town_map(obs):
+                route_line += f"\nTHE TOWN MAP: {want_map} attaches to — {att}."
             # AND NOTHING FURTHER. There used to be a TOWN-MAP ITINERARY
             # here: a BFS over the printed adjacencies, from where the party
             # stands to the target, printed as "ROUTE_5 -> SAFFRON_CITY ->
@@ -6974,7 +7034,16 @@ def main():
               f"({args.policy_spec})")
 
     global SCORE_BATTLES, VERIFY_MACROS
-    SCORE_BATTLES = args.score_battles
+    # RED_SCORE_BATTLES=1 does the same as --score-battles. The flag exists
+    # and no orchestrator has ever passed it, so the oracle has never once
+    # scored the spec that actually plays — its single live run predates the
+    # commit that made the model-authored spec play at all. Adding the flag
+    # to fresh_run.sh means editing a shell script that may be mid-chain, and
+    # the rule here is that a running script is never edited; an env var can
+    # be set on the next launch instead. Scoring probes, it does not choose,
+    # so it changes turn cost and nothing else.
+    SCORE_BATTLES = args.score_battles or os.environ.get(
+        "RED_SCORE_BATTLES") == "1"
     VERIFY_MACROS = args.verify_macros
     b = Bridge()
     if args.bootstrap:

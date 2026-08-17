@@ -88,7 +88,39 @@ runnable op-by-op):
 - Two named policies to start: `default` (route trainers/wild) and `gym`
   (Brock — the model should reason Squirtle's water STAB trivializes it).
 
-## RL / refinement (claim-pure — CLAIM_RULES §3)
+## What is seeded, stated plainly (2026-08-17)
+
+The outline is the model's, with one exception worth naming rather than
+burying: **eight of roughly thirty objectives are harness-seeded** — the
+eight badge objectives in `author.SEEDED_BADGES`, which `_check_badges`
+re-inserts if a drafting pass drops one.
+
+Ruled pamphlet tier: badge names are on the box and the leader-to-badge
+pairing is the sort of thing the booklet tells a player before they start.
+The wording of those eight lines is ours. Everything else on the outline,
+and every plan written under every objective, is the model's.
+
+## RL / refinement — NOT BUILT (restated 2026-08-17)
+
+**This section describes a design, not an implementation.** There is no
+torch dependency, no reward spec, no navigation net and no distilled battle
+net anywhere in the tree, and the record run does not use any. Listing it
+as one of four claim pillars overstated what exists, which the audit was
+right to call out.
+
+What is actually built, and is the real differentiator, is **learning-free
+play plus evidence-driven replanning**: the model authors the outline and
+every plan, the executor runs them, and when a leg fails the model rewrites
+that leg from what the run actually walked — the exploration graph, the
+proven-unreachable ledger, the journal — and resumes from the last save.
+No weights are trained at any point.
+
+The design below is kept because it may be built later (the footprint work
+is the likely occasion), and because the claim should show what was
+considered and not done as well as what was done. Until it exists, it is
+not a pillar.
+
+### The design, if it is ever built (claim-pure — CLAIM_RULES §3)
 Checkpoints make resets free, so subgoals expressible as a small policy get
 trained rather than scripted:
 - **Navigation policies** (Viridian Forest `maze_north`): the model authors a
@@ -126,8 +158,9 @@ prompt.
 3. **Model authors the plan** from the goal (replace hand-seeding); add the
    escalation handler + the distillation write-back. Measure the escalation
    decay curve.
-4. **RL refinement**: `maze_north` navigation net for Viridian Forest;
-   battle-policy net distilled from the oracle. Then push for the full run.
+4. **RL refinement**: NOT BUILT — see the restatement above. `maze_north`
+   navigation net for Viridian Forest; battle-policy net distilled from the
+   oracle. Deferred, possibly to the footprint work.
 5. **31B rider** throughout — does the bigger author produce better plans /
    escalate less.
 

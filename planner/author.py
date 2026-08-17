@@ -276,6 +276,35 @@ except (OSError, ValueError):
     MAP_DOORS = {}
 
 
+# THE MAP IS AN ITEM, AND IT IS IN THE GAME. Both blocks below are the
+# TOWN MAP's face — which roads touch, and which named places sit beside
+# them — and they were handed over from turn 0, before the map is in the
+# bag. A player does not have them until Daisy hands the thing over in
+# Blue's house, which is a real errand with a real gate (EVENT_GOT_STARTER).
+#
+# Gating it was dismissed once, correctly, because the run had never
+# obtained the map in any playthrough and the gate would have been dead —
+# the interaction is spent on leg 1 before it can pay, and the harness then
+# retired her for ever. That is fixed (see _worth_another_word and the
+# ROOMS WHERE SOMEBODY IS WORTH ANOTHER WORD line), so the errand is now
+# reachable and the gate is a gate rather than a wall.
+#
+# Read from the state snapshot the re-author already uses; when it cannot
+# tell, the safe answer is NOT HELD, and it says so rather than going quiet.
+def holding_town_map() -> bool:
+    for src in ("run/last_state.json", "run/obs.json"):
+        try:
+            o = json.loads(Path(src).read_text())
+        except (OSError, ValueError):
+            continue
+        if not isinstance(o, dict):
+            continue
+        bag = o.get("bag")
+        if isinstance(bag, dict):
+            return "TOWN_MAP" in bag
+    return False
+
+
 def doors_text() -> str:
     """The labelled places, as the printed map shows them.
 
@@ -496,8 +525,11 @@ def build_prompt(goal: str, start: str | None = None) -> str:
         + "\n".join(f"  {k}: {v}" for k, v in PREDICATES.items())
         + "\n\nMAP IDs on this route (use exact strings):\n  "
         + ", ".join(ROUTE_MAPS)
-        + edges_text()
-        + doors_text()
+        + (edges_text() + doors_text() if holding_town_map()
+           else "\n\nYou are not carrying a TOWN MAP. Kanto's layout — "
+                "which roads touch which, and what is named where — is "
+                "printed on one, and you have not got hold of one yet. "
+                "Plan from what you have walked.")
         + "\n\nEVENT FLAGS: you may use {\"flag\": \"EVENT_...\"} for a "
           "milestone that is not just a map change, spelled the way this "
           "game spells it. Which events matter is YOUR call — the evidence "
@@ -757,6 +789,24 @@ def author(goal: str, model: str, rounds: int = 5,
             # tag each subgoal so escalation/distillation runs it macro-less
             for s in plan["subgoals"]:
                 s.setdefault("escalation_rounds", 4)
+                # WHO WROTE THIS SUBGOAL, written at the moment it is
+                # created. The recorded fix was "written once at creation
+                # and never touched"; the never-touched half shipped and
+                # this half did not, so `subgoal_provenance` had exactly one
+                # writer in the codebase — a setdefault in distill() filling
+                # the literal "unknown (pre-audit)". Across 742 plan files:
+                # 3,906 subgoals with no provenance at all, 594 placeholder,
+                # and the only 24 naming a model are in the old hand-seeded
+                # spine files. File-level authored_by is honest and well
+                # covered but cannot tell a model-written subgoal from a
+                # hand-inserted one in the same file, which is the exact
+                # distinction the claim once overstated.
+                # Nothing is backfilled: a plan written before today does
+                # not get to claim an author it cannot prove.
+                s.setdefault("subgoal_provenance",
+                             {"authored_by": model,
+                              "via": "author.py decomposition",
+                              "goal": goal})
             print(f"[author] valid plan in round {rnd}: "
                   f"{len(plan['subgoals'])} subgoals")
             return plan
@@ -1871,6 +1921,17 @@ def _stem(w: str) -> str:
 # The eight, in the same words OUTLINE_SYS hands over, so a merge that
 # drops one can be noticed. Alphabetical by leader here too — this list is
 # a checklist, never an itinerary.
+#
+# SEEDED, AND SAID SO (user's ruling, 2026-08-17). The audit flags this as
+# borderline: badge NAMES are on the box, but the leader-to-badge pairing
+# and the objective wording are ours, and _check_badges re-inserts them
+# against the model's own choice. The ruling is that this is pamphlet tier —
+# the sort of thing the booklet in the box tells a player before they start —
+# and so it stays, stated plainly rather than quietly.
+# What that means for the claim, exactly: EIGHT of roughly thirty outline
+# objectives are harness-seeded. Everything else on the list, and every plan
+# under every objective, is the model's. Nobody should have to read
+# _check_badges to find that out.
 SEEDED_BADGES = (
     "Defeat Blaine for the Volcano Badge",
     "Defeat Brock for the Boulder Badge",
