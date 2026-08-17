@@ -1840,6 +1840,43 @@ local function bag_count(G, id)
   return ((G.save and G.save.inventory) or {})[id] or 0
 end
 
+-- WHAT THE SCREEN SAYS IS A NAME FOR THE THING (2026-08-17).
+-- The bag row reads "POKé BALL". The internal id is POKE_BALL. The model
+-- wrote POKEBALL and was told "POKEBALL is not sold here" while standing
+-- at a counter with them on the shelf, and every other item op says
+-- worse: `no POKEBALL in the bag` with ten of them in it. That last one
+-- is the lying class outright — the harness knows the answer, has been
+-- given a name that identifies the object beyond doubt, and denies the
+-- object exists. See CLAIM_RULES: stop lying, stop hiding, stop refusing.
+--
+-- EXACT MODULO PUNCTUATION, AND NOTHING LOOSER. This does not guess. It
+-- folds case and drops the separators that only exist because one name
+-- was typed and the other compiled: POKE_BALL, POKE BALL, Poke Ball and
+-- pokeball are one key, TM_01 and TM01 are one key. It will not match a
+-- prefix, a substring or a near-miss, because buying, tossing and selling
+-- the WRONG item costs real money or a real item, and a harness that
+-- picks the object for you has stopped facilitating the decision and
+-- started making it. If nothing matches, or somehow two things do, the
+-- name is handed back untouched and the op fails exactly as it does now,
+-- with its own message.
+local function _item_key(s)
+  return (tostring(s or ""):upper():gsub("[^A-Z0-9]", ""))
+end
+
+local function canon_item(G, name)
+  if name == nil or name == "" then return name end
+  local items = (G.data and G.data.items) or {}
+  if items[name] ~= nil then return name end          -- an exact id wins
+  local want, hit, n = _item_key(name), nil, 0
+  for id in pairs(items) do
+    if _item_key(id) == want then
+      hit, n = id, n + 1
+      if n > 1 then return name end                   -- ambiguous: hands off
+    end
+  end
+  return hit or name
+end
+
 -- Buy c.count of c.item from this mart's clerk. Decision-free: the model
 -- picks WHAT and HOW MANY; the menu driving is mechanics.
 -- IS A SHOP ACTUALLY OPEN, or just SOMETHING? This was
@@ -4098,6 +4135,14 @@ return function(G)
         U.tap(G, "b"); U.wait(6)
       end
     end
+    -- ONE PLACE, BECAUSE THERE ARE SEVEN OPS. buy, sell, use_item, toss,
+    -- pc_item, battle_item and catch all take an item name straight from
+    -- the model and all did their own exact-string lookup against it —
+    -- seven copies of the same comparison, which is seven chances for the
+    -- next one written to forget. Canonicalise where the command arrives
+    -- and every op downstream is holding an id the game recognises.
+    cmd.item = canon_item(G, cmd.item)
+    cmd.ball = canon_item(G, cmd.ball)
     local op = OPS[cmd.op]
     if op then
       local ok, detail = wd_run(G, cmd.op, OP_FRAME_BUDGET, op, G, cmd)
