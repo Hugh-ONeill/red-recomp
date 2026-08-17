@@ -673,18 +673,45 @@ These need a decision from the user, not a patch from me.
   design and marked as one, because the claim should show what was considered
   and not done as well as what was done.
 
-- [ ] **29. STRUCT — the headline metric is computed nowhere** *(deferred by
-  the user; 30 waits on it)*
+- [x] **29. STRUCT — the headline metric is computed nowhere**
   `SPD_DESIGN.md` names the escalation-decay curve as "the headline metric".
   Escalations per leg per attempt, straight out of the journal — a short script,
   not a project. It is the number that says whether any of this compounds.
+  **DONE — `planner/decay.py` (`f788ddc`).** Reads the journal, adds no
+  instrumentation, and states up front what the journal cannot tell it: no run
+  id, so an executor process is detected by `dt` going backwards; a leg is its
+  goal text; the log spans many chains and code versions.
+  **Two measurement traps, both caught by reading the output rather than
+  trusting it.** (1) Raw escalation count falls on its own and means nothing —
+  "Reach Cerulean City" reads `10 -> 10 -> 10 -> 8 -> 5 -> 6 -> 5 -> 1 -> 1 ->
+  1 -> 1`, which looks like textbook compounding until you normalise and the
+  trailing 1s turn out to be attempts that completed NOTHING, because the leg
+  was being resumed past once its condition already held. (2) `subgoal_done` is
+  logged only on the macro-replay path, so the first denominator scored every
+  leg that escalated its way through as completing nothing and the entire
+  per-subgoal column came out as dashes.
 
-- [ ] **30. STRUCT — escalation is acting as the runtime pilot, not the offline compiler**
+- [x] **30. STRUCT — escalation is acting as the runtime pilot, not the offline compiler** *(measured; what to DO about it is open)*
   **2.6 of 3.05 hours of executor wall time is model inference**, 1,271
   escalation calls at 7.4 s median. Escalation succeeds 49% of the time and only
   **38 of 158 successes were distilled back into a plan**, so the same walls are
   re-solved live rather than compiled away. `distill_refused_empty` fires 54
   times and is correct to refuse. Worth knowing before scaling to 38 legs.
+  **MEASURED (`f788ddc`), and the finding holds and sharpens.** Over 67
+  executor processes: 387 escalations, 178 succeeded (45%), 49 distilled (27%
+  of successes), **3.70 h of 3.91 h — 95% — spent waiting on the model** at
+  7.7 s a call.
+  The decisive number is the one the audit did not have: **escalations per
+  subgoal completed is 2.08 overall and RISING, 1.88 in the first half of the
+  corpus to 2.40 in the second.** So there is no decay. Cost per unit of
+  progress is flat-to-worse across the whole history.
+  The compounding that DOES exist comes from the walked ledger letting a leg
+  be resumed past — not from the same leg getting cheaper. Distillation is a
+  second, weaker channel: "Reach Pewter City" distilled 7 of 7, "Reach
+  Cerulean City" distilled 1 of 33.
+  *What to do about it is a design conversation, not a patch.* The escalation
+  sinks, for whoever has it: `reach_cerulean_city` 68, `exit_mt_moon` 44,
+  `enter_mt_moon` 14, the three catch subgoals 36 between them.
 
 - [ ] **31. STRUCT — three functions carry most of the risk** *(left alone by
   the user for now — a between-claim-runs job)*
