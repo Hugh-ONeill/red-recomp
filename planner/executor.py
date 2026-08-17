@@ -3377,6 +3377,27 @@ class Executor:
                      f"YOU MEET: the grass on this floor holds what it "
                      f"holds, and if it never offers the right creature, "
                      f"the answer is different grass, not more of this."]
+            # AND YOU CANNOT CATCH ANYTHING WITHOUT A BALL. The harness's
+            # own catch policy already refuses to throw one it does not
+            # have, so this is not game knowledge being handed over — it is
+            # the harness stating a rule it is already enforcing, at the
+            # only moment the run can act on it.
+            # Watched live: a clean-room run met twelve wilds under the
+            # catch policy carrying OAK'S PARCEL, 3,175 money and no balls.
+            # With no ball and no named species it falls through to move
+            # scoring and KOs everything, so the condition can never come
+            # true however long it grinds — and nothing said so.
+            _bag = (obs or {}).get("bag") or {}
+            _balls = sum(n for k, n in _bag.items() if k.endswith("_BALL"))
+            if not _balls:
+                lines.append(
+                    f"YOU ARE CARRYING NO BALLS OF ANY KIND. A wild "
+                    f"Pokemon is caught by throwing one; with none in the "
+                    f"bag every battle can only end in the thing fainting, "
+                    f"so this condition cannot come true however long you "
+                    f"stay here. You have {(obs or {}).get('money')} money. "
+                    f"Where balls come from, and whether something has to "
+                    f"happen first, is yours to work out.")
         else:
             lines = [f"\nTHIS IS NOT SOMEWHERE TO GO — IT IS SOMETHING TO "
                      f"BECOME. The condition is {kind} {dw_val}, and no "
@@ -3390,6 +3411,37 @@ class Executor:
                 for i, m in enumerate(party, 1)))
         else:
             lines.append("YOUR PARTY IS EMPTY.")
+        # WHAT SOMEBODY TOLD YOU SOMEWHERE ELSE. exploration_text returns
+        # this function EARLY for a party goal, which drops the whole
+        # exploration context — including the remote-hints block built this
+        # afternoon for exactly this failure. So the channel existed and was
+        # closed for the one class of goal that most needs it: a catch goal
+        # that cannot proceed is nearly always waiting on something a person
+        # already said out loud. The clerk's "Say hi to PROF.OAK for me!" is
+        # the case in hand.
+        # Nothing about maps or exits comes with it — this is people's words.
+        _here = self._where(obs)
+        _away = []
+        for _rg, _ls in (self.hints or {}).items():
+            if _rg == _here or not _ls:
+                continue
+            _p = self._route(_here, _rg)
+            if _p is None:
+                continue
+            _away.append((len(_p), _rg, list(_ls)))
+        if _away:
+            _away.sort(key=lambda t: (t[0], t[1]))
+            _body = []
+            for _n, _rg, _ls in _away:
+                for _l in _ls:
+                    _body.append(f"  ({_rg}, {_n} leg(s) away) {_l}")
+                if len(_body) >= 6:
+                    break
+            lines.append(
+                "WHAT YOU WERE TOLD ELSEWHERE — this game explains its own "
+                "gates out loud, and a condition that will not come true is "
+                "often waiting on something somebody already said:\n"
+                + "\n".join(_body[:6]))
         hurt = [m for m in party
                 if (m.get("hp") or 0) <= 0.34 * (m.get("max_hp") or 1)]
         if hurt:
