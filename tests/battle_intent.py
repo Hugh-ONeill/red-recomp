@@ -143,12 +143,56 @@ def main():
         print(f"          why: {why!r}")
         fails.append("reason text")
 
+
+    # THE SECOND CONSUMER, missed the first time and the one that actually
+    # talks to the model. exploration_text hands a party-predicate subgoal
+    # the HUNTING paragraph instead of its exits, chosen by predicate
+    # alone — so a subgoal named "Talk to the clerk in the Viridian Mart
+    # to retrieve the Pokemon" got "no door satisfies it", "the grass on
+    # this floor holds what it holds" and "a mart counter sells more"
+    # balls, while standing in the mart with 15 of them, and the word
+    # "clerk" appeared nowhere in the prompt.
+    print()
+    for name, subgoal, want_hunt in [
+        ("the clerk errand keeps its exits instead of a hunting lecture",
+         sg("talk_to_clerk", "Talk to the clerk in the Viridian Mart to "
+            "retrieve the Pokemon", {"party_size": 2}), False),
+        ("a Pokemon handed over by an NPC likewise",
+         sg("get_pokemon_from_aide", "Receive a Pokemon from Oak's aide",
+            {"party_size": 4}), False),
+        ("a real hunt still gets the hunting paragraph",
+         sg("catch_companion", "Catch a Pokemon in the grass on Route 1",
+            {"party_size": 2}), True),
+        ("the live upkeep leg still hunts",
+         sg("catch_water_or_grass", "The party holds a WATER or GRASS type",
+            {"any_of": [{"party_type": "WATER"}, {"party_type": "GRASS"}]}),
+         True),
+        ("a subgoal that says neither keeps today's behaviour",
+         sg("catch_backup", None, {"party_size": 3}), True),
+    ]:
+        ex = object.__new__(E.Executor)
+        ex._cur_sg = subgoal
+        got = ex._hunted()
+        ok = got is want_hunt
+        print(f"  {'ok  ' if ok else 'FAIL'}  {name}")
+        if not ok:
+            print(f"          _hunted() -> {got}, want {want_hunt}")
+            fails.append(name)
+
+    # and with no subgoal recorded at all it must not go quiet on real hunts
+    ex = object.__new__(E.Executor)
+    ok = ex._hunted() is True
+    print(f"  {'ok  ' if ok else 'FAIL'}  no subgoal recorded still counts "
+          f"as a hunt")
+    if not ok:
+        fails.append("no _cur_sg")
+
     print(f"\n{'-' * 60}")
     if fails:
         print(f"BATTLE INTENT IS BEING READ WRONG: {len(fails)} case(s)")
         return 1
     print(f"battle intent reads the subgoal's words, not its predicate "
-          f"alone ({len(CASES) + 1} checks)")
+          f"alone ({len(CASES) + 7} checks)")
     return 0
 
 

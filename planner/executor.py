@@ -3656,6 +3656,11 @@ class Executor:
         # than useless: "set battle_policy catch" names a PLAN field, and
         # the escalation writes macros, not plans — advice it had no op to
         # act on.
+        # WHETHER THIS IS A HUNT AT ALL is decided ONE place up, at the
+        # exploration_text routing (_hunted). Not re-asked here: a second
+        # copy of the rule would have to pick a paragraph when it says no,
+        # and the only paragraph on offer is the LEVELLING one, which is
+        # just as wrong for a shop clerk as the hunting one was.
         if kind in ("party_size", "has_species", "party_type", "dex_owned"):
             lines.append(
                 "HOW TO DO IT: {\"op\":\"grind\"} walks into this floor's "
@@ -3687,13 +3692,45 @@ class Executor:
             lines.append(f"IF THE PARTY FAINTS you wake at {rs['map']}.")
         return "\n".join(lines)
 
+    def _hunted(self) -> bool:
+        """Is the creature this subgoal wants to be CAUGHT, or handed over?
+
+        THE SAME DISCRIMINATOR AS choose_battle_policy, and it was missed
+        here, which is the half that actually talks to the model. A
+        party_size subgoal was answered with the hunting paragraph on the
+        strength of its predicate alone, so run 8 stood at the Viridian
+        counter holding 15 balls and read this, under a subgoal whose
+        goal_text was "Talk to the clerk in the Viridian Mart to retrieve
+        the Pokemon":
+
+            THIS IS NOT SOMEWHERE TO GO — IT IS SOMETHING TO BECOME. The
+            condition is party_size 2, and no door satisfies it. ... the
+            grass on this floor holds what it holds ...
+            BALLS ARE THE BUDGET ... A mart counter sells more.
+
+        The word "clerk" was not in that prompt. Neither were the exits,
+        nor the clerk object, nor anything else about the room it was
+        standing in. Buying pokeballs at a mart is not a confused
+        inference from that text. It is the instruction, followed.
+
+        Defaults to True, so a subgoal that says nothing either way keeps
+        today's behaviour exactly and real catch goals are untouched. Only
+        words that name somebody to get it FROM turn the hunt off.
+        """
+        words = _subgoal_words(getattr(self, "_cur_sg", None) or {})
+        if words & set(_CATCH_WORDS):
+            return True
+        return not (words & set(_GIVEN_WORDS))
+
     def exploration_text(self, obs, target: str = "") -> str:
         """Untried vs already-taken exits from where we stand."""
         # A LEVEL IS NOT A PLACE. Everything below answers "where do I go
         # next", which is the wrong question for a subgoal satisfied by
         # battling — and answered loudly enough that a training leg walked
         # out of the grass to open doors at a museum.
-        if self._is_party_goal(target):
+        # ...UNLESS THE POKEMON IS BEING HANDED OVER, in which case where
+        # you stand is the whole question and the exits are the answer.
+        if self._is_party_goal(target) and self._hunted():
             return self.training_text(obs, target)
         here = self._where(obs)
         taken = self._taken_here(here)
@@ -5801,6 +5838,10 @@ Reply with ONLY a JSON array of ops, e.g.
         self._dead_visits = 0
         free_rounds = 0
         self._cur_target = self._target_key(sg)
+        # ...AND THE SUBGOAL ITSELF, not just its predicate. _target_key
+        # throws the words away, and the words are the only thing that says
+        # whether a creature is to be CAUGHT or HANDED OVER. See _hunted.
+        self._cur_sg = sg
         self._idle_rounds = 0     # laps count per subgoal, not per run
         self._seen_this_sg = set()   # rooms this subgoal has stood in
         self._stuck_in: dict = {}
