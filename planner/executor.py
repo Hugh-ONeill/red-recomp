@@ -3427,6 +3427,56 @@ class Executor:
                     f"have already walked ({len(best)} legs total). Take it "
                     f"even if you have used it before; an untried exit that "
                     f"leads somewhere else is not progress toward this goal.")
+            else:
+                # NOTHING WALKED IS ON THAT MAP — which is not the same as
+                # "no door you have ever taken leads there", the sentence
+                # this used to fall through to. Aimed at Vermilion from
+                # Cerulean the run HAD walked ROUTE_5 and stepped into the
+                # underground path one door south of it; what it had never
+                # done was come out the far end. The old wording sent it
+                # door-hunting in the city it was standing in, for hours.
+                #
+                # The truest thing available is the EDGE OF WHAT IT KNOWS in
+                # that direction: of the ground already walked, which does
+                # the printed map put nearest? Both halves are already
+                # permitted — the walked ledger is its own, the distance is
+                # the Town Map's — and it names no door beyond ground the
+                # run has covered. Getting past the edge is still its
+                # problem.
+                _links = self._walked_map_links()
+                _goal = _doorstep(want_map)
+                _pick = None
+                for region in set(list(self.explored) + list(self.visits)):
+                    _d = static_cost(_doorstep(region.split("|")[0]),
+                                     _goal, {}, _links)
+                    if _d is None:
+                        continue
+                    _p = [] if region == here else self._route(here, region)
+                    if _p is None:
+                        continue
+                    _r = (_d, len(_p), region)
+                    if _pick is None or _r < _pick[0]:
+                        _pick = (_r, region, _p, _d)
+                if _pick and not _pick[2]:
+                    route_line = (
+                        f"\nYou are STANDING on the closest ground you have "
+                        f"walked to {want_map} — the printed map puts it "
+                        f"{_pick[3]} leg(s) from here, and nothing else you "
+                        f"have covered gets nearer. The way on is not on "
+                        f"walked ground: it is through something here you "
+                        f"have not been through yet.")
+                elif _pick:
+                    _fk, _fd = _pick[2][0]
+                    _st = (f"walk {_fk}" if not _fk[0].isdigit()
+                           else f"the door at ({_fk})")
+                    route_line = (
+                        f"\nNothing you have walked is ON {want_map}. The "
+                        f"closest ground you HAVE walked to it is "
+                        f"{_pick[1]}, which the printed map puts {_pick[3]} "
+                        f"leg(s) from {want_map}; the way there from here is "
+                        f"{_st} to {_pick[2][0][1]}, {len(_pick[2])} leg(s) "
+                        f"over ground you have already covered. What lies "
+                        f"beyond that edge you have not seen.")
         # Rooms already fully worked: nothing left to find in them, but you
         # may still walk through — that distinction is why they are not
         # dead ends. Read the ROOM-level ledger, not the per-target one:
@@ -3548,17 +3598,36 @@ class Executor:
             # to Cerulean waited on B2F. Distance and first leg for EVERY
             # candidate; which door matters is the model's judgment.
             path = self._route(here, region)
+            # SORTED BY NAME AND CUT AT SIX. The comment above says every
+            # candidate gets its distance and first leg, and then the list
+            # was joined with sorted(elsewhere)[:6] — sorted on the rendered
+            # STRING, so alphabetically by region id. Standing in Cerulean
+            # aimed at Vermilion there were TWELVE candidates and the six
+            # that survived were the ones beginning C, M and P: Mt Moon's
+            # Pokemon Centre and Viridian's museum, neither of them
+            # reachable. UNDERGROUND_PATH_ROUTE_5 — two legs away over
+            # walked ground, three exits never taken, and the road to
+            # Vermilion — sorted tenth and was cut. The one room that
+            # mattered was dropped by its initial letter.
+            #
+            # Reachable before unreachable, then nearest first, then most
+            # left to do. All three are mechanical facts about walked
+            # ground; WHICH of them matters is still the model's call, and
+            # every candidate that fits the cap is still shown.
+            rank = (path is None, len(path or ()), -len(left), region)
             if path:
                 fk, fd = path[0]
                 leg = (f"walk {fk}" if not fk[0].isdigit()
                        else f"door ({fk})")
                 elsewhere.append(
-                    f"{region} ({', '.join(sorted(left))} — {len(path)} "
-                    f"leg(s) away, first: {leg} to {fd})")
+                    (rank,
+                     f"{region} ({', '.join(sorted(left))} — {len(path)} "
+                     f"leg(s) away, first: {leg} to {fd})"))
             else:
                 elsewhere.append(
-                    f"{region} ({', '.join(sorted(left))} — no walked "
-                    f"route from here)")
+                    (rank,
+                     f"{region} ({', '.join(sorted(left))} — no walked "
+                     f"route from here)"))
         # FIELD ITEMS within reach. Computed BEFORE the early return: a
         # dead-end room with no listed exits is exactly where a blocking
         # item sits. pure30 beat the Mt Moon nerd beside two reachable
@@ -3775,7 +3844,7 @@ class Executor:
                 return (warned + route_line
                         + "\nNothing here is new, but these places "
                         "you have already been still have ways you have "
-                        "NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
+                        "NEVER taken: " + "; ".join(t for _r, t in sorted(elsewhere)[:6])
                         + ". Go back to one and take it." + near_hint
                         + loot_line)
             return (warned + route_line + searched_line + shut_line
@@ -3791,7 +3860,7 @@ class Executor:
                     "it, or if nothing here is untried.")
         if elsewhere:
             out += ("\nPlaces you have already been that still have ways "
-                    "you have NEVER taken: " + "; ".join(sorted(elsewhere)[:6])
+                    "you have NEVER taken: " + "; ".join(t for _r, t in sorted(elsewhere)[:6])
                     + "." + near_hint)
         out += (floor_note + route_line + searched_line + shut_line
                 + hint_line + loot_line)
