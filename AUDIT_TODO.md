@@ -20,7 +20,7 @@ left alone.
 Three edits that turn three dead rules back on, then the test that stops the
 next one being dead for a fortnight.
 
-- [ ] **1. BATTLE-1 · High · VERIFIED — every HP-gated battle rule is dead**
+- [x] **1. BATTLE-1 · High · VERIFIED — every HP-gated battle rule is dead**
   `harness/shim.lua:649` emits `maxhp`; `planner/battle_policy.py:254` reads
   `max_hp`, gets `None`, returns `1.0`. In-battle POTIONs, the HP flee and
   `setup.min_hp_frac` have never fired — **0 `battle_item` ops in 64,218 logged
@@ -28,30 +28,91 @@ next one being dead for a fortnight.
   POTION rule at `hp_below 0.3` that has never run.
   *Fix:* read both keys in `_hp_frac`, or rename in the shim. Prefer reading
   both — the log corpus is full of the old spelling.
+  **DONE** — `_hp_frac` reads `max_hp` then `maxhp`. Proven live end to end:
+  bought POTIONs, spammed GROWL in a real Route 24 wild battle so the lead
+  took honest damage down to 0.23, the live `policy_model_v1` spec reached
+  for the item, and `OPS.battle_item` — never invoked once in the project's
+  history — worked first time (21 → 36 hp, bag 3 → 2). Also verified the
+  rules do *not* misfire at full HP.
 
-- [ ] **2. EXEC-2 · High · VERIFIED — the blackout fallback tests the bag, not HP**
+- [x] **2. EXEC-2 · High · VERIFIED — the blackout fallback tests the bag, not HP**
   `planner/executor.py:4197` — `after[6]` is `(bag_kinds, bag_total)`; HP is
   index 7. The correct twin is 1,600 lines away at `:5817`. A wipe *inside* a
   Lua op (`grind`, `cross`, `walk_to`, where mode never reads `battle`) is not
   detected, `_faint_at` never arms, the walk-back never runs. Across 20 logs:
   ~600 blackouts caught via mode, 5 via state — and those 5 only because the
   bag happened to grow.
+  **DONE** — `after[7] > before[7]`. Confirmed against `_snapshot`: for a
+  wipe in Mt Moon that respawns at the Pewter centre with the bag untouched,
+  index 6 is `(1,2)` both sides (no rise, no detection) and index 7 goes
+  `0 → 30`. The macro-path twin at `:5817` was already correct.
 
-- [ ] **3. SHIM-1 · High · VERIFIED — watchdog leaves a direction held**
+- [x] **3. SHIM-1 · High · VERIFIED — watchdog leaves a direction held**
   `harness/shim.lua:112` clears `input.state` but not `pressQueue`;
   `walk()` inserts into the queue *then* yields, and the watchdog raises before
   the yield returns. `Input:step()` re-asserts `state[btn]=true` for queued
   buttons with no source map — exactly how synthetic injects work. The player
   then walks during every subsequent `U.wait`. Same window in `use_warp` and
   `cross`. *Fix:* clear `pressQueue` alongside `state`.
+  **DONE** — `wd_run`'s abort path drains `pressQueue` before clearing
+  `state`. The mechanism is confirmed in the engine rather than inferred:
+  `src/core/Input.lua:159-167` walks the queue every fixed step and sets
+  `state[btn] = true` for any entry with no source map, commented in the
+  engine itself as "synthetic pressQueue inject (tests/drivers)" — which is
+  precisely what `walk()` writes. Not reproducible on demand (the watchdog
+  needs a 120,000-frame op) but the fix is a strict superset of the old
+  clear on a path that has already abandoned its op.
 
-- [ ] **4. STRUCT — the contract test (no file exists anywhere in the harness)**
+- [x] **4. STRUCT — the contract test (no file exists anywhere in the harness)**
   One boot, capture one battle observation and one overworld observation,
   assert every key `battle_policy` and `pred_holds` actually read is present.
   Catches #1 and would have caught the dead `"asked a QUESTION"` guard on the
   day it was written. **This is the highest-leverage item in the document** —
   four of the bugs found in the last two days are the same shape: a Python-side
   name the Lua side never emits.
+  **DONE — `tests/contract.py`.** Boots its own love process under its own
+  identity (`red-contract`) against a *copy* of the save, so it can never
+  reach the campaign's game; captures one overworld observation and one
+  battle observation and checks the 21 + 24 fields the readers actually
+  read, each annotated with the rule that depends on it.
+  When a field is missing it looks at the siblings that *are* there and
+  reports `SPELLING MISMATCH -- shim emits 'max_hp'`: naming the culprit is
+  the difference between a failing test and a fixed one. Self-tested by
+  reintroducing BATTLE-1 synthetically — it catches exactly that one field.
+  Three semantics that keep it honest: a key present but empty confirms the
+  name and never fails; a field legitimately nil in a healthy sample
+  (`status`, `disabledSlot`) is reported, never failed, because silence
+  cannot prove a name wrong; and if `--save` is given but the party comes up
+  empty the test dies rather than reporting "contract holds" against a new
+  game — which is what its own first run did, and is the same silent pass it
+  exists to stop. Both halves currently pass live.
+  Run: `python tests/contract.py` (add `--save PATH` for a specific state).
+
+---
+
+### What Tier 0 changes about how the run plays
+
+The claim run is set off once and left alone, so it is worth writing down
+exactly what behaviour these four edits switch on. Waking `_hp_frac` makes
+three rules in `plans/policy_model_v1.json` live for the first time:
+
+| rule | was | now |
+| --- | --- | --- |
+| `battle_items` POTION `hp_below 0.3`, 4/battle | never fired | heals in battle below 30% |
+| `flee_wild.hp_below 0.2` | never fired | leaves any wild below 20% |
+| `setup.min_hp_frac 0.5` (TAIL_WHIP) | always allowed | no setup below 50% |
+
+Two of the three only ever *stop* the party dying, and the third only ever
+removes a move. `field_heal`, `field_cure` and `replacement` also call
+`_hp_frac`, but on party mons, which always carried `max_hp` — those were
+already working and are unchanged. The one genuinely new code path is
+`OPS.battle_item`, which had never executed; it is now proven live, and its
+call site is bounded anyway (`items_used` increments in `choose` before the
+op runs, so a broken op could cost at most 4 turns in a battle, not a hang).
+
+Fixing the blackout index only *adds* detections, and the walk-back it arms
+already existed. The watchdog and the contract test cannot change play at
+all: one runs on an abort path, the other in its own process against a copy.
 
 ---
 
