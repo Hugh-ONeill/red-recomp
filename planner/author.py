@@ -2083,22 +2083,18 @@ ERA_ASKS = (
     ("LATE", "and the late game, through to the end"),
 )
 
-ERA_LIST_ASK = """Now reduce all three parts to ONE flat checklist of the
-whole playthrough, in the order it is played.
+ERA_LIST_ASK = """Now take all the bullet points from all three parts and
+put them together into ONE list, in the order they are played.
+
+This is not a summary and nothing is being chosen. Every bullet you wrote
+belongs on the list — you are copying your own outline into a flat form,
+not deciding what was important.
 
 Each line becomes its own plan, written later and played separately from
-the line alone — so each must be a thing that is either DONE or NOT DONE, a
-milestone you could tell someone you had reached. Short phrases in the
-player's own terms. No numbering, no explanation, no steps folded inside
-one line, no "if" or "or equivalent". Anything the game will not let you
-past until it is done belongs here, not just the badges.
-
-EXPECT ABOUT THIRTY LINES. Eight are the badges; the rest is the journey
-you just described — the caves crossed, the people helped, the things
-fetched, the towns arrived in. A checklist much shorter than thirty has
-summarised away the very half you were asked about, and a plan cannot be
-written from a summary. Every objective you named in any of the three
-parts belongs on this list.
+the line alone, so write each one as a thing that is either DONE or NOT
+DONE — a milestone you could tell someone you had reached. Short phrases in
+the player's own terms. No numbering, no headings, no commentary, no steps
+folded inside one line, no "if" and no "or equivalent".
 
 Reply with ONLY a JSON array of strings."""
 
