@@ -841,6 +841,34 @@ class Executor:
         self.logf = open(RUN / "executor_log.jsonl", "a")
         self.t0 = time.time()
 
+    def _walked_dest(self, map_id: str, key: str):
+        """Where this run has actually come out when it took that door.
+
+        A DOOR YOU HAVE NOT WALKED THROUGH HAS NEVER TOLD ANYONE WHERE IT
+        GOES. `obs.map.warps[].dest` is the game's own warp table — it knows
+        the far side of every door on the map the moment you set foot on it
+        — and three model-facing lists were printing it for doors the run
+        had never opened: the untried-exit list, the refusal text, and the
+        atlas in every escalation prompt. Reporting that a doorway is THERE
+        is stop-hiding; naming where it leads is pointing, and it is the
+        same warp table already removed from the unopened-doors ledger.
+
+        Keyed by MAP, not by region: the same coordinate in two regions of
+        one floor is the same tile, so a door walked from the far side of a
+        split map is a door this run has been through.
+
+        Map EDGES are a different matter and keep their destinations — which
+        roads touch is drawn on the Town Map the player is holding.
+        """
+        for reg, exits in (self.explored or {}).items():
+            if reg.split("|")[0] != map_id:
+                continue
+            e = (exits or {}).get(key) or {}
+            to = e.get("to")
+            if to and to != reg and not e.get("shut"):
+                return to
+        return None
+
     def _frontier_left(self, region) -> list:
         """Exits of `region` never taken — the ONE definition.
 
@@ -881,8 +909,12 @@ class Executor:
             if m.get("connections"):
                 e["edges"] = m["connections"]
             if m.get("warps"):
-                e["warps"] = [{"x": w.get("x"), "y": w.get("y"),
-                               "dest": w.get("dest")} for w in m["warps"]]
+                # x,y only. The destination is resolved at render time
+                # from what has been WALKED (see _walked_dest); keeping the
+                # observed one here just meant the atlas handed the warp
+                # table's answer to every escalation prompt.
+                e["warps"] = [{"x": w.get("x"), "y": w.get("y")}
+                              for w in m["warps"]]
         return obs
 
     MEMORY = RUN / "explored.json"
@@ -2088,8 +2120,9 @@ class Executor:
                 # THIS MAP line), which can propose one deliberately.
                 if not w.get("reachable"):
                     continue
-                out.append((w.get("dest") in seen_maps,
-                            f"({k})->{w.get('dest')}"))
+                _d = self._walked_dest(m.get("id"), k)
+                out.append((bool(_d) and _d.split("|")[0] in seen_maps,
+                            f"({k})->{_d or 'UNKNOWN'}"))
         for d, t in (m.get("connections") or {}).items():
             if d not in taken and d not in blocked:
                 out.append((t in seen_maps, f"walk {d} -> {t}"))
@@ -3210,10 +3243,20 @@ class Executor:
                            if bad else beyond)
                         + "]")
             else:
-                untried.append(
-                    (w.get("dest") in {a.split("|")[0] for a in self.visits},
-                     f"walk {k} out of here -> {w.get('dest')}"
-                     if not k[0].isdigit() else f"({k})->{w.get('dest')}"))
+                # A MAP EDGE keeps its destination: which roads touch is
+                # drawn on the Town Map. A DOOR does not: until this run has
+                # walked through it, nobody has seen the far side.
+                if not k[0].isdigit():
+                    untried.append(
+                        (w.get("dest") in {a.split("|")[0]
+                                           for a in self.visits},
+                         f"walk {k} out of here -> {w.get('dest')}"))
+                else:
+                    _d = self._walked_dest(m.get("id"), k)
+                    untried.append(
+                        (bool(_d) and _d.split("|")[0] in {
+                            a.split("|")[0] for a in self.visits},
+                         f"({k})->{_d or 'UNKNOWN'}"))
         # FRONTIER FIRST here too. _untried_exits (used by the refusal text)
         # was ordered but THIS list is the one the model reads every round,
         # and it was emitting doors in map order — which is how Pallet's
@@ -3630,8 +3673,9 @@ class Executor:
             if e.get("warps"):
                 dd: dict = {}
                 for w in e["warps"]:
-                    dd.setdefault(w["dest"], []).append(
-                        f"({w['x']},{w['y']})")
+                    k = f"{w['x']},{w['y']}"
+                    dd.setdefault(self._walked_dest(mid, k) or "UNKNOWN",
+                                  []).append(f"({k})")
                 bits.append("doors: " + ", ".join(
                     f"{d} at {'/'.join(v[:2])}" for d, v in dd.items()))
             parts.append((mid, f"{mid}: " + "; ".join(bits)))
