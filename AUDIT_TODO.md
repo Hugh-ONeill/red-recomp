@@ -210,7 +210,7 @@ plays until a new one is authored and evaluated.
 
 ## Tier 2 — will stop or corrupt an unattended run
 
-- [ ] **10. CHAIN-1 · High · VERIFIED — upkeep protection is off for the leg you're on**
+- [x] **10. CHAIN-1 · High · VERIFIED — upkeep protection is off for the leg you're on**
   `fresh_discovery.sh:349` matches objective text exactly, so any reword
   (`reword_leg.py`, `insert_leg.py`, `_stage_missing`) silently drops the
   protection. 7 of 12 entries orphaned, 5 of 38 legs still protected.
@@ -218,17 +218,36 @@ plays until a new one is authored and evaluated.
   the outline dedupe and 2 were swept as achieved — the reword mechanism is
   real but produced fewer of these orphans than the count implies.
   *Fix:* key on an id, or a normalised form written by the pass that rewords.
-  Then re-check `outline.notes` and `outline.done` for the same break.
+  **DONE, both halves.** `reword_leg.py` is now a RENAME: it carries the new
+  wording into every ledger keyed on the old one — `outline.upkeep`,
+  `.notes`, `.done`, `.stages`, `leg_audit_redo`, `outline_pushes`,
+  `outline_pulls`, `outline_pulls_failed` — matching the whole key field, so
+  "Reach Cerulean City" cannot rewrite itself inside "Reach Cerulean City
+  Gym". And `_reconcile_upkeep()` runs at the end of authoring, after the
+  three passes that come AFTER the sidecar is written: an entry whose
+  wording lost a dedupe follows the objective to its surviving name (the
+  dedupe records which absorbed which), and one that is simply gone is
+  dropped and said out loud. The dangerous case was never the orphan — it
+  was the SURVIVOR left unprotected, which turns an upkeep objective the
+  world may not offer into a leg that stops the chain.
 
-- [ ] **11. EXEC-3 · High · REPORTED — the replay path has no open-question guard**
+- [x] **11. EXEC-3 · High · REPORTED — the replay path has no open-question guard**
   The `ASKING` guard exists only in `_run_traced`; `run_subgoal`'s dispatch
   (`:5764–5797`) never checks it, so a distilled macro runs its next op into an
   open UI. **422 macro steps in `plans/*.json` have an op following an
   `interact`.** Separately `settle()` returns `None` when `Bridge.obs()` fails
   and four sites call `obs.get(...)` unguarded (`:3796, :3920, :4030, :4323`);
   `_attempt` catches only `TimeoutError`, so the `AttributeError` kills the run.
+  **DONE.** The `ASKING` guard now runs on the replay path too and ends the
+  macro, which fails the subgoal and hands the box to escalation — where the
+  words go to the model. Answering is not the harness's to do: an `interact`
+  that means to say yes carries `answer`, so a macro that walked into an
+  unanswered question is a macro that is wrong.
+  `settle()` never returns None. Rather than guard four call sites out of
+  forty, the source returns `{}` — just as falsy for every `if obs:` in the
+  file, and safe for every `obs.get(...)`.
 
-- [ ] **12. DSL-1 · Medium · REPORTED — the validator checks names, not shapes**
+- [x] **12. DSL-1 · Medium · REPORTED — the validator checks names, not shapes**
   `_check_pred` (`author.py:559–643`) has branches for eight keys and passes the
   rest on key-membership alone. `pred_holds` then indexes `want["x"]` directly.
   Six model-authorable shapes crash the process mid-leg; two more are silently
@@ -236,28 +255,83 @@ plays until a new one is authored and evaluated.
   (`{"slot_level": {"slot": 2, "level": 15}}` → `need = 0`, trains nothing).
   When the process dies, `last_state.json` is never written and the campaign
   falls back to a possibly stale `obs.json`.
+  **DONE, and the runtime hardened as well as the validator.** `pred_holds`
+  no longer raises on anything: every branch that indexed a model-written
+  value now coerces what is obvious and returns False otherwise, including
+  the `raise ValueError` on an unknown key. Verified against all seven
+  crashing shapes and both silent ones — `{"party_nonempty":"true"}` is now
+  true, and `{"slot_level":{"slot":2,"level":15}}` no longer closes the leg
+  instantly having trained nothing (`min` missing is not `min` zero).
+  Because a crash became a silent stall, malformations are collected and
+  NAMED once per leg on stdout and in the journal.
+  *Correction to the finding:* `main()` already had a crash handler writing
+  `last_state.json` from a fresh Bridge, so that half was not happening —
+  though the crash path does lose which leg failed.
 
-- [ ] **13. MEM-1 · Medium · REPORTED — memory writes are non-atomic and a bad read zeroes it**
+- [x] **13. MEM-1 · Medium · REPORTED — memory writes are non-atomic and a bad read zeroes it**
   `explored.json` is written with `write_text` ~25 times per round — truncate in
   place, no tmp+rename, no backup — and `_load_memory`'s outer `except` resets
   every structure to `{}` with no warning. A kill mid-save loses a day's walked
   map silently. The correct pattern is already in the repo twice
   (`bridge.py:78`, `shim.lua:784`). `distill()` writes plans the same way.
+  **DONE.** `_save_memory` writes tmp+rename and keeps the previous good file
+  as `explored.json.prev`; a ledger that will not parse falls back to it and
+  says so, and if BOTH are unreadable it shouts rather than starting empty in
+  silence. A genuinely fresh run stays silent, which is the distinction that
+  was missing. `distill()`'s plan write gets the same treatment — that file
+  is what the next attempt replays from, so a truncated one loses every leg
+  in it. `fresh_discovery.sh` clears `.prev` and `.tmp` with the ledger, or a
+  fresh chain would inherit a previous chain's whole walked map.
+  Tested by truncating the live file mid-write: the day's map came back.
 
-- [ ] **14. BRIDGE-1 · Medium · VERIFIED — a Lua reserved word in a macro key stalls 120 s**
+- [x] **14. BRIDGE-1 · Medium · VERIFIED — a Lua reserved word in a macro key stalls 120 s**
   `send(op, **step)` forwards every key the model wrote into a Lua table
   literal with no whitelist. A key named `end`/`for`/`local`/`function` makes
   `load()` return nil, the shim never acks, the executor blocks its full
   timeout. Same silent-stall class as the nested-table bug that cost 28 dead
   two-minute waits in one night. Latent, not yet observed.
+  **DONE.** Every key goes out in bracket form — `["end"]=1` — which is legal
+  Lua for any key at all, so the class cannot recur; it also covers keys that
+  are not identifiers (`["2bad"]`). Confirmed with luajit that the old form
+  fails to load on `end`/`for`/`local`/`function` and the new one parses all
+  of them, then confirmed live: the contract test drives bootstrap, walk,
+  cross, grind and a battle through the new serialiser.
 
-- [ ] **15. MISC-1 · Low · REPORTED — `stop_all.sh` pattern-kills box-wide**
+- [x] **15. MISC-1 · Low · REPORTED — `stop_all.sh` pattern-kills box-wide**
   Kills `love .` and `xvfb-run` by pattern, against our own kill-only-what-you-
   started rule; `fresh_run.sh` already shows the right pattern.
   *(I have used this script all session — worth fixing on principle.)*
+  **DONE — `rig.sh` + a rewritten `stop_all.sh`.** The launchers register what
+  they start; each entry carries the process's `/proc` start time, so a reused
+  PID can never be mistaken for ours. The pattern survives as a REPORT ONLY —
+  losing "verify it is down" would be worse than the bug — and `--force` is
+  the old behaviour, now asked for by name. `fresh_run.sh` also backgrounds
+  the executor so the EXIT trap can reach it: in the foreground, a SIGTERM ran
+  the trap, killed the game, and left the executor talking to a dead bridge,
+  which is the exact contamination the script was written for.
+  Tested: a stale registry entry leaves its PID alone, and an unregistered
+  `love .` look-alike is reported and survives.
 
-- [ ] **16. MISC-1 · Low · REPORTED — one ollama failure forfeits a whole escalation**
+- [x] **16. MISC-1 · Low · REPORTED — one ollama failure forfeits a whole escalation**
   `:4758` breaks out with every remaining round unspent, and `chat` has no retry.
+  **DONE.** `chat()` retries twice on a dropped or refused connection with a
+  short backoff, and once on a timeout (which has already spent its 300s) —
+  unwrapping `URLError` so the timeout budget actually applies. The
+  escalation loop spends ONE round on a failure instead of breaking out, and
+  only gives up after three in a row.
+
+### What Tier 2 changes about how the run plays
+
+One behaviour change, deliberate: a replayed macro now STOPS at an
+unanswered question instead of running its next op into the open box. That
+fails the subgoal, which escalates — the same path the escalation loop has
+always taken, and the only one by which the question gets answered.
+
+Everything else is failure handling. A predicate that used to crash now
+returns False and says why; a chat that used to forfeit a budget now costs
+one round; a ledger that used to vanish now falls back. None of it changes
+what the run does when things go right, and each one only widens what it
+survives when they do not.
 
 ---
 
