@@ -4241,12 +4241,30 @@ class Executor:
                     "one returns you where it says. That is still the right "
                     "move if the note says there is unopened ground beyond "
                     "it, or if nothing here is untried.")
+        # ORDER IS THE BUDGET, NOT LENGTH. Measured over 3,535 decisions
+        # where two or more untried exits were offered: the model took the
+        # FIRST-listed one 54% of the time against a ~8% chance rate, and
+        # the median position of whatever it acted on was 14% of the way
+        # through the prompt. (The list is ranked, so some of that 54% is
+        # the ranking being right rather than position deciding — but the
+        # depth figure does not care.) Whatever else is true, a fact at 60%
+        # depth is close to not having been said.
+        #
+        # So this was backwards. The remote-hints block landed at 51% and
+        # the untouched-things list at 68%, while "places you have already
+        # been that still have ways you have never taken" — an invitation to
+        # LEAVE — sat at 22%. LOCAL BEFORE REMOTE: what is here, and what
+        # was said, are things to act on now; the elsewhere lists are
+        # suggestions to go away, and they belong after.
+        _elsewhere_str = ""
         if elsewhere:
-            out += ("\nPlaces you have already been that still have ways "
-                    "you have NEVER taken: " + "; ".join(t for _r, t in sorted(elsewhere)[:6])
-                    + "." + near_hint)
+            _elsewhere_str = (
+                "\nPlaces you have already been that still have ways "
+                "you have NEVER taken: "
+                + "; ".join(t for _r, t in sorted(elsewhere)[:6])
+                + "." + near_hint)
         out += (floor_note + route_line + searched_line + shut_line
-                + hint_line + loot_line)
+                + hint_line + loot_line + _elsewhere_str)
         return out
 
     # Every map the run has ever entered, in one line of the escalation
