@@ -61,6 +61,20 @@ local wd = { co = nil, budget = nil, frames = 0, label = "?" }
 -- yield starvation. Hook-free on purpose: debug.sethook would disable the
 -- JIT and cause the very slowdown being hunted.
 local hb = { yields = 0 }
+-- The write itself, so something that does NOT yield can still say it is
+-- alive. observe() is the case: it walks the whole walkable component and
+-- scans up to 72x72 tiles without a single yield, so the heartbeat file
+-- simply stops for its duration -- and a stopped heartbeat is the exact
+-- signature of the yield starvation this file was written to hunt. It was
+-- reading as the disease. Now a sample taken mid-observation says
+-- "observe", which is a different answer from "nothing is moving".
+local function hb_write(label)
+  local f = io.open(BRIDGE .. "/heartbeat", "w")
+  if f then
+    f:write(os.time() .. " " .. hb.yields .. " " .. tostring(label))
+    f:close()
+  end
+end
 -- assigned further down, once the text buffers it writes into exist
 local note_text
 coroutine.yield = function(...)
@@ -82,13 +96,7 @@ coroutine.yield = function(...)
       local pg = top.pages[top.pageIndex]
       if type(pg) == "table" then note_text(table.concat(pg, " ")) end
     end
-    if hb.yields % 2048 == 0 then
-      local f = io.open(BRIDGE .. "/heartbeat", "w")
-      if f then
-        f:write(os.time() .. " " .. hb.yields .. " " .. tostring(wd.label))
-        f:close()
-      end
-    end
+    if hb.yields % 2048 == 0 then hb_write(tostring(wd.label)) end
   end
   if wd.budget and co == wd.co then
     wd.frames = wd.frames + 1
@@ -136,6 +144,19 @@ end
 local OP_FRAME_BUDGET = 120000   -- ~33 game-minutes; no legit op comes close
 
 -- ---------------------------------------------------------------- json out
+-- AN HM IS A KEY ITEM, whatever the data table says. items.lua marks the
+-- fossils and the ticket keyItem = true but leaves the HMs without it --
+-- they carry `machine = { kind = "HM" }` instead -- so every HM was
+-- reported as an ordinary bag item AND offered to the model as something
+-- it could throw away to free a slot. Gen 1 refuses both: an HM cannot be
+-- tossed or sold, and the game says so on screen ("That's too impor-tant
+-- to toss!"), which is the tier this belongs to. One test, both readers.
+local function is_key_item(def)
+  if not def then return false end
+  if def.keyItem then return true end
+  return (def.machine and def.machine.kind == "HM") and true or false
+end
+
 local function jesc(s)
   -- escape EVERY control byte, not just the common five: gen1 text decodes
   -- its line-advance code to 0x0b, and one bug-catcher endBattleText with a
@@ -374,6 +395,7 @@ local function map_fixtures(G, map_id)
 end
 
 local function observe(G, seq, result)
+  hb_write("observe")
   local top = G.stack and G.stack:top()
   local o = { seq = seq, result = result, events = events, frame = U.frame() }
   events = {}
@@ -414,9 +436,22 @@ local function observe(G, seq, result)
               width = wb and wb * 2, height = hb and hb * 2 }
     -- the floors this car's panel was seen to offer (see lift_floors)
     o.map.lift_floors = lift_floors[tostring(map.id)]
+    -- ONE FILL, NOT TWO. `reach` here and `objreach` further down were
+    -- the SAME call -- warp_reach(G), same arguments, same frame, same
+    -- answer -- computed twice for every observation. On an outdoor map
+    -- that is a second flood of the whole walkable component for nothing.
+    -- (The third fill, region_reach, is genuinely different: no_ledges.)
+    -- observe() never yields, so every cell it walks is time the heartbeat
+    -- file does not tick, and a stalled heartbeat is exactly the signature
+    -- of the yield starvation this harness was once wedged hunting.
+    local _reach_memo
+    local function reachable_cells()
+      if not _reach_memo then _reach_memo = warp_reach(G) or {} end
+      return _reach_memo
+    end
     if md and md.warps then
       o.map.warps = {}
-      local reach = warp_reach(G) or {}
+      local reach = reachable_cells()
       -- REGION: two positions in the same walkable component share the same
       -- smallest reachable cell. "Did I actually get somewhere else?" is a
       -- question about the COMPONENT, not about distance (coming out the
@@ -515,7 +550,7 @@ local function observe(G, seq, result)
     -- toggled-off objects are gone). Classified so the model can walk_to and
     -- interact with balls, NPCs, and signs instead of mashing blindly.
     o.map.objects = {}
-    local objreach = warp_reach(G) or {}
+    local objreach = reachable_cells()
     -- literal offsets, NOT the DIRS table: DIRS is declared further down
     -- the file, so inside observe() it is nil (the same scoping trap that
     -- killed the driver when warp reachability was first added)
@@ -720,7 +755,7 @@ local function observe(G, seq, result)
   o.key_items = {}
   local function note_key(k)
     local def = G.data and G.data.items and G.data.items[k]
-    if def and def.keyItem then o.key_items[#o.key_items + 1] = k end
+    if is_key_item(def) then o.key_items[#o.key_items + 1] = k end
   end
   for k, v in pairs((G.save and G.save.inventory) or {}) do
     if type(k) == "string" and not k:match("BADGE$")
@@ -797,6 +832,9 @@ local function observe(G, seq, result)
     f:close()
     os.rename(BRIDGE .. "/obs.json.tmp", BRIDGE .. "/obs.json")
   end
+  -- and hand the label back, so a sample taken after this returns does not
+  -- go on reporting an observation that finished
+  hb_write(tostring(wd.label))
 end
 
 -- -------------------------------------------------------------- executors
@@ -1131,26 +1169,49 @@ local function bfs_to_edge(G, dir)
         if Collision.canMove(ow.map, ow.entities, probe, dname) then
           seen[key(nx, ny)] = true
           local sx, sy = spinner_landing(G, ow.map, nx, ny)
-          if sx and not seen[key(sx, sy)] then
-            seen[key(sx, sy)] = true
-            nspin = nspin + 1
-            note(sx, sy)
-            if hit(sx, sy) and landing_ok(G, dir, sx, sy) then return sx, sy end
-            queue[#queue + 1] = { x = sx, y = sy }
+          if sx then
+            -- AN ARROW TILE IS NOT SOMEWHERE YOU STAND: you arrive and are
+            -- slid on. warp_reach and bfs_dir both say so and skip the tile
+            -- itself; this BFS said it in a comment and then queued the
+            -- arrow anyway AND accepted it as an edge cell -- so a seam on
+            -- a spinner floor (Rocket Hideout B3F is sixteen of them,
+            -- Viridian Gym more) was handed to cross as a place to walk to,
+            -- and the walk ended somewhere else entirely.
+            if not seen[key(sx, sy)] then
+              seen[key(sx, sy)] = true
+              nspin = nspin + 1
+              note(sx, sy)
+              if hit(sx, sy) and landing_ok(G, dir, sx, sy) then
+                return sx, sy
+              end
+              queue[#queue + 1] = { x = sx, y = sy }
+            end
+          else
+            note(nx, ny)
+            if hit(nx, ny) then
+              if landing_ok(G, dir, nx, ny) then return nx, ny end
+              edge_rejected = edge_rejected + 1
+            end
+            queue[#queue + 1] = { x = nx, y = ny }
           end
-          note(nx, ny)
-          if hit(nx, ny) then
-            if landing_ok(G, dir, nx, ny) then return nx, ny end
-            edge_rejected = edge_rejected + 1
-          end
-          queue[#queue + 1] = { x = nx, y = ny }
         else
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dname)
           if lx and not seen[key(lx, ly)] and not wblock[key(lx, ly)] then
             seen[key(lx, ly)] = true
             nledge = nledge + 1
             note(lx, ly)
-            if hit(lx, ly) then return lx, ly end
+            -- ...AND THE SAME TEST THE OTHER TWO BRANCHES APPLY. This one
+            -- returned a cell on the wanted edge without ever asking
+            -- whether the far side has floor there, so cross walked to it
+            -- and pressed into a wall -- reported as "reached the edge and
+            -- the crossing failed", which is the opposite diagnosis to the
+            -- true one. landing_ok is fail-open on a probe error, so this
+            -- can only reject seams that genuinely have nothing behind
+            -- them.
+            if hit(lx, ly) then
+              if landing_ok(G, dir, lx, ly) then return lx, ly end
+              edge_rejected = edge_rejected + 1
+            end
             queue[#queue + 1] = { x = lx, y = ly }
           end
         end
@@ -1781,7 +1842,23 @@ end
 
 -- Buy c.count of c.item from this mart's clerk. Decision-free: the model
 -- picks WHAT and HOW MANY; the menu driving is mechanics.
-local function ui_shop_up(G) return ui_is_menu(G) or ui_is_list(G) end
+-- IS A SHOP ACTUALLY OPEN, or just SOMETHING? This was
+--   ui_is_menu(G) or ui_is_list(G)
+-- which is "the top of the stack is any list at all" -- and the START menu
+-- is a list whose first row has onSelect, so it passed. buy and sell then
+-- rode whatever was open: a stray START menu left up by an earlier op made
+-- OPS.buy press A into SAVE/OPTION/EXIT and call the result a shop.
+-- The real shop stack is ShopMenu (pushed through Screens, so it carries a
+-- screenId) with its BUY/SELL ListMenu on top (pushed raw, so it does not
+-- -- but ListMenu keeps the title it was built with). Ask for those two by
+-- name rather than for the shape they happen to share with everything else.
+local function ui_shop_up(G)
+  local t = ui_top(G)
+  if not t then return false end
+  if tostring(t.screenId or "") == "ShopMenu" then return true end
+  local title = tostring(t.title or ""):upper()
+  return (title == "BUY" or title == "SELL") and ui_is_list(G)
+end
 
 -- WHERE THE NEAREST COUNTER IS. "No shop clerk on this map" is true and
 -- useless when you are standing in the street outside the mart: the run
@@ -2412,11 +2489,11 @@ function OPS.toss(G, c)
   -- SCOPE — sound thinking, the boat has sailed and the ticket is spent —
   -- and gen 1 simply will not allow it. Say which ones it CAN throw.
   local def = G.data and G.data.items and G.data.items[c.item]
-  if def and def.keyItem then
+  if is_key_item(def) then
     local spare = {}
     for id, n in pairs((G.save and G.save.inventory) or {}) do
       local d2 = G.data.items and G.data.items[id]
-      if (tonumber(n) or 0) > 0 and not (d2 and d2.keyItem) then
+      if (tonumber(n) or 0) > 0 and not is_key_item(d2) then
         spare[#spare + 1] = id
       end
     end
