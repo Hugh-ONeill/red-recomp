@@ -283,6 +283,18 @@ def doors_text() -> str:
     east into Route 11". Diglett's Cave joins Routes 2 and 11; the tunnel
     on Route 10 is Rock Tunnel. Two real places, swapped — and the map
     names both.
+
+    THE PIN, AND NOT WHAT IT IMPLIES (user's call, 2026-08-17). This used
+    to go on to state the routing rule the ids encode: an id under ONE road
+    is entered and left on that road, an id under TWO roads joins those
+    two, and a shared printed name over four roads is two different
+    tunnels. Every one of those is a conclusion about interior
+    connectivity, which the Town Map does not draw — and SYS called the
+    interior "the one thing it cannot work out for itself" in the sentence
+    before handing it over. The listing stays, because a labelled pin
+    beside a road is the map's own face. What a repeated id MEANS is left
+    to the model: it can see the token twice, and drawing the inference is
+    the part that belongs to it.
     """
     if not MAP_DOORS:
         return ""
@@ -293,15 +305,8 @@ def doors_text() -> str:
     return ("\n\nPLACES THE PRINTED MAP NAMES, and the road each one opens "
             "off. This is the map's own labelling, not scouting: what lies "
             "BEYOND any of these doors is not here. The listing is COMPLETE "
-            "— every road with a door into a named place is above — so go "
-            "by the ID IN BRACKETS, which is the place itself: an id "
-            "appearing under ONE road is entered and left on that same road "
-            "(a mountain or tunnel joining two halves of it, which the "
-            "road's own name cannot tell apart), and an id appearing under "
-            "TWO roads joins those two. Two DIFFERENT places can share a "
-            "printed name — the map draws more than one UNDERGROUND PATH "
-            "and they do not meet — so a name under four roads is two "
-            "tunnels, not one.\n" + rows)
+            "— every road with a door into a named place is above.\n"
+            + rows)
 
 
 def edges_text() -> str:
