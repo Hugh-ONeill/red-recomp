@@ -337,7 +337,7 @@ survives when they do not.
 
 ## Tier 3 — accuracy of what the model is shown
 
-- [ ] **17. MEM-2 · Medium · REPORTED — four copies of two rules, drifted**
+- [x] **17. MEM-2 · Medium · REPORTED — four copies of two rules, drifted**
   The "untried exits" filter exists at `:3105, :2140, :2306, :2905`; the `:3105`
   copy is missing the `_no_cross` filter the other three apply. Live: `ROUTE_5|1,0
   south` (the Saffron guards) is in `no_cross`, still in `frontier`, and
@@ -345,8 +345,20 @@ survives when they do not.
   rule likewise exists four times; `:2867` doesn't exclude shut edges.
   Root cause: `exploration_text` is 541 lines assembling one string from ~14
   independently-guarded fragments.
+  **DONE for the first rule; the second is DECLINED with reasoning.**
+  The frontier-minus-walked-minus-proven arithmetic turned out to exist in
+  SIX places, not four, and two had drifted. All six now call one
+  `_frontier_left(region)`.
+  The "map has unopened doorways" rule: three of the four copies do exclude
+  shut edges. The fourth (`observe`'s `ever` set) is not the same rule — the
+  others ask "is this doorway still UNOPENED", where a door that turned you
+  back is not opened; that one asks "is that part of the floor somewhere I
+  have never STOOD", where walking into a door that refused you means you
+  stood at it. Filtering shut edges there would have the note claim the run
+  has never been somewhere it demonstrably has. Left alone, with a comment
+  saying why so it is not "fixed" later.
 
-- [ ] **18. PROMPT-1 · Medium · REPORTED — the authoring prompt is at the cliff at leg 7 of 38**
+- [x] **18. PROMPT-1 · Medium · REPORTED — the authoring prompt is at the cliff at leg 7 of 38**
   `EVIDENCE_BUDGET` budgets `observed_text` only; `journal_text`, `drafts_text`
   and the embedded plan JSON are unbounded. The review prompt measures ≈12.3k
   against a 12,288-token usable window, and ollama drops the **front**, where
@@ -354,36 +366,104 @@ survives when they do not.
   own header regex, so it falls back to a blunt tail cut that drops *WHERE
   EVENTS ACTUALLY FIRED* and *PROVEN UNREACHABLE*. The escalation prompt has no
   budget at all and `_atlas_text` grows with every map ever seen.
+  **DONE, and the finding is understated — this has already happened 48
+  times.** The logs hold 44 truncations at the 12288 cap and 4 at an older
+  8192, and every one is the REVIEW prompt, each immediately after
+  `[drafts] 6 earlier draft(s) for this goal shown to the review`. Drafts
+  were the unbudgeted block. Reproduced from the artifacts at 13,029 tokens
+  against the cap; with the three growing blocks budgeted together it is
+  11,253, and the vocabulary sits after them where a front-drop cannot
+  reach it.
+  `_fit`'s splitter is fixed: it wanted 12+ chars of `[A-Z ,'-]` after the
+  first letter, which `AREA CODES you may use...` fails on the `y` of
+  "you". Four consecutive capitals is what every real header has.
+  `prompt_guard()` now warns BEFORE the call and names the biggest parts —
+  `chat()`'s existing detector fires afterwards and as a bare number, which
+  never once said "it is the drafts".
+  The escalation prompt measures ~5,000 tokens today, so it was never at
+  the cliff, but `_atlas_text` was 910 of them over 39 maps at leg 8 of 38
+  and Kanto has ~250. It is now bounded near-first at 4,000 chars: with 289
+  maps loaded it holds at ~1,000 tokens, current map first, and says how
+  many were dropped.
 
-- [ ] **19. SHIM-2 · Medium · REPORTED — four shim defects that answer wrongly rather than erroring**
+- [x] **19. SHIM-2 · Medium · REPORTED — four shim defects that answer wrongly rather than erroring**
   `bfs_to_edge`'s ledge branch returns a cell without `landing_ok` (`:1143`), so
   `cross` walks there and presses into a wall; arrow tiles are treated as
   standable (`:1131`) though `warp_reach` and `bfs_dir` both refuse them;
   `ui_shop_up` is satisfied by the Start menu so `buy`/`sell` will drive
   whatever is open (`:1774`, `:1942`); HMs are not `keyItem` in the engine data
   (`:2405`), so `toss` offers `HM_CUT` as spare and `obs.key_items` omits every HM.
+  **DONE, all four.** The ledge branch now applies `landing_ok` like the two
+  branches beside it (fail-open on a probe error, so it can only reject
+  seams with genuinely nothing behind them). Arrow tiles are no longer
+  queued or accepted as edge cells, matching `warp_reach` and `bfs_dir`.
+  `ui_shop_up` asks for `ShopMenu` and its BUY/SELL list by name instead of
+  for "any list at all" — the START menu passed the old test, so a stray one
+  made `buy` press A into SAVE/OPTION/EXIT and call it a shop. And one
+  `is_key_item()` treats `machine.kind == "HM"` as a key item for both
+  readers: gen 1 refuses to toss or sell an HM and says so on screen.
 
-- [ ] **20. SHIM-3 · Medium · REPORTED — `observe()` is unbounded and freezes the heartbeat**
+- [x] **20. SHIM-3 · Medium · REPORTED — `observe()` is unbounded and freezes the heartbeat**
   Called bare outside `wd_run` (`:3970`, `:4023`). Three full-map floods per
   cycle plus a 72×72 tile scan, zero yields — ~17k `canMove` calls in one frame
   outdoors. The heartbeat only ticks on driver yields, so it *stops* during
   `observe`, reading as yield starvation: the exact misdiagnosis the file header
   describes chasing. `objreach` is `reach` recomputed; caching it is free.
+  **DONE.** One fill per observation instead of two (the third, `region_reach`,
+  is genuinely different — `no_ledges`). And the heartbeat now stamps
+  "observe" on entry and hands the label back on exit, so a sample taken
+  mid-observation reads as an observation in progress rather than as nothing
+  moving at all — which is the misdiagnosis the file header describes
+  chasing, produced by the very file written to prevent it.
 
-- [ ] **21. MISC-1 · Low · REPORTED — visits are double-counted**
+- [x] **21. MISC-1 · Low · REPORTED — visits are double-counted**
   `:1089` and `:1690` both bump on every escort hop, inflating the model-facing
   "you have been here N times" and halving the effective threshold at `:2530`.
+  **DONE.** Both writers go through `_count_visit`, which already had the
+  repeat guard `_note` was using; it just never covered the other writer.
 
-- [ ] **22. MISC-1 · Low · REPORTED — `_battle_regions` doesn't persist**
+- [x] **22. MISC-1 · Low · REPORTED — `_battle_regions` doesn't persist**
   Its sibling `contested` does, so on a resumed attempt a gym you lost in is no
   longer exempt from the re-entry refusal.
+  **DONE.** Saved and loaded beside `contested`, and blanked with it.
 
-- [ ] **23. MISC-1 · Low · REPORTED — `_plan_done` is write-only**
+- [x] **23. MISC-1 · Low · REPORTED — `_plan_done` is write-only**
   The "waypoints stay walked" behaviour its comment describes does not exist.
+  **DONE by DELETING it, not by implementing it.** The resume immediately
+  below superseded that design on purpose, and says why in its own comment:
+  the union version "skipped the navigation scaffold and stranded a bare
+  flag target in Cerulean while its giver waited on the ship", because
+  position is not an achievement. The code is right and the comment outlived
+  the behaviour. Implementing the comment would reinstate the bug.
 
-- [ ] **24. MISC-1 · Low · REPORTED — `run_subgoal` logs `at=None,None`**
+- [x] **24. MISC-1 · Low · REPORTED — `run_subgoal` logs `at=None,None`**
   x/y live under `obs["player"]`. The field was added specifically to pin the
   tile a cross failed from.
+  **DONE.** x/y read from `obs["player"]`. Measured before the fix: 13 of 13
+  `step` lines in the live log carried `at=None,None`.
+
+### What Tier 3 changes about how the run plays
+
+More than the other tiers, because these are answers rather than crashes.
+The model stops being told that a proven wall is an unopened road, stops
+being told it has been somewhere twice as often as it has, and gets a
+review prompt that is not missing its front. `cross` stops walking to edge
+cells with nothing behind them and to arrow tiles that slide it away. `buy`
+stops driving whatever menu happens to be open. HMs stop being offered as
+bag ballast.
+
+The two removals are the ones to watch: `_plan_done` is gone (it was never
+read) and the atlas is now truncated near-first past 4,000 chars. Neither
+changes a decision the run makes today.
+
+### One thing the audit did not raise
+
+`exploration_text`'s untried-exit list prints the DESTINATION of reachable
+doors the run has never walked through — `(12,9)->DIGLETTS_CAVE_ROUTE_2` —
+out of `obs.map.warps`, the same warp table item 6 removed from the
+unopened-doors ledger. Standing beside a door does not tell a player where
+it leads. This is a bigger surface than item 6 was and the model routes off
+it, so it is a decision rather than a patch. Not touched.
 
 ---
 
