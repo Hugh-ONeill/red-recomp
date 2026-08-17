@@ -865,6 +865,37 @@ class Executor:
         self.logf = open(RUN / "executor_log.jsonl", "a")
         self.t0 = time.time()
 
+    # WHAT A BUILDING LOOKS LIKE FROM THE STREET. `dest` was carrying two
+    # different facts and hiding it hid both: the MAP ID behind a door (you
+    # cannot read that through a doorway, and it stays hidden) and WHAT KIND
+    # OF BUILDING it is (you absolutely can — a gen 1 POKEMART and POKEMON
+    # CENTER have their own roofs and their own signs on the street, and a
+    # GYM is signed).
+    #
+    # Watched live, and it is not cosmetic: a clean-room run reached Viridian
+    # with "(29,19)->UNKNOWN, (32,7)->UNKNOWN" and no way to tell the MART —
+    # which holds Oak's Parcel, which is the only thing that moves the old
+    # man off the road north — from a stranger's front door. It bounced
+    # between Route 1 and the city border instead.
+    #
+    # Derived from the destination map id, which is fine: the harness may use
+    # the table to compute something the player can SEE, the way use_warp
+    # already uses it to retry a doorway's twin. What it may not do is hand
+    # over the answer. A house stays UNKNOWN, because a house looks like a
+    # house.
+    _FRONTAGE = (("_MART", "a POKEMART — the shop roof and its sign are "
+                           "visible from the street"),
+                 ("_POKECENTER", "a POKEMON CENTER — the red roof is visible "
+                                 "from the street"),
+                 ("_GYM", "a GYM — it is signed outside"))
+
+    @staticmethod
+    def _frontage(dest_map) -> str | None:
+        for suffix, words in Executor._FRONTAGE:
+            if str(dest_map or "").endswith(suffix):
+                return words
+        return None
+
     def _walked_dest(self, map_id: str, key: str):
         """Where this run has actually come out when it took that door.
 
@@ -2393,8 +2424,9 @@ class Executor:
                 if not w.get("reachable"):
                     continue
                 _d = self._walked_dest(m.get("id"), k)
+                _face = None if _d else self._frontage(w.get("dest"))
                 out.append((bool(_d) and _d.split("|")[0] in seen_maps,
-                            f"({k})->{_d or 'UNKNOWN'}"))
+                            f"({k})->{_d or _face or 'UNKNOWN'}"))
         for d, t in (m.get("connections") or {}).items():
             if d not in taken and d not in blocked:
                 # A SEAM IS A DOOR WITH NO DOORFRAME. Doors already say
@@ -3547,10 +3579,11 @@ class Executor:
                          f"walk {k} out of here -> {_wd or 'UNKNOWN'}"))
                 else:
                     _d = self._walked_dest(m.get("id"), k)
+                    _face = None if _d else self._frontage(w.get("dest"))
                     untried.append(
                         (bool(_d) and _d.split("|")[0] in {
                             a.split("|")[0] for a in self.visits},
-                         f"({k})->{_d or 'UNKNOWN'}"))
+                         f"({k})->{_d or _face or 'UNKNOWN'}"))
         # FRONTIER FIRST here too. _untried_exits (used by the refusal text)
         # was ordered but THIS list is the one the model reads every round,
         # and it was emitting doors in map order — which is how Pallet's
