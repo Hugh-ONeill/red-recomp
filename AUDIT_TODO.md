@@ -606,7 +606,7 @@ changes a decision the run makes today.
 
 These need a decision from the user, not a patch from me.
 
-- [ ] **25. CLAIM-1 · High · VERIFIED — no subgoal records an author**
+- [x] **25. CLAIM-1 · High · VERIFIED — no subgoal records an author**
   The recorded fix was "written once at creation and never touched". The
   never-touched half shipped; the written-at-creation half did not.
   `subgoal_provenance` has one writer in the codebase — a `setdefault` in
@@ -615,14 +615,24 @@ These need a decision from the user, not a patch from me.
   well covered and honest, but cannot distinguish a model-written subgoal from
   a hand-inserted one in the same file — the exact distinction once overstated.
   *Fix:* write it in `author.py` at creation; backfill nothing.
+  **DONE (`bd63eb8`).** Written the moment a subgoal is created. My own count
+  across 742 plan files: 3,906 absent, 594 placeholder, 24 naming a model —
+  and all 24 are in the old hand-seeded spine files, so no leg plan the
+  outline chain writes had one. Nothing backfilled.
 
-- [ ] **26. CLAIM-2 · Medium · VERIFIED — the oracle has never scored the policy that plays**
+- [x] **26. CLAIM-2 · Medium · VERIFIED — the oracle has never scored the policy that plays**
   Its one live run (26,998 turns, 86.9% agreement) predates commit `7480e0d`,
   which made the model-authored spec actually play. No orchestrator passes
   `--score-battles`. The quality meter and the artefact being claimed have never
   met. The offline gym comparison (47/67 vs 36/67) is real but is 67 turns.
+  **DONE (`bd63eb8`), as a switch rather than a run.** `RED_SCORE_BATTLES=1`
+  does what `--score-battles` does. Adding the flag to `fresh_run.sh` means
+  editing a shell script that may be mid-chain, and the rule here is that a
+  running script is never edited — an env var can be set on the next launch.
+  Scoring probes and never chooses, so it costs turns, not correctness.
+  The scoring RUN itself is still to do.
 
-- [ ] **27. CLAIM · BORDERLINE — three handovers to rule on**
+- [x] **27. CLAIM · BORDERLINE — three handovers to rule on**
   - `SEEDED_BADGES` — badge names are on the box, but the leader↔badge pairing
     and objective wording are harness-authored, and `_check_badges` re-inserts
     them against the model's choice. Honest framing: 8 of ~30 legs are seeded.
@@ -631,12 +641,40 @@ These need a decision from the user, not a patch from me.
   - `model_view` leftovers — strips `flags` and `battle.probe` correctly, but
     still ships `region_anchors` (harness bookkeeping) and `events` (the raw
     engine emit-name list).
+  **ALL THREE DONE (`bd63eb8`), user's rulings.**
+  *SEEDED_BADGES:* kept and stated. Ruled pamphlet tier — badge names are on
+  the box and the leader pairing is what the booklet tells a player. What
+  changed is that `SPD_DESIGN.md` now has its own section saying eight of
+  roughly thirty objectives are seeded, instead of leaving it to be found in
+  `_check_badges`.
+  *edges_text:* gated on the TOWN MAP being in the bag, and so are
+  `doors_text()` and the executor's "THE TOWN MAP: X attaches to" line — the
+  same artifact under its own label; gating one and not the others would be
+  incoherent. The gate was dismissed once, correctly, because the map had
+  never been obtained in any run; that is now fixed at both ends (the
+  re-offer ledger, plus a REMOTE list so a room in Pallet can surface from
+  Cerulean), so the errand is reachable and the gate is a gate rather than a
+  wall. Side effect: the author prompt drops 13,685 -> 10,736 chars, which
+  buys back ~740 tokens against item 18's cliff.
+  *model_view:* both stripped. `region_anchors` sits under `map`, not the top
+  level, so the first attempt did nothing until it was checked against a real
+  observation — and the map dict is copied before editing, since `o` is a
+  shallow copy and stripping in place would have taken it out of the
+  executor's own observation too.
 
-- [ ] **28. STRUCT — RL-refines is one of four claim pillars and has no implementation**
+- [x] **28. STRUCT — RL-refines is one of four claim pillars and has no implementation**
   No torch, no reward spec, no nav net, no distilled battle net. A legitimate
   choice, but the claim structure currently overstates what is built.
+  **DONE (`bd63eb8`) — restated, not built, user's call ("we might need it
+  later when doing the footprint stuff").** `SPD_DESIGN.md` now opens that
+  section with NOT BUILT: no torch, no reward spec, no nets, and the record
+  run uses none. What is built, and is the actual differentiator, is
+  learning-free play plus evidence-driven replanning. The design is kept as a
+  design and marked as one, because the claim should show what was considered
+  and not done as well as what was done.
 
-- [ ] **29. STRUCT — the headline metric is computed nowhere**
+- [ ] **29. STRUCT — the headline metric is computed nowhere** *(deferred by
+  the user; 30 waits on it)*
   `SPD_DESIGN.md` names the escalation-decay curve as "the headline metric".
   Escalations per leg per attempt, straight out of the journal — a short script,
   not a project. It is the number that says whether any of this compounds.
@@ -648,7 +686,8 @@ These need a decision from the user, not a patch from me.
   re-solved live rather than compiled away. `distill_refused_empty` fires 54
   times and is correct to refuse. Worth knowing before scaling to 38 legs.
 
-- [ ] **31. STRUCT — three functions carry most of the risk**
+- [ ] **31. STRUCT — three functions carry most of the risk** *(left alone by
+  the user for now — a between-claim-runs job)*
   `escalate` 846 lines, `_run_traced` 791, `exploration_text` 541, with 310- and
   213-line closures nested inside two of them. MEM-2's four-copy drift and the
   two-dispatch-site divergence in EXEC-3 are both direct consequences.
