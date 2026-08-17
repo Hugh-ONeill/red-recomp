@@ -6076,8 +6076,28 @@ Reply with ONLY a JSON array of ops, e.g.
             # 5 rounds on refusals and ran out before it reached the road
             # north, having only searched two buildings. Capped so a model
             # that proposes nothing but refused ops still terminates.
-            refused_only = bool(trace) and all("REFUSED" in t for t in trace)
-            if refused_only and free_rounds < 3:
+            # A ROUND WHERE NOTHING WORKED IS DEAD, whoever said no. This
+            # was REFUSED-only — the harness turning an op down — so a round
+            # in which every op RAN AND FAILED did not qualify, and that is
+            # the commoner case by far. Watched live in the clean-room run:
+            # Viridian City, every trace line "cross(dir=north): FAILED —
+            # couldn't reach north edge gap" and "interact: FAILED — no
+            # reachable tile adjacent", the old man lying across the road
+            # north, and four untried doors on the ledger including the MART
+            # that holds the Parcel which is the only thing that moves him.
+            # The free round below already walks through an untried door; it
+            # simply never fired, so the run bounced between Route 1 and the
+            # city border while the answer was a building it had never
+            # entered.
+            #
+            # This is the blind half of exploring and it is deliberately
+            # blind: it does not know the mart matters, any more than a
+            # player does the first time. It knows the room has a door
+            # nobody has opened, and a round in which nothing worked is the
+            # moment to open it.
+            _dead = bool(trace) and all(("REFUSED" in t or "FAILED" in t)
+                                        for t in trace)
+            if _dead and free_rounds < 3:
                 free_rounds += 1
                 self.log("free_round", subgoal=sg["id"], round=rnd,
                          spent_free=free_rounds)
@@ -6231,7 +6251,7 @@ Reply with ONLY a JSON array of ops, e.g.
                     self.log("free_round_exit", subgoal=sg["id"],
                              via=key, to=self._where(o2))
                     trace.append(
-                        f"(every proposal was refused, so the free round "
+                        f"(nothing in that round worked, so the free round "
                         f"took an untried way out of the area: {key} led "
                         f"to {self._where(o2)})")
             elif (sig1[0], sig1[4], sig1[5]) == (sig0[0], sig0[4], sig0[5]):
