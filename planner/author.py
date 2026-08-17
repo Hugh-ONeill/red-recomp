@@ -28,6 +28,7 @@ import argparse
 import difflib
 import json
 import re
+import unicodedata
 import sys
 from pathlib import Path
 
@@ -2063,6 +2064,107 @@ def _stage_missing(goal: str, legs: list, stages: dict, model: str,
     return out
 
 
+ERA_SYS = """You know Pokemon Red. Someone is asking you about it, in
+their own words, one part of the game at a time. Answer the way you would
+answer a person: in your own structure, at whatever length the question
+deserves, with whatever detail you think matters.
+
+You will be asked about the early game, then the middle, then the late.
+Answer only the part asked; you will be able to see what you already said,
+so do not repeat yourself.
+
+At the end I will ask you to reduce all of it to a checklist, and only then
+will the format matter."""
+
+ERA_ASKS = (
+    ("EARLY", "draw me up an outline of the early game of pokemon red "
+              "version"),
+    ("MIDDLE", "what does the mid game look like"),
+    ("LATE", "and the late game, through to the end"),
+)
+
+ERA_LIST_ASK = """Now reduce all three parts to ONE flat checklist of the
+whole playthrough, in the order it is played.
+
+Each line becomes its own plan, written later and played separately from
+the line alone — so each must be a thing that is either DONE or NOT DONE, a
+milestone you could tell someone you had reached. Short phrases in the
+player's own terms. No numbering, no explanation, no steps folded inside
+one line, no "if" or "or equivalent". Anything the game will not let you
+past until it is done belongs here, not just the badges.
+
+EXPECT ABOUT THIRTY LINES. Eight are the badges; the rest is the journey
+you just described — the caves crossed, the people helped, the things
+fetched, the towns arrived in. A checklist much shorter than thirty has
+summarised away the very half you were asked about, and a plan cannot be
+written from a summary. Every objective you named in any of the three
+parts belongs on this list.
+
+Reply with ONLY a JSON array of strings."""
+
+
+def outline_eras(goal: str, model: str) -> list:
+    """Ask for the game in three eras, in ONE conversation, LOOSELY — and
+    only ask for the checklist at the end.
+
+    The user's design in two parts. First (2026-08-16): "do it while it has
+    the other answers in its context", so the eras share a message list and
+    the model can see what it already named. Second (2026-08-17), from a
+    conversation the user ran by hand: ASK FOR LESS. Their prompt was
+    "draw me up an outline of the early game of pokemon red version" — no
+    JSON, no short-phrase rule, no count, no badge list — and it produced
+    Oak's parcel, Viridian Forest, the Bicycle, the Card Key, the Rocket
+    Hideout, Silph Co and the Saffron blockade, every one of which the
+    constrained version had lost.
+
+    And then it wrote its own checklist, unprompted: nine clean one-line
+    objectives summarising the prose it had just been allowed to write.
+    That is the whole idea here — GENERATION and FORMATTING are different
+    jobs, and demanding the format up front was costing the content. The
+    objective-quality rules now live in the final ask, applied to material
+    that already exists.
+    """
+    msgs = [{"role": "system", "content": ERA_SYS}]
+    for era, ask in ERA_ASKS:
+        msgs.append({"role": "user", "content": ask})
+        try:
+            reply = brock_probe.chat(msgs, model) or ""
+        except (OSError, ValueError, KeyError):
+            reply = ""
+        msgs.append({"role": "assistant", "content": reply})
+        print(f"[era:{era}] {len(reply)} chars of prose", file=sys.stderr)
+    msgs.append({"role": "user", "content": ERA_LIST_ASK})
+    try:
+        reply = brock_probe.chat(msgs, model) or ""
+    except (OSError, ValueError, KeyError):
+        return []
+    m = re.search(r"\[.*\]", reply, re.S)
+    if not m:
+        print("[era] no checklist came back", file=sys.stderr)
+        return []
+    try:
+        got = json.loads(m.group(0))
+    except ValueError:
+        return []
+    out, seen = [], []
+    for x in got if isinstance(got, list) else []:
+        if not isinstance(x, (str, int, float)):
+            continue
+        t = str(x).strip()
+        if not t or _HEDGES.search(t):
+            continue
+        k = _objective_key(t)
+        if k and any(k == s or len(k & s) >= 2 for s in seen):
+            print(f"[era] the checklist repeats itself: {t!r}",
+                  file=sys.stderr)
+            continue
+        if k:
+            seen.append(k)
+        out.append(t)
+    print(f"[era] checklist: {len(out)} objectives", file=sys.stderr)
+    return out
+
+
 SPINE_SYS = """Here are the eight gym badges of Pokemon Red, listed
 alphabetically by leader. Put them in the order you would take them.
 
@@ -3389,7 +3491,18 @@ Reply with ONLY a JSON object, the reason FIRST:
 
 
 def _norm_obj(t: str) -> str:
-    """An objective's text, flattened for equality only."""
+    """An objective's text, flattened for equality only.
+
+    ACCENTS FOLD FIRST. Stripping non-ASCII outright turned "Pokemon" with
+    its accent into the two tokens `pok` and `mon`, so ANY two objectives
+    containing the word shared two "names" and were judged the same
+    objective — "Clear Pokemon Tower" and "Obtain Pokemon Flute" were both
+    thrown away as repeats of each other. The word itself is scaffolding
+    and already in _GENERIC; it just has to survive as one token to be
+    recognised there.
+    """
+    t = unicodedata.normalize("NFKD", t)
+    t = "".join(c for c in t if not unicodedata.combining(c))
     return re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
 
 
