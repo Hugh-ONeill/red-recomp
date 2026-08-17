@@ -251,7 +251,14 @@ def observed_min_damage(journal: dict | None, move_id: str,
 
 
 def _hp_frac(mon: dict) -> float:
-    hp, mx = mon.get("hp") or 0, mon.get("max_hp") or 0
+    # The shim spells this TWO ways: party mons carry `max_hp` (shim.lua:206),
+    # battle sides carry `maxhp` (shim.lua:649). Reading only `max_hp` here
+    # meant every in-battle mon came back 1.0 — full health, always — so the
+    # POTION rule, the HP flee and setup.min_hp_frac never once fired in
+    # 64,218 logged battle turns. Read both; the whole log corpus, and every
+    # replay run against it, uses the battle spelling.
+    hp = mon.get("hp") or 0
+    mx = mon.get("max_hp") or mon.get("maxhp") or 0
     return hp / mx if mx else 1.0
 
 
@@ -561,7 +568,7 @@ if __name__ == "__main__":
     demo = {"battle": {
         "kind": "trainer",
         "me": {"level": 10, "species": "SQUIRTLE", "types": ["WATER"],
-               "hp": 20, "max_hp": 30,
+               "hp": 20, "maxhp": 30,   # battle-side spelling, as the shim emits
                "stats": {"attack": 20, "special": 25, "defense": 18},
                "moves": [
                    {"index": 1, "id": "TACKLE", "type": "NORMAL", "power": 35,
