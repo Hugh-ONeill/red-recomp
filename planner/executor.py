@@ -1081,7 +1081,26 @@ class Executor:
         printed map — was advertised to the model every round as a way it
         had never tried. A wall is not an unopened door.
         """
-        done = set(self._taken_here(region)) | set(self._spent_exits(region))
+        # A SHUT DOOR IS NOT A TAKEN DOOR. `_untried_exits` has always had
+        # the reopening rule — a door that turned you back carries
+        # `shut_at`, and once the world mark differs it is worth another
+        # press, because what turned you back may not any more. This
+        # definition, the one the floor note and the escort read, subtracted
+        # EVERY explored key including shut ones, so the two disagreed and
+        # this one was permanently wrong.
+        # Cost, live: MT_MOON_1F|3,2 tried the ladder at 5,5, could not
+        # reach it, recorded it shut — and from then on reported "nothing
+        # untried" across 81 arrivals, while that ladder is the only way to
+        # the B1F pocket holding 27,3, the way out east. Every one of the
+        # mountain's six known regions said finished with three doorways
+        # never stood at.
+        # Same collapse as this morning's, finishing the job: one definition
+        # of untried, and it honours the mark a shut door carries.
+        _now = getattr(self, "_mark_now", None)
+        done = {k for k, e in self._taken_here(region).items()
+                if not ((e or {}).get("shut") and _now is not None
+                        and (e or {}).get("shut_at") != _now)}
+        done |= set(self._spent_exits(region))
         shut = self._sealed(region)
         return [e for e in (self.frontier.get(region) or [])
                 if e not in done and e not in shut]
