@@ -798,6 +798,8 @@ class Executor:
         self._last_obs_dormant = 0   # objects this map has yet to reveal
         self._last_key_items: list = []
         self._touch_bag: dict = {}   # region -> key items held when pressed
+        # region -> {object name: [world mark when pressed, times re-offered]}
+        self._touch_mark: dict = {}
         self.hints: dict = {}        # region -> things people said here
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
@@ -1009,6 +1011,7 @@ class Executor:
             self._tried_objs = {r: set(v) for r, v in
                                 (data.get("touched") or {}).items()}
             self._touch_bag = data.get("touch_bag") or {}
+            self._touch_mark = data.get("touch_mark") or {}
             self._no_cross = {r: set(v) for r, v in
                               (data.get("no_cross") or {}).items()}
             self.flag_sites = data.get("flag_sites") or {}
@@ -1139,6 +1142,7 @@ class Executor:
         self.searched = {}
         self.contested = {}
         self._battle_regions = set()
+        self._touch_mark = {}
 
     def _save_memory(self):
         """TMP + RENAME, AND KEEP THE LAST GOOD ONE.
@@ -1159,6 +1163,7 @@ class Executor:
                  "visits": self.visits, "frontier": self.frontier,
                  "sightings": self.sightings, "searched": self.searched,
                  "touch_bag": self._touch_bag,
+                 "touch_mark": self._touch_mark,
                  "region_anchors": self.region_anchors,
                  "contested": self.contested,
                  # A TRAINER FIGHT IN A ROOM OUTLIVES THE PROCESS, same
@@ -1514,6 +1519,89 @@ class Executor:
 
     def _key_items(self) -> list:
         return list(self._last_key_items)
+
+    # How many times one thing may be re-offered across a whole run. A
+    # sign says the same sentence for ever, and without a cap it would be
+    # re-offered after every flag that fires anywhere. Three is enough for
+    # anyone whose line actually changes and cheap enough to be wrong about.
+    TOUCH_REOFFERS = 3
+
+    def _mark_touch(self, region: str, name: str, obs):
+        """Remember WHAT THE WORLD WAS when this thing was pressed."""
+        if not (region and name) or "None" in region:
+            return
+        self._touch_mark.setdefault(region, {})[name] = {
+            "then": self._world_mark(obs), "n": 0, "at": None}
+
+    def _worth_another_word(self, region: str, obs) -> list:
+        """Things pressed HERE, back when the world was something else.
+
+        THE TOWN MAP HAS NEVER BEEN OBTAINED IN ANY RUN, and this is why.
+        On leg 1, during pick_starter, the model pressed BLUESHOUSE_DAISY1
+        and got "AAAAAAA is out at Grandpa's lab" — which the recomp's own
+        script shows is the branch taken when EVENT_GOT_STARTER is FALSE.
+        It talked to her minutes before picking the starter that unlocks
+        her gift. `_tried_objs` is a LIFETIME ledger, so from that press
+        onward she never appeared in "things you have not touched" again,
+        and the map has been sitting in her house for every run since.
+
+        This does not un-say the touch. The run HAS spoken to her, and
+        saying otherwise would be a lie — `_stamp_touch` already refused to
+        do that, and fourteen other readers depend on the lifetime ledger.
+        What is added is the one fact that makes "pressed once" weaker than
+        it looks: it was pressed when you were carrying different things,
+        and this game's people say different things then. WHICH of them is
+        worth a second word is the model's call; the harness does not know
+        and must not pretend to.
+
+        Bounded twice over: only while the world mark actually differs, and
+        only TOUCH_REOFFERS times per thing per run.
+        """
+        now = self._world_mark(obs)
+        # EVERYTHING ALREADY IN THE LIFETIME LEDGER JOINS FROM HERE. The
+        # marks are new and the touches are not: 170 things had been pressed
+        # before this existed, Daisy among them, and without a backfill they
+        # would stay retired for ever — which is the bug. Backfilled at the
+        # CURRENT mark rather than an empty one, so nothing floods back the
+        # instant this ships; they become eligible from the next thing that
+        # happens, which is the rule everything else obeys.
+        marks = self._touch_mark.setdefault(region, {})
+        for name in (self._tried_objs.get(region) or ()):
+            if name and name not in marks:
+                marks[name] = {"then": now, "n": 0, "at": None}
+        if not marks:
+            return []
+        out = []
+        for name, rec in marks.items():
+            if not isinstance(rec, dict):
+                continue
+            if rec.get("then") == now:
+                continue                      # nothing has happened since
+            if (rec.get("n") or 0) >= self.TOUCH_REOFFERS:
+                continue                      # it has had its chances
+            out.append(name)
+        return sorted(out)
+
+    def _note_reoffer(self, region: str, names, obs) -> bool:
+        """Spend a re-offer, so a thing that never changes goes quiet.
+
+        COUNTED PER WORLD STATE, NOT PER RENDER. exploration_text runs once
+        per escalation round, and a subgoal stuck in one room renders it
+        over and over — counting renders would burn all three chances
+        before the model had acted on the first. An offer is only spent
+        when the world has moved since the last time this thing was
+        offered, which is the same measure the offer itself is made on.
+        """
+        marks = self._touch_mark.get(region) or {}
+        now = self._world_mark(obs)
+        spent = False
+        for n in names:
+            rec = marks.get(n)
+            if isinstance(rec, dict) and rec.get("at") != now:
+                rec["at"] = now
+                rec["n"] = (rec.get("n") or 0) + 1
+                spent = True
+        return spent
 
     def _stamp_touch(self, region: str):
         """Record WHAT WAS BEING CARRIED when this area was last pressed.
@@ -3560,6 +3648,25 @@ class Executor:
                               f"{len(then)} key item(s); you now carry "
                               f"{len(now)}, having picked up "
                               f"{', '.join(sorted(fresh)[:6])} since.")
+        # ...AND NAME THEM. The line above counts KEY ITEMS, which is the
+        # narrowest possible reading of "the world changed" — it cannot see
+        # a badge, and it cannot see the starter, which is the one thing
+        # Daisy's line turns on. Per-object marks can. Same rule as above:
+        # nothing is un-said, the touch stands, and which of these is worth
+        # a second word is the model's call.
+        again = self._worth_another_word(here, obs)
+        if again:
+            if self._note_reoffer(here, again, obs):
+                self._save_memory()
+            loot_line += (
+                f"\nWORTH ANOTHER WORD: you pressed {', '.join(again[:6])} "
+                f"here when you were carrying different things, before "
+                f"things had happened that have happened since. People in "
+                f"this game say different things once the world moves — the "
+                f"same person can have nothing to say one day and hand you "
+                f"something the next. You HAVE pressed them; that is not in "
+                f"doubt. Whether any of them is worth a second word now is "
+                f"yours to judge.")
         # ASK SOMEBODY. When a room stops yielding, the cheapest move left is
         # the one a person makes: talk to whoever is standing around. This
         # game states its own rules in dialogue, every line gets kept (see
@@ -4289,6 +4396,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 if step.get("name"):
                     tried.add(step["name"])
                     self._stamp_touch(here_r)
+                    self._mark_touch(here_r, step["name"], obs)
             # A seam PROVEN uncrossable is refused, not retried. The trace
             # said so every time and the model kept proposing cross(east)
             # from the Route 4 stub anyway — advice failed, so this is
