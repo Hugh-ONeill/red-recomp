@@ -70,11 +70,24 @@ class Bridge:
             return None
 
     def send(self, op: str, **kw) -> dict:
-        """Write a command, block until the shim reports its result."""
+        """Write a command, block until the shim reports its result.
+
+        EVERY KEY IN BRACKETS. `name=value` inside a Lua table constructor
+        needs `name` to be a valid Lua identifier AND not a reserved word,
+        and these keys come out of a macro the MODEL wrote — nothing stops
+        it naming a step field `end`, `for`, `local` or `function`. Any of
+        those makes load() return nil, the shim never acknowledges the
+        command, and the executor blocks its whole 120-second timeout with
+        no error anywhere. Exactly the silent-stall class as the nested
+        table that never serialised and cost 28 dead two-minute waits in
+        one night; that one was found only because someone counted the
+        gaps. `["end"]=v` is legal for every possible key and reads the
+        same on the shim side, so the class cannot recur.
+        """
         self.seq += 1
-        fields = [f"seq={self.seq}", f"op={op!r}"]
+        fields = [f"[{_lua('seq')}]={self.seq}", f"[{_lua('op')}]={op!r}"]
         for k, v in kw.items():
-            fields.append(f"{k}={_lua(v)}")
+            fields.append(f"[{_lua(str(k))}]={_lua(v)}")
         body = "return {" + ", ".join(fields) + "}"
         tmp = self.run / "cmd.lua.tmp"
         tmp.write_text(body)
