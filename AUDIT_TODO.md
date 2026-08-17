@@ -476,6 +476,46 @@ changes a decision the run makes today.
   wearing a sort key. Unknown now means unknown, which sorts it with the
   frontier, where a door nobody has opened belongs.
 
+- [x] **EXPLORE — one map under four region labels re-advertised its own doors.**
+  Found by watching a live test chain wander Cerulean for an hour (user:
+  "its not exploring correctly"). Cerulean carries FOUR region labels. The
+  one the run lives in had 426 visits and all eleven exits taken; a label it
+  had stood in TWICE inherited the whole city's doorway list and reported
+  ten of them as ways never tried — so every round the model was told there
+  was somewhere new two legs away whose first step was the trashed-house
+  door it had opened 37 times. It went, and did it again, for hours. Doing
+  exactly what it was told: ours, not the model's.
+  **DONE (`a3daa6f`).** The ledger is keyed by region, which is right for
+  writing and wrong for reading: a coordinate key is the same TILE whichever
+  label you stand in, so "have I taken this exit" is a fact about the map.
+  All four readers share one `_taken_here(region)`. Directions stay
+  region-local — on a split map the stub side cannot reach the far seam, and
+  saying otherwise would delete the discovery that opens the map (Route 4);
+  `_no_cross` clears a genuinely unreachable seam at a cost of one attempt.
+  Measured on the live ledger: phantom untried exits across multi-label maps
+  **18 → 8**, the two-visit Cerulean label **10 → 3**.
+
+- [ ] **EXPLORE — "NOWHERE in your atlas" points at doors instead of roads.**
+  Standing in Cerulean aimed at Vermilion, the model is told *"VERMILION_CITY
+  is NOWHERE in your atlas: no door you have ever taken leads there. The only
+  doors never opened are listed here — one of them, or something never
+  touched, is how it opens."* The run HAS walked `ROUTE_5 -> UNDERGROUND_PATH`,
+  one door south; what it has never done is come out the far end. The sentence
+  is true about Vermilion and false about the road, and it sends the run
+  door-hunting in the city it is standing in. Open.
+
+- [ ] **EXPLORE — a thing touched once is retired for ever.**
+  The Town Map has never been obtained in any run. During `pick_starter`, on
+  leg 1, the model pressed `BLUESHOUSE_DAISY1` ("AAAAAAA is out at Grandpa's
+  lab" — the pre-Pokedex line, no gift) and `BLUESHOUSE_TOWN_MAP` (the wall
+  decoration), because the harness had just said *"Press A on them before you
+  leave — it is free"*. Both went into `_tried_objs` permanently, and the
+  "things you have not touched" line only ever lists untouched things. The
+  free-round re-talk written for exactly this is gated on
+  `target_key.startswith("flag:")`, so it never fires in Blue's house.
+  The general class: this game's design is that people change what they say
+  once the world changes, and the harness retires them after one visit. NEXT.
+
 - [x] **STRUCT — a second test: `tests/replay_smoke.py`.** The contract test
   proves the SHAPE of an observation; this proves the executor still PLAYS —
   bootstrap, settle, a macro replayed step by step, a predicate satisfied,
