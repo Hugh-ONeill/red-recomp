@@ -791,6 +791,10 @@ class Executor:
         self._inert_objs: dict = {}         # region -> {object: state it was inert in}
         self._cant_afford: dict = {}        # item -> unit price we lack
         self._no_cross: dict = {}           # region -> dirs proven uncrossable
+        # region -> {dir: world mark when it was proven}. A seam proof that
+        # never expires is the one thing a shut DOOR is not (see _sealed).
+        self._no_cross_at: dict = {}
+        self._mark_now = None               # world mark as of the last settle
         self._rounds_here: dict = {}        # target|region -> rounds spent
         self._fight_region: str | None = None   # where the last trainer fought
         self.flag_sites: dict = {}          # flag -> area it fired in
@@ -906,6 +910,45 @@ class Executor:
                     own[k] = e
         return own
 
+    def _sealed(self, region) -> set:
+        """Seams still proven uncrossable AS OF NOW.
+
+        THE HARNESS HAS TWO RULES FOR "THIS WAY IS SHUT" AND ONLY ONE OF
+        THEM EXPIRED. A shut DOOR carries `shut_at` and is offered again
+        the moment the world mark differs — "a door that turned you back is
+        worth one more press once you are carrying something you were not
+        carrying then". A seam proof was a bare set: proven once, shut for
+        ever. The live ledger holds seven of them and one is
+        `ROUTE_5|1,0 south`, the Saffron guards — the seam that opens when
+        the run finally has the drink, and that nothing would ever have
+        offered again. Same claim, two lifetimes, and the one that never
+        expired was standing on the road south.
+
+        Cheap to be wrong about: a re-offered seam that is still shut costs
+        one crossing attempt and re-proves itself at the new mark. The old
+        enforcement that refused the op outright is already disabled (it
+        was refusing the winning move), so nothing here can trap the run.
+
+        Proofs written before this existed are backfilled at the CURRENT
+        mark, so none of them re-open on the first boot; they become
+        eligible from the next thing that happens, which is the rule
+        everything else obeys.
+        """
+        dirs = self._no_cross.get(region) or set()
+        # getattr: _sealed can be reached before the first settle has
+        # set a mark, and with no mark the honest answer is the old one
+        now = getattr(self, "_mark_now", None)
+        if not dirs or now is None:
+            return set(dirs)
+        marks = self._no_cross_at.setdefault(region, {})
+        out = set()
+        for d in dirs:
+            if d not in marks:
+                marks[d] = now
+            if marks[d] == now:
+                out.add(d)
+        return out
+
     def _frontier_left(self, region) -> list:
         """Exits of `region` never taken — the ONE definition.
 
@@ -918,7 +961,7 @@ class Executor:
         had never tried. A wall is not an unopened door.
         """
         done = set(self._taken_here(region))
-        shut = self._no_cross.get(region, set())
+        shut = self._sealed(region)
         return [e for e in (self.frontier.get(region) or [])
                 if e not in done and e not in shut]
 
@@ -936,6 +979,7 @@ class Executor:
         self._last_visit_region = region
 
     def _note(self, obs):
+        self._mark_now = self._world_mark(obs)
         self.note_frontier(obs)
         self.note_region_anchors(obs)
         self.note_sightings(obs)
@@ -1014,6 +1058,7 @@ class Executor:
             self._touch_mark = data.get("touch_mark") or {}
             self._no_cross = {r: set(v) for r, v in
                               (data.get("no_cross") or {}).items()}
+            self._no_cross_at = data.get("no_cross_at") or {}
             self.flag_sites = data.get("flag_sites") or {}
             # Entries written before the destination was removed still read
             # "4,11->CERULEAN_CAVE_1F (POLICEMAN is standing there)", and the
@@ -1143,6 +1188,7 @@ class Executor:
         self.contested = {}
         self._battle_regions = set()
         self._touch_mark = {}
+        self._no_cross_at = {}
 
     def _save_memory(self):
         """TMP + RENAME, AND KEEP THE LAST GOOD ONE.
@@ -1181,6 +1227,7 @@ class Executor:
                              for r, s in self._tried_objs.items()},
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
+                 "no_cross_at": self._no_cross_at,
                  "flag_sites": self.flag_sites,
                  "shut_doors": self.shut_doors,
                  "hints": self.hints,
@@ -1411,7 +1458,7 @@ class Executor:
         # listed (the edge line already marks it PROVEN uncrossable from
         # here, which is advice the model can weigh) — proofs may discourage
         # a direction, never delete a road the map says exists.
-        _nc = self._no_cross.get(here, set())
+        _nc = self._sealed(here)
         _real = MAP_EDGES.get(here.split("|")[0]) or {}
         keys = [k for k in keys if k not in _nc or k in _real]
         if keys:
@@ -2240,7 +2287,7 @@ class Executor:
         # a proven-uncrossable seam is not an exit — leaving it "untried"
         # here meant the searched proof could never fire for a stub region
         # and the escort ranked it as frontier forever
-        blocked = self._no_cross.get(self._where(obs), set())
+        blocked = self._sealed(self._where(obs))
         seen_maps = {a.split("|")[0] for a in self.visits}
         out = []
         for w in (m.get("warps") or []):
@@ -3347,7 +3394,7 @@ class Executor:
         # route still lists the far side's edge — and advertising it as
         # preferred-untried held the run on the Route 4 stub for twenty
         # rounds while the real door was named two lines below.
-        blocked = self._no_cross.get(here, set())
+        blocked = self._sealed(here)
         untried, tried = [], []
         for w in warps:
             if not w.get("reachable") or w["key"] in blocked:
@@ -4914,6 +4961,8 @@ Reply with ONLY a JSON array of ops, e.g.
                         and (self.visits.get(_prev["to"]) or 0) > 0)
                     if d0 and not _crossed_before:
                         self._no_cross.setdefault(here0, set()).add(d0)
+                        self._no_cross_at.setdefault(here0, {})[d0] = \
+                            self._world_mark(obs)
                     elif d0:
                         self.log("cross_failed_but_known", region=here0,
                                  exit=d0, to=_prev.get("to"))
@@ -6225,8 +6274,8 @@ Reply with ONLY a JSON array of ops, e.g.
                                + (" (PROVEN uncrossable from THIS part of "
                                   "the map — the connection exists on the "
                                   "far side of a barrier)"
-                                  if d in self._no_cross.get(
-                                      self._where(cur), set()) else "")
+                                  if d in self._sealed(self._where(cur))
+                                  else "")
                                for d, m in conns.items())
                            if conns else "")
                         + (f"\nObjects here you can interact: {objs}" if objs
