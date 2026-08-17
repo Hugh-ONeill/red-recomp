@@ -23,6 +23,7 @@ import argparse
 import atexit
 import json
 import os
+import re as _re
 import signal
 import subprocess
 import sys
@@ -89,34 +90,198 @@ DSL_DOC = """SPEC DSL (JSON object; every key optional; no other keys):
     (when your active mon faints and a backup lives, which one comes in —
      a replacement instead of a blackout, which would HALVE your money)"""
 
-CONTEXT = """THE RUN this policy plays (Squirtle lead; the plan buys Poke
-Balls and CATCHES A BACKUP mon on Route 22 — your catch rule does the
-throwing, your replacement rule decides who comes in when the lead
-faints; a switch-in costs a turn, a blackout costs HALF YOUR MONEY):
-  - Rival fight at L5: foe Bulbasaur L5 (Tackle/Growl). Our moves: TACKLE
-    (normal 35bp), TAIL_WHIP (status, lowers foe Defense). Roughly a coin
-    flip under plain Tackle-spam; this fight is worth thinking about.
-  - Wild grinding on Routes 1/22 to L12 (Pidgey/Rattata/Nidoran L2-5):
-    grind battles are 'fight' intent — fleeing them starves XP.
-  - Viridian Forest traversal: wild Weedle/Kakuna/Caterpie/Metapod L3-6
-    plus unavoidable Bug Catcher trainers (Weedle/Caterpie/Kakuna L6-9).
-    Poison Sting can poison, and poison drains HP as you walk. NO HP items
-    are for sale before Pewter: entering the forest the bag holds
-    ANTIDOTEs and PARLYZ_HEALs (Viridian's stock), NOT potions. POTIONs
-    (20 HP) are bought in Pewter AFTER the forest, before Brock. Uncured
-    poison across the forest is the #1 recorded death; for Brock, potions
-    in the bag go unused unless your rules spend them.
-  - Pewter Gym: trainer (Diglett/Sandshrew L11) then BROCK: Geodude L12,
-    Onix L14 (Rock/Ground — weak to water). Our kit by then: TACKLE,
-    TAIL_WHIP, BUBBLE (water 20bp special), maybe WITHDRAW.
-Physical damage uses Attack vs Defense; special (BUBBLE) uses Special vs
-Special. TAIL_WHIP lowers foe DEFENSE (helps TACKLE, not BUBBLE)."""
+# ------------------------------------------------------- context, from evidence
+# WHAT USED TO BE HERE. A hand-written CONTEXT block that told the model
+# Brock's roster and levels, that Onix is Rock/Ground and weak to water, the
+# rival's moveset, the Viridian Forest encounter table, and which items
+# Viridian stocks versus Pewter and in what order to buy them. Per
+# fresh_run.sh the spec authored under that prompt fights EVERY BATTLE OF THE
+# RECORD RUN, which made it the widest claim breach in the runtime path: the
+# open model was supposed to bring the Pokemon knowledge, and we were
+# handing it the answers to the two fights the early game turns on.
+#
+# It was also, by then, describing a different run. It opened "Squirtle
+# lead"; this run has led with a Charmander since the first morning.
+#
+# Everything below is assembled from the run's own battle log — foes it has
+# actually met, damage it has actually watched land, deaths it has actually
+# died. The model still brings the type chart, the mechanics and the
+# judgment. We bring what happened.
 
-SYS = ("You AUTHOR a Pokemon Red battle policy as a JSON SPEC in the DSL "
-       "below. A deterministic interpreter executes your rules; you are "
-       "writing the decision rules, not playing turns. Use your knowledge "
-       "of gen-1 mechanics. Reply with ONLY the JSON spec object.\n\n"
-       + DSL_DOC + "\n\n" + CONTEXT)
+_MOVE_RE = _re.compile(r"\b([A-Z][A-Z_]{2,})\b")
+
+
+def _move_of(why: str):
+    """The move a battle_turn line played. `why` is the policy's own reason
+    string — "SCRATCH score=40.0 eff=1.0", "KO with BUBBLE", "setup
+    TAIL_WHIP (use 1)" — and the move id is the one SHOUTED token in it."""
+    m = _MOVE_RE.search(why or "")
+    return m.group(1) if m else None
+
+
+def battle_evidence(log_path: Path = None) -> dict:
+    """Read the run's battle log into facts. Nothing here is knowledge about
+    Pokemon Red; it is a transcript of this party's fights."""
+    log_path = Path(log_path or LOG)
+    foes: dict = {}          # species -> {"n", "lv_min", "lv_max"}
+    dealt: dict = {}         # (move, foe species) -> [damage, ...]
+    taken: dict = {}         # foe species -> [damage, ...]
+    blackouts: list = []
+    turns: list = []
+    cur = None
+    if not log_path.exists():
+        return {"foes": foes, "dealt": dealt, "taken": taken,
+                "blackouts": blackouts, "turns": turns, "battles": 0}
+    battles = 0
+    with open(log_path) as f:
+        for line in f:
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            k = d.get("kind")
+            if k == "battle_start":
+                battles += 1
+                sp, _, lv = (d.get("foe") or "").rpartition(" L")
+                try:
+                    lv = int(lv)
+                except ValueError:
+                    lv = None
+                if sp:
+                    e = foes.setdefault(sp, {"n": 0, "lv_min": lv,
+                                             "lv_max": lv})
+                    e["n"] += 1
+                    if lv is not None:
+                        e["lv_min"] = min(e["lv_min"] or lv, lv)
+                        e["lv_max"] = max(e["lv_max"] or lv, lv)
+                # OUR level too, or a damage range is unreadable: "EMBER vs
+                # GEODUDE: 5-42" is one move at L9 and the same move at L33,
+                # and a rule written off the top of that range walks into
+                # fights it cannot win.
+                mlv = (d.get("me") or "").split(" L")
+                try:
+                    mlv = int(mlv[1].split()[0]) if len(mlv) > 1 else None
+                except ValueError:
+                    mlv = None
+                cur = {"foe": sp, "fhp": None, "mhp": None, "mv": None,
+                       "mlv": mlv}
+            elif k == "battle_turn" and cur:
+                fhp, mhp = d.get("foe_hp"), d.get("me_hp")
+                # ONLY THE MON THAT STARTED. battle_start names one level,
+                # but a switch or a faint replacement puts a different
+                # Pokemon on the field — and then GUST, which only PIDGEY
+                # knows, gets filed under CHARMELEON's level. A switch op or
+                # an HP bar that RISES means the active mon changed; from
+                # there the level is unknown and gets recorded as such.
+                # A faint replacement is logged as `pick_party`, not
+                # `battle_switch` — that one omission filed sixteen PIDGEY
+                # GUSTs under a level-19 CHARMELEON.
+                if d.get("op") in ("battle_switch", "pick_party") or (
+                        cur["mhp"] is not None and mhp is not None
+                        and mhp > cur["mhp"]):
+                    cur["mlv"] = None
+                if cur["mv"] and cur["fhp"] is not None and fhp is not None:
+                    dmg = cur["fhp"] - fhp
+                    if dmg > 0:
+                        dealt.setdefault((cur["mv"], cur["foe"]),
+                                         []).append((dmg, cur["mlv"]))
+                if cur["mhp"] is not None and mhp is not None:
+                    hurt = cur["mhp"] - mhp
+                    if hurt > 0:
+                        taken.setdefault(cur["foe"], []).append(hurt)
+                cur["fhp"], cur["mhp"] = fhp, mhp
+                # only a MOVE can be credited with damage: "heal with POTION"
+                # and "throw POKE_BALL" both carry a shouted token too
+                cur["mv"] = (_move_of(d.get("why"))
+                             if d.get("op") == "battle_move" else None)
+            elif k == "battle_done":
+                if d.get("turns"):
+                    turns.append(d["turns"])
+                cur = None
+            elif k == "blackout":
+                blackouts.append((d.get("subgoal"), d.get("respawn"),
+                                  d.get("op")))
+    return {"foes": foes, "dealt": dealt, "taken": taken,
+            "blackouts": blackouts, "turns": turns, "battles": battles}
+
+
+def evidence_context(obs: dict | None = None,
+                     log_path: Path = None) -> str:
+    """The brief the policy author is given: this run's own record."""
+    ev = battle_evidence(log_path)
+    out = ["THE RUN THIS POLICY PLAYS. Everything below is what this party "
+           "has already been through — read out of its own battle log, not "
+           "out of a book. The Pokemon knowledge is yours to bring."]
+
+    party = (obs or {}).get("party") or []
+    if party:
+        out.append("\nYOUR PARTY AS IT STANDS:")
+        for i, m in enumerate(party, 1):
+            mv = ", ".join(str(x.get("id")) for x in (m.get("moves") or []))
+            out.append(f"  {i}. {m.get('species')} L{m.get('level')} "
+                       f"{m.get('hp')}/{m.get('max_hp')}hp"
+                       + (f" — {mv}" if mv else ""))
+    bag = (obs or {}).get("bag") or {}
+    if bag:
+        out.append("\nWHAT IS IN THE BAG (a rule that spends an item you do "
+                   "not carry never fires): "
+                   + ", ".join(f"{k} x{v}" for k, v in sorted(bag.items())))
+
+    if ev["foes"]:
+        top = sorted(ev["foes"].items(), key=lambda kv: -kv[1]["n"])[:14]
+        rows = ", ".join(
+            f"{sp} L{e['lv_min']}"
+            + (f"-{e['lv_max']}" if e["lv_max"] != e["lv_min"] else "")
+            + f" ({e['n']}x)" for sp, e in top)
+        out.append(f"\nWHAT YOU HAVE ACTUALLY FOUGHT, most often first "
+                   f"({ev['battles']} battles on record): {rows}.")
+    if ev["turns"]:
+        t = sorted(ev["turns"])
+        med = t[len(t) // 2]
+        out.append(f"A battle has run {med} turn{'' if med == 1 else 's'} at "
+                   f"the median and {t[-1]} at the longest.")
+
+    if ev["dealt"]:
+        rows = sorted(ev["dealt"].items(), key=lambda kv: -len(kv[1]))[:14]
+        out.append("\nDAMAGE YOUR MOVES HAVE BEEN SEEN TO DO (the HP bar is "
+                   "on screen; this is what it moved by):")
+        for (mv, sp), v in rows:
+            dmg = [x for x, _l in v]
+            lv = [l for _x, l in v if l is not None]
+            span = (f" at your L{min(lv)}" + (f"-{max(lv)}"
+                    if max(lv) != min(lv) else "")) if lv else ""
+            out.append(f"  {mv} vs {sp}: {min(dmg)}-{max(dmg)} over "
+                       f"{len(v)} use(s){span}")
+    if ev["taken"]:
+        rows = sorted(ev["taken"].items(),
+                      key=lambda kv: -max(kv[1]))[:8]
+        out.append("\nDAMAGE THEY HAVE DONE TO YOU, worst hitters first: "
+                   + ", ".join(f"{sp} up to {max(v)}" for sp, v in rows)
+                   + ".")
+
+    if ev["blackouts"]:
+        where: dict = {}
+        for sg, respawn, _op in ev["blackouts"]:
+            where[sg or "?"] = where.get(sg or "?", 0) + 1
+        rows = ", ".join(f"{k} ({v}x)" for k, v in
+                         sorted(where.items(), key=lambda kv: -kv[1])[:6])
+        out.append(f"\nHOW THIS PARTY HAS DIED: {len(ev['blackouts'])} "
+                   f"blackout(s) on record, during — {rows}. A blackout "
+                   f"ends the leg wherever it happens.")
+    else:
+        out.append("\nThis party has no blackouts on record.")
+    return "\n".join(out)
+
+
+SYS_HEAD = ("You AUTHOR a Pokemon Red battle policy as a JSON SPEC in the "
+            "DSL below. A deterministic interpreter executes your rules; "
+            "you are writing the decision rules, not playing turns. Use "
+            "your knowledge of gen-1 mechanics. Reply with ONLY the JSON "
+            "spec object.\n\n")
+
+
+def sys_prompt(obs: dict | None = None, log_path: Path = None) -> str:
+    return SYS_HEAD + DSL_DOC + "\n\n" + evidence_context(obs, log_path)
 
 
 def _parse_spec(text: str):
@@ -353,6 +518,13 @@ def main():
                 raise
             time.sleep(3)
     print(f"[gym] ready (rival fight re-armable: {gym.rival_ok})")
+    # The brief is assembled AFTER the boot, so the party and bag in it are
+    # the ones this spec will actually be handed. It used to be a module
+    # constant written months ago describing a Squirtle that never existed
+    # in this run.
+    _ex = getattr(gym, "ex", None)
+    sys_msg = sys_prompt(_ex.settle() if _ex else None)
+    print(f"[gym] evidence brief: {len(sys_msg)} chars")
 
     if args.eval_only:
         spec = battle_policy.load_spec(args.eval_only)
@@ -371,7 +543,7 @@ def main():
                 f"FEEDBACK ON PREVIOUS CANDIDATES:\n{feedback}\n"
                 "Author the spec now (JSON only).")
         reply = brock_probe.chat(
-            [{"role": "system", "content": SYS},
+            [{"role": "system", "content": sys_msg},
              {"role": "user", "content": user}], args.model)
         spec = _parse_spec(reply)
         probs = battle_policy.validate_spec(spec) if spec else ["no JSON"]
