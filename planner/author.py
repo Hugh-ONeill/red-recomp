@@ -1134,7 +1134,14 @@ def _fit(text: str, budget: int = EVIDENCE_BUDGET,
     written now can act on. Keep them, drop the far ones, and say how many
     went."""
     while len(text) > budget:
-        blocks = re.split(r"\n\n(?=[A-Z][A-Z ,\'-]{12,})", text)
+        # A HEADER IS A RUN OF CAPITALS, not thirteen characters drawn
+        # from a set that happens to include lowercase-adjacent
+        # punctuation. The old pattern needed 12+ chars of [A-Z ,'-] after
+        # the first letter, so `AREA CODES you may use...` failed on the
+        # `y` of "you" at character 11 and the whole block was glued to
+        # whichever one came before it. Four consecutive capitals is what
+        # every real header here has and no prose paragraph does.
+        blocks = re.split(r"\n\n(?=[A-Z]{4,})", text)
         i = max(range(len(blocks)), key=lambda j: len(blocks[j]))
         lines = blocks[i].splitlines()
         if len(lines) < 8:
@@ -1149,6 +1156,46 @@ def _fit(text: str, budget: int = EVIDENCE_BUDGET,
             + [f"  ... {cut} line(s) about ground far from here not shown ..."])
         text = "\n\n".join(blocks)
     return text
+
+
+def prompt_guard(where: str, **parts) -> None:
+    """Say BEFORE the call that a prompt is near the cliff, and name what is
+    making it big.
+
+    chat() already notices truncation, but only afterwards and only as a
+    number — and the 48 truncations already in this repo's logs (44 at the
+    12288 cap, 4 at 8192) all came from the same place, the review prompt,
+    every one of them right after "[drafts] 6 earlier draft(s) shown". The
+    number alone never said that. This does.
+    """
+    total = sum(len(v or "") for v in parts.values())
+    cap = brock_probe.NUM_CTX // 2
+    est = total // 4                    # ~4 chars per token, good enough
+    if est < cap * 0.9:
+        return
+    big = sorted(parts.items(), key=lambda kv: -len(kv[1] or ""))[:3]
+    print(f"[prompt] {where} is ~{est} tokens against a {cap} cap"
+          + (" — IT WILL BE TRUNCATED FROM THE FRONT" if est >= cap else
+             " — close to the cliff")
+          + ". Biggest parts: "
+          + ", ".join(f"{k} {len(v or '') // 4}" for k, v in big))
+
+
+def evidence_text(observed, journal, drafts) -> str:
+    """The whole evidence prefix, budgeted AS A WHOLE.
+
+    EVIDENCE_BUDGET was applied inside observed_text and nowhere else, so
+    it capped the walked graph and then let the journal, the draft list and
+    the plan JSON pile on top of it unmeasured. Ollama evaluates at half of
+    num_ctx and drops the FRONT — where the predicates, the map ids and the
+    guidance live — so going over does not blur the reasoning, it deletes
+    the instructions, and a review then reaches for a predicate that does
+    not exist. The three growing blocks are budgeted together; the
+    vocabulary is appended AFTER this and is never trimmed.
+    """
+    return _fit((observed_text(observed) if observed else "")
+                + (journal_text(journal) if journal else "")
+                + drafts_text(drafts or []))
 
 
 def journal_text(path: Path, limit: int = 60) -> str:
@@ -1627,15 +1674,15 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
     # lines — at the front, and keep the vocabulary next to the audit
     # instructions at the tail where truncation cannot reach either.
     repeat_add = None
-    base = ((observed_text(observed) if observed else "")
-            + (journal_text(journal) if journal else "")
-            + drafts_text(drafts or [])
+    base = (evidence_text(observed, journal, drafts)
             + build_prompt(goal, start))
     for rnd in range(1, rounds + 1):
+        _rev = build_review(goal, plan, start)
+        prompt_guard("the review prompt", system=REVIEW_SYS,
+                     evidence_and_vocabulary=base, plan_under_review=_rev)
         reply = brock_probe.chat(
             [{"role": "system", "content": REVIEW_SYS},
-             {"role": "user", "content": base + "\n\n" +
-              build_review(goal, plan, start)}], model)
+             {"role": "user", "content": base + "\n\n" + _rev}], model)
         m = re.search(r"\{.*\}", reply, re.S)
         if not m:
             continue
