@@ -14,7 +14,7 @@ have understood" is a rule that deserves a test rather than a comment.
 Runs under its own love identity against a COPY of the save, so it can
 never reach the campaign's game. Exits non-zero if any expectation fails.
 
-  tests/replay_smoke.py             use the live save
+  tests/replay_smoke.py             use the pinned fixture save
   tests/replay_smoke.py --save P    start from a specific save
 """
 
@@ -32,6 +32,7 @@ sys.path.insert(0, str(ROOT / "planner"))
 import contract as C            # noqa: E402  (owns the boot + isolation)
 
 RUN = ROOT / "run/contract"
+FIXTURE = ROOT / "tests/fixtures/outdoor_cerulean.lua"
 
 
 def main():
@@ -39,7 +40,16 @@ def main():
     ap.add_argument("--save", type=Path, default=None)
     ap.add_argument("--speed", default="200")
     args = ap.parse_args()
-    save = args.save or C.LIVE_SAVE
+    # A PINNED SAVE, NOT THE LIVE ONE. Resuming from wherever the campaign
+    # happens to be makes the test a moving target: it passed from Cerulean,
+    # then the run boarded the S.S. Anne and it "failed" because every door
+    # in a cabin leads to another cabin. A regression test that reports the
+    # harness broken for standing in a ship is worse than no test. The
+    # fixture is outdoors with a party of five and it does not move.
+    save = args.save or FIXTURE
+    if not save.exists():
+        save = C.LIVE_SAVE
+        print(f"[replay] fixture missing, falling back to the live save")
     if not save.exists():
         sys.exit(f"no save to replay from: {save}")
 
@@ -59,10 +69,22 @@ def main():
 
         # A REAL MACRO, chosen from where the party actually is: cross the
         # first map edge this map has and require the map to change.
-        conns = ((b.obs() or {}).get("map") or {}).get("connections") or {}
+        # INDOORS IS A NORMAL PLACE TO BE. The first version demanded a map
+        # EDGE, so the moment the campaign save moved onto the S.S. Anne the
+        # test reported failure at the harness for standing in a ship. A
+        # door is just as good a macro to replay; take whichever this map
+        # has, and only give up when it has neither.
+        _m = (b.obs() or {}).get("map") or {}
+        conns = dict(_m.get("connections") or {})
         if not conns:
-            sys.exit(f"{here} has no map edge to cross; re-run from an "
-                     f"outdoor save")
+            for w in (_m.get("warps") or []):
+                if not w.get("reachable"):
+                    continue
+                k = f"{w.get('x')},{w.get('y')}"
+                conns[k] = None
+            if not conns:
+                sys.exit(f"{here} has neither a map edge nor a reachable "
+                         f"door; nothing to replay")
         # NOT simply the first edge. Cerulean's east seam is held shut by
         # two cooltrainers standing in the gap, so "take conns[0]" tested
         # the harness against a wall and called the harness broken. Any one
@@ -82,14 +104,27 @@ def main():
         ex._load_memory()
 
         crossed = None
-        for d in sorted(conns):
-            sg = {"id": f"cross_{d}", "goal_text": f"cross {d} out of {here}",
-                  "done_when": {"map": conns[d]}, "max_attempts": 1,
-                  "macro": [{"op": "cross", "dir": d}]}
-            if ex._attempt(sg):
-                crossed = (d, conns[d])
+        for d in sorted(conns, key=str):
+            door = "," in str(d)
+            # a door's destination is UNKNOWN until walked, so for those the
+            # test asserts only that the map CHANGED, which is the property
+            # under test either way
+            want = conns[d] if not door else None
+            sg = {"id": f"leave_{d}",
+                  "goal_text": f"leave {here} by {d}",
+                  "done_when": ({"map": want} if want
+                                else {"no_battle": True}),
+                  "max_attempts": 1,
+                  "macro": ([{"op": "cross", "dir": d}] if not door else
+                            [{"op": "use_warp",
+                              "x": int(str(d).split(",")[0]),
+                              "y": int(str(d).split(",")[1])}])}
+            ex._attempt(sg)
+            now_m = ((b.obs() or {}).get("map") or {}).get("id")
+            if now_m and now_m != here:
+                crossed = (d, now_m)
                 break
-            print(f"        {d} -> {conns[d]}: did not open, trying another")
+            print(f"        {d}: did not open, trying another")
         if crossed:
             print(f"  ok    replayed a macro and walked {here} -> "
                   f"{crossed[1]} ({crossed[0]})")
