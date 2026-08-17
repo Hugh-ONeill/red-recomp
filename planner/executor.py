@@ -801,7 +801,14 @@ class Executor:
             self._no_cross = {r: set(v) for r, v in
                               (data.get("no_cross") or {}).items()}
             self.flag_sites = data.get("flag_sites") or {}
-            self.shut_doors = data.get("shut_doors") or {}
+            # Entries written before the destination was removed still read
+            # "4,11->CERULEAN_CAVE_1F (POLICEMAN is standing there)", and the
+            # plan author prints this ledger verbatim — so a stale region
+            # nobody revisits would keep handing the ROM's answer over for
+            # the rest of the run. Strip it on the way in.
+            self.shut_doors = {
+                r: [_re.sub(r"^([^ ]+)->\S+", r"\1", s) for s in (v or [])]
+                for r, v in (data.get("shut_doors") or {}).items()}
             self.hints = data.get("hints") or {}
             self.map_doors = {k: set(v) for k, v
                               in (data.get("map_doors") or {}).items()}
@@ -1105,8 +1112,15 @@ class Executor:
         # to Pallet Town and round again — a brute-force search for a way
         # on, while the way on was a door with a policeman standing under
         # it, four tiles from where it was standing.
-        shut = sorted(f"{k}->{dest} ({who} is standing there)"
-                      for k, dest, who in self._unopened_doors(obs))
+        # WHERE IT GOES IS NOT OURS TO SAY. That a doorway is there, and that
+        # somebody is standing at it, are both on screen. Its destination is
+        # not: it comes out of the warp table, the game's own index of every
+        # door, and a door this run has never walked through has never shown
+        # anyone its far side. "(4,11)->CERULEAN_CAVE_1F" is the ROM talking,
+        # and it is pointing — the one thing the rule forbids. Report the
+        # doorway; let walking through it be how the far side is learned.
+        shut = sorted(f"{k} ({who} is standing there)"
+                      for k, _dest, who in self._unopened_doors(obs))
         if shut:
             if self.shut_doors.get(here) != shut:
                 self.shut_doors[here] = shut
@@ -1466,6 +1480,25 @@ class Executor:
         `travel_to_celadon` subgoal — every one of them further away than
         where it started.
 
+        WHAT THE NUMBER IS. It used to be `_goal_score`, which is a COST,
+        not a distance: it prices a shut door at `4 + visits//8` so the
+        ranking can choose between two walls, and falls back to 50+ or a
+        bare 99 sentinel for ground the printed map has no line to. Printed
+        as "the printed map puts X N step(s) from Y" that is simply untrue —
+        the log has `ROUTE_9 6 step(s) from ROUTE_10` (it is one leg) and
+        `GAME_CORNER 99 step(s) from CELADON_CITY` (the Game Corner is
+        INSIDE Celadon; 99 means "no answer"). Worse than the wording: the
+        toll grows with every visit, so the give-up test could fire on a
+        party that had not moved a tile, purely because leaning on a door
+        made the door dearer.
+
+        The honest number for "am I nearer than I was" is the untolled hop
+        count over the printed map plus the links this run has walked. It
+        is a real distance, it does not drift while the party stands still,
+        and where the map has no answer we say so instead of printing a
+        sentinel. Ranking candidate destinations still uses the cost — that
+        is what it is for, and it is never shown as a distance.
+
         Returns (note, give_up).
         """
         tgt = self._target_key(sg)
@@ -1478,9 +1511,17 @@ class Executor:
         if not (want_map and here_map):
             return "", False
         try:
-            d = self._goal_score(here_map, want_map, self._impassable())
+            d = static_cost(_doorstep(here_map), want_map, {},
+                            self._walked_map_links())
         except Exception:
             return "", False
+        if d is None:
+            # No line on the printed map and no walked link either. Saying
+            # "99 steps" would be inventing a distance; saying nothing hides
+            # that the target is off the map you are holding.
+            return (f"\nHOW FAR OFF YOU ARE: the printed map draws no road "
+                    f"between {here_map} and {want_map}, so it cannot say "
+                    f"how far apart they are.", False)
         st = self._drift.setdefault(sg.get("id"), {"best": d, "since": 0,
                                                    "at": here_map})
         if d < st["best"]:
@@ -1488,12 +1529,12 @@ class Executor:
         else:
             st["since"] += 1
         # GENEROUS, because a real route can lead AWAY first: Rock Tunnel
-        # is the way to Celadon and every step of it scores worse than
-        # standing in Cerulean. Only a long stretch with no improvement at
-        # all counts, and only while actually further off than the best.
+        # is the way to Celadon and every leg of it is further from Celadon
+        # than standing in Cerulean. Only a long stretch with no improvement
+        # at all counts, and only while actually further off than the best.
         give_up = st["since"] >= 14 and d > st["best"]
-        note = (f"\nHOW FAR OFF YOU ARE: the printed map puts {here_map} "
-                f"{d} step(s) from {want_map}. The closest you have been "
+        note = (f"\nHOW FAR OFF YOU ARE: on the printed map {here_map} is "
+                f"{d} leg(s) from {want_map}. The closest you have been "
                 f"this subgoal is {st['best']} (at {st['at']})"
                 + (f", and you have not improved on it for {st['since']} "
                    f"rounds." if st["since"] else "."))
@@ -3046,9 +3087,8 @@ class Executor:
                 "\nDOORWAYS ON THIS MAP YOU HAVE NEVER OPENED AND CANNOT "
                 "WALK TO FROM HERE: "
                 + ", ".join(
-                    f"({k})->{d or 'somewhere'}"
-                    + (f", nearest person {who}" if who else "")
-                    for k, d, who in shut[:4])
+                    f"({k})" + (f", nearest person {who}" if who else "")
+                    for k, _d, who in shut[:4])
                 + ". A doorway does not move, so something between you and "
                 "it does not want you through yet — a person to talk to or "
                 "fight, a thing to shift, a way round. WHAT is not recorded. "
@@ -3116,8 +3156,8 @@ class Executor:
         # times. A door with nobody named is not a door held shut HERE, it
         # is a door somewhere else. The model still hears about it in the
         # doorways line, which is where it belongs.
-        held = {r: [f"{k}({who})" for k, _d, who in
-                    [(x.split("->")[0], None,
+        held = {r: [f"{k}({who})" for k, who in
+                    [(x.split(" (")[0],
                       x.split("(")[-1].rstrip(") ").replace(
                           " is standing there", ""))
                      for x in v]
@@ -3322,55 +3362,26 @@ class Executor:
         if want_map and want_map in MAP_EDGES:
             att = ", ".join(f"its {d} side touches {m}"
                             for d, m in sorted(MAP_EDGES[want_map].items()))
-            route_line += (f"\nTHE TOWN MAP: {want_map} attaches to — "
-                           f"{att}. To arrive, stand in one of THOSE and "
-                           f"cross the matching edge.")
-            # ...and the town map can be READ ALL THE WAY: a static BFS
-            # over its printed adjacencies gives the map-by-map itinerary
-            # (interiors like tunnels don't appear on it — a leg that
-            # cannot be crossed outdoors goes through one).
-            here_map = self._where(
-                self.b.obs() or {}).split("|")[0]
-            if here_map in MAP_EDGES or any(
-                    here_map in v.values() for v in MAP_EDGES.values()):
-                import collections
-                q = collections.deque([[here_map]])
-                seen_m = {here_map}
-                path_m = None
-                while q:
-                    p = q.popleft()
-                    if p[-1] == want_map:
-                        path_m = p
-                        break
-                    for _d, m2 in (MAP_EDGES.get(p[-1]) or {}).items():
-                        if m2 not in seen_m:
-                            seen_m.add(m2)
-                            q.append(p + [m2])
-                if path_m and len(path_m) > 1:
-                    # MARK THE LEGS THIS RUN HAS NEVER GOT THROUGH. The
-                    # path is a plain BFS over the printed map with no
-                    # tolls, so it confidently reads "ROUTE_5 ->
-                    # SAFFRON_CITY -> ROUTE_7 -> CELADON" while the same
-                    # ledger says Route 5 has been stood in 356 times and
-                    # Saffron reached zero. The ranking already prices
-                    # those legs; this sentence did not, and a rewrite
-                    # followed it into the guards twice.
-                    _vis = self._map_visits()
-                    _legs = []
-                    for _i, _m in enumerate(path_m):
-                        _legs.append(_m)
-                        _nxt = path_m[_i + 1] if _i + 1 < len(path_m) else None
-                        if (_nxt and _vis.get(_m, 0) >= 8
-                                and not _vis.get(_nxt)):
-                            _legs.append(
-                                f"[!! {_m} -> {_nxt} has NEVER opened: "
-                                f"stood in {_m} {_vis.get(_m, 0)}x and "
-                                f"reached {_nxt} 0x]")
-                    route_line += (
-                        f"\nTOWN-MAP ITINERARY from {here_map}: "
-                        + " -> ".join(_legs)
-                        + ". Legs the evidence has proven blocked need a "
-                          "tunnel, a building or a deed at that step.")
+            route_line += f"\nTHE TOWN MAP: {want_map} attaches to — {att}."
+            # AND NOTHING FURTHER. There used to be a TOWN-MAP ITINERARY
+            # here: a BFS over the printed adjacencies, from where the party
+            # stands to the target, printed as "ROUTE_5 -> SAFFRON_CITY ->
+            # ROUTE_7 -> CELADON_CITY". That is a solved route handed over
+            # whole, which is the one thing the rule forbids — we may stop
+            # hiding the map, we may not walk the model's finger along it.
+            # A player holding the Town Map sees the same adjacencies and
+            # works the journey out; working it out is the game.
+            #
+            # It was also WRONG as often as it was over the line: the BFS
+            # spans outdoor maps only, so any journey through a tunnel, a
+            # gate or a building — the Underground Path, Rock Tunnel, Diglett
+            # 's Cave — was printed as a road that does not exist.
+            #
+            # What it carried that was legitimate — that a leg has been
+            # leaned on and never opened — is walked evidence, and survives
+            # in the ranking (which prices exactly those legs) and in the
+            # visit counts the model is already shown. Do not reinstate the
+            # path in order to hang that annotation off it.
         if not (untried or tried):
             if elsewhere:
                 return (warned + route_line
