@@ -495,14 +495,31 @@ changes a decision the run makes today.
   Measured on the live ledger: phantom untried exits across multi-label maps
   **18 → 8**, the two-visit Cerulean label **10 → 3**.
 
-- [ ] **EXPLORE — "NOWHERE in your atlas" points at doors instead of roads.**
+- [x] **EXPLORE — "NOWHERE in your atlas" points at doors instead of roads.**
   Standing in Cerulean aimed at Vermilion, the model is told *"VERMILION_CITY
   is NOWHERE in your atlas: no door you have ever taken leads there. The only
   doors never opened are listed here — one of them, or something never
   touched, is how it opens."* The run HAS walked `ROUTE_5 -> UNDERGROUND_PATH`,
   one door south; what it has never done is come out the far end. The sentence
   is true about Vermilion and false about the road, and it sends the run
-  door-hunting in the city it is standing in. Open.
+  door-hunting in the city it is standing in.
+  **DONE (`d4f70c8`), and the sentence was the smaller half.** The list that
+  should have carried the answer — "places you have already been that still
+  have ways you have NEVER taken" — built a line per candidate and joined
+  `sorted(elsewhere)[:6]`: sorted on the rendered STRING, alphabetically by
+  region id. Twelve candidates; the six that survived began C, M and P, and
+  four had no walked route at all. `UNDERGROUND_PATH_ROUTE_5|1,1` — two legs
+  away over walked ground, THREE exits never taken, and the road to
+  Vermilion — sorted tenth and was cut. **The one room that mattered was
+  dropped by its initial letter.** Ranked now by reachable, then nearest,
+  then most left to do: it moves to second.
+  The sentence itself now says the truest thing available — of the ground
+  already walked, which does the printed map put nearest, and how to get
+  there. Both halves were already permitted (the walked ledger is the run's
+  own, the distance is the Town Map's) and it names no door beyond ground
+  already covered. Rendered against the stuck state it reads: *"the closest
+  ground you HAVE walked to it is ROUTE_5|1,0 … 3 leg(s) from VERMILION_CITY
+  … What lies beyond that edge you have not seen."*
 
 - [x] **EXPLORE — a thing touched once is retired for ever.**
   The Town Map has never been obtained in any run. During `pick_starter`, on
