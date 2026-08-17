@@ -337,8 +337,22 @@ local lift_floors = {}
 -- the only clue that the gate opens with a drink. Accumulate the pages of
 -- one speech; a return to free roam ends it and the next starts fresh.
 local text_run = nil
+-- HOW MANY TIMES ANYBODY HAS SPOKEN, ever, this process. A bare count,
+-- and it exists because comparing the WORDS cannot tell "she said it
+-- again" from "her last line is still sitting in the buffer".
+-- last_text outlives the box that printed it, so the executor could only
+-- attribute a line to the op that caused it by checking the text had
+-- CHANGED — which silences anyone who repeats themselves. The Viridian
+-- mart clerk says "Okay! Say hi to PROF.OAK for me!" every single time
+-- she is spoken to, and that sentence names the next objective; the run
+-- was shown it on the first press and never again, while it pressed her
+-- over and over waiting for a Pokemon she does not have. A counter that
+-- moves whenever a line is PRINTED settles it without looking at the
+-- words at all.
+local text_seq = 0
 function note_text(txt)        -- forward-declared above the yield hook
   if not txt or #txt == 0 then return end
+  text_seq = text_seq + 1
   recent_text = txt
   if text_run and text_run:sub(1, #txt) == txt then
     -- the speech is starting over: a fresh telling, not more of the last
@@ -401,6 +415,7 @@ local function observe(G, seq, result)
   events = {}
   if recent_text then o.recent_text = recent_text end
   if last_text then o.last_text = last_text end
+  o.text_seq = text_seq        -- see note_text: printed-line count, not words
   if G.overworld and top == G.overworld then
     recent_text = nil          -- free roam: stale prompt no longer applies
     o.recent_text = nil

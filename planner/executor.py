@@ -1000,6 +1000,37 @@ class Executor:
     # provisionally before the op and RETRACTS on the three conditions
     # below. Both directions are fine; having neither, as the sweep did, is
     # not. If a fourth condition is ever found, it belongs in both.
+    def _op_spoke(self, pre_obs: dict, obs: dict, said: str) -> bool:
+        """Did THIS op cause a line to be PRINTED?
+
+        Ask the counter, not the words. `last_text` outlives the box that
+        printed it, so an op that said nothing of its own inherits whatever
+        was said last — a warp out of the gym once reported "Nope, there's
+        only trash here." Guarding that with "the text must have CHANGED"
+        fixed the smear and created the opposite fault: ANYONE WHO REPEATS
+        THEMSELVES GOES SILENT. A repeated line and a stale line are the
+        same string and completely different facts.
+
+        It cost this run the Viridian mart. The clerk says "Okay! Say hi to
+        PROF.OAK for me!" every single time she is pressed, which names the
+        next objective outright. The run was shown it on the first press
+        and never again, and pressed her round after round after that,
+        waiting for a Pokemon she does not have, told only "ok (moved,
+        dialog still open)". A human watching could read the answer on
+        screen the whole time.
+
+        shim.note_text bumps `text_seq` whenever the game prints anything,
+        so the question is settled without looking at the words at all. An
+        observation with no counter — an old fixture, a replayed journal —
+        keeps the string test it was recorded under rather than going
+        quiet, so replaying old evidence still behaves as it did.
+        """
+        s1 = (obs or {}).get("text_seq")
+        if isinstance(s1, int):
+            return s1 != (pre_obs or {}).get("text_seq")
+        return (bool(said) and said != self._last_said
+                and said != ((pre_obs or {}).get("last_text") or "").strip())
+
     def _record_touch(self, region, name, res_obs) -> bool:
         """Write a touch, if the interaction earned it. Returns whether."""
         if not (region and name) or "None" in str(region):
@@ -5336,7 +5367,7 @@ Reply with ONLY a JSON array of ops, e.g.
             # later round, or a later attempt, can read why it is stuck.
             said = ((obs or {}).get("last_text") or "").strip()
             heard = ""
-            if said and said != self._last_said:
+            if said and self._op_spoke(pre_obs, obs, said):
                 self._last_said = said
                 who = step.get("name") or op
                 reg = self._where(pre_obs)
@@ -5355,15 +5386,11 @@ Reply with ONLY a JSON array of ops, e.g.
                 # the Charmander ball that way.
                 if noise:
                     said = ""
-                # ATTRIBUTE ONLY WHAT THIS OP PRODUCED. last_text outlives
-                # the box that printed it, so an op that said nothing of
-                # its own inherits the previous line — and a warp out of
-                # the gym duly reported "Nope, there's only trash here."
-                # The ledger has always had this smear; putting the words
-                # in the round's own feedback would have made the run act
-                # on it. Only text that CHANGED across this op is its own.
-                heard = said if self._said_ready and said != (
-                    ((pre_obs or {}).get("last_text") or "").strip()) else ""
+                # _op_spoke has already decided this line belongs to this
+                # op; the only thing left is the first-op guard, which
+                # stops the very first observation inheriting whatever was
+                # on screen before the run started.
+                heard = said if self._said_ready else ""
                 if said and "None" not in reg and len(said) > 12:
                     lst = self.hints.setdefault(reg, [])
                     line = f"{who}: {said[:220]}"
@@ -5550,7 +5577,16 @@ Reply with ONLY a JSON array of ops, e.g.
                 if ASKING in det0:
                     note += f": {det0}"
                 else:
-                    note += ": ran but had NO visible effect (nothing changed)"
+                    # A SENTENCE IS NOT NOTHING. Saying "NO visible effect"
+                    # and then quoting a line that names the next objective
+                    # files the answer under a denial — which is what
+                    # happened to "Okay! Say hi to PROF.OAK for me!".
+                    # Nothing about the WORLD changed either way; only the
+                    # framing moves.
+                    note += (": the world did not change, but it SPOKE"
+                             if heard else
+                             ": ran but had NO visible effect "
+                             "(nothing changed)")
                     if op == "interact" and step.get("name"):
                         # remember WHICH state it was useless in; if the
                         # world changes (hp drops, a flag fires) it is
