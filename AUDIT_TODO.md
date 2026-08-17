@@ -121,7 +121,7 @@ all: one runs on an abort path, the other in its own process against a copy.
 The rule is *stop lying, stop hiding, stop refusing — never point.* These break
 the first clause and the last.
 
-- [ ] **5. EXEC-1 · High · VERIFIED — the distance line reports a toll as map distance**
+- [x] **5. EXEC-1 · High · VERIFIED — the distance line reports a toll as map distance**
   `planner/executor.py:1495` prints `_goal_score` (which adds `4 + visits//8`
   per blocked edge) as *"the printed map puts X N step(s) from Y"*. Logged:
   `ROUTE_9 6 step(s) from ROUTE_10` — it is 1 hop. `GAME_CORNER 99 step(s) from
@@ -130,24 +130,48 @@ the first clause and the last.
   toll inflation can end a subgoal while the party stands still.
   *Fix:* print the untolled hop count, or say plainly the number includes a
   penalty; suppress the sentinel rather than rendering it.
+  **DONE** — both the line and the give-up test now use the untolled hop
+  count over the printed map plus this run's walked links. `ROUTE_9` to
+  `ROUTE_10` reads 1, Cerulean to Celadon 4, Saffron to Celadon 2. Where the
+  map has no answer it says so instead of printing 99. This also fixes the
+  worse half of the bug: the toll grows with visits, so the give-up test
+  could fire on a party that had not moved a tile.
 
-- [ ] **6. CLAIM · OVER — `_unopened_doors` prints destinations of unwalked doors**
+- [x] **6. CLAIM · OVER — `_unopened_doors` prints destinations of unwalked doors**
   e.g. `(4,11)->CERULEAN_CAVE_1F`. Reporting a visible doorway is stop-hiding;
   naming where it goes is pointing. Our own note already calls reading
   undiscovered back doors out of the warp table forbidden.
+  **DONE** — both renderings drop the destination; the doorway and the person
+  standing at it are what is on screen. Entries already written in the old
+  format are stripped on load, because `author.py` prints that ledger verbatim
+  and a stale region nobody revisits would otherwise keep handing the ROM's
+  answer over for the rest of the run.
 
-- [ ] **7. CLAIM · OVER — the town-map BFS itinerary is a solved route**
+- [x] **7. CLAIM · OVER — the town-map BFS itinerary is a solved route**
   The adjacency line is defensible as the item's face. The shortest path
   computed over `MAP_EDGES` and printed as *"stand in THOSE and cross the
   matching edge"* is not — the audit calls it the strongest violation in the
   runtime path. It also excludes interiors, so it is wrong as well as pointing.
+  **DONE** — the itinerary block is gone, and the adjacency line loses its
+  "To arrive, stand in one of THOSE and cross the matching edge" instruction;
+  the adjacency fact itself stays. The legitimate thing the itinerary carried
+  — a leg leaned on and never opened — is walked evidence and survives in the
+  ranking, which prices exactly those legs. A comment in its place says not to
+  reinstate the path in order to hang that annotation off it.
 
-- [ ] **8. CLAIM · OVER — `doors_text()` states interior connectivity**
+- [x] **8. CLAIM · OVER — `doors_text()` states interior connectivity**
   Which cave or tunnel opens off which road, and that an id under two roads
   joins them — which the Town Map does not draw. `SYS` calls the interior "the
   one thing it cannot work out for itself" immediately before handing it over.
+  **DONE, user's call** — cut to the pins, not cut entirely. The listing of
+  which named place opens off which road stays: a labelled pin beside a road
+  is the map's own face, and it was written after a plan swapped Diglett's
+  Cave for Rock Tunnel. What is deleted is every sentence stating what the
+  ids MEAN — an id under one road, an id under two roads, a shared name over
+  four. The model can see a token appear twice; drawing the inference is the
+  part that belongs to it.
 
-- [ ] **9. CLAIM · OVER — `policy_author.py` CONTEXT hand-feeds ROM knowledge**
+- [x] **9. CLAIM · OVER — `policy_author.py` CONTEXT hand-feeds ROM knowledge**
   `planner/policy_author.py:92–113`: Brock's roster and levels, Onix's typing
   and weakness, the rival's moveset, the forest encounter table, which items
   Viridian stocks versus Pewter and in what order to buy them. Per
@@ -157,6 +181,30 @@ the first clause and the last.
   death" comes from the journal); the rosters, levels, movesets and shop timing
   do not. *Fix is mechanical:* the run already keeps a damage journal, a
   sightings ledger and a wipe count — assemble the same context from evidence.
+  **DONE** — `CONTEXT` is gone, replaced by `policy_author.evidence_context()`,
+  which reads the run's own battle log and the live observation. The brief is
+  now: the party as it stands with movesets, what is in the bag, the 14 foes
+  most fought with level ranges and counts, median and longest battle length,
+  the damage each move has been WATCHED to do to each species and the level it
+  was doing it at, the worst hitters and what they hit for, and where the party
+  has blacked out. 1,805 battles on record; every line is a transcript.
+  It was also describing a run that never happened — it opened "Squirtle lead"
+  while this run has led with a Charmander since the first morning.
+  Two attribution traps found and closed while building it: a faint replacement
+  is logged as `pick_party`, not `battle_switch`, which filed sixteen PIDGEY
+  GUSTs under a level-19 CHARMELEON; and only a `battle_move` may be credited
+  with damage, or "heal with POTION" enters the move list as a move.
+
+### What Tier 1 changes about how the run plays
+
+Nothing in the executor's decisions: the drift number is now true rather than
+inflated, which can only make the give-up test fire *less* often and never on
+a stationary party. The three claim cuts remove text from prompts — the model
+is told less, not told differently, and no code path branches on any of it.
+The policy brief is the one place a behaviour change is possible, and only on
+the next authoring run: a spec authored from this run's evidence may differ
+from `policy_model_v1.json`. The existing artifact is untouched and still what
+plays until a new one is authored and evaluated.
 
 ---
 
