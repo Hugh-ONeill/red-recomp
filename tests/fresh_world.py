@@ -55,7 +55,6 @@ WORLD = [
 
 # things that are BANKED LUCK — must survive, or every restart re-rolls
 SURVIVES = [
-    ("plans/outline.txt", "the model's own objective list"),
     ("plans/outline.notes", "the doubts it recorded about that list"),
 ]
 
@@ -90,6 +89,32 @@ def main():
         if not ok:
             fails.append(path)
 
+    # THE OUTLINE IS BOTH, which is why it gets its own check rather than a
+    # place on either list. The LIST is banked luck and must not be
+    # re-rolled; the EDITS a chain makes to it — reorders, inserts, pulls,
+    # skips, all written in place from play evidence — are world state and
+    # must not outlive the world that earned them. Nine chains of nobody
+    # separating the two left "Register the PC system" at position 3,
+    # eleven places before the Bill it is planned against.
+    restored = ("plans/outline.authored" in block
+                and "plans/outline.txt" in block)
+    print(f"  {'ok  ' if restored else 'FAIL'}  the outline is restored AS "
+          f"AUTHORED on a fresh chain, not re-rolled")
+    if not restored:
+        fails.append("outline restore")
+    # Index arithmetic, not a regex. The first version of this check was
+    # `--outline .*?\n?.*?plans/outline\.txt.*?(?:#.*\n\s*)*cp ...` under
+    # re.S, which is nested quantifiers over a file that matches the prefix
+    # in several places: it backtracked forever and hung the suite. There
+    # is nothing here a regex buys.
+    auth = src.find("--outline --goal")
+    snap = src.find("cp plans/outline.txt plans/outline.authored")
+    banked = 0 <= auth < snap
+    print(f"  {'ok  ' if banked else 'FAIL'}  ...and the pristine copy is "
+          f"taken at authoring time, the only moment it is pristine")
+    if not banked:
+        fails.append("outline snapshot")
+
     # THE SAVE IS COPIED BEFORE IT IS REMOVED, never the other way round.
     # The copy is the only thing that makes deleting it safe, and an
     # ordering slip here throws away a run nobody can get back.
@@ -106,7 +131,7 @@ def main():
         print(f"A WORLD IS OUTLIVING ITS RESET: {len(fails)} item(s)")
         return 1
     print(f"world state is archived and banked luck is kept "
-          f"({len(WORLD) + len(SURVIVES) + 1} checks)")
+          f"({len(WORLD) + len(SURVIVES) + 3} checks)")
     return 0
 
 

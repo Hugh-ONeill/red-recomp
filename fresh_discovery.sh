@@ -64,6 +64,29 @@ if [ "$done_legs" = 0 ]; then
   # Archived rather than deleted: it is the record of what those runs did.
   [ -f plans/outline.done ] \
     && mv plans/outline.done "plans/outline.done.${ts}.pre-discovery"
+  # THE OUTLINE IS BANKED LUCK; THE EDITS TO IT ARE WORLD STATE. Same
+  # split as the deed ledger, one level up, and it took nine chains to
+  # show. outline.txt is deliberately kept across a fresh chain — an
+  # authoring pass is expensive and re-rolling it throws away a good list
+  # — but the reorder, insert, pull and skip rungs REWRITE THAT FILE IN
+  # PLACE from play evidence, and the play that justified each edit
+  # happened in a world that has since been deleted. Nothing ever put it
+  # back, so the edits stacked: by run 9 the list carried "Register the
+  # PC system" at position 3, an objective the model plans against
+  # EVENT_MET_BILL, eleven places before Bill is reachable, and
+  # "Exit Rock Tunnel" ahead of the city you reach on the way to it. Every
+  # fresh chain inherited both and burned attempts on them.
+  # So: keep the outline AS AUTHORED, and drop a chain's edits with the
+  # world that earned them. The drifted copy is archived, not discarded —
+  # what the model chose to reorder is worth reading.
+  if [ -s plans/outline.authored ]; then
+    if ! cmp -s plans/outline.authored plans/outline.txt; then
+      cp plans/outline.txt "plans/outline.${ts}.drifted.txt" 2>/dev/null
+      cp plans/outline.authored plans/outline.txt
+      echo "outline restored as authored; this chain's edits archived as" \
+           "outline.${ts}.drifted.txt"
+    fi
+  fi
   [ -f run/executor_log.jsonl ] && mv run/executor_log.jsonl "run/executor_log.${ts}.pre-discovery.jsonl"
   [ -f "$SAVE" ] && cp "$SAVE" "run/slot1.${ts}.pre-discovery.lua"
   # ...and RETIRE it. Copying alone left the save in place, so the game
@@ -107,6 +130,10 @@ else
   echo "goal: $GOAL"
   python planner/author.py --outline --goal "$GOAL" \
       --out plans/outline.txt --model "$MODEL"
+  # ...and bank it, untouched, so the fresh-chain block above can put the
+  # list back the way the model wrote it after a chain has reordered it.
+  # Taken HERE, at the only moment the file is known to be pristine.
+  cp plans/outline.txt plans/outline.authored
 fi
 
 
