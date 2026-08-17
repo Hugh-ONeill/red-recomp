@@ -2759,10 +2759,20 @@ class Executor:
         dw_val = target.split(":", 1)[1] if ":" in target else ""
         kind = target.split(":", 1)[0]
         party = (obs or {}).get("party") or []
-        lines = [f"\nTHIS IS NOT SOMEWHERE TO GO — IT IS SOMETHING TO "
-                 f"BECOME. The condition is {kind} {dw_val}, and no door "
-                 f"satisfies it. Walking somewhere new is not progress "
-                 f"here; fighting is."]
+        # ...and for a CATCHING goal, where you stand decides what you
+        # meet, so "walking somewhere new is not progress" is false of it.
+        if kind in ("party_size", "has_species", "party_type", "dex_owned"):
+            lines = [f"\nTHIS IS NOT SOMEWHERE TO GO — IT IS SOMETHING TO "
+                     f"BECOME. The condition is {kind} {dw_val}, and no "
+                     f"door satisfies it. But WHERE YOU STAND DECIDES WHAT "
+                     f"YOU MEET: the grass on this floor holds what it "
+                     f"holds, and if it never offers the right creature, "
+                     f"the answer is different grass, not more of this."]
+        else:
+            lines = [f"\nTHIS IS NOT SOMEWHERE TO GO — IT IS SOMETHING TO "
+                     f"BECOME. The condition is {kind} {dw_val}, and no "
+                     f"door satisfies it. Walking somewhere new is not "
+                     f"progress here; fighting is."]
         if party:
             lines.append("YOUR PARTY RIGHT NOW: " + "; ".join(
                 f"{i}. {m.get('species')} L{m.get('level')} "
@@ -2780,20 +2790,39 @@ class Executor:
                             for m in hurt)
                 + ". A Pokemon Center heals the party for nothing; a wipe "
                   "costs the walk back from wherever you last healed.")
-        lines.append(
-            "HOW TO DO IT: {\"op\":\"grind\"} walks into this floor's wild "
-            "grass and paces until something appears, and every wild battle "
-            "is experience for whoever you send out. It fails plainly if "
-            "this floor has no grass, and then somewhere with grass is "
-            "where to go. To level ONE Pokemon, put it in slot 1 first "
-            "({\"op\":\"party_swap\"}) — the lead is who gets sent out, and "
-            "only what fights, earns.")
+        # WHICH INSTRUCTIONS, though. Both kinds are satisfied by walking
+        # into grass, and NOTHING ELSE about them is alike — one wants
+        # experience and the other wants the creature itself. Handing a
+        # catching goal the levelling paragraph ("every wild battle is
+        # experience... to level ONE Pokemon, put it in slot 1") told it to
+        # grind, and it ground. The catching line that followed was worse
+        # than useless: "set battle_policy catch" names a PLAN field, and
+        # the escalation writes macros, not plans — advice it had no op to
+        # act on.
         if kind in ("party_size", "has_species", "party_type", "dex_owned"):
             lines.append(
-                "THIS ONE NEEDS A BALL, NOT A KNOCKOUT: set battle_policy "
-                "\"catch\" on this subgoal so wild battles throw balls "
-                "instead of fainting the thing you are trying to keep, and "
-                "check you are carrying some.")
+                "HOW TO DO IT: {\"op\":\"grind\"} walks into this floor's "
+                "wild grass and paces until something appears. YOU DO NOT "
+                "FIGHT THESE BATTLES — the balls are thrown for you, at "
+                "what this subgoal asked for, and anything else is run "
+                "from. Your part is being somewhere that offers the right "
+                "creature and carrying enough balls to keep trying. Grind "
+                "fails plainly where there is no grass, and a floor whose "
+                "grass never offers one is a floor to leave.")
+            lines.append(
+                "BALLS ARE THE BUDGET: every throw spends one and a failed "
+                "throw spends it too. A mart counter sells more "
+                "({\"op\":\"buy\"}), and running out mid-hunt means walking "
+                "back for them.")
+        else:
+            lines.append(
+                "HOW TO DO IT: {\"op\":\"grind\"} walks into this floor's "
+                "wild grass and paces until something appears, and every "
+                "wild battle is experience for whoever you send out. It "
+                "fails plainly if this floor has no grass, and then "
+                "somewhere with grass is where to go. To level ONE Pokemon, "
+                "put it in slot 1 first ({\"op\":\"party_swap\"}) — the lead "
+                "is who gets sent out, and only what fights, earns.")
         # the ONE navigational fact that still matters: a run with no
         # healing behind it is one wipe from losing the walk as well
         rs = (obs or {}).get("respawn") or {}
