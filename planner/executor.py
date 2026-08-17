@@ -794,6 +794,9 @@ class Executor:
         # region -> {dir: world mark when it was proven}. A seam proof that
         # never expires is the one thing a shut DOOR is not (see _sealed).
         self._no_cross_at: dict = {}
+        # region -> {key: {n, at}} — exits attempted that could not even be
+        # reached, so nothing about them was recordable (see _spent_exits)
+        self._exit_tries: dict = {}
         self._mark_now = None               # world mark as of the last settle
         self._rounds_here: dict = {}        # target|region -> rounds spent
         self._fight_region: str | None = None   # where the last trainer fought
@@ -910,6 +913,32 @@ class Executor:
                     own[k] = e
         return own
 
+    def _note_unreached(self, region, key, obs):
+        """Count an attempt that left no evidence. Keyed to the world it was
+        made in, so the count starts again when anything changes."""
+        if not (region and key):
+            return
+        now = self._world_mark(obs)
+        book = self._exit_tries.setdefault(region, {})
+        rec = book.get(key)
+        if not isinstance(rec, dict) or rec.get("at") != now:
+            rec = {"n": 0, "at": now}
+            book[key] = rec
+        rec["n"] = (rec.get("n") or 0) + 1
+
+    def _spent_exits(self, region) -> dict:
+        """Exits tried more than once in THIS state of the world, and never
+        got through. Two, not one: the whole reason an unreachable attempt
+        records no edge is that a wanderer in the doorway is not a fact
+        about the door, and one failure could always be that."""
+        now = getattr(self, "_mark_now", None)
+        if now is None:
+            return {}
+        return {k: rec["n"]
+                for k, rec in (self._exit_tries.get(region) or {}).items()
+                if isinstance(rec, dict) and rec.get("at") == now
+                and (rec.get("n") or 0) >= 2}
+
     def _sealed(self, region) -> set:
         """Seams still proven uncrossable AS OF NOW.
 
@@ -960,7 +989,7 @@ class Executor:
         printed map — was advertised to the model every round as a way it
         had never tried. A wall is not an unopened door.
         """
-        done = set(self._taken_here(region))
+        done = set(self._taken_here(region)) | set(self._spent_exits(region))
         shut = self._sealed(region)
         return [e for e in (self.frontier.get(region) or [])
                 if e not in done and e not in shut]
@@ -1059,6 +1088,7 @@ class Executor:
             self._no_cross = {r: set(v) for r, v in
                               (data.get("no_cross") or {}).items()}
             self._no_cross_at = data.get("no_cross_at") or {}
+            self._exit_tries = data.get("exit_tries") or {}
             self.flag_sites = data.get("flag_sites") or {}
             # Entries written before the destination was removed still read
             # "4,11->CERULEAN_CAVE_1F (POLICEMAN is standing there)", and the
@@ -1189,6 +1219,7 @@ class Executor:
         self._battle_regions = set()
         self._touch_mark = {}
         self._no_cross_at = {}
+        self._exit_tries = {}
 
     def _save_memory(self):
         """TMP + RENAME, AND KEEP THE LAST GOOD ONE.
@@ -1228,6 +1259,7 @@ class Executor:
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
                  "no_cross_at": self._no_cross_at,
+                 "exit_tries": self._exit_tries,
                  "flag_sites": self.flag_sites,
                  "shut_doors": self.shut_doors,
                  "hints": self.hints,
@@ -2085,6 +2117,23 @@ class Executor:
             # Record NOTHING and let it stay untried; a door that truly
             # refuses gets recorded on the attempt where we stood at it.
             if "couldn't reach" in (reason or ""):
+                # ...BUT COUNT IT. Recording no EDGE is right — an attempt
+                # that never reached the tile says nothing about where the
+                # door goes. Recording nothing AT ALL was not: the key stays
+                # out of `explored` for ever, so the room goes on calling it
+                # UNTRIED, and "EXITS FROM HERE — UNTRIED (prefer these,
+                # they are the only way to find anything new)" is the
+                # strongest line in the prompt. The Route 5 guard house has
+                # two such doors; the guard's script fires on approach, the
+                # shim reports "couldn't reach the warp tile (interrupted
+                # (battle or script))", and the run went back in TWENTY-TWO
+                # times because the harness kept telling it there was
+                # something new in there. A door tried twenty-one times is
+                # not untried, whatever the ledger can prove about it.
+                # Nothing is sealed: the count is keyed to the world it was
+                # collected in and starts again the moment anything changes,
+                # so a door that opens later still opens.
+                self._note_unreached(src, str(key), before_obs)
                 self.log("exit_unreached", frm=src, via=str(key),
                          why=str(reason)[:120])
                 return
@@ -3395,11 +3444,22 @@ class Executor:
         # preferred-untried held the run on the Route 4 stub for twenty
         # rounds while the real door was named two lines below.
         blocked = self._sealed(here)
+        # Doors reached for and never got through: they belong with the
+        # TRIED, said plainly, not in a list headed "prefer these, they are
+        # the only way to find anything new".
+        spent = self._spent_exits(here)
         untried, tried = [], []
         for w in warps:
             if not w.get("reachable") or w["key"] in blocked:
                 continue
             k = w["key"]
+            if k not in taken and k in spent:
+                tried.append(
+                    f"({k}) you have reached for this {spent[k]}x and never "
+                    f"once got through — something stops you before the "
+                    f"doorway, and nothing about where it leads is known. "
+                    f"If that changes, it is worth another go")
+                continue
             if k in taken:
                 dest = taken[k]["to"]
                 bad = self.dead_for(target, dest)
