@@ -49,6 +49,21 @@ done_legs=$(cat "$PROGRESS" 2>/dev/null || echo 0)
 if [ "$done_legs" = 0 ]; then
   ts=$(date +%H%M%S)
   [ -f run/explored.json ] && cp run/explored.json "run/explored.${ts}.pre-discovery.bak.json"
+  # THE DEED LEDGER IS WORLD STATE, and it was the one piece of it that
+  # survived. plans/outline.done is a list of things this run has DONE,
+  # rendered to the model as "ALSO ACCOMPLISHED, though it was never on
+  # your list" — and it is kept beside the outline, which a fresh chain
+  # deliberately preserves, so it rode across the archive line with it.
+  # Run 7 started a brand new game and was handed seven accomplishments
+  # from three dead worlds: the Pokedex it does not have, the parcel it
+  # has not delivered, a Pidgey it never caught, a rival it never beat.
+  # The recognise pass that writes this file is careful to record only
+  # what it can point at — "the item is in the bag, the badge is earned,
+  # the event has fired" — which is exactly why keeping it past the world
+  # it pointed at turns it into a list of lies.
+  # Archived rather than deleted: it is the record of what those runs did.
+  [ -f plans/outline.done ] \
+    && mv plans/outline.done "plans/outline.done.${ts}.pre-discovery"
   [ -f run/executor_log.jsonl ] && mv run/executor_log.jsonl "run/executor_log.${ts}.pre-discovery.jsonl"
   [ -f "$SAVE" ] && cp "$SAVE" "run/slot1.${ts}.pre-discovery.lua"
   # ...and RETIRE it. Copying alone left the save in place, so the game
