@@ -271,6 +271,48 @@ def pred_keys(pred: dict | None) -> set:
 ASKING = "is ASKING something and the box is STILL OPEN"
 
 
+# A PREDICATE THE HARNESS CANNOT READ IS UNMET, NEVER FATAL. pred_holds is
+# called unguarded from run_subgoal, the ladder and the escalation loop, so
+# anything it raises takes the whole executor down in the middle of a leg —
+# and the value it is reading was written by a model. The rule was already
+# stated for has_item and only implemented there. Malformations are recorded
+# rather than swallowed: a condition that can never come true is a stalled
+# leg, and a stalled leg with no explanation is the worst thing in this
+# codebase to debug.
+PRED_MALFORMED: dict = {}
+
+
+def _pred_malformed(key, want, why):
+    PRED_MALFORMED[f"{key}={want!r}"] = why
+
+
+def _as_bool(want):
+    """The predicate meant true or false; the model may have typed it."""
+    if isinstance(want, bool):
+        return want
+    if isinstance(want, str):
+        s = want.strip().lower()
+        if s in ("true", "yes", "y", "1"):
+            return True
+        if s in ("false", "no", "n", "0"):
+            return False
+    if isinstance(want, (int, float)):
+        return bool(want)
+    return None
+
+
+def _as_int(key, want):
+    if isinstance(want, bool):
+        return None
+    if isinstance(want, (int, float)):
+        return int(want)
+    try:
+        return int(str(want).strip())
+    except (TypeError, ValueError):
+        _pred_malformed(key, want, "expected a whole number")
+        return None
+
+
 def pred_holds(pred: dict | None, obs: dict) -> bool:
     if not pred:
         return True
@@ -286,7 +328,12 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             # never be satisfied by a game that already gave you the first.
             # This is expressiveness, not judgment: which branch to take is
             # still entirely the plan's to name.
-            if not any(pred_holds(alt, obs) for alt in (want or [])):
+            if not isinstance(want, (list, tuple)):
+                _pred_malformed(key, want, "any_of needs a LIST of "
+                                           "alternative predicates")
+                return False
+            if not any(pred_holds(alt, obs) for alt in want
+                       if isinstance(alt, dict)):
                 return False
         elif key == "map":
             if (obs.get("map") or {}).get("id") != want:
@@ -295,11 +342,16 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             if obs.get("mode") != want:
                 return False
         elif key == "party_nonempty":
+            want = _as_bool(want)
+            if want is None:
+                _pred_malformed(key, want, "expected true or false")
+                return False
             if bool(obs.get("party")) != want:
                 return False
         elif key == "party_alive":
             alive = any((m.get("hp") or 0) > 0 for m in obs.get("party") or [])
-            if alive != want:
+            want = _as_bool(want)
+            if want is None or alive != want:
                 return False
         elif key == "party_healthy":
             mons = obs.get("party") or []
@@ -308,11 +360,13 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
                 and (not m.get("max_hp") or m["hp"] == m["max_hp"])
                 and m.get("status") in (None, "", "0", "NONE", "OK")
                 for m in mons)
-            if healthy != want:
+            want = _as_bool(want)
+            if want is None or healthy != want:
                 return False
         elif key == "lead_level":
             lead = (obs.get("party") or [{}])[0]
-            if (lead.get("level") or 0) < want:
+            need = _as_int(key, want)
+            if need is None or (lead.get("level") or 0) < need:
                 return False
         # THE THREE THAT MAKE UPKEEP WRITEABLE. A plan could always say
         # "party_size 3" but never WHICH three, so "catch a water type to
@@ -338,10 +392,12 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
                 return False
         elif key == "dex_owned":
             # the Route 2 aide wants ten before he parts with FLASH
-            try:
-                need = int(want)
-            except (TypeError, ValueError):
-                need = 0
+            # need = 0 on a bad value made this INSTANTLY TRUE, which is
+            # the worst way for a condition to fail: the leg closes having
+            # caught nothing.
+            need = _as_int(key, want)
+            if need is None:
+                return False
             if ((obs.get("pokedex") or {}).get("owned") or 0) < need:
                 return False
         elif key == "area":
@@ -360,13 +416,40 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             # which was already true and trained nothing. The weakest member
             # decides this one, so it cannot be satisfied by the lead alone.
             mons = obs.get("party") or []
-            if not mons or any((m.get("level") or 0) < want for m in mons):
+            need = _as_int(key, want)
+            if need is None or not mons or any(
+                    (m.get("level") or 0) < need for m in mons):
                 return False
         elif key == "slot_level":
             # a specific party slot (1-based), for "get the SECOND one to N"
             mons = obs.get("party") or []
-            slot = int((want or {}).get("slot", 1))
-            need = int((want or {}).get("min", 0))
+            if not isinstance(want, dict):
+                _pred_malformed("slot_level", want,
+                                "needs {'slot':N,'min':N}")
+                return False
+            try:
+                slot = int(want.get("slot", 1))
+            except (TypeError, ValueError):
+                slot = 1
+            # `min` MISSING IS NOT `min` ZERO. int(get("min", 0)) made
+            # {"slot":2,"level":15} — the obvious thing to write, and wrong
+            # — mean "slot 2 is at least level 0", which is true the moment
+            # a second Pokemon exists. The subgoal closed instantly having
+            # trained nothing, which is the worst kind of pass.
+            # `level` accepted as a synonym at RUNTIME only: the validator
+            # rejects it during authoring so the model learns the key, but
+            # a plan that reaches here by another route should still train
+            # the mon rather than stall on a synonym.
+            raw = want.get("min", want.get("level"))
+            if raw is None:
+                _pred_malformed("slot_level", want,
+                                "no 'min' — the level to reach is unnamed")
+                return False
+            try:
+                need = int(raw)
+            except (TypeError, ValueError):
+                _pred_malformed("slot_level", want, "min must be a number")
+                return False
             if slot < 1 or slot > len(mons):
                 return False
             if (mons[slot - 1].get("level") or 0) < need:
@@ -399,9 +482,24 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             pl = obs.get("player") or {}
             if pl.get("x") is None or pl.get("y") is None:
                 return False
-            r = (want or {}).get("radius", 4)
-            if (abs(pl["x"] - want["x"]) > r
-                    or abs(pl["y"] - want["y"]) > r):
+            # `want["x"]` was indexed straight into a value the model
+            # wrote. {"player_at":[5,7]} or a missing "y" raised out of
+            # pred_holds, which run_subgoal calls unguarded, and the whole
+            # executor died mid-leg. Same law as has_item below: an
+            # unattended run must never die of a predicate it could have
+            # understood — and one it CANNOT understand is unmet, not fatal.
+            if not isinstance(want, dict):
+                _pred_malformed("player_at", want, "needs {'x':N,'y':N}")
+                return False
+            wx, wy = want.get("x"), want.get("y")
+            if not isinstance(wx, (int, float)) or \
+                    not isinstance(wy, (int, float)):
+                _pred_malformed("player_at", want, "x and y must be numbers")
+                return False
+            r = want.get("radius", 4)
+            if not isinstance(r, (int, float)):
+                r = 4
+            if abs(pl["x"] - wx) > r or abs(pl["y"] - wy) > r:
                 return False
         elif key == "knows_move":
             # WHAT A POKEMON CAN DO WAS INEXPRESSIBLE. party_size could say
@@ -426,7 +524,8 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
                     for mon in mons):
                 return False
         elif key == "party_size":
-            if len(obs.get("party") or []) < want:
+            need = _as_int(key, want)
+            if need is None or len(obs.get("party") or []) < need:
                 return False
         elif key == "badge":
             if want not in (obs.get("badges") or []):
@@ -435,10 +534,18 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             if want not in (obs.get("flags") or []):
                 return False
         elif key == "no_battle":
-            if (obs.get("mode") == "battle") == want:
+            want = _as_bool(want)
+            if want is None or (obs.get("mode") == "battle") == want:
                 return False
         else:
-            raise ValueError(f"unknown predicate key: {key}")
+            # WAS: raise. run_subgoal calls pred_holds unguarded, so one
+            # mistyped key ended the run — and the run is meant to play
+            # unattended for hours. A key nothing can evaluate is a
+            # condition that is not met; it is recorded so the stall has a
+            # name, and the validator rejects it at authoring time where
+            # the model can still hear about it.
+            _pred_malformed(key, want, "no such predicate")
+            return False
     return True
 
 
@@ -680,6 +787,7 @@ class Executor:
         self.save_each = False              # in-game SAVE after each subgoal
         self._tried_objs: dict = {}         # region -> objects interacted
         self._drift: dict = {}              # subgoal -> goalward progress
+        self._pred_said: set = set()        # malformations already reported
         self._inert_objs: dict = {}         # region -> {object: state it was inert in}
         self._cant_afford: dict = {}        # item -> unit price we lack
         self._no_cross: dict = {}           # region -> dirs proven uncrossable
@@ -756,8 +864,14 @@ class Executor:
         exhausts the exits reachable from there, and never gets far enough
         to find the far-side door. Knowledge that survives the process is
         what turns N attempts into progress instead of N repetitions."""
+        data, src = self._read_memory()
+        if data is None:
+            self._blank_memory()
+            return
+        if src and src.endswith(".prev"):
+            print("[memory] the current ledger was unreadable; fell back "
+                  "to the last good copy")
         try:
-            data = json.loads(self.MEMORY.read_text())
             self.explored = data.get("explored", {})
             self.dead_ends = data.get("dead_ends", {})
             self.visits = data.get("visits", {})
@@ -891,16 +1005,59 @@ class Executor:
             if edges:
                 print(f"[memory] {len(self.explored)} areas, {edges} known "
                       f"exits from previous runs")
-        except (OSError, ValueError):
-            self.explored, self.dead_ends = {}, {}
-            self.visits, self.frontier, self.sightings = {}, {}, {}
-            self.region_anchors = {}
-            self.searched = {}
-            self.contested = {}
+        except (OSError, ValueError) as e:
+            # NOT SILENT. This used to reset every structure to {} without
+            # a word, so a corrupt ledger and a genuinely fresh run looked
+            # identical from the outside — the run simply began re-walking
+            # a mountain it had already mapped, and nothing said why.
+            print(f"[memory] !!! the ledger parsed but could not be loaded "
+                  f"({e.__class__.__name__}: {e}). Starting EMPTY: "
+                  f"everything walked so far is being rediscovered.")
+            self._blank_memory()
+
+    def _read_memory(self):
+        """The ledger, or the last good copy of it. Returns (data, source).
+
+        (None, None) means there was nothing to read, which on a first run
+        is correct and silent — but a file that EXISTS and will not parse
+        is a different event entirely, and it says so."""
+        tried = []
+        for path in (self.MEMORY, self.MEMORY.with_suffix(".json.prev")):
+            if not path.exists():
+                continue
+            try:
+                return json.loads(path.read_text()), path.name
+            except (OSError, ValueError) as e:
+                tried.append(f"{path.name} ({e.__class__.__name__})")
+        if tried:
+            print("[memory] !!! COULD NOT READ THE WALKED MAP: "
+                  + ", ".join(tried) + ". Starting with an EMPTY ledger — "
+                  "every area, exit and proof from previous runs is gone "
+                  "and is being rediscovered from scratch.")
+        return None, None
+
+    def _blank_memory(self):
+        self.explored, self.dead_ends = {}, {}
+        self.visits, self.frontier, self.sightings = {}, {}, {}
+        self.region_anchors = {}
+        self.searched = {}
+        self.contested = {}
 
     def _save_memory(self):
+        """TMP + RENAME, AND KEEP THE LAST GOOD ONE.
+
+        This is the run's whole walked map — every region, every exit, every
+        proof — and it was being written straight over itself about
+        twenty-five times a round. `write_text` truncates first, so a kill
+        landing in that window leaves a half-written file; `_load_memory`
+        then fails to parse it and starts the next process with nothing,
+        which reads as "a fresh run" and quietly re-walks a day's mountain.
+        The pattern is already in this repo twice (bridge.py:78 writes cmd
+        via tmp+rename, shim.lua does the same for obs), it just never
+        reached the one file that cannot be reconstructed.
+        """
         try:
-            self.MEMORY.write_text(json.dumps(
+            payload = json.dumps(
                 {"explored": self.explored, "dead_ends": self.dead_ends,
                  "visits": self.visits, "frontier": self.frontier,
                  "sightings": self.sightings, "searched": self.searched,
@@ -923,7 +1080,17 @@ class Executor:
                  "plan_done": getattr(self, "_plan_done", {}),
                  "map_doors": {k: sorted(v)
                                for k, v in (self.map_doors or {}).items()}},
-                indent=1))
+                indent=1)
+            tmp = self.MEMORY.with_suffix(".json.tmp")
+            tmp.write_text(payload)
+            # the previous good file becomes the fallback, and only once the
+            # new one is fully on disk
+            if self.MEMORY.exists():
+                try:
+                    self.MEMORY.replace(self.MEMORY.with_suffix(".json.prev"))
+                except OSError:
+                    pass
+            tmp.replace(self.MEMORY)
         except OSError:
             pass
 
@@ -3591,17 +3758,24 @@ class Executor:
         A step can leave the game mid-dialogue (e.g. the 'got the PARCEL!' box,
         after which the event flag sets only once it closes), where map reads
         None and map-keyed when-guards would wrongly skip. A `wait` triggers
-        the shim's auto-advance, which rides plain text to the next decision."""
+        the shim's auto-advance, which rides plain text to the next decision.
+
+        NEVER None. Forty-odd callers assign this and roughly half of them go
+        straight on to `obs.get(...)`; the ones that do not are the ones that
+        happened to be written after a bug. A failed read is an EMPTY state,
+        not a missing one — `{}` is just as falsy for every `if obs:` guard,
+        `or {}` and `or obs` still work, and an AttributeError deep in a leg
+        kills a run that is meant to play unattended for hours."""
         try:
             obs = self.b.obs()
         except TimeoutError as e:
             self.log("send_timeout", op="obs", err=str(e))
-            return None
+            return {}
         for _ in range(12):
             if not obs or obs.get("mode") != "dialog":
-                return self._note(obs)
+                return self._note(obs) or {}
             obs = self._send_safe("wait", frames=6)
-        return self._note(obs)
+        return self._note(obs) or {}
 
     MACRO_AUTHOR_SYS = """You AUTHOR a macro — an ordered list of ops — to
 achieve one Pokemon Red subgoal, then the executor RUNS it. You do NOT pilot
@@ -4625,7 +4799,7 @@ Reply with ONLY a JSON array of ops, e.g.
         # does not spend budget — multi-leg subgoals need one leg per round.
         # The absolute cap bounds oscillation (A<->B crossings are each "a
         # map change" yet go nowhere).
-        spent, rnd = 0, 0
+        spent, rnd, chat_fails = 0, 0, 0
         redo_from = self._pos(self.settle()) if redo else None
         pardon = False        # one free revisit after a blackout (recovery)
         visits: dict = {}     # round-end maps: re-entering one = circling
@@ -4771,8 +4945,21 @@ Reply with ONLY a JSON array of ops, e.g.
                     [{"role": "system", "content": self.MACRO_AUTHOR_SYS},
                      {"role": "user", "content": user}], self.model)
             except Exception as e:
-                self.log("escalate_chat_error", subgoal=sg["id"], err=str(e))
-                break
+                # ONE BAD SECOND IS NOT THE END OF THE SUBGOAL. This used to
+                # `break`, forfeiting every remaining round: ollama swapping
+                # a model out costs one refused connection and cost this leg
+                # its whole escalation budget. chat() now retries internally;
+                # if it still fails, that is one round spent, not all of
+                # them. Three in a row is a server that is not coming back.
+                self.log("escalate_chat_error", subgoal=sg["id"], round=rnd,
+                         err=str(e))
+                chat_fails += 1
+                if chat_fails >= 3:
+                    self.log("escalate_chat_giveup", subgoal=sg["id"],
+                             fails=chat_fails)
+                    break
+                spent += 1
+                continue
             macro = self._parse_macro(reply)
             if not macro:
                 self.log("escalate_bad_proposal", subgoal=sg["id"], round=rnd,
@@ -5734,7 +5921,13 @@ Reply with ONLY a JSON array of ops, e.g.
         sg["macro_provenance"] = {"authored_by": self.model, "run": self.run_id,
                                   "via": "escalation", "n_ops": len(ops)}
         if self.plan_path:
-            self.plan_path.write_text(json.dumps(self.plan, indent=2))
+            # tmp+rename, same reason as the ledger: this is the file the
+            # next attempt REPLAYS from, and a truncated one is a plan the
+            # chain cannot parse at all — every leg written into it lost,
+            # not just the macro being added.
+            _tmp = self.plan_path.with_suffix(".json.tmp")
+            _tmp.write_text(json.dumps(self.plan, indent=2))
+            _tmp.replace(self.plan_path)
         self.log("distilled", subgoal=sg["id"], n_ops=len(ops))
         return True
 
@@ -5753,6 +5946,18 @@ Reply with ONLY a JSON array of ops, e.g.
             self.status(subgoal=sg["id"], goal_text=sg.get("goal_text"),
                         done_when=sg.get("done_when"), obs=obs,
                         phase=f"replay attempt {attempt}", doing="macro")
+            # A QUESTION ON SCREEN STOPS THE MACRO, on the replay path too.
+            # The guard existed only in _run_traced, so escalation knew to
+            # stop at an open box and REPLAY did not — and 422 macro steps
+            # across plans/*.json have an op following an `interact`. At the
+            # Mt Moon fossils that shape pressed the DOME FOSSIL, got "You
+            # want the DOME FOSSIL?", and pressed the HELIX FOSSIL into the
+            # open question; nothing ever answered either. Answering is not
+            # ours to do — an `interact` that means to say yes carries
+            # `answer` — so a macro that walked into an unanswered question
+            # is a macro that is wrong, and it fails here and escalates,
+            # where the words go to the model.
+            asked = False
             for step in sg.get("macro", []):
                 step = dict(step)
                 when = step.pop("when", None)
@@ -5853,6 +6058,13 @@ Reply with ONLY a JSON array of ops, e.g.
                             and (pre_obs.get("map") or {}).get("id")
                             != ((obs or {}).get("map") or {}).get("id")):
                         self.note_transition(pre_obs, dict(step, op=op), obs)
+                    if ASKING in str(r.get("detail") or ""):
+                        self.log("macro_stopped_on_question",
+                                 subgoal=sg["id"], op=op,
+                                 detail=r.get("detail"))
+                        asked = True
+                    break
+                if asked:
                     break
             if pred_holds(done, self.settle()):
                 self.log("subgoal_done", subgoal=sg["id"], attempt=attempt,
@@ -5868,6 +6080,7 @@ Reply with ONLY a JSON array of ops, e.g.
         except TimeoutError as e:
             self.log("subgoal_timeout", subgoal=sg["id"], err=str(e))
             ok = False
+        self._report_malformed(sg)
         if not ok and self.can_escalate:
             print(f"   -> escalating {sg['id']} to the model")
             self.escalations += 1
@@ -5885,7 +6098,23 @@ Reply with ONLY a JSON array of ops, e.g.
                     # of length zero, which is the one thing it never is
                     print(f"   {sg['id']} came true with no reproducible "
                           f"ops — macro left as it was")
+        self._report_malformed(sg)
         return ok
+
+    def _report_malformed(self, sg):
+        """Say it out loud ONCE per malformation. pred_holds no longer dies
+        on a value it cannot read, which is right for an unattended run —
+        but a condition that can never come true now stalls a leg silently
+        instead, and a silent stall with no name is the worst thing in this
+        codebase to find. This is the name."""
+        for k, why in list(PRED_MALFORMED.items()):
+            if k in self._pred_said:
+                continue
+            self._pred_said.add(k)
+            self.log("predicate_malformed", subgoal=sg.get("id"),
+                     pred=k, why=why)
+            print(f"   [predicate] {sg.get('id')}: {k} — {why}; "
+                  f"this condition cannot be met as written")
 
     def run_plan(self, plan: dict) -> bool:
         self.log("plan_start", goal=plan.get("goal"), escalate=self.can_escalate)
