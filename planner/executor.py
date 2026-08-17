@@ -841,6 +841,35 @@ class Executor:
         self.logf = open(RUN / "executor_log.jsonl", "a")
         self.t0 = time.time()
 
+    def _frontier_left(self, region) -> list:
+        """Exits of `region` never taken — the ONE definition.
+
+        This arithmetic (frontier, minus what has been walked, minus seams
+        proven uncrossable) existed in four places and two of them had
+        drifted: they subtracted the walked exits and forgot `_no_cross`,
+        so `ROUTE_5|1,0 south` — the Saffron guards, proven uncrossable and
+        deliberately KEPT in the frontier so one bad proof cannot erode the
+        printed map — was advertised to the model every round as a way it
+        had never tried. A wall is not an unopened door.
+        """
+        done = set((self.explored.get(region) or {}).keys())
+        shut = self._no_cross.get(region, set())
+        return [e for e in (self.frontier.get(region) or [])
+                if e not in done and e not in shut]
+
+    def _count_visit(self, region):
+        """ONE ARRIVAL, ONE VISIT. Two places counted: note_transition on a
+        recorded crossing, and _note on the settle that follows it — so every
+        escort hop scored TWICE. That number is shown to the model ("YOU HAVE
+        BEEN IN THIS EXACT AREA n TIMES") and it gates the revisit nag, whose
+        threshold was therefore half what it reads. The guard against repeat
+        counting already existed in _note; it just never covered the other
+        writer."""
+        if not region or region == getattr(self, "_last_visit_region", None):
+            return
+        self.visits[region] = self.visits.get(region, 0) + 1
+        self._last_visit_region = region
+
     def _note(self, obs):
         self.note_frontier(obs)
         self.note_region_anchors(obs)
@@ -880,6 +909,7 @@ class Executor:
             self.region_anchors = data.get("region_anchors", {}) or {}
             self.searched = data.get("searched", {})
             self.contested = data.get("contested", {})
+            self._battle_regions = set(data.get("battle_regions") or ())
             # Money-dependent proofs do not survive a restart. "Fully
             # worked" recorded in a shop with an empty wallet is a fact
             # about the WALLET, not the room — it sealed the Pewter Mart
@@ -936,7 +966,6 @@ class Executor:
             # attempt resumes: a resumed journey-plan re-litigated its
             # first waypoint and marched the party from the captain's
             # doorstep all the way back to Cerulean.
-            self._plan_done = data.get("plan_done") or {}
             # PURGE MIRAGE REGIONS: a frontier entry with no walked edges
             # and no counted visits is a label from a dead labeling era
             # (the hop-free fragments); its phantom "untried exits" pull
@@ -1042,6 +1071,7 @@ class Executor:
         self.region_anchors = {}
         self.searched = {}
         self.contested = {}
+        self._battle_regions = set()
 
     def _save_memory(self):
         """TMP + RENAME, AND KEEP THE LAST GOOD ONE.
@@ -1064,6 +1094,13 @@ class Executor:
                  "touch_bag": self._touch_bag,
                  "region_anchors": self.region_anchors,
                  "contested": self.contested,
+                 # A TRAINER FIGHT IN A ROOM OUTLIVES THE PROCESS, same
+                 # as `contested` right above it. Without this, a gym
+                 # the party lost in stopped being exempt from the
+                 # re-entry refusal the moment the attempt restarted —
+                 # so the resumed run was told to leave the room it had
+                 # come back to fight in.
+                 "battle_regions": sorted(self._battle_regions),
                  # touched outlives the process so "sighted but never
                  # touched" stays computable across attempts — the Mt Moon
                  # fossils are the door east, and every restart forgot who
@@ -1077,7 +1114,6 @@ class Executor:
                  "hints": self.hints,
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead,
-                 "plan_done": getattr(self, "_plan_done", {}),
                  "map_doors": {k: sorted(v)
                                for k, v in (self.map_doors or {}).items()}},
                 indent=1)
@@ -1259,9 +1295,7 @@ class Executor:
         # (the hop-free relabeling) collected zero visits however often
         # the escort delivered the party there, so they ranked "freshest"
         # forever and the reroute elected the same mirage six times.
-        if here != getattr(self, "_last_visit_region", None):
-            self.visits[here] = self.visits.get(here, 0) + 1
-            self._last_visit_region = here
+        self._count_visit(here)
         m = (obs or {}).get("map") or {}
         # WALKABLE ONES ONLY. Recording doorways pathfinding cannot reach
         # made every region holding one look permanently unexplored, so the
@@ -1810,7 +1844,7 @@ class Executor:
         # sending has already replaced result with the settle's own.
         _d += " " + str(op_detail or "")
         if "door unknown" in _d:
-            self.visits[dst] = self.visits.get(dst, 0) + 1
+            self._count_visit(dst)
             self.log("crossed_door_unknown", frm=src, to=dst)
             return
         key = (f"{step.get('x')},{step.get('y')}"
@@ -1895,7 +1929,7 @@ class Executor:
                      twins=len(self._twin_keys(before_obs, step)))
             self._save_memory()
             return
-        self.visits[dst] = self.visits.get(dst, 0) + 1
+        self._count_visit(dst)
         dmap = dst.split("|")[0]
         if dmap != src.split("|")[0] and self._cur_target:
             k = f"{self._cur_target}|{dmap}"
@@ -2332,15 +2366,13 @@ class Executor:
         for region, exits in self.frontier.items():
             if region == here:
                 continue
-            done_x = set((self.explored.get(region) or {}).keys())
             # A PROVEN SEAM IS NOT FRONTIER. The frontier deliberately
             # keeps a printed road after a failed crossing so one bad proof
             # cannot erode the map, but counting those as "never taken"
             # sends the walk-back to a region whose only opening is a wall
             # it has already bounced off — the same mistake 773bbc3 fixed
             # for the remote-region note and left standing here.
-            shut_x = self._no_cross.get(region, set())
-            fresh = [e for e in exits if e not in done_x and e not in shut_x]
+            fresh = self._frontier_left(region)
             if not fresh:
                 # A FLOOR WITH DOORWAYS NOBODY HAS WALKED IS NOT FINISHED,
                 # even when every ROOM in it reports its own exits taken.
@@ -2385,8 +2417,7 @@ class Executor:
             # for ever. Give it a second and third go before writing the
             # ground off; the count still stops the six-trip loop.
             been = (self._ferried.get(self._cur_target) or {}).get(region)
-            if been and been[0] == frozenset(
-                    e for e in exits if e not in done_x) and been[1] >= 3:
+            if been and been[0] == frozenset(fresh) and been[1] >= 3:
                 continue      # brought here 3x and nothing was ever used
             path = self._route(here, region)
             if path is None:
@@ -2505,9 +2536,7 @@ class Executor:
         # call; taking the exit that was the whole reason for the trip is
         # the same act finished, not a new decision.
         o_arr = self.settle()
-        left = [e for e in (self.frontier.get(region) or [])
-                if e not in set((self.explored.get(region) or {}).keys())
-                and e not in self._no_cross.get(region, set())]
+        left = self._frontier_left(region)
         if left and o_arr:
             key = sorted(left)[0]
             pre = o_arr
@@ -3096,6 +3125,17 @@ class Executor:
         # how to get in.
         mid = m.get("id")
         here_keys = {w["key"] for w in warps if w.get("reachable")}
+        # UNFILTERED ON PURPOSE, and it looks like a bug. The three other
+        # places that walk `explored` this way subtract shut edges, because
+        # they are asking "is this doorway still UNOPENED" and a door that
+        # turned you back is not opened. THIS one asks a different question:
+        # "is that part of the floor somewhere I have never STOOD" — and
+        # walking into a door that refused you means you stood at it. A key
+        # is only ever recorded here for a door the party actually reached
+        # (note_transition refuses to file one otherwise), so filtering shut
+        # edges out would have the note claim the run has never been to a
+        # spot it has demonstrably been to. Same arithmetic, different
+        # question; leave it alone.
         ever = set()
         for reg, ex in (self.explored or {}).items():
             if reg.split("|")[0] == mid:
@@ -3136,7 +3176,6 @@ class Executor:
                 # told the model retaking it showed nothing new.
                 beyond = ""
                 if not bad:
-                    done_x = set((self.explored.get(dest) or {}).keys())
                     # NEVER ATTEMPTED IS NOT THE SAME AS ATTEMPTED AND
                     # FAILED. The frontier deliberately keeps a printed road
                     # even after a seam proof, so the map cannot be eroded
@@ -3147,9 +3186,7 @@ class Executor:
                     # the northern half, so the run was told over and over
                     # that Route 10 had somewhere new to go, and the door
                     # that actually leads there read as already used.
-                    shut = self._no_cross.get(dest, set())
-                    left = [e for e in (self.frontier.get(dest) or [])
-                            if e not in done_x and e not in shut]
+                    left = self._frontier_left(dest)
                     if left:
                         beyond = (f"; BUT {dest} still has {len(left)} exit(s) "
                                   f"never taken, so going back through here "
@@ -3335,8 +3372,7 @@ class Executor:
                 [(r, []) for r in held if r not in self.frontier]:
             if region == here:
                 continue
-            done_x = set((self.explored.get(region) or {}).keys())
-            left = [e for e in exits if e not in done_x]
+            left = self._frontier_left(region)
             left += held.get(region, [])
             if not left:
                 continue
@@ -3576,7 +3612,15 @@ class Executor:
                 + hint_line + loot_line)
         return out
 
-    def _atlas_text(self) -> str:
+    # Every map the run has ever entered, in one line of the escalation
+    # prompt, growing all game — 39 maps was already 910 tokens at leg 8 of
+    # 38, and Kanto has some 250. The escalation prompt has no budget of any
+    # kind, and ollama drops the FRONT of an oversized one, which is where
+    # the op vocabulary lives. Bound it the same way the author's evidence
+    # is bounded, and by the same rule: keep what is NEAR, say how much went.
+    ATLAS_BUDGET = 4000
+
+    def _atlas_text(self, here: str | None = None) -> str:
         parts = []
         for mid, e in self.atlas.items():
             bits = []
@@ -3590,8 +3634,29 @@ class Executor:
                         f"({w['x']},{w['y']})")
                 bits.append("doors: " + ", ".join(
                     f"{d} at {'/'.join(v[:2])}" for d, v in dd.items()))
-            parts.append(f"{mid}: " + "; ".join(bits))
-        return " | ".join(parts)
+            parts.append((mid, f"{mid}: " + "; ".join(bits)))
+        if here:
+            links = self._walked_map_links()
+            start = _doorstep(here)
+
+            def _far(mid):
+                if mid == here:
+                    return -1
+                c = static_cost(start, _doorstep(mid), {}, links)
+                return c if c is not None else 999
+            parts.sort(key=lambda kv: _far(kv[0]))
+        out, used, dropped = [], 0, 0
+        for _mid, line in parts:
+            if out and used + len(line) + 3 > self.ATLAS_BUDGET:
+                dropped += 1
+                continue
+            out.append(line)
+            used += len(line) + 3
+        text = " | ".join(out)
+        if dropped:
+            text += (f" | ...and {dropped} more map(s) further from here, "
+                     f"not shown")
+        return text
 
     def status(self, **kw):
         """Keep run/status.txt current: what is it TRYING to do right now.
@@ -4167,8 +4232,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 for region, exits in self.frontier.items():
                     if region == here_r:
                         continue
-                    done_x = set((self.explored.get(region) or {}).keys())
-                    left = [e for e in exits if e not in done_x]
+                    left = self._frontier_left(region)
                     if not left:
                         continue
                     path = self._route(here_r, region)
@@ -4882,7 +4946,8 @@ Reply with ONLY a JSON array of ops, e.g.
             if rnd == 1 and sig0[0]:
                 visits[sig0[0]] = 1
             obs = model_view(start)
-            atlas = self._atlas_text()
+            atlas = self._atlas_text(
+                ((start or {}).get("map") or {}).get("id"))
             redo_note = ""
             if redo:
                 redo_note = (
@@ -5512,9 +5577,7 @@ Reply with ONLY a JSON array of ops, e.g.
                             f"changed, a freed bag slot included)")
                         retalked_now = True
                 here_r = self._where(cur)
-                done_x = set((self.explored.get(here_r) or {}).keys())
-                untried = [e for e in (self.frontier.get(here_r) or [])
-                           if e not in done_x]
+                untried = self._frontier_left(here_r)
                 if (not retalked_now and untried
                         and (cur or {}).get("mode") == "overworld"):
                     # goal-ward edge first, same rule as the reroute rank:
@@ -6006,7 +6069,13 @@ Reply with ONLY a JSON array of ops, e.g.
                              # about the TILE, and pinning down whether the
                              # party was on the east or west half of Route 4
                              # cannot be done from the map id alone
-                             at=(f"{(obs or {}).get('x')},{(obs or {}).get('y')}"
+                             # x/y live under obs["player"]; read off the
+                             # top level this logged "None,None" from the
+                             # day it was added — and it was added to pin
+                             # down the TILE a cross failed from, which is
+                             # the one thing it never once recorded.
+                             at=(f"{((obs or {}).get('player') or {}).get('x')},"
+                                 f"{((obs or {}).get('player') or {}).get('y')}"
                                  f" {((obs or {}).get('map') or {}).get('region')}")
                              if obs else None,
                              mode=obs.get("mode") if obs else None)
@@ -6121,15 +6190,15 @@ Reply with ONLY a JSON array of ops, e.g.
         fails = 0
         backtracks = 0
         subgoals = plan["subgoals"]
-        # WAYPOINTS ALREADY WALKED THIS CAMPAIGN STAY WALKED. A resumed
-        # journey-plan re-litigated go_to_cerulean_city from its first
-        # line and marched the party from the captain's doorstep back
-        # north. A subgoal id completed under this goal in an earlier
-        # attempt is honored — except the final one, which is the leg's
-        # objective and must hold NOW.
-        goal_key = str(plan.get("goal") or "")
-        if not hasattr(self, "_plan_done"):
-            self._plan_done = {}
+        # WHAT REPLACED THE STICKY-WAYPOINT LEDGER. There used to be a
+        # `_plan_done` map of "subgoal ids completed under this goal in an
+        # earlier attempt", written on every success and carried across
+        # processes — and NOTHING EVER READ IT. The resume below superseded
+        # it deliberately, for the reason stated in the next paragraph, and
+        # the ledger was left behind still being written, still being saved,
+        # with a comment above it describing behaviour the file does not
+        # have. A field that lies about what the code does is worse than no
+        # field, so it is gone; this is the note it leaves.
         # RESUME FROM WHERE THE PARTY STANDS, not from the union of
         # everything ever done: the union version skipped the navigation
         # scaffold (those waypoints WERE walked once) and stranded a bare
@@ -6198,11 +6267,6 @@ Reply with ONLY a JSON array of ops, e.g.
             has_macro = bool(sg.get("macro"))
             print(f"== subgoal: {sg['id']}" + ("" if has_macro else " (no macro)"))
             ok = self._attempt(sg)
-            if ok:
-                self._plan_done.setdefault(goal_key, [])
-                if sg["id"] not in self._plan_done[goal_key]:
-                    self._plan_done[goal_key].append(sg["id"])
-                    self._save_memory()
             # BACKTRACK: a subgoal that cannot be done may not be the broken
             # one. A done_when like {map:X} is satisfied ANYWHERE on X, so the
             # PREVIOUS subgoal can "succeed" in a place this one is impossible
@@ -6370,10 +6434,6 @@ Reply with ONLY a JSON array of ops, e.g.
                 if not r.get("ok"):
                     self.log("subgoal_save_failed", subgoal=sg["id"],
                              detail=r.get("detail"))
-        # a finished leg's sticky waypoints must not leak into a future
-        # campaign that happens to reuse the goal wording
-        self._plan_done.pop(goal_key, None)
-        self._save_memory()
         self.log("plan_complete", goal=plan.get("goal"),
                  escalations=self.escalations)
         return True
