@@ -3554,6 +3554,51 @@ class Executor:
                 f"What is certain is that this floor has more to it than "
                 f"you have seen, so every region you know here can report "
                 f"nothing left to try and this still be true.")
+        # ...AND THE FLOOR BELOW YOU. The note above describes only the map
+        # under your feet, so standing on MT_MOON_1F — whose five doorways
+        # are all walked — it says nothing, while MT_MOON_B1F one ladder
+        # down has EIGHT and the run has stood at four. The four it has not
+        # include 27,3, the way out east to Route 4 and Cerulean. Every
+        # region of B1F reports "nothing untried" because a region only
+        # knows its own pocket, so the frontier is empty, the escort has
+        # nowhere to send anyone, and the only ways-never-taken the model is
+        # shown are back in Pewter. It leaves the mountain.
+        # Same arithmetic as the local note, asked of maps already walked:
+        # doorways seen on that map, minus the ones stood at. It says a part
+        # exists and how many, never where it is or how to get in.
+        floor_away = ""
+        _rows = []
+        for _mid, _doors in (self.map_doors or {}).items():
+            if _mid == mid or not _doors:
+                continue
+            _stood = set()
+            for _r2, _e2 in (self.explored or {}).items():
+                if _r2.split("|")[0] == _mid:
+                    _stood |= set(_e2.keys())
+            _left = set(_doors) - _stood
+            if not _left:
+                continue
+            _p = None
+            for _r2 in (self.explored or {}):
+                if _r2.split("|")[0] != _mid:
+                    continue
+                _c = self._route(here, _r2)
+                if _c is not None and (_p is None or len(_c) < len(_p)):
+                    _p = _c
+            if _p is None:
+                continue
+            _rows.append((len(_p), _mid, len(_doors), sorted(_left)))
+        if _rows:
+            _rows.sort()
+            floor_away = ("\nFLOORS YOU HAVE WALKED THAT ARE NOT FINISHED: "
+                          + "; ".join(
+                              f"{_m} has {_t} doorway(s) and {len(_l)} of them "
+                              f"({', '.join(_l[:4])}) are on parts you have "
+                              f"never stood on — {_n} leg(s) away"
+                              for _n, _m, _t, _l in _rows[:3])
+                          + ". Every room you know on such a floor can report "
+                            "nothing left to try and this still be true; how "
+                            "to reach the rest is not known.")
         # A seam PROVEN uncrossable from this region is not an exit. A map
         # connection belongs to the whole map, so the stub side of a split
         # route still lists the far side's edge — and advertising it as
@@ -4263,7 +4308,7 @@ class Executor:
                 "you have NEVER taken: "
                 + "; ".join(t for _r, t in sorted(elsewhere)[:6])
                 + "." + near_hint)
-        out += (floor_note + route_line + searched_line + shut_line
+        out += (floor_note + floor_away + route_line + searched_line + shut_line
                 + hint_line + loot_line + _elsewhere_str)
         return out
 
