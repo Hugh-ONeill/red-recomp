@@ -219,6 +219,18 @@ def _engine_names(fname: str) -> set:
         return set()
 
 
+# ...MINUS THE ONES THIS BUILD CAN NEVER SET. The engine ships Yellow's
+# content alongside Red's, and its flag list carries both — so
+# EVENT_BEAT_MT_MOON_3_JESSIE_JAMES validated fine, a leg was authored
+# around it, and the run spent twenty escalations hunting a trainer who is
+# not on the map. A REAL FLAG ID IS NOT EVIDENCE OF A REAL ENCOUNTER.
+# engine_flags.txt now holds only flags mentioned somewhere outside the
+# yellow-specific files (10 of 511 dropped: the four Jessie/James fights,
+# Pikachu's starter events, Bulbasaur-in-Cerulean, Squirtle-from-Jenny).
+# The full list is kept beside it as engine_flags.all.txt and the dropped
+# ones as engine_flags.excluded.txt; regenerate by re-scanning
+# gen1recomp/data and src for each name and keeping those with a mention
+# in a path that does not contain "yellow".
 ENGINE_FLAGS = _engine_names("engine_flags.txt")
 # Every item id the engine defines (data/generated/items.lua), for the same
 # reason ENGINE_FLAGS exists: KEY_ITEMS is a seven-entry spelling aid, and
