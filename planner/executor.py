@@ -757,6 +757,90 @@ BATTLE_POLICIES = {
 }
 
 
+# HOW THE POKEMON ARRIVES IS NOT IN THE PREDICATE (user, 2026-08-17).
+# party_size, party_type, has_species and dex_owned are each satisfied two
+# completely different ways: you catch the thing in the grass, or somebody
+# hands it to you across a counter. The predicate cannot tell those apart,
+# and the policy was chosen from the predicate ALONE — so run 4 read
+#
+#   talk_to_clerk  "Talk to the clerk to retrieve the Pokemon"
+#                  done_when {"party_size": 2}
+#
+# and went out to Route 1 to throw balls at Pidgeys, with the clerk one
+# door away and the subgoal's own sentence naming her twice. The subgoal
+# said talk; the id said talk; the harness read the number. Every battle
+# under it logged policy=catch, the lead came out of it at 2/22hp, and
+# a Pidgey satisfied the counter, so the subgoal reported DONE without the
+# clerk ever being spoken to.
+#
+# WHICH WAY TO BREAK THE TIE, and why it is not "whatever the words say".
+# Getting this backwards has already cost a run once in each direction:
+# catch_backup ran the traversal policy and KO'd every wild it met with 13
+# balls in the bag, and this run ran catch on an errand. But the two
+# failures are not the same size. A wrongly-traversing catch subgoal FAILS
+# and escalates, and the model gets to see it fail. A wrongly-catching
+# errand SUCCEEDS — falsely, on a counter that any wild satisfies — and
+# nothing downstream can question it, which is the same reason the touch
+# ledger is written only for interactions that completed. So when the
+# words and the number disagree, take the recoverable failure.
+#
+# The words are read narrowly and asymmetrically, so that a subgoal saying
+# neither thing behaves exactly as it does today:
+#   * says CATCH  -> catch, whatever else it says. The predicate is
+#                    confirmed, not overridden.
+#   * says TALK   -> not catch. This also fixes the honest case nobody had
+#                    noticed: a Pokemon somebody GIVES you (the aide, the
+#                    Magikarp salesman, the fossil revival) satisfies
+#                    party_size without a ball being thrown, and used to
+#                    send the run hunting anyway.
+#   * says neither -> the predicate decides, as before.
+# Measured before it shipped: over all 677 distinct subgoals in every plan
+# ever written, exactly ONE changes policy — the clerk errand above.
+_CATCH_WORDS = ("catch", "catching", "caught", "capture", "wild", "grass",
+                "ball", "balls")
+_GIVEN_WORDS = ("talk", "speak", "ask", "asking", "interact", "clerk",
+                "cashier", "receptionist", "attendant", "aide", "nurse",
+                "receive", "deliver", "give", "trade", "buy", "purchase",
+                "sell")
+
+
+def _subgoal_words(subgoal: dict) -> set:
+    """The subgoal's own sentence, as words. The id counts: `talk_to_clerk`
+    carries the signal even when goal_text is empty, and an underscore is a
+    WORD character to a regex, so the id has to be broken up first or
+    nothing in it ever matches."""
+    text = f"{subgoal.get('id') or ''} {subgoal.get('goal_text') or ''}"
+    return set(_re.findall(r"[a-z]+", text.lower().replace("_", " ")))
+
+
+def choose_battle_policy(subgoal: dict) -> tuple:
+    """(policy name, why) for one subgoal. Pure: no game, no observation.
+
+    An explicit battle_policy on the subgoal always wins — the model asked
+    for it by name and that is its decision to make.
+    """
+    name = subgoal.get("battle_policy")
+    if name:
+        return (name if name in BATTLE_POLICIES else "traversal"), "declared"
+    keys = pred_keys(subgoal.get("done_when") or {})
+    words = _subgoal_words(subgoal)
+    if keys & {"party_size", "party_type", "has_species", "dex_owned"}:
+        if words & set(_CATCH_WORDS):
+            return "catch", "predicate, and the subgoal says so"
+        if words & set(_GIVEN_WORDS):
+            # the whole point of the rule: say which two things disagreed
+            return "traversal", (
+                "the predicate could be satisfied by catching, but this "
+                "subgoal is about " + ", ".join(
+                    sorted(words & set(_GIVEN_WORDS))) + " — a Pokemon "
+                "handed over is not a Pokemon hunted, and a false success "
+                "on the counter cannot be taken back")
+        return "catch", "predicate"
+    if keys & {"lead_level", "party_min_level", "slot_level"}:
+        return "default", "predicate"
+    return "traversal", "default"
+
+
 # ----------------------------------------------------------------- executor
 class Executor:
     def __init__(self, bridge: Bridge, max_battle_turns: int = 40,
@@ -4497,17 +4581,19 @@ class Executor:
         # {"any_of":[{"party_type":"WATER"},{"party_type":"GRASS"}]} and
         # would have missed party_size there too. pred_keys exists for
         # exactly this and recurses into any_of.
-        name = subgoal.get("battle_policy")
-        if not name:
-            dw = subgoal.get("done_when") or {}
-            keys = pred_keys(dw)
-            name = ("catch" if keys & {"party_size", "party_type",
-                                       "has_species", "dex_owned"}
-                    else "default" if keys & {"lead_level", "party_min_level",
-                                              "slot_level"}
-                    else "traversal")
-            if name not in BATTLE_POLICIES:      # never crash on a bad key
-                name = "traversal"
+        # ...AND FROM THE SUBGOAL'S OWN SENTENCE, not the predicate alone.
+        # See choose_battle_policy: party_size is satisfied by catching one
+        # OR by being handed one, and only the words say which.
+        name, why = choose_battle_policy(subgoal)
+        if name not in BATTLE_POLICIES:          # never crash on a bad key
+            name = "traversal"
+        if why.startswith("the predicate"):
+            # SAY IT, do not just do it. The harness has declined the
+            # reading the numbers alone would have given, and the subgoal
+            # may well fail because of that. A silent policy switch is the
+            # kind of thing that gets debugged twice.
+            self.log("battle_policy_conflict", subgoal=subgoal["id"],
+                     chose=name, why=why)
         # Name the combatants: three Misty wipes reached the re-author as
         # bare FAILED lines, so every rewrite fixed the route and never the
         # matchup — species and levels are on screen the whole fight.
