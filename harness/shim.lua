@@ -110,9 +110,19 @@ local function wd_run(G, label, budget, fn, ...)
   wd.budget = nil
   if res[1] then return UNPACK(res, 2) end
   -- an op aborted mid-yield may have skipped its key-release lines: a
-  -- direction left held would corrupt every later op
-  if G and G.input and G.input.state then
-    for k in pairs(G.input.state) do G.input.state[k] = false end
+  -- direction left held would corrupt every later op.
+  -- pressQueue FIRST: walk/cross/use_warp insert into the queue and THEN
+  -- yield, so the watchdog can raise before the yield returns. Input:step()
+  -- re-asserts state[btn]=true for anything still queued, which put the
+  -- direction straight back and walked the player through every later
+  -- U.wait. Clearing state alone was a no-op against exactly the window
+  -- the watchdog exists to close.
+  if G and G.input then
+    local q = G.input.pressQueue
+    if q then for i = #q, 1, -1 do q[i] = nil end end
+    if G.input.state then
+      for k in pairs(G.input.state) do G.input.state[k] = false end
+    end
   end
   local where = ""
   local ow = G and G.overworld
