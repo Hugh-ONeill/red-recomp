@@ -6552,6 +6552,7 @@ Reply with ONLY a JSON array of ops, e.g.
                 if loose:
                     self.log("room_sweep", subgoal=sg["id"], region=here_s,
                              objects=loose[:8])
+                    asked_back = []
                     for name in loose[:8]:
                         if kinds.get(name) == "cut_tree" and knows_cut:
                             x, y = coords.get(name, (None, None))
@@ -6564,8 +6565,28 @@ Reply with ONLY a JSON array of ops, e.g.
                         if o2 and o2.get("mode") == "battle":
                             o2 = self.handle_battle(sg, o2)
                             o2 = self.settle()
-                        touched.add(name)
-                        self._stamp_touch(here_s)
+                        # A DECLINED OFFER IS NOT AN EXHAUSTED THING. The
+                        # sweep sends `interact` with NO answer, and the op's
+                        # own contract is that a question with no answer
+                        # given is DECLINED — so it walked up to the Mt Moon
+                        # fossils, was asked "You want the DOME FOSSIL?",
+                        # said no, and marked BOTH touched. The lifetime
+                        # ledger then retired them, the room read as fully
+                        # worked, and the run left the mountain with no
+                        # fossil and no way to notice. Widening the free
+                        # round this afternoon made it happen more often.
+                        # It is NOT fixed by answering yes: the sweep is
+                        # blind, and yes to the Magikarp salesman costs 500.
+                        # Declining stays the safe default; what changes is
+                        # that a thing which asked something is not recorded
+                        # as spent, and the model is told it is still open.
+                        _det = str(((o2 or {}).get("result") or {})
+                                   .get("detail") or "")
+                        if ASKING in _det:
+                            asked_back.append(name)
+                        else:
+                            touched.add(name)
+                            self._stamp_touch(here_s)
                         cur = o2 or cur
                         if pred_holds(done, cur):
                             break
@@ -6573,6 +6594,15 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"(swept this area: pressed A on "
                         f"{', '.join(loose[:8])} — everything reachable "
                         f"here has now been tried)")
+                    if asked_back:
+                        trace.append(
+                            f"({', '.join(asked_back)} ASKED something and "
+                            f"the sweep could only decline — it presses "
+                            f"blind and cannot answer for you. They are NOT "
+                            f"recorded as done. To accept, press one "
+                            f"yourself with an answer: "
+                            f'{{"op":"interact","name":"{asked_back[0]}",'
+                            f'"answer":"yes"}})')
                     if pred_holds(done, self.settle() or cur):
                         self.log("escalate_success", subgoal=sg["id"],
                                  round=rnd, proposed=0,
