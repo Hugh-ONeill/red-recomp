@@ -2376,7 +2376,34 @@ class Executor:
         send the edge, settle, fight through interruptions, record the
         transition. Returns where the walk ended."""
         o = None
+        # A ROUTE STEP BELONGS TO THE PLACE IT WAS COMPUTED FROM. `pre` is
+        # re-read every hop, so it always says where the party ACTUALLY is,
+        # while `key` still names a tile from where the party WAS — and
+        # nothing checked the two agree. Twice in one run that fired a
+        # step at the map the party had just left, from inside the room it
+        # had just entered: MT_MOON_POKECENTER got Route 4's door (18,5)
+        # and UNDERGROUND_PATH_ROUTE_5 got Route 5's (10,29). Both bounced
+        # straight back out, both recorded their exit under a foreign key,
+        # and both ended with NO exits in the ledger at all — so the
+        # Underground Path, the only road to Vermilion that is not gated
+        # behind the Saffron guards, reads as a room that goes nowhere.
+        # Distilled macros already carry `when: {map}` for exactly this,
+        # "so a diverged trajectory SKIPS misplaced ops instead of
+        # misfiring them"; route walking had no such guard.
         for key, nxt in path:
+            _now = self.b.obs() or {}
+            _m = (_now.get("map") or {})
+            if "," in key:
+                _x, _y = (int(v) for v in key.split(","))
+                _has = any(w.get("x") == _x and w.get("y") == _y
+                           for w in (_m.get("warps") or []))
+            else:
+                _has = key in (_m.get("connections") or {})
+            if _m.get("id") and not _has:
+                self.log("route_abandoned", subgoal=sg.get("id"),
+                         step=str(key), standing=self._where(_now),
+                         why="this map has no such way out")
+                return o if o is not None else _now
             for _ in range(4):
                 pre = self.b.obs()
                 if "," in key:
