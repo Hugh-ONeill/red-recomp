@@ -721,6 +721,49 @@ These need a decision from the user, not a patch from me.
 
 ---
 
+### After the audit — the exploration work the audit did not reach
+
+Found by watching a live chain and by measuring the journal, not from the
+report. All closed unless marked.
+
+- [x] **The model is not the problem: 99.5% / 99.3% grounded.**
+  `planner/decisions.py` scores every decision the run has ever made against
+  the exact prompt text it was shown — 1,752 of them, no model calls, since
+  `escalate_context` carries the memory and the proposal after it carries the
+  macro. When an untried exit WAS on offer, **99.5%** took one the text
+  listed; where nothing was untried (the ordinary state of walked ground),
+  **99.3%** re-took a door the text named. Three passes were needed before
+  the number meant anything — scoring only the exits block, lumping "no new
+  option" with "no option", and counting unscoreable states as failures —
+  and each pass changed the answer.
+  **This is the precondition for area-footprint** (user): footprint REMOVES
+  information, so without a full-information baseline every later failure has
+  two explanations and no way to tell them apart.
+
+- [x] **The one systematic gap it found: 128 moves proposing a side the map
+  does not have.** All one shape — "east" out of `MT_MOON_1F` because the
+  printed map puts Cerulean east, while the exits block offered south. A seam
+  that does not exist appears in NEITHER list, so from the text it cannot be
+  told apart from one already walked. The room now says which sides it has,
+  and says outright when it is indoors and has none. `decisions.py --new`
+  segments the eras — the fix is its own timestamp, since a context rendered
+  after it contains the line.
+
+- [x] **A map edge is UNKNOWN until crossed.** Doors stopped naming their far
+  side in the morning; seams kept doing it out of the same table. Defensible
+  while the printed adjacency was free, incoherent once `edges_text` was
+  gated on holding the TOWN MAP. Four renderers fixed. Where the ledger and
+  the table disagree the ledger now wins, so the prompt reports where the run
+  CAME OUT rather than where the table says it would.
+
+- [ ] **Re-measure with `--new` once post-fix decisions accumulate.** Expect
+  the invented bucket to collapse toward the 146 that have no exits block at
+  all. Then `decisions.py` becomes the regression test for footprint itself,
+  because it is the tool that separates "the sweep never surfaced it" from
+  "it had it and did not act".
+
+---
+
 ## What the audit says to keep
 
 Not a to-do list — a list of things not to break, and worth lifting elsewhere.
