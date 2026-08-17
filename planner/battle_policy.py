@@ -485,12 +485,32 @@ def choose(obs: dict, spec: dict | None = None,
         if have_ball and balls < ca.get("max_balls", 3):
             safe = [s for s in damaging if not s["kos"]]
             safe.sort(key=lambda s: s["score"])
+            # A NAMED TARGET IS NOT WORTH SOFTENING UP. Weakening pays only
+            # if the damage can be controlled, and it cannot: this is a
+            # PREDICTION that a move will not KO, made for a L32 starter
+            # swinging at a L7 wild, and it is wrong exactly once before the
+            # thing the subgoal was authored to catch is dead. The trade is
+            # not close — a wasted ball is recoverable and a corpse is not —
+            # so when we know what we came for, throw at whatever hp it has.
+            if ctx.get("want"):
+                safe = []
             if frac <= ca.get("throw_at_hp_frac", 0.7) or not safe:
                 ctx["balls"] = balls + 1
                 return {"op": "throw_ball", "ball": ca["ball"],
                         "_why": f"throw (foe at {frac:.0%})"}
             return {"op": "battle_move", "index": safe[0]["index"],
                     "_why": f"weaken with {safe[0]['id']}"}
+        # THE BALLS FOR THIS BATTLE ARE SPENT — AND KILLING IT IS THE ONE
+        # OUTCOME THAT HELPS NOTHING. Falling through to normal move
+        # selection meant a L32 CHARMELEON knocking out the very ODDISH the
+        # subgoal was authored to catch, so the wild that finally matched
+        # was destroyed and the hunt started over. Leave it alive: the
+        # grass will offer another, and the party keeps its balls for it.
+        # Only when a target was NAMED — a party_size goal that will take
+        # anything has nothing to protect.
+        if ctx.get("want") and have_ball is not None:
+            return {"op": "battle_run",
+                    "_why": "out of balls for this one; leave it alive"}
     by_index = {m.get("index"): m for m in moves}
     best_dmg = max(damaging, key=lambda s: s["score"]) if damaging else None
     best_is_physical = bool(
