@@ -645,6 +645,88 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                                 if near else "")
                     probs.append(f"{tag} ({sid}) '{mv}' is not a move this "
                                  f"game defines{hint}")
+    _check_pred_shapes(dw, tag, sid, probs)
+
+
+# WHAT A PREDICATE'S VALUE MUST LOOK LIKE. The checks above validate NAMES —
+# is that a real item, a real move, a real species — and the loop passes
+# everything else on key-membership alone. But pred_holds indexes some of
+# these values directly (`want["x"]`, `int(want.get("slot"))`), so a shape
+# the model is perfectly free to write takes the whole executor down in the
+# middle of a leg, and two more shapes are accepted and then quietly mean
+# nothing:
+#   {"party_nonempty": "true"}          -> bool(party) != "true" is ALWAYS
+#                                          true, so the subgoal can never
+#                                          be satisfied
+#   {"slot_level": {"slot": 2,
+#                   "level": 15}}       -> the key is `min`; `level` is
+#                                          ignored, need becomes 0, and the
+#                                          subgoal is instantly true having
+#                                          trained nothing
+# Rejecting them here is how the model finds out — it gets the problem back
+# and re-authors. pred_holds is hardened separately, because a plan can
+# reach the executor by routes that never pass through this validator.
+_SHAPES = {
+    "lead_level": "int", "party_min_level": "int", "party_size": "int",
+    "dex_owned": "int",
+    "party_nonempty": "bool", "party_alive": "bool",
+    "party_healthy": "bool", "no_battle": "bool",
+}
+
+
+def _check_pred_shapes(dw: dict, tag: str, sid, probs: list):
+    for k, v in dw.items():
+        want = _SHAPES.get(k)
+        if want == "int" and (isinstance(v, bool)
+                              or not isinstance(v, int)):
+            probs.append(f"{tag} ({sid}) {k} takes a whole number, not "
+                         f"{v!r}")
+        elif want == "bool" and not isinstance(v, bool):
+            why = (" — a string is never equal to a boolean, so this "
+                   "condition could never come true"
+                   if isinstance(v, str) else "")
+            probs.append(f"{tag} ({sid}) {k} takes true or false, "
+                         f"not {v!r}{why}")
+        elif k == "player_at":
+            if not isinstance(v, dict):
+                probs.append(f"{tag} ({sid}) player_at takes "
+                             f"{{\"x\":N,\"y\":N}}, not {v!r}")
+            else:
+                miss = [a for a in ("x", "y")
+                        if not isinstance(v.get(a), (int, float))
+                        or isinstance(v.get(a), bool)]
+                if miss:
+                    probs.append(f"{tag} ({sid}) player_at needs a number "
+                                 f"for {' and '.join(miss)}")
+                if "radius" in v and (isinstance(v["radius"], bool)
+                                      or not isinstance(v["radius"],
+                                                        (int, float))):
+                    probs.append(f"{tag} ({sid}) player_at radius must be "
+                                 f"a number")
+        elif k == "slot_level":
+            if not isinstance(v, dict):
+                probs.append(f"{tag} ({sid}) slot_level takes "
+                             f"{{\"slot\":N,\"min\":N}}, not {v!r}")
+            else:
+                if not isinstance(v.get("slot"), int) or \
+                        isinstance(v.get("slot"), bool):
+                    probs.append(f"{tag} ({sid}) slot_level needs a whole "
+                                 f"number for slot (1 is the lead)")
+                if not isinstance(v.get("min"), int) or \
+                        isinstance(v.get("min"), bool):
+                    extra = (" — you wrote 'level'; the key is 'min'"
+                             if "level" in v else "")
+                    probs.append(f"{tag} ({sid}) slot_level needs a whole "
+                                 f"number for min{extra}")
+        elif k == "knows_move" and isinstance(v, dict) and "slot" in v:
+            if not isinstance(v["slot"], int) or isinstance(v["slot"], bool):
+                probs.append(f"{tag} ({sid}) knows_move slot must be a "
+                             f"whole number")
+        elif k == "area" and isinstance(v, str) and "|" in v:
+            mp = v.split("|", 1)[0]
+            if ROUTE_MAPS and mp not in ROUTE_MAPS:
+                probs.append(f"{tag} ({sid}) area '{v}' names map '{mp}', "
+                             f"which is not in the route list")
 
 
 def author(goal: str, model: str, rounds: int = 5,
@@ -2439,7 +2521,68 @@ def outline(goal: str, model: str, rounds: int = 3,
                 f"{stages[l]}\t{l}\n" for l in legs if l in stages))
         except OSError:
             pass
+    _reconcile_upkeep(legs)
     return legs
+
+
+def _reconcile_upkeep(legs: list):
+    """Make the upkeep list agree with the outline it protects.
+
+    UPKEEP_PATH is written in the middle of authoring, and three passes run
+    AFTER it — the review, the dedupe and the per-stage completeness round —
+    every one of which can drop an objective or keep a differently-worded
+    twin of it. The file was never revisited, so it ended up naming lines
+    the outline no longer contains: 7 of 12 entries in the live sample.
+
+    An entry naming a line that is simply GONE is harmless but dishonest
+    (it protects nothing); an entry whose wording lost a dedupe to a twin
+    is the dangerous one, because the surviving line is then unprotected
+    and an upkeep objective the world may not offer — the species does not
+    appear, the balls run out — will STOP THE CHAIN. The dedupe records
+    which wording absorbed which in OUTLINE_NOTES, so the protection can
+    follow the objective to its surviving name instead of being lost.
+    """
+    try:
+        entries = [l for l in UPKEEP_PATH.read_text().splitlines()
+                   if l.strip()]
+    except OSError:
+        return
+    if not entries:
+        return
+    # dropped wording -> the wording that absorbed it
+    absorbed = {}
+    for kept, note in OUTLINE_NOTES:
+        m = re.search(r"also written as '(.+?)' when the outline", note)
+        if m:
+            absorbed[m.group(1)] = kept
+    live, out, moved, lost = set(legs), [], [], []
+    for e in entries:
+        if e in live:
+            out.append(e)
+            continue
+        # follow the chain of rewordings, bounded (a cycle would hang)
+        cur, seen_e = e, {e}
+        while cur in absorbed and cur not in live and len(seen_e) < 8:
+            cur = absorbed[cur]
+            if cur in seen_e:
+                break
+            seen_e.add(cur)
+        if cur in live:
+            out.append(cur)
+            moved.append((e, cur))
+        else:
+            lost.append(e)
+    out = list(dict.fromkeys(out))
+    try:
+        UPKEEP_PATH.write_text("\n".join(out) + ("\n" if out else ""))
+    except OSError:
+        return
+    for was, now in moved:
+        print(f"[upkeep] protection follows {was!r} -> {now!r}")
+    for e in lost:
+        print(f"[upkeep] {e!r} is no longer in the outline — dropped")
+    print(f"[upkeep] {len(out)} of {len(entries)} entries still name a "
+          f"live objective")
 
 
 OUTLINE_MERGE_SYS = """You wrote several drafts of a Pokemon Red
