@@ -96,6 +96,10 @@ def move_of(macro) -> str | None:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("logs", nargs="*", default=None)
+    ap.add_argument("--new", action="store_true",
+                    help="only decisions taken AFTER the map-edges line "
+                         "shipped — the line is its own marker, so the two "
+                         "eras can be told apart without a clock")
     ap.add_argument("--misses", action="store_true",
                     help="print the ungrounded proposals in full")
     args = ap.parse_args()
@@ -124,6 +128,12 @@ def main():
             mem = ctx.get("memory") or ""
             move = move_of(d.get("macro"))
             ctx = None
+            # THE FIX IS ITS OWN TIMESTAMP. The journal carries no clock, so
+            # "before and after the map-edges line" cannot be asked of it —
+            # except that a context rendered after the fix CONTAINS that
+            # line. Filter on the text itself.
+            if args.new and "THIS MAP HAS" not in mem:
+                continue
             if move is None:
                 verdict["no-move"] += 1
                 continue

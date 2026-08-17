@@ -4063,7 +4063,33 @@ class Executor:
                         + loot_line)
             return (warned + route_line + searched_line + shut_line
                     + hint_line + loot_line)
-        out = warned + "\nEXITS FROM HERE — "
+        # WHICH DIRECTIONS THIS MAP EVEN HAS. A seam that does not exist
+        # appears in NEITHER list — not untried, not taken — so from the
+        # text there is no way to tell "east is already walked" from "this
+        # map has no east side". Measured over 1,752 recorded decisions
+        # (planner/decisions.py): 128 proposed a compass direction the room
+        # does not have, and they are one shape — MT_MOON_1F "east" because
+        # the printed map puts Cerulean east, while the exits block offered
+        # south. That is the model reasoning correctly from the map and
+        # colliding with the room's topology, with nothing reconciling them.
+        # The room's own seams are on screen: you can see where a road
+        # leaves. Say which sides exist and the collision cannot happen.
+        _sides = sorted((m.get("connections") or {}).keys())
+        _edge_line = ""
+        if _sides:
+            _pretty = (_sides[0] if len(_sides) == 1
+                       else " and ".join([", ".join(_sides[:-1]),
+                                          _sides[-1]]))
+            _edge_line = (f"\nTHIS MAP HAS AN EDGE ON ITS {_pretty} "
+                          f"side{'' if len(_sides) == 1 else 's'} and "
+                          f"nowhere else — crossing any other way is not "
+                          f"something this map can do, however the printed "
+                          f"map is laid out.")
+        else:
+            _edge_line = ("\nTHIS MAP HAS NO EDGES AT ALL — it is indoors. "
+                          "The only ways out are its doors; there is no "
+                          "direction to cross.")
+        out = warned + _edge_line + "\nEXITS FROM HERE — "
         out += ("UNTRIED (prefer these, they are the only way to find "
                 f"anything new): {', '.join(untried)}. " if untried
                 else "none untried. ")
