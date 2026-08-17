@@ -456,14 +456,32 @@ The two removals are the ones to watch: `_plan_done` is gone (it was never
 read) and the atlas is now truncated near-first past 4,000 chars. Neither
 changes a decision the run makes today.
 
-### One thing the audit did not raise
+### One thing the audit did not raise — found here, DONE
 
-`exploration_text`'s untried-exit list prints the DESTINATION of reachable
-doors the run has never walked through — `(12,9)->DIGLETTS_CAVE_ROUTE_2` —
-out of `obs.map.warps`, the same warp table item 6 removed from the
-unopened-doors ledger. Standing beside a door does not tell a player where
-it leads. This is a bigger surface than item 6 was and the model routes off
-it, so it is a decision rather than a patch. Not touched.
+- [x] **CLAIM · OVER — unwalked doors named their destination in three more
+  places.** `exploration_text`'s untried-exit list, `_untried_exits` (which
+  feeds the refusal and free-round text), and `_atlas_text` — in every
+  escalation prompt — all printed `obs.map.warps[].dest` for doors the run
+  had never opened, out of the same warp table item 6 removed from the
+  unopened-doors ledger. A wider surface than item 6, since the model routes
+  off these.
+  **User's call, 2026-08-17: `(4,11)->UNKNOWN` until entered.** Once walked
+  it shows the region the run actually came out in, which is better than the
+  ROM's answer — a region rather than a map, and earned. MAP EDGES keep
+  their destinations: which roads touch is drawn on the Town Map. The atlas
+  stops STORING the observed destination rather than hiding it at render
+  time, so the ledger carries no warp-table knowledge at all.
+  One consequence worth stating: an unopened door used to be ranked by
+  whether its secret destination named a map already visited — the same leak
+  wearing a sort key. Unknown now means unknown, which sorts it with the
+  frontier, where a door nobody has opened belongs.
+
+- [x] **STRUCT — a second test: `tests/replay_smoke.py`.** The contract test
+  proves the SHAPE of an observation; this proves the executor still PLAYS —
+  bootstrap, settle, a macro replayed step by step, a predicate satisfied,
+  the ledger written — and runs the two predicate shapes that used to end
+  the process, checking they are refused AND named. Between them they cover
+  the paths a day of edits keeps touching. Both pass live.
 
 ---
 
