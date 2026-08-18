@@ -4982,7 +4982,15 @@ Reply with ONLY a JSON array of ops, e.g.
                 # test (indices 0/4/5) so taking chip damage is still not
                 # mistaken for progress.
                 sum(m.get("hp") or 0
-                    for m in (obs or {}).get("party") or []))
+                    for m in (obs or {}).get("party") or []),
+                # WHICH SCREEN, because "ui" is every screen at once.
+                # menu(index=2) opened the item PC instead of the box PC
+                # and the snapshot could not tell: both are mode "ui", so
+                # a real navigation reported "ran but had NO visible
+                # effect (nothing changed)" and the round looked wasted.
+                # Trailing, so the circling test (indices 0/4/5) is
+                # untouched.
+                ((obs or {}).get("ui") or {}).get("screenId"))
 
     def _run_traced(self, sg, macro, ignore_done=False):
         """Run a proposed macro step-by-step, returning (done, trace, clean).

@@ -238,6 +238,21 @@ def main():
             print(f"          screen now {(o.get('ui') or {}).get('screenId')}")
             fails.append("mash guard")
 
+        # AND THERE MUST BE A WAY OUT. Without one this guard is a trap:
+        # menu(index=2) opens the item PC, and from inside it every
+        # menu/tap/mash is refused, so the run cannot get back to row 1 to
+        # pick the box menu it wanted. It was choosing correctly and had
+        # no way to act on it. B closes a screen and cannot spend
+        # anything, so B is always allowed.
+        r = (b.send("tap", btn="b") or {}).get("result") or {}
+        o = b.obs() or {}
+        ok = r.get("ok") and (o.get("ui") or {}).get("screenId") != "BoxMenu"
+        print(f"  {'ok  ' if ok else 'FAIL'}  B steps back out of a guarded "
+              f"screen (now {(o.get('ui') or {}).get('screenId')})")
+        if not ok:
+            print(f"          {r.get('detail')}")
+            fails.append("no escape from the guard")
+
         # ...and the ops that MEAN to drive it still can, which is the
         # half a guard like this usually breaks. The release above emptied
         # the box, so put something back first — otherwise this would pass

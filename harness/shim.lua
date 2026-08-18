@@ -1351,14 +1351,21 @@ end
 -- being lost. The PC's own top-level list is deliberately NOT guarded, so
 -- navigating it — PROF.OAK's dex rating, SEE YA — still works.
 local ui_transaction_up
-local function hands_off(G)
+local function hands_off(G, c)
+  -- B IS ALWAYS ALLOWED. It closes a screen and cannot spend anything, and
+  -- without it this guard is a trap: menu(index=2) opened the item PC, and
+  -- from inside it every menu/tap/mash was refused, so the run could not
+  -- get back to row 1 to pick the box menu it actually wanted. It was
+  -- doing the right thing and had no way to act on it.
+  if c and c.btn == "b" then return nil end
   local kind = ui_transaction_up and ui_transaction_up(G)
   if kind == "shop" then
     return "a shop COUNTER is open. Pressing keys here buys and sells by "
       .. "accident — a run once bought 15 POKE_BALLs this way and spent "
       .. "3000 without meaning to. Trade with {\"op\":\"buy\","
       .. "\"item\":...,\"count\":N} or {\"op\":\"sell\",...}, which "
-      .. "say what and how many. The counter is left OPEN for them."
+      .. "say what and how many. The counter is left OPEN for them; "
+      .. "{\"op\":\"tap\",\"btn\":\"b\"} steps back out of it."
   elseif kind == "pc" then
     return "PC STORAGE is open. Pressing keys here moves items and "
       .. "POKEMON by accident, and a released Pokemon never comes back. "
@@ -1366,13 +1373,14 @@ local function hands_off(G)
       .. "or {\"op\":\"pc_deposit\",\"slot\":N} / "
       .. "{\"op\":\"pc_withdraw\",\"index\":N} / "
       .. "{\"op\":\"pc_release\",\"index\":N,\"species\":...}. "
-      .. "The screen is left OPEN for them; nothing was moved."
+      .. "The screen is left OPEN for them; nothing was moved. "
+      .. "{\"op\":\"tap\",\"btn\":\"b\"} steps back out of it."
   end
   return nil
 end
 
 function OPS.tap(G, c)
-  local no = hands_off(G)
+  local no = hands_off(G, c)
   if no then return false, no end
   U.tap(G, c.btn or "a")
   return true
