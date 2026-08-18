@@ -8099,11 +8099,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     f"many rounds in a row have changed nothing you carry, "
                     f"know or are, on ground already walked for this step. "
                     f"At {STALE_CUTOFF} this step is ended and the plan "
-                    f"rewritten. Everything still untried is in the ledger "
-                    f"above; {{\"op\":\"explore\"}} takes the next one. If "
-                    f"this step's condition can no longer come true, or you "
-                    f"already hold what it was for, {{\"op\":\"skip\"}} "
-                    f"moves the plan on to its next step.")
+                    f"rewritten. THE RULE OF THE SEARCH: a thing that "
+                    f"changed nothing last time changes nothing this time "
+                    f"unless YOU have changed since — something carried, "
+                    f"known or beaten that you were not before. If nothing "
+                    f"about you has changed, the same door, person or "
+                    f"fight again is the same result again; only NEW "
+                    f"ground can produce something new. Everything still "
+                    f"untried is in the ledger above and in WAYS THAT "
+                    f"TURNED YOU BACK / places with ways never taken; "
+                    f"{{\"op\":\"explore\"}} takes the nearest untried one "
+                    f"for you, and {{\"op\":\"go\"}} walks you to a place you "
+                    f"know. If this step's condition can no longer come "
+                    f"true, or you already hold what it was for, "
+                    f"{{\"op\":\"skip\"}} moves the plan on to its next step.")
             if self._stale_rounds >= STALE_CUTOFF and spent < rounds:
                 self.log("stale_cutoff", subgoal=sg["id"], round=rnd,
                          stale=self._stale_rounds, at=_here_now)
