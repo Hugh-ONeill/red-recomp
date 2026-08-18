@@ -1789,6 +1789,11 @@ class Executor:
                 for r, v in (data.get("shut_doors") or {}).items()}
             self.hints = data.get("hints") or {}
             self.blockers = data.get("blockers") or {}
+            # the FIGHT probe against the tower's ghost is once per RUN, not
+            # per attempt: its answer is already written on the blocker
+            self._ghost_probed = any(
+                "you pressed FIGHT" in (b.get("what") or "")
+                for b in self.blockers.values() if isinstance(b, dict))
             # WHEN each line was heard: the count of event flags fired at
             # the time. A sentence re-served without its date reads as a
             # standing instruction — "Say hi to PROF.OAK for me!" was said
