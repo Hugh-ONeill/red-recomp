@@ -1473,6 +1473,15 @@ def journal_text(path: Path, limit: int = 60) -> str:
         elif k == "subgoal_skipped":
             events.append(f"  SKIPPED {r.get('subgoal')} — the model "
                           f"declared it moot: \"{(r.get('reason') or '')[:120]}\"")
+        elif k == "skip_last_step":
+            # the model's own verdict on the OBJECTIVE: it asked to skip the
+            # plan's final step, i.e. it holds the objective is already
+            # fulfilled or its condition is wrong. Said once per verdict.
+            line = (f"  MOOT?   the model asked to SKIP the plan's FINAL step "
+                    f"{r.get('subgoal')} — its words: "
+                    f"\"{(r.get('reason') or '')[:140]}\"")
+            if line not in events:
+                events.append(line)
         elif k == "blackout":
             race = ""
             if dealt and taken:

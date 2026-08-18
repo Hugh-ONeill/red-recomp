@@ -6284,14 +6284,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 idx = next((i for i, s2 in enumerate(subs)
                             if s2.get("id") == sg.get("id")), None)
                 if idx is not None and idx == len(subs) - 1:
-                    self.log("skip_refused", subgoal=sg["id"], round=rnd,
-                             why="last step of the plan")
-                    feedback = ("skip is not allowed on the plan's LAST "
-                                "step — that step is the objective itself. "
-                                "Finish it, or let the plan fail so it can "
-                                "be rewritten from what happened.")
-                    spent += 1
-                    continue
+                    # A SKIP AIMED AT THE FINAL STEP IS A VERDICT ON THE
+                    # LEG (user, 2026-08-18): the model is saying the
+                    # objective is already fulfilled or its condition is
+                    # wrong. The step is not skipped — that is the ladder's
+                    # call — but the verdict is recorded with its reason
+                    # and no more rounds are spent on the step: the attempt
+                    # ends and the rewrite / wording rung reads "the model
+                    # asked to skip the final step" in the journal digest.
+                    self.log("skip_last_step", subgoal=sg["id"], round=rnd,
+                             reason=self._plan_said)
+                    print(f"   (the model asked to skip the plan's final "
+                          f"step {sg['id']}: {(self._plan_said or '')[:120]} "
+                          f"— recorded as its verdict; ending the attempt)")
+                    return False, sg.get("macro", [])
                 self.log("subgoal_skipped", subgoal=sg["id"], round=rnd,
                          reason=self._plan_said)
                 print(f"   (the model skipped {sg['id']}: "
