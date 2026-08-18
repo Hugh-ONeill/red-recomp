@@ -857,6 +857,23 @@ def _check_pred_shapes(dw: dict, tag: str, sid, probs: list):
             probs.append(
                 f"{tag} ({sid}) screen {v!r} is not a screen this game has "
                 f"— the ones that exist are " + ", ".join(UI_SCREENS))
+        elif k == "screen" and v in ("BagMenu", "MoveLearnMenu", "PartyMenu",
+                                     "StartMenu", "OptionsMenu",
+                                     "TrainerCard", "PokedexMenu",
+                                     "DexEntryMenu", "TownMap"):
+            # A MENU NO OP LEAVES OPEN IS NOT A STEP. Run 13's CUT leg was
+            # written as open_bag {screen:BagMenu} → select_hm_cut
+            # {screen:MoveLearnMenu} → teach; no op opens the bag as a
+            # resting state (use_item works the bag itself and closes it),
+            # so the run pressed menu at random rooms for ten rounds looking
+            # for "the trigger". The screens an op does leave open are the
+            # PC's (BoxMenu, PlayerPC) and a shop's; the rest are the
+            # inside of a single op.
+            probs.append(
+                f"{tag} ({sid}) screen {v!r} is the inside of one op, not a "
+                f"step: no op leaves it open. Teaching a machine is ONE op "
+                f"— use_item item=HM_CUT slot=N (forget=MOVE if it knows "
+                f"four); condition on knows_move, not on a menu.")
         elif k == "mode" and v == "dialog":
             # A REAL MODE THAT IS NEVER TRUE WHEN IT IS TESTED. done_when is
             # evaluated against a SETTLED observation, and settle()'s whole
