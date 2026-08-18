@@ -91,10 +91,29 @@ def main():
             sys.exit("this test needs at least 2 party members to be safe "
                      "— the PC refuses your last Pokemon")
 
-        # A PC IS IN EVERY POKEMON CENTER and the op walks to it itself, so
-        # the run has to be standing in one. Rather than route there, ask
-        # the op and let it say so: "there is no PC on this map" is a
-        # legitimate pass for a test run from an outdoor save.
+        # A PC IS IN EVERY POKEMON CENTER and the ops walk to it
+        # themselves, so the run has to be standing in one. The save is
+        # wherever the campaign left it, so step through a door that leads
+        # to one if we are not already inside.
+        # `heal` routes to a Center and walks in — a door's dest reads
+        # UNKNOWN until it has been walked, so matching warps on their
+        # destination picks whatever door happens to be first (it landed
+        # in VIRIDIAN_NICKNAME_HOUSE). Use the op that exists for this.
+        here = ((b.obs() or {}).get("map") or {}).get("id") or ""
+        for _ in range(3):
+            if "POKECENTER" in here:
+                break
+            r = (b.send("heal") or {}).get("result") or {}
+            here = ((b.obs() or {}).get("map") or {}).get("id") or ""
+            if "POKECENTER" not in here:
+                # back outside and try again from the street
+                for w in (((b.obs() or {}).get("map") or {}).get("warps")
+                          or []):
+                    b.send("use_warp", x=w.get("x"), y=w.get("y"))
+                    break
+                here = ((b.obs() or {}).get("map") or {}).get("id") or ""
+        print(f"  standing in {here}")
+
         r = (b.send("pc_deposit", slot=n0) or {}).get("result") or {}
         det = str(r.get("detail") or "")
         if not r.get("ok") and "no PC on this map" in det:
@@ -167,15 +186,54 @@ def main():
         r = (b.send("interact", name="PC") or {}).get("result") or {}
         det = str(r.get("detail") or "")
         o = b.obs() or {}
-        ok = ("PC STORAGE is open" in det
-              and o.get("mode") == "overworld"
+        ok = ("the PC is on" in det
               and len(o.get("party") or []) == n0 - 1)
-        print(f"  {'ok  ' if ok else 'FAIL'}  a bare interact on the PC is "
-              f"handed back, not pressed into")
+        print(f"  {'ok  ' if ok else 'FAIL'}  a bare interact opens the PC "
+              f"and stops at its menu instead of mashing through it")
         if not ok:
-            print(f"          {det[:150]}")
+            print(f"          {det[:170]}")
             print(f"          mode {o.get('mode')} party {party_of(o)}")
             fails.append("interact guard")
+
+        # THE REGRESSION THIS FILE EXISTS TO CATCH NOW. The first version
+        # of the guard called ui_back_out, so the screen was shut before
+        # the observation — which made {"screen":"BoxMenu"} impossible to
+        # satisfy, the exact predicate added to make "access the PC"
+        # sayable. A subgoal cannot be conditioned on a screen the harness
+        # closes on its way out.
+        ok = (o.get("ui") or {}).get("screenId") is not None \
+            or o.get("mode") == "ui"
+        print(f"  {'ok  ' if ok else 'FAIL'}  ...and the screen is still "
+              f"OPEN when the observation is taken "
+              f"(mode={o.get('mode')}, screen="
+              f"{(o.get('ui') or {}).get('screenId')})")
+        if not ok:
+            fails.append("screen closed before obs")
+
+        # and the box menu itself must be reachable from there, because
+        # that is what the subgoal is conditioned on
+        r = (b.send("menu", index=1) or {}).get("result") or {}
+        o = b.obs() or {}
+        sid = (o.get("ui") or {}).get("screenId")
+        ok = sid == "BoxMenu"
+        print(f"  {'ok  ' if ok else 'FAIL'}  menu on the PC's own list "
+              f"reaches BoxMenu (screen={sid})")
+        if not ok:
+            print(f"          {r.get('detail')}")
+            fails.append("BoxMenu unreachable")
+
+        # ...and once THERE, a blind press is refused, without shutting it
+        r = (b.send("mash_a", times=3) or {}).get("result") or {}
+        o = b.obs() or {}
+        ok = (not r.get("ok")) and "PC STORAGE is open" in str(r.get("detail")
+                                                              or "") \
+            and (o.get("ui") or {}).get("screenId") == "BoxMenu"
+        print(f"  {'ok  ' if ok else 'FAIL'}  mashing inside BoxMenu is "
+              f"refused and the screen survives the refusal")
+        if not ok:
+            print(f"          {str(r.get('detail'))[:150]}")
+            print(f"          screen now {(o.get('ui') or {}).get('screenId')}")
+            fails.append("mash guard")
 
         # ...and the ops that MEAN to drive it still can, which is the
         # half a guard like this usually breaks. The release above emptied

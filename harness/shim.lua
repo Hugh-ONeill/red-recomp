@@ -1358,7 +1358,7 @@ local function hands_off(G)
       .. "accident — a run once bought 15 POKE_BALLs this way and spent "
       .. "3000 without meaning to. Trade with {\"op\":\"buy\","
       .. "\"item\":...,\"count\":N} or {\"op\":\"sell\",...}, which "
-      .. "say what and how many. Backed out; nothing was bought."
+      .. "say what and how many. The counter is left OPEN for them."
   elseif kind == "pc" then
     return "PC STORAGE is open. Pressing keys here moves items and "
       .. "POKEMON by accident, and a released Pokemon never comes back. "
@@ -1366,21 +1366,21 @@ local function hands_off(G)
       .. "or {\"op\":\"pc_deposit\",\"slot\":N} / "
       .. "{\"op\":\"pc_withdraw\",\"index\":N} / "
       .. "{\"op\":\"pc_release\",\"index\":N,\"species\":...}. "
-      .. "Backed out; nothing was moved."
+      .. "The screen is left OPEN for them; nothing was moved."
   end
   return nil
 end
 
 function OPS.tap(G, c)
   local no = hands_off(G)
-  if no then ui_back_out(G) return false, no end
+  if no then return false, no end
   U.tap(G, c.btn or "a")
   return true
 end
 
 function OPS.mash_a(G, c)
   local no = hands_off(G)
-  if no then ui_back_out(G) return false, no end
+  if no then return false, no end
   for _ = 1, (c.times or 10) do U.tap(G, "a") U.wait(2) end
   return true
 end
@@ -3574,7 +3574,7 @@ end
 -- Moves the cursor to c.index, then A (or just positions with c.press=false).
 function OPS.menu(G, c)
   local no = hands_off(G)
-  if no then ui_back_out(G) return false, no end
+  if no then return false, no end
   local top = G.stack:top()
   if not (top and type(top.index) == "number") then
     return false, "no list menu on top"
@@ -3900,11 +3900,34 @@ function OPS.interact(G, c)
       -- told which ops work here and left outside it.
       do
         local _kind = ui_transaction_up(G)
-        if _kind then
+        -- The PC's own top-level list is not a transaction screen — it
+        -- only navigates — but a bare interact still must not A-mash a
+        -- choice out of it. Mashing picked "SOMEONE'S PC" because that is
+        -- where the cursor sat, dived into WITHDRAW, met an empty box,
+        -- and backed all the way out: 40-odd rounds of
+        -- `it said: "What? There are no POKéMON here!"` and the screen
+        -- never once still open when the observation was taken.
+        local _pc = (not _kind) and ui_row_labelled(G, "'S PC") and true
+        if _kind or _pc then
           if c.stop_at_menu then return true end
-          local why = hands_off(G)
-          ui_back_out(G)
-          return true, (recent_text and (recent_text .. " ") or "") .. why
+          -- LEAVE IT OPEN. Closing it was the bug: a subgoal conditioned
+          -- on {"screen":"BoxMenu"} can never be satisfied if the harness
+          -- shuts the screen before the observation is taken, and that is
+          -- the very predicate added to make "access the PC" sayable.
+          -- need_overworld backs out for whatever comes next, so nothing
+          -- is stranded.
+          if _pc then
+            local labels = {}
+            for _, r in ipairs(ui_rows(G) or {}) do
+              labels[#labels + 1] = tostring(r.label or r.value or "?")
+            end
+            return true, ("the PC is on. Its menu offers: %s. Choose one "
+              .. "with {\"op\":\"menu\",\"index\":N} — the storage "
+              .. "screens behind it are driven by store_item / "
+              .. "retrieve_item / pc_deposit / pc_withdraw / pc_release, "
+              .. "not by pressing keys"):format(table.concat(labels, ", "))
+          end
+          return true, hands_off(G)
         end
       end
       -- WHICH POKEMON IS NOT THE HARNESS'S CHOICE. A party picker inside a
