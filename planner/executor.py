@@ -5896,7 +5896,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             before = self._snapshot(obs)
             traversal = op in ("cross", "walk_to", "use_warp", "grind")
             blackout = None
-            ghosted = False
+            ghosted = None
             for _ in range(12):
                 try:
                     obs = self.b.send(op, **step)
@@ -5934,8 +5934,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # "ok (moved, fled)" and the door it was walking to
                     # stayed plain "untried" — the one fact that says why
                     # the way is shut never reached the model.
+                    # ...but only the tower's RESTLESS SOUL stands "in the
+                    # way": without the Scope every wild on those floors is
+                    # drawn as GHOST too, and a Gastly met on the walk to
+                    # the stairs read as the stairs being blocked. The
+                    # scripted one is the battle that dodges every ball;
+                    # the flag is used for the wording alone.
                     if (obs.get("battle") or {}).get("ghost"):
-                        ghosted = True
+                        ghosted = ("fixed" if (obs.get("battle") or {})
+                                   .get("noCatch") else "wild")
                     if self._cur_target and pre_map and not is_wild:
                         self._battle_regions.add(
                             f"{self._cur_target}|{self._where(pre_obs)}")
@@ -6322,8 +6329,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if det:
                     chg.append(str(det))
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
-            if ghosted:
+            if ghosted == "fixed":
                 note += " — a GHOST appeared in the way, and you fled from it"
+            elif ghosted:
+                note += " — a wild GHOST appeared, and you fled from it"
             if blackout:
                 note += (f" — your party FAINTED mid-op (blackout): you "
                          f"respawned at {blackout}, party healed, position "

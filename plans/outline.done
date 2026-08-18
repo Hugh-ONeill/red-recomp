@@ -40,3 +40,6 @@ Obtain a MOON_STONE	the ability to evolve certain Pokemon
 Obtain HP_UP	the ability to increase a Pokemon's maximum HP
 Obtain TM_THUNDERBOLT	the ability to teach a Pokemon the move Thunderbolt
 Obtain the THUNDERBADGE	the ability to control Pokemon levels up to 50
+Obtain an ELIXER	the ability to fully restore a Pokemon's HP and PP
+Obtain a RARE_CANDY	the ability to raise a Pokemon's level by one
+Obtain TM_SWIFT	the ability to teach a Pokemon the move Swift
