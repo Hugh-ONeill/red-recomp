@@ -791,3 +791,109 @@ Not a to-do list — a list of things not to break, and worth lifting elsewhere.
   window rather than a threshold, so it never cries wolf.
 - **Comments that carry the evidence and correct the record**, including one that
   retracts an invented justification.
+
+---
+
+## Tier 5 — op coverage for the WHOLE game (added 2026-08-18)
+
+Source: a mechanics-by-mechanics read of `harness/shim.lua` against the
+engine, done while the exploration redesign was measured
+(`EXPLORE_DESIGN.md`, `planner/repeats.py`). `VERIFIED` = reproduced or
+read out and confirmed by me; `REPORTED` = the audit's reading of the code
+with file:line, not independently executed. Ordered by what stops the game
+being finished, then by what lies to the model.
+
+- [x] **SIGNS · High · VERIFIED — `interact` by name never found a sign.**
+  observe() lists every `md.signs` entry in `obs.map.objects` (kind
+  `sign`); `OPS.interact` searched npcs and fixtures only. 1,726 failures in
+  the journals, no success ever; a failed press retracts the touch, so the
+  sign was re-offered every round (38% of prompts) and then refused by the
+  failed-3x guard. **DONE** — lookup added, verified live (three Viridian
+  signs and the bedroom TV read, `text_seq` bumps).
+- [x] **MENUS · High · VERIFIED — `interact` A-mashed any list menu it did
+  not recognise.** The settle loop names shop/PC/FLOOR/PartyMenu and taps A
+  on everything else; the Celadon roof VENDING MACHINE is a sign whose
+  script pushes a persistent ListMenu (`data/scripts/story4.lua`
+  vendingMachine), so one press bought FRESH WATER until the money ran out
+  — and the room sweep presses every untouched sign. Latent before the
+  sign fix; live after it. **DONE** — any other list menu is left OPEN,
+  rows numbered as on screen, choose with `menu index=N` (same rule as the
+  PC). Side effect: `elevator` no longer rides twice (it reads the FLOOR
+  menu that is now handed back).
+- [ ] **STRENGTH · High · REPORTED — no documented boulder push.** Boulders
+  are entities; `Collision.occupied` blocks them so BFS/`walk_to` never
+  routes through one; pushing needs two held presses into it, which only
+  the UNDOCUMENTED `walk`(dir,steps) op does. Victory Road's switches need
+  boulders → Elite Four unreachable as documented. Fix: document `walk`
+  or add `push_boulder`(name|dir) that verifies the object moved; publish
+  `strength_active` in obs (it resets on map load).
+- [ ] **LEVEL-UP MOVE · High · REPORTED — the learn/forget prompt is
+  answered by `pick_party`'s A-mash.** MoveLearnMenu sits on the stack so
+  `in_battle()` reads nil, `_run_policy` sees mode≠battle and sends
+  `pick_party` (E `_run_policy` ~640-651; S `OPS.pick_party` ~4176), whose
+  A presses = YES delete + row 1 = **the first move is always forgotten,
+  never chosen**; loops on an HM in slot 1. Same path fires on
+  EvolutionState. Fix: only send `pick_party` for a party picker; route the
+  learn prompt to a model choice like `use_item forget=`. Verify by
+  levelling a mon with four moves at 200X and reading the trace.
+- [ ] **SAFARI · High · REPORTED — the BALL/BAIT/ROCK/RUN menu is not
+  modelled.** No "safari" anywhere in the harness; obs reports kind
+  "wild"; `battle_move` = BALL then "no moveSelect" (up to 8 balls per
+  encounter via retries), `throw_ball` = ROCK. RUN works, so traversal is
+  fine; catching is impossible; steps/balls not in obs. Needed for HM03
+  SURF (mandatory: Route 23, Cinnabar) and the Gold Teeth.
+- [ ] **CATCH · Medium · VERIFIED (read) — catching is an intent inferred
+  from the subgoal, targeted by species/type only.** No `catch` op exists:
+  `choose_battle_policy` reads the predicate + goal words (catch/wild/grass
+  → catch; talk/receive → not), the macro is `grind`, and
+  `_catch_target` (E:2081) pulls `has_species` / `party_type` out of
+  `done_when` (through `any_of`) as the `want`; `battle_policy.choose`
+  (BP:466-520) flees non-matching wilds, throws at a match at any hp, and
+  runs rather than KO the target once the per-battle ball budget is spent;
+  no `want` (party_size / dex_owned) = catch anything, weaken to
+  `throw_at_hp_frac` first. Gaps: no LEVEL in the target (a "catch X at
+  L10+" or "something at least L10" objective cannot be written); the
+  Safari BALL/BAIT/ROCK menu is unmodelled (above); `throw_ball` says "not
+  caught" when the catch was boxed (below), which a full-party catch goal
+  would read as a miss and keep throwing.
+- [ ] **FLY · Medium · REPORTED — always lands in Pallet.** The picker
+  cursor starts on the first visited town and the post-select loop taps
+  A. Fix: `field_move FLY dest=MAP`, cycle until the selection matches.
+- [ ] **TERRAIN · Medium · REPORTED — no water in obs, no
+  surfing/onBike/strength state on `obs.player`.** The model cannot aim
+  SURF at a tile it cannot see. On-screen tier: publish water cells
+  adjacent to reachable land, and the mount state.
+- [ ] **`use_item` · Medium · REPORTED — targetless items (BICYCLE,
+  POKE_FLUTE, rods, REPEL, ESCAPE_ROPE) run a blind 20+50 A-mash** that
+  bleeds into the overworld or the opening battle turns. Break on
+  `top==ow`/battle; verify the effect (`save.onBike`, "played the flute").
+- [ ] **`field_move` returns ok=true on refusal** ("Nothing to CUT!", "No
+  SURFing here!"), so the dead-op ledger never learns. Parse `said` /
+  verify the tree gone or `p.surfing`.
+- [ ] **Reply text that lies (Low):** `battle_move` "battle ended" when any
+  screen sits on top; `walk_to` ok=true "interrupted"; `throw_ball` "not
+  caught" when the catch was boxed; `buy` picks the first CLERK (Celadon
+  2F/5F have two) and reports "not sold here" for the map.
+- [ ] **HINTS · Low · VERIFIED — a failed interact files the blocker's words
+  under the thing it was aiming at.** Live ledger, Viridian: `hints` holds
+  "TEXT_VIRIDIANCITY_TRAINER_TIPS1: You can't go through here! This is
+  private property!" and "walk_to: You can't go through here!" — the sleepy
+  old man's line, printed while pathfinding bumped him on the way to a sign,
+  attributed by `_op_spoke` (text_seq moved during the op) to the sign and
+  to walk_to. Same for "grind: CHARMANDER recovered by 12!". The words are
+  right, the speaker is wrong, and the WHAT PEOPLE HERE HAVE TOLD YOU block
+  then reads as if a sign said it. Fix: on a FAILED interact / walk_to,
+  attribute to "someone in the way" (or the nearest reachable person),
+  never to the named target; drop system lines (recovered by, learned) as
+  the noise filter already does for saves.
+- [ ] **Not surfaced (Low):** card-key doors (a tile press, absent from
+  obs), boulders listed as generic "npc". Cheap on-screen listings.
+- [ ] **Doc/behaviour drift:** the vocabulary says an unanswered question
+  is DECLINED; the shim now leaves it open (and ignores `answer` on a
+  first-seen question). `wait frames=`, `grind steps=`, `walk`, `tap` are
+  undocumented. `field_move` x,y is optional (only CUT/SURF need it).
+
+Things to test before trusting: the boulder push inside `walk()`'s
+60-frame window; Cycling Road drift vs `walk_to`; whether `ui_back_out`'s
+B-spam can cancel a still-flashing level-up evolution after `use_item
+RARE_CANDY`.
