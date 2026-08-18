@@ -181,11 +181,22 @@ def untouched_in(ex, region: str) -> list:
     return sorted(n for n in names if n not in got)
 
 
+def shelf_of(ex, region_or_map: str) -> list:
+    """What a mart was seen to sell, from the counter's own reply."""
+    mid = _map_of(region_or_map)
+    return list((getattr(ex, "_shelves", {}) or {}).get(mid) or [])
+
+
 def beyond(ex, dest: str, target: str) -> str:
     """What lies past a walked exit, in one clause: fully worked (nothing
     new that way), or how much is still untried there. THIS is the fact the
     ideal turns on — leave a worked area for ground that still has
     something, and do not go back into ground that has nothing."""
+    _shelf = shelf_of(ex, dest)
+    if _shelf:
+        # a shop's shelf is what lies beyond its door, and it is the fact
+        # a re-supposed purchase keeps missing
+        return f"{dest} sells: {', '.join(_shelf[:8])}"
     left = ex._frontier_left(dest)
     things = untouched_in(ex, dest)
     if left or things:
@@ -553,6 +564,9 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
              f"and nowhere else")
     if been:
         head += f"; you have been in this exact area {been}x"
+    _sh = shelf_of(ex, here)
+    if _sh:
+        head += f". This mart sells: {', '.join(_sh[:10])}"
     if fully_worked(cands):
         head += (". FULLY WORKED: nothing here is untried or unpressed — "
                  "staying finds nothing new; leaving for ground that still "

@@ -1005,6 +1005,7 @@ class Executor:
         self._offered: dict = {}     # map -> {species: wild encounters}
         self._dead_why: dict = {}    # op signature -> last failure detail
         self._cut_bushes: dict = {}  # map -> ["x,y", ...] bushes cut before
+        self._shelves: dict = {}     # mart map -> [items it sells], as seen
         self._last_overworld_map = None
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
@@ -1588,6 +1589,33 @@ class Executor:
             self.hints_at = data.get("hints_at") or {}
             self._offered = data.get("offered") or {}
             self._cut_bushes = data.get("cut_bushes") or {}
+            self._shelves = data.get("shelves") or {}
+            if not self._shelves:
+                # BACKFILL ONCE from this world's journal: the counter's
+                # "this mart sells: ..." replies are already recorded.
+                try:
+                    import re as _re3
+                    _pat3 = _re3.compile(r"this mart sells: ([A-Z0-9_, ]+)")
+                    for _l in (RUN / "executor_log.jsonl").read_text() \
+                            .splitlines():
+                        if "this mart sells" not in _l:
+                            continue
+                        try:
+                            _r3 = json.loads(_l)
+                        except ValueError:
+                            continue
+                        _at3 = str(_r3.get("at") or "").split("|")[0]
+                        for _t in (_r3.get("trace") or []):
+                            _m3 = _pat3.search(_t)
+                            if _m3 and _at3 and _at3.endswith("MART"):
+                                self._shelves[_at3] = [
+                                    x.strip() for x in _m3.group(1).split(",")
+                                    if x.strip()]
+                    if self._shelves:
+                        print(f"[memory] shelves backfilled for "
+                              f"{len(self._shelves)} mart(s) from the journal")
+                except OSError:
+                    pass
             # ...and drop any edge already filed that contradicts a seam
             # proof on the same region (the false ROUTE_4|4,4 east edge in
             # run 12), so the live world heals at the next start without a
@@ -1862,6 +1890,7 @@ class Executor:
                  "hints_at": getattr(self, "hints_at", {}),
                  "offered": getattr(self, "_offered", {}),
                  "cut_bushes": getattr(self, "_cut_bushes", {}),
+                 "shelves": getattr(self, "_shelves", {}),
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead,
                  "map_doors": {k: sorted(v)
@@ -6080,8 +6109,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # until you talk to him, and the run stood in front of him
                 # re-proposing the same warp. Talking is free and people
                 # move once their business is done.
+                import re as _re
                 if "cannot afford" in det and step.get("item"):
-                    import re as _re
                     m = _re.search(r"it costs (\d+)", det)
                     if m:
                         self._cant_afford[step["item"]] = int(m.group(1))
@@ -6200,6 +6229,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         "you beat pays prize money, and wild battles do not. "
                         "If neither is worth it, move on without the item — "
                         "this subgoal can stay unfinished.")
+                # THE SHELF IS A FACT ONCE SEEN. "not sold here — this mart
+                # sells: ..." was said eleven times about FRESH_WATER at
+                # the Vermilion mart and lived only in those rounds'
+                # traces; every new subgoal re-supposed the water was there.
+                # Kept per mart, persisted, printed on the mart's door.
+                _sh = _re.search(r"this mart sells: ([A-Z0-9_, ]+)", det) \
+                    if "this mart sells" in det else None
+                if _sh:
+                    _cm = ((obs or {}).get("map") or {}).get("id")
+                    if _cm:
+                        self._shelves[_cm] = [x.strip() for x in
+                                              _sh.group(1).split(",")
+                                              if x.strip()]
+                        self._save_memory()
                 if "is not sold here" in det and self._cur_target:
                     self.note_dead_end(self._cur_target, self._where(obs),
                                        shop_proof=True)
