@@ -361,6 +361,11 @@ run/outline_void; the objectives after it stand. Exit 5 from
 - It does not force. Everything on the ledger is allowed, including going
   back; `explore` runs only when asked. The two remaining refusals are the
   two nobody wants allowed (hallucinated keys, proven-impossible ops).
+  RULED OUT (user, 2026-08-18): the harness taking an `explore` step for
+  the model on a dead round, and any ladder rung that moves, chooses or
+  routes for it — "that's the leading the horse to water problem". The
+  ladder records the model's verdicts (skip, VOID, reword, later, missing);
+  it never supplies one.
 - It does not fix wrong facts. Leg 3 of the live chain is gated on
   `EVENT_GOT_POKEBALLS_FROM_OAK`, which the engine sets only after the
   Route 22 rival battle (`gen1recomp/data/scripts/oaks_lab.lua:100-101`) — the model's own
