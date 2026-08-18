@@ -7267,7 +7267,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     f"know or are, on ground already walked for this step. "
                     f"At {STALE_CUTOFF} this step is ended and the plan "
                     f"rewritten. Everything still untried is in the ledger "
-                    f"above; {{\"op\":\"explore\"}} takes the next one.")
+                    f"above; {{\"op\":\"explore\"}} takes the next one. If "
+                    f"this step's condition can no longer come true, or you "
+                    f"already hold what it was for, {{\"op\":\"skip\"}} "
+                    f"moves the plan on to its next step.")
             if self._stale_rounds >= STALE_CUTOFF and spent < rounds:
                 self.log("stale_cutoff", subgoal=sg["id"], round=rnd,
                          stale=self._stale_rounds, at=_here_now)
