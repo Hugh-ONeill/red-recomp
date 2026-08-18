@@ -2714,8 +2714,13 @@ class Executor:
     # already and that untried exits "are the only way to find anything
     # new", and walked west to open doors at the Pewter museum — nine
     # escalations deep on a condition that needed it to stand in grass.
+    # knows_move is NOT here: a move is known by a machine (one op), by a
+    # level (fighting), or by a different Pokemon (a catch, a trade, a
+    # gift — going somewhere). Under the training text a knows_move step
+    # was told "walking somewhere new is not progress here; fighting is",
+    # lost the whole ledger, and could not see the trade house it needed.
     PARTY_TARGETS = ("party_size:", "lead_level:", "party_min_level:",
-                     "slot_level:", "knows_move:", "party_type:",
+                     "slot_level:", "party_type:",
                      "has_species:", "dex_owned:")
 
     @classmethod
@@ -4569,6 +4574,27 @@ class Executor:
         if self._is_party_goal(target) and self._hunted():
             return self.training_text(obs, target)
         here = self._where(obs)
+        move_head = ""
+        if str(target or "").startswith("knows_move:"):
+            _mv = str(target).split(":", 1)[1]
+            _party = ", ".join(
+                f"{m.get('species')} L{m.get('level')} knows "
+                + "/".join(str(mv.get('id') if isinstance(mv, dict) else mv)
+                           for mv in (m.get('moves') or []))
+                for m in (obs.get("party") or []))
+            move_head = (
+                f"THE CONDITION IS A MOVE KNOWN ({_mv}). A Pokemon comes to "
+                f"know a move three ways, and each is a different kind of "
+                f"step: (1) a MACHINE — one op, {{\"op\":\"use_item\","
+                f"\"item\":\"HM_...\",\"slot\":N}} (forget=MOVE if it "
+                f"knows four); the game says on screen, the moment you try, "
+                f"whether that species can take it, and a refusal is final "
+                f"for that species; (2) a LEVEL, by fighting "
+                f"({{\"op\":\"grind\",\"intent\":\"train\"}}); (3) a "
+                f"DIFFERENT POKEMON that can — caught ({{\"op\":\"grind\","
+                f"\"intent\":\"catch\",\"want\":...}}), traded, or given, "
+                f"which is a place to go, and the ledger below is for that. "
+                f"Which way is yours to judge; the party now: {_party}.\n")
         # THE LEDGER (EXPLORE_DESIGN §3): one ranked block for everything
         # LOCAL — exits, things, people, each with its status and what
         # happened last time this subgoal did it. It replaces the exits
@@ -5373,10 +5399,14 @@ class Executor:
                     + "; ".join(t for _r, t in sorted(elsewhere)[:6])
                     + "." + near_hint)
             _rs_line = self._respawn_line(obs)
-            return (warned + "\n" + ledger_block + pp_line + lift_line
+            # (the blockers list rides here too — it had been appended
+            # only to the legacy renderer's return, i.e. never shown)
+            return (move_head + warned + "\n" + ledger_block + pp_line
+                    + lift_line
                     + ("\n" + _rs_line if _rs_line else "")
                     + floor_note + floor_away + route_line + _remote_worked
-                    + hint_line + remote_line + _elsewhere_str)
+                    + hint_line + remote_line + _elsewhere_str
+                    + self.blockers_text(obs))
         loot_line += remote_line
         if not (untried or tried):
             if elsewhere:
@@ -5448,7 +5478,7 @@ class Executor:
         out += (floor_note + floor_away + route_line + searched_line + shut_line
                 + hint_line + loot_line + _elsewhere_str
                 + self.blockers_text(obs))
-        return out
+        return move_head + out
 
     # Every map the run has ever entered, in one line of the escalation
     # prompt, growing all game — 39 maps was already 910 tokens at leg 8 of
