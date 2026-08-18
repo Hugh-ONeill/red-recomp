@@ -186,7 +186,10 @@ def main():
         r = (b.send("interact", name="PC") or {}).get("result") or {}
         det = str(r.get("detail") or "")
         o = b.obs() or {}
-        ok = ("the PC is on" in det
+        # the rows must be NUMBERED: menu addresses them by index, and an
+        # unnumbered list made the model guess (it asked for 2, the box
+        # menu it wanted was 1)
+        ok = ("the PC is on" in det and "1=" in det
               and len(o.get("party") or []) == n0 - 1)
         print(f"  {'ok  ' if ok else 'FAIL'}  a bare interact opens the PC "
               f"and stops at its menu instead of mashing through it")

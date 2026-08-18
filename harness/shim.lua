@@ -3917,9 +3917,17 @@ function OPS.interact(G, c)
           -- need_overworld backs out for whatever comes next, so nothing
           -- is stranded.
           if _pc then
+            -- NUMBER THEM. The op addresses rows by index and the
+            -- first version of this listed them unnumbered, so the model
+            -- had to guess which position was which: told "SOMEONE'S PC,
+            -- AAAAAAA's PC, PROF.OAK's PC, LOG OFF" it asked for index 2
+            -- while its subgoal wanted the box menu at 1. The order is on
+            -- the screen; withholding the numbering is the harness
+            -- knowing the mapping and not saying it.
             local labels = {}
-            for _, r in ipairs(ui_rows(G) or {}) do
-              labels[#labels + 1] = tostring(r.label or r.value or "?")
+            for i, r in ipairs(ui_rows(G) or {}) do
+              labels[#labels + 1] = ("%d=%s"):format(
+                i, tostring(r.label or r.value or "?"))
             end
             return true, ("the PC is on. Its menu offers: %s. Choose one "
               .. "with {\"op\":\"menu\",\"index\":N} — the storage "
