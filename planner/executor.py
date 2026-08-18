@@ -975,6 +975,8 @@ class Executor:
         self._touch_mark: dict = {}
         self.hints: dict = {}
         self.hints_at: dict = {}     # region -> {line: flags fired when heard}
+        self._offered: dict = {}     # map -> {species: wild encounters}
+        self._last_overworld_map = None
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
         # A RESUMED SAVE ARRIVES MID-SENTENCE. The loaded game still holds
@@ -1455,6 +1457,9 @@ class Executor:
 
     def _note(self, obs):
         self._mark_now = self._world_mark(obs)
+        if (obs or {}).get("mode") == "overworld" and \
+                ((obs or {}).get("map") or {}).get("id"):
+            self._last_overworld_map = obs["map"]["id"]
         self.note_frontier(obs)
         self.note_region_anchors(obs)
         self.note_sightings(obs)
@@ -1552,6 +1557,38 @@ class Executor:
             # Oak for hours after. Lines recorded before this existed have
             # no stamp and are shown undated.
             self.hints_at = data.get("hints_at") or {}
+            self._offered = data.get("offered") or {}
+            if not self._offered:
+                # BACKFILL ONCE from this world's journal: the tally is new
+                # and the encounters are not — Route 24's 87 are already
+                # written down as battle_start records. Map is the last
+                # escalate_feedback's `at` before each battle, which is
+                # how the analysis that found the gap read them.
+                try:
+                    _cur = None
+                    for _l in (RUN / "executor_log.jsonl").read_text() \
+                            .splitlines():
+                        if '"battle_start"' not in _l and \
+                                '"escalate_feedback"' not in _l:
+                            continue
+                        try:
+                            _r = json.loads(_l)
+                        except ValueError:
+                            continue
+                        if _r.get("kind") == "escalate_feedback":
+                            _cur = str(_r.get("at") or "").split("|")[0] or None
+                        elif _r.get("kind") == "battle_start" and _cur \
+                                and _r.get("policy") in ("catch", "traversal",
+                                                         "fight"):
+                            _sp = str(_r.get("foe") or "").split(" L")[0]
+                            if _sp and _sp != "None":
+                                bk = self._offered.setdefault(_cur, {})
+                                bk[_sp] = bk.get(_sp, 0) + 1
+                    if self._offered:
+                        print(f"[memory] encounter tally backfilled for "
+                              f"{len(self._offered)} map(s) from the journal")
+                except OSError:
+                    pass
             # SCRUB THE OLD ITEM NAMES (see _looks_like_item_name): the
             # sightings, touched and touch-mark ledgers, and the speaker of
             # a hint line. Dropped, not renamed — the position that would
@@ -1748,6 +1785,7 @@ class Executor:
                  "shut_doors": self.shut_doors,
                  "hints": self.hints,
                  "hints_at": getattr(self, "hints_at", {}),
+                 "offered": getattr(self, "_offered", {}),
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead,
                  "map_doors": {k: sorted(v)
@@ -2301,6 +2339,19 @@ class Executor:
                   "party_type", "has_species", "dex_owned"):
             if k in dw:
                 return f"{k}:{dw[k]}"
+        # AN any_of OF PARTY PREDICATES IS A PARTY GOAL. "the party holds a
+        # WATER or GRASS type" is written {"any_of":[{"party_type":"WATER"},
+        # {"party_type":"GRASS"}]}, and this fell through to "subgoal:id" —
+        # so the catch leg was rendered the exploration ledger instead of
+        # the training text, and never read the ball count or what the
+        # grass had offered. Keyed by the alternatives, joined.
+        alts = dw.get("any_of") or []
+        if alts and all(isinstance(a, dict) and len(a) == 1
+                        and next(iter(a)) in ("party_type", "has_species")
+                        for a in alts):
+            k0 = next(iter(alts[0]))
+            return f"{k0}:" + "|".join(str(next(iter(a.values())))
+                                        for a in alts)
         return "subgoal:" + sg.get("id", "?")
 
     # WHAT THIS SUBGOAL IS FOR is not always a PLACE. Everything the
@@ -4050,6 +4101,33 @@ class Executor:
                 "throw spends it too. A mart counter sells more "
                 "({\"op\":\"buy\"}), and running out mid-hunt means walking "
                 "back for them.")
+            # THE COUNT, WHEN IT IS ZERO. Four balls thrown at a Paras and
+            # lost, and the next round said "continue using grind" with a
+            # bag that held none: the policy then flees everything and the
+            # grind cannot end. A fact, beside the budget line.
+            _bag = (obs or {}).get("bag") or {}
+            _balls = sum(int(v or 0) for k, v in _bag.items()
+                         if str(k).endswith("BALL"))
+            if _balls == 0:
+                lines.append(
+                    "BALLS: NONE in the bag. Nothing can be caught without "
+                    "one — every wild battle here will end in a flee until "
+                    "you carry some.")
+            # WHAT THE GRASS HERE HAS OFFERED, counted from the battles you
+            # have had on this map. Evidence about the ground; whether the
+            # thing you want is in it is yours to read.
+            _mid = ((obs or {}).get("map") or {}).get("id")
+            _off = (getattr(self, "_offered", {}) or {}).get(_mid) or {}
+            if _off:
+                _tot = sum(_off.values())
+                _top = sorted(_off.items(), key=lambda kv: -kv[1])[:10]
+                lines.append(
+                    f"WHAT THE GRASS HERE HAS OFFERED, in {_tot} wild "
+                    f"encounter(s) on {_mid}: "
+                    + ", ".join(f"{sp} x{n}" for sp, n in _top)
+                    + ". A floor whose grass never offers the thing you "
+                      "want is a floor to leave, or ground of a different "
+                      "kind — water, for one — to reach.")
         else:
             lines.append(
                 "HOW TO DO IT: {\"op\":\"grind\"} walks into this floor's "
@@ -5109,6 +5187,16 @@ class Executor:
                  foe=f"{foe.get('species')} L{foe.get('level')}",
                  me=f"{me.get('species')} L{me.get('level')} "
                     f"{me.get('hp')}/{me.get('maxhp')}hp")
+        # WHAT THE GRASS OFFERED, COUNTED. A catch goal on Route 24 ground
+        # through 87 encounters (Oddish 22, Kakuna 18, Weedle 16, Pidgey
+        # 15, Abra 14 ...) hunting a WATER type the grass never holds, and
+        # nothing showed it the tally the journal already had. Kept per
+        # map, persisted, and said in the training text; what it means
+        # (this grass has no Water types; a rod is needed) is the model's.
+        if b0.get("kind") == "wild" and foe.get("species"):
+            _m = getattr(self, "_last_overworld_map", None) or "?"
+            book = self._offered.setdefault(_m, {})
+            book[str(foe["species"])] = book.get(str(foe["species"]), 0) + 1
         # LEAD WITH THE POKEMON THE PLAN IS TRAINING. A slot_level goal is
         # unsatisfiable otherwise: only the mon that FIGHTS earns, battles
         # always opened with slot 1, and nothing outside a faint prompt can
