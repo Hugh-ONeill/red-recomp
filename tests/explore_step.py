@@ -128,6 +128,43 @@ def main():
           ex.ran == [] and not ex.walked and any("nothing untried" in t for t in tr),
           str((ex.ran, ex.walked, tr)))
 
+    print("\ngo, the way you know:")
+    NEXT = f"{U.MAP}|9,9"
+    ex = bare(explored={U.HERE: {"north": {"to": NEXT, "n": 3}},
+                        NEXT: {"south": {"to": U.HERE, "n": 3}}},
+              frontier={U.HERE: ["north"], NEXT: ["south"]})
+    ex.visits = {U.HERE: 4, NEXT: 3}
+    o_here = obs(U.MAP, "0,0", conns=["north"])
+    o_next = obs(U.MAP, "9,9", conns=["south"])
+    ex.settle = lambda: o_next
+    done, tr, cl = ex._go_step(SG, o_here, {"op": "go", "to": NEXT})
+    check("walks the walked route to a named area",
+          ex.walked and ex.walked[0][0] == ("north", NEXT) and cl == [{"op": "go", "to": NEXT}],
+          str((ex.walked, cl)))
+    check("...and says where it got to", any("now at " + NEXT in t for t in tr), str(tr))
+    ex = bare(explored={U.HERE: {"north": {"to": NEXT, "n": 3}}},
+              frontier={U.HERE: ["north"]})
+    ex.visits = {U.HERE: 4, NEXT: 1}
+    ex.settle = lambda: o_next
+    done, tr, cl = ex._go_step(SG, o_here, {"op": "go", "to": U.MAP})
+    check("a bare map id picks the nearest walked area of that map",
+          ex.walked and ex.walked[0][0] == ("north", NEXT), str(ex.walked))
+    ex = bare(explored={}, frontier={U.HERE: ["north"]})
+    ex.visits = {U.HERE: 4}
+    ex.settle = lambda: o_here
+    done, tr, cl = ex._go_step(SG, o_here, {"op": "go", "to": "CELADON_CITY"})
+    check("an unwalked place is refused by name, nothing walked",
+          not ex.walked and any("not anywhere you have walked" in t for t in tr), str(tr))
+    ex = bare(explored={}, frontier={U.HERE: ["north"], NEXT: ["south"]})
+    ex.visits = {U.HERE: 4, NEXT: 1}
+    ex.settle = lambda: o_here
+    done, tr, cl = ex._go_step(SG, o_here, {"op": "go", "to": NEXT})
+    check("a walked place with no walked route says so, nothing walked",
+          not ex.walked and any("no walked way" in t for t in tr), str(tr))
+    done, tr, cl = ex._go_step(SG, o_here, {"op": "go", "to": U.HERE})
+    check("already there is said, nothing walked",
+          not ex.walked and any("already in" in t for t in tr), str(tr))
+
     print("\nthe reply parser:")
     ops, plan = E.Executor._parse_macro(
         'Sure. {"plan":"go north to Route 2, the gate is that way","ops":'

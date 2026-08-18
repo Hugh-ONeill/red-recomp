@@ -1171,6 +1171,65 @@ class Executor:
         last = note.split(": ", 1)[1] if ": " in note else note
         rec["last"] = last.strip()[:200]
 
+    def _go_step(self, sg, obs, step, ignore_done=False):
+        """Walk to an area this run has walked before, by walked edges only.
+
+        `to` is an area as the ledger names it (MAP|x,y) or a bare map id
+        (then the nearest walked area of that map). No destination is
+        guessed: if no chain of walked exits joins here to there, that is
+        the answer. Returns (done, trace_lines, clean_ops)."""
+        want = str(step.get("to") or step.get("area") or step.get("map")
+                   or "").strip()
+        here = self._where(obs)
+        if not want:
+            return False, ["go: say where — {\"op\":\"go\",\"to\":AREA} "
+                           "with an area you have walked, as the ledger "
+                           "names it"], []
+        known = set(self.visits or {}) | set(self.explored or {}) \
+            | set(self.frontier or {})
+        if want in known:
+            targets = [want]
+        else:
+            # a bare map id means some OTHER walked part of that map when
+            # you are already standing on it
+            targets = [r for r in known
+                       if r.split("|")[0] == want and r != here]
+            if not targets and here.split("|")[0] == want:
+                targets = [here]
+            if not targets:
+                near = sorted({r.split("|")[0] for r in known
+                               if want.split("|")[0][:5] in r})[:4]
+                return False, [f"go: {want} is not anywhere you have walked"
+                               + (f" — walked places with a name like it: "
+                                  f"{', '.join(near)}" if near else "")
+                               + "; only walked ground can be gone back "
+                                 "to this way"], []
+        if here in targets:
+            return False, [f"go: you are already in {here}"], []
+        best = None
+        for t in targets:
+            path = self._route(here, t)
+            if path and (best is None or len(path) < len(best[1])):
+                best = (t, path)
+        if not best:
+            return False, [f"go: no walked way from {here} to {want} is "
+                           f"known — you have never walked a connected "
+                           f"chain of exits between them (or a hop on it "
+                           f"has failed in this world state)"], []
+        region, path = best
+        self.log("go_step", subgoal=sg.get("id"), to=region, legs=len(path))
+        arrived = self._walk_route(sg, path)
+        cur = self.settle() or {}
+        at = arrived or self._where(cur) or "an unexpected stop"
+        tr = [f"go: walked {len(path)} leg(s) over walked ground toward "
+              f"{region} — now at {at}"]
+        if not ignore_done and pred_holds(sg.get("done_when"), cur):
+            return True, tr, [dict(step)]
+        if self._where(cur) != region:
+            tr.append("go: the walk did not arrive; author from here")
+            return False, tr, []
+        return False, tr, [dict(step)]
+
     def _explore_step(self, sg, obs, ignore_done=False):
         """One deterministic frontier expansion, because the model asked.
 
@@ -5575,6 +5634,12 @@ nothing about where anything leads. It reports what it did and found. It
 is the right move when the ledger says the area is fully worked and you
 have no better idea of your own; a map-changing op, so it must be the
 LAST op of your macro),
+{"op":"go","to":AREA} (walk back to a place you have already walked, by
+the exits you actually took to get there — AREA as the ledger names it,
+e.g. "POKEMON_TOWER_6F|10,2", or a bare map id like "LAVENDER_TOWN" for
+the nearest walked part of it. Walked ground only: it fails plainly if no
+chain of taken exits joins here to there. Saves a round per door on ground
+you know; a map-changing op, so LAST in your macro),
 
 HOW TO SEARCH when a step is not working: a thing that has already given
 its answer gives the same answer again; repeating it changes nothing. The
@@ -5809,6 +5874,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 clean.extend(_cl)
                 if _ok:
                     return True, trace, clean
+                continue
+            # {"op":"go","to":AREA} — THE WAY YOU KNOW, ON REQUEST. Same
+            # machinery explore uses to reach remote ground (walked edges
+            # only, _route + _walk_route), offered as an op so a place the
+            # run has been can be returned to in one round instead of one
+            # round per door: the tower was climbed floor by floor, each
+            # floor a full think, six times over.
+            if op == "go":
+                _ok, _tr, _cl = self._go_step(sg, obs, step, ignore_done)
+                trace.extend(_tr)
+                clean.extend(_cl)
+                if _ok:
+                    return True, trace, clean
+                obs = self.settle() or obs
                 continue
             sig = (self._cur_target, self._where(obs), op,
                    step.get("name") or step.get("dir")
@@ -6806,7 +6885,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # ONE LEG PER MACRO, enforced: ops after the first map-changing op
             # target a map the model has never seen — always hallucinated.
             cut = next((i for i, s in enumerate(macro)
-                        if s.get("op") in ("cross", "use_warp", "explore")),
+                        if s.get("op") in ("cross", "use_warp", "explore",
+                                           "go")),
                        None)
             stripped = 0
             if cut is not None:
