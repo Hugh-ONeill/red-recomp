@@ -64,6 +64,28 @@ KEY_RE = re.compile(r"\((\d+,\d+)\)|walk (north|south|east|west)\b"
                     r"|\((north|south|east|west)\)")
 
 
+# THE LEDGER FORMAT (2026-08-18, EXPLORE_DESIGN §3). Since the ledger
+# shipped the exits are numbered entries — " 3. door (3,7) -> X — taken 2x",
+# " 5. walk north -> UNKNOWN — never taken from here" — and the old
+# "EXITS FROM HERE — UNTRIED ...: / Already taken from here:" block is gone
+# from prompts rendered under it. Both shapes are read, so the eras compare.
+LEDGER_LINE = re.compile(r"^\s*\d+\.\s+(?:door \((\d+,\d+)\)|walk "
+                         r"(north|south|east|west))\b(.*)$", re.M)
+
+
+def ledger_exits(mem: str):
+    """(untried, taken) exit keys as the ledger block lists them."""
+    untried, taken = set(), set()
+    for m in LEDGER_LINE.finditer(mem or ""):
+        key = m.group(1) or m.group(2)
+        rest = m.group(3) or ""
+        if "never taken from here" in rest or "turned you back once" in rest:
+            untried.add(key)
+        else:
+            taken.add(key)
+    return untried, taken
+
+
 def keys_in(text: str) -> set:
     """Every exit key a chunk of prompt names — coordinates and directions
     alike, in the two shapes the text uses for each."""
@@ -150,6 +172,8 @@ def main():
             untried = keys_in(um.group(1)) if um else set()
             tm = TAKEN_RE.search(mem)
             taken = keys_in(tm.group(1)) if tm else set()
+            if not um and not tm and "WHERE YOU STAND:" in mem:
+                untried, taken = ledger_exits(mem)
             if not untried:
                 # NO NEW OPTION IS NOT NO OPTION. A mapped corridor
                 # legitimately has nothing untried, and the text says so and
