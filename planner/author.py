@@ -993,6 +993,29 @@ REVIEW_SYS = (
 )
 
 
+try:
+    _ITEM_IDS = {l.strip() for l in
+                 (Path(__file__).resolve().parent / "engine_items.txt")
+                 .read_text().splitlines() if l.strip()}
+except OSError:
+    _ITEM_IDS = set()
+
+
+def _looks_like_item_name(name: str) -> bool:
+    """A map object name that names an item's CONTENTS (ROUTE2_HP_UP,
+    MTMOON1F_TM_WATER_GUN, OAKSLAB_CHARMANDER_POKE_BALL). The shim emits
+    ITEM_x_y for those since 2026-08-18; names of this shape still sit in
+    ledgers and journals written before, and must not reach the author —
+    what is in a ball is not on the screen. Same rule as executor.py."""
+    n = str(name or "")
+    if n.startswith("ITEM_"):
+        return False
+    if n.endswith("_POKE_BALL"):
+        return True
+    parts = n.split("_")
+    return any("_".join(parts[i:]) in _ITEM_IDS for i in range(1, len(parts)))
+
+
 def observed_text(path: Path) -> str:
     """What earlier runs actually WALKED, as evidence for the audit.
 
@@ -1046,6 +1069,7 @@ def observed_text(path: Path) -> str:
     # author's; that they are unpressed is not a judgment.
     touched_all = d.get("touched") or {}
     for region, names in sorted((d.get("sightings") or {}).items()):
+        names = [n for n in (names or []) if not _looks_like_item_name(n)]
         if not names:
             continue
         pre = region.split("|")[0].replace("_", "")
@@ -1230,6 +1254,8 @@ def observed_text(path: Path) -> str:
                 low = said.lower()
                 if not said or any(w in low for w in _noise):
                     continue            # the harness narrating, not speech
+                if _looks_like_item_name(who):
+                    ln = f"an item: {said}"
                 k = said[:40]
                 if len(said) > len(best.get(k, "")):
                     best[k] = ln
@@ -1548,6 +1574,8 @@ def journal_text(path: Path, limit: int = 60) -> str:
                 "sentences under WHAT PEOPLE HAVE SAID often name it:\n")
         for (sg, tgt, reg, objs), n in sorted(
                 unreach.items(), key=lambda kv: -kv[1])[:8]:
+            objs = ["an item" if _looks_like_item_name(o) else o
+                    for o in objs]
             who = f", with {', '.join(objs)} right there" if objs else ""
             out += (f"  during {sg}: could not get {tgt} in {reg} — "
                     f"{n} attempts{who}\n")

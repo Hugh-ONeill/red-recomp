@@ -605,6 +605,16 @@ local function observe(G, seq, result)
       local kind = "npc"
       if name:find("POKE_BALL") or d.item then
         kind = "item"
+        -- WHAT IS IN THE BALL IS NOT ON THE SCREEN. The map data names an
+        -- item object by its contents (ROUTE2_HP_UP, OAKSLAB_CHARMANDER_
+        -- POKE_BALL) and that name reached every prompt, ledger and plan
+        -- since objects were first listed — the ROM telling the model what
+        -- is inside a ball it has only seen from the outside. A player sees
+        -- a Poke Ball on the ground at a spot; that is all the harness may
+        -- say. Named by position (items do not move); the real name still
+        -- resolves in interact so distilled macros keep replaying, but it
+        -- is never emitted (user, 2026-08-18: "only 'item at x,y'").
+        name = ("ITEM_%d_%d"):format(npc.cellX or 0, npc.cellY or 0)
       elseif d.trainerClass then
         kind = "trainer"
       elseif name:find("SIGN") or (d.text and not d.sprite) then
@@ -3779,8 +3789,16 @@ function OPS.interact(G, c)
   local tx, ty = c.x, c.y
   local want_facing
   if c.name and not tx then
+    -- ITEM_x_y is the harness's own name for an item lying at x,y (see
+    -- observe: contents are never emitted); pressing it is pressing that
+    -- tile. The map's own object names still resolve below, so a macro
+    -- distilled before the rename keeps replaying.
+    local ix, iy = tostring(c.name):match("^ITEM_(%d+)_(%d+)$")
+    if ix then tx, ty = tonumber(ix), tonumber(iy) end
     for _, npc in ipairs(ow.npcs or {}) do
-      if (npc.def or {}).name == c.name then tx, ty = npc.cellX, npc.cellY end
+      if not tx and (npc.def or {}).name == c.name then
+        tx, ty = npc.cellX, npc.cellY
+      end
     end
     if not tx then
       for _, f in ipairs(map_fixtures(G, ((ow.map or {}).id))) do

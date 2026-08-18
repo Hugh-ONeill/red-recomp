@@ -235,6 +235,30 @@ import brock_probe   # reuse the live model driver (chat/parse) for escalation
 
 # The model must never see executor instrumentation (event flags, the oracle
 # probe) — CLAIM_RULES: those are for the executor's control flow, not eyes.
+# WHAT AN ITEM OBJECT USED TO BE CALLED. Until 2026-08-18 the shim emitted
+# the map's own object names for items — ROUTE2_HP_UP, OAKSLAB_CHARMANDER_
+# POKE_BALL — which name the CONTENTS of a ball seen only from the outside.
+# The shim now emits ITEM_x_y; these recognise the old names still sitting
+# in persisted ledgers so they can be dropped on load (re-sighted under the
+# handle on the next visit) rather than re-served for the rest of the run.
+try:
+    _ITEM_IDS = {l.strip() for l in
+                 (Path(__file__).resolve().parent / "engine_items.txt")
+                 .read_text().splitlines() if l.strip()}
+except OSError:
+    _ITEM_IDS = set()
+
+
+def _looks_like_item_name(name: str) -> bool:
+    n = str(name or "")
+    if n.startswith("ITEM_"):
+        return False                       # already the handle
+    if n.endswith("_POKE_BALL"):
+        return True
+    parts = n.split("_")
+    return any("_".join(parts[i:]) in _ITEM_IDS for i in range(1, len(parts)))
+
+
 def model_view(obs: dict) -> dict:
     o = dict(obs or {})
     o.pop("flags", None)
@@ -1528,6 +1552,37 @@ class Executor:
             # Oak for hours after. Lines recorded before this existed have
             # no stamp and are shown undated.
             self.hints_at = data.get("hints_at") or {}
+            # SCRUB THE OLD ITEM NAMES (see _looks_like_item_name): the
+            # sightings, touched and touch-mark ledgers, and the speaker of
+            # a hint line. Dropped, not renamed — the position that would
+            # make the handle is not stored, and the next visit re-sights
+            # them as ITEM_x_y.
+            _dropped = 0
+            for _r, _names in list((self.sightings or {}).items()):
+                keep = [n for n in (_names or []) if not _looks_like_item_name(n)]
+                _dropped += len(_names or []) - len(keep)
+                self.sightings[_r] = keep
+            for _r, _names in list((self._tried_objs or {}).items()):
+                keep = {n for n in (_names or set()) if not _looks_like_item_name(n)}
+                _dropped += len(_names or ()) - len(keep)
+                self._tried_objs[_r] = keep
+            for _r, _marks in list((self._touch_mark or {}).items()):
+                for _n in [n for n in (_marks or {}) if _looks_like_item_name(n)]:
+                    _marks.pop(_n, None)
+                    _dropped += 1
+            for _r, _lines in list((self.hints or {}).items()):
+                fixed = []
+                for _l in (_lines or []):
+                    who, sep, rest = str(_l).partition(": ")
+                    if sep and _looks_like_item_name(who):
+                        _dropped += 1
+                        fixed.append(f"an item: {rest}")
+                    else:
+                        fixed.append(_l)
+                self.hints[_r] = fixed
+            if _dropped:
+                print(f"[memory] {_dropped} item name(s) scrubbed from the "
+                      f"ledgers — contents are not on the screen")
             self.map_doors = {k: set(v) for k, v
                               in (data.get("map_doors") or {}).items()}
             # Wipe counts persist: each campaign attempt is a fresh process
