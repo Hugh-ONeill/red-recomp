@@ -5077,6 +5077,44 @@ Reply with ONLY a JSON array of ops, e.g.
                 # untouched.
                 ((obs or {}).get("ui") or {}).get("screenId"))
 
+    # SAVE ON THE WAY OUT. Both save points sit at the END of an attempt —
+    # one for a plan that succeeded, one after the loop "to keep what it
+    # earned" when it failed — and there was no signal handling at all, so
+    # a SIGTERM partway through an attempt reached neither. Measured on run
+    # 11: seven attempts launched, three saves written, and the four
+    # missing ones are exactly the attempts that were stopped to land a
+    # fix. One of them was carrying the Pokedex and the delivered parcel,
+    # and the next attempt started before either.
+    #
+    # This matters well beyond somebody typing stop: the GPU dropped off
+    # the bus once today, and a crash, a power cut or an OOM does the same
+    # thing to a run meant to play unattended for hours.
+    #
+    # The handler only sets a flag. Driving the START menu from inside a
+    # signal handler would cut across whatever bridge exchange is in
+    # flight; the op loop checks between ops, where the bridge is idle.
+    def _install_stop_handler(self):
+        import signal
+
+        def _ask_stop(_sig, _frm):
+            self._stopping = True
+        for _sig in (signal.SIGTERM, signal.SIGINT):
+            try:
+                signal.signal(_sig, _ask_stop)
+            except (ValueError, OSError):
+                pass          # not the main thread; nothing to install
+
+    def _stop_if_asked(self):
+        """Between ops: save what this attempt earned, then go."""
+        if not getattr(self, "_stopping", False):
+            return
+        self._stopping = False        # never re-enter this
+        r = (self._send_safe("save_game") or {}).get("result") or {}
+        print(f"\n[stop] asked to stop mid-attempt — "
+              f"{r.get('detail') or 'save failed'}", flush=True)
+        self.log("stopped_mid_attempt", saved=bool(r.get("ok")))
+        sys.exit(0)
+
     def _run_traced(self, sg, macro, ignore_done=False):
         """Run a proposed macro step-by-step, returning (done, trace, clean).
         `trace` is plain-English per-op outcomes for feedback (incl. 'ran but
@@ -5086,6 +5124,7 @@ Reply with ONLY a JSON array of ops, e.g.
         done = sg.get("done_when")
         trace, clean = [], []
         for step in macro:
+            self._stop_if_asked()
             step = dict(step)
             when = step.pop("when", None)
             op = step.pop("op", None)
@@ -5980,6 +6019,14 @@ Reply with ONLY a JSON array of ops, e.g.
         pardon = False        # one free revisit after a blackout (recovery)
         visits: dict = {}     # round-end maps: re-entering one = circling
         while spent < rounds and rnd < rounds * 3:
+            # A ROUND BOUNDARY IS THE OTHER SAFE POINT. Checking only
+            # between ops was not enough: an escalation spends most of its
+            # wall clock inside a model call, a Python signal handler
+            # cannot run until that blocking call returns, and a stop
+            # issued mid-round waited past 25s and got SIGKILLed with
+            # nothing written. Here the bridge is idle and the last round's
+            # work is already in the world.
+            self._stop_if_asked()
             rnd += 1
             start = self.settle()
             # A PURCHASE YOU CANNOT AFFORD IS NOT A SEARCH PROBLEM. Once
@@ -7305,7 +7352,40 @@ Reply with ONLY a JSON array of ops, e.g.
         self.log("subgoal_failed", subgoal=sg["id"])
         return False
 
+    def _checkpoint(self, sg):
+        """Write the save the moment a subgoal is finished.
+
+        WHY NOT JUST AT THE END OF AN ATTEMPT. That is where both existing
+        saves are, and an attempt is long: many subgoals, each with up to a
+        dozen escalation rounds. Everything earned since the last one is at
+        risk from anything that ends the process early — and this run met
+        three such things in a day. The GPU dropped off the bus. A leg was
+        stopped to land a fix, nine times. Run 11 launched seven attempts
+        and wrote three saves, and one of the four it lost was carrying the
+        Pokedex and the delivered parcel, so the next attempt re-did an
+        errand it had already done.
+        A stop handler was the obvious answer and it is not enough on its
+        own: an escalation spends most of its wall clock inside a model
+        call, a Python signal handler cannot run until that returns, and a
+        stop issued mid-round waited 90s and still had to be SIGKILLed.
+        Bounding the loss to ONE SUBGOAL needs no signal to arrive on time.
+        Cheap for what it buys: a save is a couple of seconds against a
+        subgoal that takes minutes, and gen1 levels, items and flags only
+        ever go up, so persisting mid-leg cannot lose progress.
+        """
+        if not getattr(self, "save_each", False):
+            return
+        r = (self._send_safe("save_game") or {}).get("result") or {}
+        self.log("checkpoint", subgoal=sg.get("id"), ok=bool(r.get("ok")))
+
     def _attempt(self, sg) -> bool:
+        """Replay the macro; escalate if that fails. Saves on success."""
+        won = self._attempt_inner(sg)
+        if won:
+            self._checkpoint(sg)
+        return won
+
+    def _attempt_inner(self, sg) -> bool:
         """Replay the macro; escalate if that fails."""
         try:
             ok = self.run_subgoal(sg) if sg.get("macro") else False
@@ -7743,6 +7823,11 @@ def main():
                   can_escalate=args.escalate, model=args.model,
                   run_id=args.run_id)
     ex.save_each = args.save_after_each
+    # ...and from here on a stop saves what it earned (see
+    # _install_stop_handler). Installed AFTER the bridge is up, so the
+    # handler always has something to save through.
+    if args.save_after_each:
+        ex._install_stop_handler()
     ex.seed_regions()          # the bridge is up; re-teach known place-names
     ok = True
     for plan_path in args.plans:

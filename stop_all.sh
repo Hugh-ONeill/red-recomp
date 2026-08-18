@@ -59,6 +59,38 @@ strays() {      # NOT killed by default: reported, so a miss is still visible
     | grep -vE "^(${skip})$"
 }
 
+# ---- LET IT SAVE FIRST. Both of the executor's save points sit at the END
+# of an attempt, so a SIGTERM partway through one reached neither: run 11
+# launched seven attempts and wrote three saves, and the four missing ones
+# are exactly the attempts stopped to land a fix. One was carrying the
+# Pokedex and the delivered parcel and the next attempt started before
+# both. executor.py now saves between ops when asked to stop (see
+# _install_stop_handler), but only if it is still holding a live game and
+# nothing is about to start another attempt behind it.
+#
+# So the order is: silence the LOOPS, ask the EXECUTOR to stop and let it
+# write, and only then tear down the game. Signalling them all at once —
+# which is what the sweep below does — kills love out from under the save.
+loops=$(registered | awk '$2=="chain" || $2=="campaign" || $2=="run" {print $1}')
+if [ -n "$loops" ]; then
+  echo "quieting the loops so nothing starts another attempt: $(echo $loops)"
+  for p in $loops; do kill -TERM "$p" 2>/dev/null || true; done
+fi
+execs=$(registered | awk '$2=="executor"{print $1}')
+if [ -n "$execs" ]; then
+  echo "asking the executor to stop and save: $(echo $execs)"
+  for p in $execs; do kill -TERM "$p" 2>/dev/null || true; done
+  # 25s was not enough: most of an escalation's wall clock is inside a
+  # model call, and the handler cannot run until that returns. Wait out a
+  # slow generation rather than SIGKILLing a run mid-attempt.
+  for _ in $(seq 1 90); do
+    [ -z "$(registered | awk '$2=="executor"{print $1}')" ] && break
+    sleep 1
+  done
+  left=$(registered | awk '$2=="executor"{print $1}')
+  [ -n "$left" ] && echo "   (still running after 90s; the sweep will take it)"
+fi
+
 for sig in TERM TERM KILL; do
   list=$(registered)
   [ -z "$list" ] && break
