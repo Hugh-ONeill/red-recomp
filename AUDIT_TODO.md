@@ -820,6 +820,23 @@ being finished, then by what lies to the model.
   rows numbered as on screen, choose with `menu index=N` (same rule as the
   PC). Side effect: `elevator` no longer rides twice (it reads the FLOOR
   menu that is now handed back).
+- [ ] **GRAPH · High · VERIFIED (partly) — a false edge `ROUTE_4|4,4 --east--> CERULEAN_CITY|20,0`
+  was recorded at t+326.4 (run 12, leg 7 round 11) right after a
+  `route_walked ... to ROUTE_4|36,2` in the SAME round: the party stood on
+  the east half, `note_transition` filed the crossing under the west half's
+  region. Route 4 west has no walkable east seam, so the router now offers a
+  Route 3 → Route 4 → Cerulean "route" that skips the mountain and dies at
+  the seam. Also `'24,5' -> ROUTE_3|57,0` on the same node looks mis-keyed.
+  Suspects: `_where(pre_obs)` taken before the auto-walk moved the party, or
+  the shim's region label after landing at (27,3). Reproduce by reading the
+  round-11 obs (`escalate_context` at t+326) and `_walk_route`'s pre/post
+  obs; fix by re-reading the position after any harness walk before an op
+  runs, and by refusing to file a seam crossing under a region that has no
+  seam that side. Also: the blackout walk-back at t+222 reported no route
+  Center→Route 24 while every hop was recorded — retest `_route` at that
+  moment. Recovery for the live world: `edge_conflict` voids the false edge
+  when the seam is next tried from 4,4 and fails? No — a failed cross does
+  not contradict; delete `ROUTE_4|4,4:east` by hand at the next stop.
 - [ ] **STRENGTH · High · REPORTED — no documented boulder push.** Boulders
   are entities; `Collision.occupied` blocks them so BFS/`walk_to` never
   routes through one; pushing needs two held presses into it, which only
