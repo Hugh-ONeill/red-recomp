@@ -3959,23 +3959,45 @@ function OPS.interact(G, c)
     end
     return false
   end
-  local adj = { {tx, ty + 1, "up"}, {tx, ty - 1, "down"},
-                {tx - 1, ty, "right"}, {tx + 1, ty, "left"} }
-  local over = { {tx, ty + 2, "up", tx, ty + 1},
-                 {tx, ty - 2, "down", tx, ty - 1},
-                 {tx - 2, ty, "right", tx - 1, ty},
-                 {tx + 2, ty, "left", tx + 1, ty} }
-  for _, o in ipairs(over) do
-    if not occupied(o[4], o[5]) then
-      adj[#adj + 1] = { o[1], o[2], o[3] }
+  local function build_adj(tx, ty)
+    local adj = { {tx, ty + 1, "up"}, {tx, ty - 1, "down"},
+                  {tx - 1, ty, "right"}, {tx + 1, ty, "left"} }
+    local over = { {tx, ty + 2, "up", tx, ty + 1},
+                   {tx, ty - 2, "down", tx, ty - 1},
+                   {tx - 2, ty, "right", tx - 1, ty},
+                   {tx + 2, ty, "left", tx + 1, ty} }
+    for _, o in ipairs(over) do
+      if not occupied(o[4], o[5]) then
+        adj[#adj + 1] = { o[1], o[2], o[3] }
+      end
+    end
+    if want_facing then
+      local keep = {}
+      for _, a in ipairs(adj) do
+        if a[3] == want_facing then keep[#keep + 1] = a end
+      end
+      if #keep > 0 then adj = keep end
+    end
+    return adj
+  end
+  local adj = build_adj(tx, ty)
+  -- A PERSON WHO WANDERS IS NOT WHERE THEY WERE. The target's cell was
+  -- read once, up top; by the time the walk arrived beside that cell a
+  -- pacing NPC had often stepped off it, the press faced empty floor, and
+  -- four retries re-walked to the same stale spot. Re-read a named
+  -- person's cell before every approach and every press.
+  local npc_named = nil
+  if c.name then
+    for _, npc in ipairs(ow.npcs or {}) do
+      if (npc.def or {}).name == c.name then npc_named = npc end
     end
   end
-  if want_facing then
-    local keep = {}
-    for _, a in ipairs(adj) do
-      if a[3] == want_facing then keep[#keep + 1] = a end
+  local function refresh_target()
+    if npc_named and npc_named.cellX and
+       (npc_named.cellX ~= tx or npc_named.cellY ~= ty) then
+      tx, ty = npc_named.cellX, npc_named.cellY
+      adj = build_adj(tx, ty)
     end
-    if #keep > 0 then adj = keep end
   end
   local p = ow.player
   local function press_from_adjacent()
@@ -4225,20 +4247,39 @@ function OPS.interact(G, c)
   end
   -- retry across ambient-dialog interruptions (e.g. the lab rival's timed
   -- "fed up with waiting"): clear any text box, then approach and press.
+  -- A BATTLE ON THE WAY IS NOT PENDING TEXT. The clear-text loop below
+  -- taps A at whatever is on top; with a wild encounter up from the
+  -- approach walk that was twelve A presses INTO THE BATTLE MENU before
+  -- "stuck in a menu/dialog" came back. Hand a battle straight back to
+  -- the executor, which fights it and re-sends the interact.
+  local function in_fight()
+    local t = G.stack:top()
+    return t and t ~= ow and (t.enemy or t.kind) and true or false
+  end
   for _ = 1, 4 do
+    if in_fight() then return true, "battle started on the way" end
     for _ = 1, 12 do          -- clear any pending text
-      if G.stack:top() == ow then break end
+      if G.stack:top() == ow or in_fight() then break end
       U.tap(G, "a"); U.wait(3)
     end
+    if in_fight() then return true, "battle started on the way" end
     if G.stack:top() ~= ow then return false, "stuck in a menu/dialog" end
+    refresh_target()
     if press_from_adjacent() then return settle_dialog() end
     for _, a in ipairs(adj) do
       OPS.walk_to(G, { x = a[1], y = a[2], max_steps = 60 })
-      if G.stack:top() == ow and p.cellX == a[1] and p.cellY == a[2] then
+      if G.stack:top() ~= ow then break end       -- a battle or a script
+      refresh_target()                             -- they may have moved
+      if press_from_adjacent() then return settle_dialog() end
+      if p.cellX == a[1] and p.cellY == a[2] then
         break
       end
     end
-    if press_from_adjacent() then return settle_dialog() end
+    if in_fight() then return true, "battle started on the way" end
+    if G.stack:top() == ow then
+      refresh_target()
+      if press_from_adjacent() then return settle_dialog() end
+    end
   end
   return false, "no reachable tile adjacent to target"
 end
