@@ -26,6 +26,12 @@ if o is None:
 # and the Pewter round trip serving them — because health never was.
 def mon_text(p):
     s = f"{p.get('species')} L{p.get('level')}"
+    # ITS TYPES ARE ON THE PARTY SCREEN. Without them the sweep's
+    # already-done judgment saw "CHARIZARD L37" and could not tell it was
+    # the FLYING type the objective wanted.
+    tys = [str(t) for t in (p.get("types") or []) if t]
+    if tys:
+        s += f" ({'/'.join(tys)})"
     hp, mx = p.get("hp"), p.get("max_hp")
     if hp is not None and mx:
         s += f" {hp}/{mx}hp"

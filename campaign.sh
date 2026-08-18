@@ -148,26 +148,20 @@ PY
   # aim is achieved. Re-authoring "Get the Boulder Badge" while wearing the
   # Boulder Badge burned two of three attempts on a solved problem — drop
   # the leg and get on with the route instead.
+  # EVERY PREDICATE, NOT FOUR OF THEM. This hand-rolled the badge / map /
+  # flag / has_item cases and nothing else, so "the party holds a FLYING
+  # type" — true since Charmeleon became Charizard — was never seen as met,
+  # and four attempts went on the WALK to Route 1 (the plan's first step)
+  # without the catch step's predicate ever being evaluated. The executor's
+  # own pred_holds knows every predicate the plan language has.
   if python - "plans/$failed_plan" run/obs.json <<'PY'
 import json, sys
+sys.path.insert(0, "planner")
+from executor import pred_holds
 plan = json.load(open(sys.argv[1]))
 obs = json.load(open(sys.argv[2]))
 last = (plan.get("subgoals") or [{}])[-1].get("done_when") or {}
-ok = False
-if "badge" in last:
-    ok = last["badge"] in (obs.get("badges") or [])
-elif "map" in last:
-    ok = last["map"] == (obs.get("map") or {}).get("id")
-elif "flag" in last:
-    # obs.json stores flags as a LIST of set names, not a dict — .get on
-    # it crashed this check after the Bill leg
-    fl = obs.get("flags") or []
-    ok = (last["flag"] in fl if isinstance(fl, list)
-          else bool(fl.get(last["flag"])))
-elif "has_item" in last and isinstance(last["has_item"], dict):
-    bag = obs.get("bag") or {}
-    ok = all((bag.get(k) or 0) >= v for k, v in last["has_item"].items())
-sys.exit(0 if ok else 1)
+sys.exit(0 if (last and pred_holds(last, obs)) else 1)
 PY
   then
     echo "--- $failed_plan's objective is already met; moving on ---" \
