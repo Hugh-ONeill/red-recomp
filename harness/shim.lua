@@ -1360,21 +1360,18 @@ local function hands_off(G, c)
   if c and c.btn == "b" then return nil end
   local kind = ui_transaction_up and ui_transaction_up(G)
   if kind == "shop" then
-    return "a shop COUNTER is open. Pressing keys here buys and sells by "
-      .. "accident — a run once bought 15 POKE_BALLs this way and spent "
-      .. "3000 without meaning to. Trade with {\"op\":\"buy\","
-      .. "\"item\":...,\"count\":N} or {\"op\":\"sell\",...}, which "
-      .. "say what and how many. The counter is left OPEN for them; "
-      .. "{\"op\":\"tap\",\"btn\":\"b\"} steps back out of it."
+    -- SHORT, because this fires on every press and the prompt's budget is
+    -- its order. The 15-POKE_BALL story is the JUSTIFICATION and it lives
+    -- in the comment above, not in front of the model 392 characters at a
+    -- time. See also the caller, which leads with what was actually SAID.
+    return "that is a shop COUNTER. Trade with {\"op\":\"buy\",...} or "
+      .. "{\"op\":\"sell\",...}; {\"op\":\"tap\",\"btn\":\"b\"} "
+      .. "steps out. Left open, nothing bought."
   elseif kind == "pc" then
-    return "PC STORAGE is open. Pressing keys here moves items and "
-      .. "POKEMON by accident, and a released Pokemon never comes back. "
-      .. "Use {\"op\":\"store_item\"/\"retrieve_item\",\"item\":...} "
-      .. "or {\"op\":\"pc_deposit\",\"slot\":N} / "
-      .. "{\"op\":\"pc_withdraw\",\"index\":N} / "
-      .. "{\"op\":\"pc_release\",\"index\":N,\"species\":...}. "
-      .. "The screen is left OPEN for them; nothing was moved. "
-      .. "{\"op\":\"tap\",\"btn\":\"b\"} steps back out of it."
+    return "that is PC STORAGE. Use store_item / retrieve_item / "
+      .. "pc_deposit{slot} / pc_withdraw{index,box} / "
+      .. "pc_release{index,species}; {\"op\":\"tap\",\"btn\":\"b\"} "
+      .. "steps out. Left open, nothing moved."
   end
   return nil
 end
@@ -3792,6 +3789,27 @@ function OPS.interact(G, c)
         end
       end
     end
+    -- SIGNS, BY THE NAME THE OBSERVATION GAVE THEM. observe() lists every
+    -- md.signs entry in obs.map.objects as kind "sign" under
+    -- `sg.name or sg.text or SIGN_x_y`, and the untouched-things line then
+    -- tells the model to press A on it -- but this lookup searched npcs and
+    -- fixtures only, so every such press came back "not visible": 1,726
+    -- failures in the journals and not one success, ever. A failed press
+    -- retracts the touch, so the sign stayed "never touched" and was
+    -- re-offered every round, and after three goes the failed-3x guard
+    -- refused it. Route signs are the pamphlet tier made literal
+    -- ("ROUTE 1 -- PALLET TOWN / VIRIDIAN CITY"); the engine reads one from
+    -- any adjacent cell you face (OverworldController:interact ->
+    -- map:signAtCell(fx, fy)), so no facing constraint is needed.
+    if not tx then
+      -- the same table observe() reads them from
+      local md = ow.map and G.data and G.data.maps and G.data.maps[ow.map.id]
+      for _, sg in ipairs((md and md.signs) or {}) do
+        local nm = sg.name or sg.text or ("SIGN_" .. tostring(sg.x) .. "_"
+                                          .. tostring(sg.y))
+        if nm == c.name then tx, ty = sg.x, sg.y break end
+      end
+    end
     if not tx then return false, "object '" .. c.name .. "' not visible" end
   elseif tx then
     -- an x,y press on a fixture that only answers from one side must
@@ -3943,7 +3961,18 @@ function OPS.interact(G, c)
               .. "retrieve_item / pc_deposit / pc_withdraw / pc_release, "
               .. "not by pressing keys"):format(table.concat(labels, ", "))
           end
-          return true, hands_off(G)
+          -- WHAT THEY SAID COMES FIRST. An earlier version of this
+          -- prepended recent_text and the restructure for the PC case
+          -- dropped it on the shop branch — so a subgoal whose whole
+          -- purpose was "talk to the clerk and find out" got 392
+          -- characters of guard notice and not one word of the clerk,
+          -- four rounds running. The guard exists to stop the harness
+          -- hiding things; hiding the answer inside it is the same fault
+          -- wearing the fix's clothes.
+          local said = recent_text
+          return true, ((said and said ~= "")
+                        and ("\"" .. said .. "\" — ") or "")
+                       .. hands_off(G)
         end
       end
       -- WHICH POKEMON IS NOT THE HARNESS'S CHOICE. A party picker inside a
@@ -3982,6 +4011,35 @@ function OPS.interact(G, c)
         return true, "it asked WHICH POKEMON, and nothing here had chosen "
           .. "one — backed out. Use an op that names the slot (for the day "
           .. "care that is daycare_deposit with slot=N)."
+      end
+      -- ANY OTHER LIST IS A CHOICE, AND CHOICES ARE THE MODEL'S. Every
+      -- screen not named above fell through to "tap A", and a ListMenu
+      -- that stays open after each pick turns that into a purchase loop:
+      -- the Celadon roof VENDING MACHINE is a sign whose script pushes
+      -- one (data/scripts/story4.lua vendingMachine), and A on it buys a
+      -- FRESH WATER, dismisses "popped out!", and buys again until the
+      -- money is gone. Signs became pressable by name today, and the room
+      -- sweep presses every untouched sign, so this was about to fire
+      -- unasked. Same rule as the PC and the elevator panel: leave the
+      -- menu OPEN, number the rows as they read on screen, and say how to
+      -- choose. Nothing is bought, ridden or picked by the harness.
+      -- (`elevator` calls interact with floor= set and then reads the
+      -- FLOOR menu itself, so it wants exactly this: the menu still up.)
+      if t and t.items and t.items[1] then
+        local who = c.name or (c.x and ("%s,%s"):format(tostring(c.x),
+                                                        tostring(c.y)))
+                    or "?"
+        local labels = {}
+        for i, r in ipairs(t.items) do
+          labels[#labels + 1] = ("%d=%s"):format(
+            i, tostring(r.label or r.value or "?"))
+        end
+        local title = t.title and (" (" .. tostring(t.title) .. ")") or ""
+        return true, ("%s opened a menu%s: %s. Nothing was chosen and it "
+          .. "is left OPEN. Pick a row with {\"op\":\"menu\","
+          .. "\"index\":N}, or {\"op\":\"tap\",\"btn\":\"b\"} to "
+          .. "close it; the next overworld op closes it anyway.")
+          :format(who, title, table.concat(labels, ", "))
       end
       if t == ow then return true end
       if t and (t.enemy or t.kind) then return true, "battle started" end

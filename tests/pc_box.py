@@ -87,6 +87,11 @@ def main():
         print(f"  party  {party_of(o)}")
         print(f"  boxed  {boxed(o)}")
         n0 = len(o.get("party") or [])
+        # THE BOX IS NOT NECESSARILY EMPTY. Whatever save this is handed
+        # may already hold stored Pokemon, and asserting "exactly one in
+        # the box" made five cases fail on a save that had two — a fixture
+        # assumption reported as a broken feature.
+        b0 = len(boxed(o))
         if n0 < 2:
             sys.exit("this test needs at least 2 party members to be safe "
                      "— the PC refuses your last Pokemon")
@@ -124,14 +129,14 @@ def main():
 
         # --- DEPOSIT
         o = b.obs() or {}
-        ok = len(o.get("party") or []) == n0 - 1 and len(boxed(o)) == 1
+        ok = len(o.get("party") or []) == n0 - 1 and len(boxed(o)) == b0 + 1
         print(f"  {'ok  ' if ok else 'FAIL'}  deposit moves a Pokemon out of "
               f"the party and into a box")
         if not ok:
             print(f"          {det}")
             print(f"          party {party_of(o)}  boxed {boxed(o)}")
             fails.append("deposit")
-        stored = (o.get("pc_mons") or [{}])[0]
+        stored = (o.get("pc_mons") or [{}])[-1]   # the one just put in
         species = stored.get("species")
         idx, box = stored.get("index"), stored.get("box")
 
@@ -142,7 +147,7 @@ def main():
         r = (b.send("pc_release", index=idx, box=box,
                     species=wrong) or {}).get("result") or {}
         o = b.obs() or {}
-        ok = (not r.get("ok")) and len(boxed(o)) == 1
+        ok = (not r.get("ok")) and len(boxed(o)) == b0 + 1
         print(f"  {'ok  ' if ok else 'FAIL'}  releasing under the WRONG "
               f"species name refuses, and nothing is lost")
         if not ok:
@@ -153,7 +158,7 @@ def main():
         # --- WITHDRAW it back
         r = (b.send("pc_withdraw", index=idx, box=box) or {}).get("result") or {}
         o = b.obs() or {}
-        ok = len(o.get("party") or []) == n0 and not boxed(o)
+        ok = len(o.get("party") or []) == n0 and len(boxed(o)) == b0
         print(f"  {'ok  ' if ok else 'FAIL'}  withdraw brings it back into "
               f"the party")
         if not ok:
@@ -164,11 +169,12 @@ def main():
         # --- and RELEASE, correctly named, really is permanent
         b.send("pc_deposit", slot=n0)
         o = b.obs() or {}
-        st = (o.get("pc_mons") or [{}])[0]
+        st = (o.get("pc_mons") or [{}])[-1]
         r = (b.send("pc_release", index=st.get("index"), box=st.get("box"),
                     species=st.get("species")) or {}).get("result") or {}
         o = b.obs() or {}
-        ok = r.get("ok") and not boxed(o) and len(o.get("party") or []) == n0 - 1
+        ok = r.get("ok") and len(boxed(o)) == b0 \
+            and len(o.get("party") or []) == n0 - 1
         print(f"  {'ok  ' if ok else 'FAIL'}  release under the right name "
               f"removes it from the box for good")
         if not ok:
@@ -183,6 +189,13 @@ def main():
         # answer="yes" bought fifteen POKE_BALLs at a counter without a
         # buy op ever being proposed. With storage writable the same shape
         # could deposit or release, and a release does not come back.
+        # EVERY GUARD ASSERTION MEASURES ACROSS ITS OWN OP. Threading a
+        # party count from the start of the file through a dozen deposits
+        # and releases means each expectation depends on all of them, and
+        # every save with a different starting party fails a different
+        # case. What is being tested here is "this interact changed
+        # nothing", which is a local fact.
+        pre_party = len((b.obs() or {}).get("party") or [])
         r = (b.send("interact", name="PC") or {}).get("result") or {}
         det = str(r.get("detail") or "")
         o = b.obs() or {}
@@ -190,7 +203,7 @@ def main():
         # unnumbered list made the model guess (it asked for 2, the box
         # menu it wanted was 1)
         ok = ("the PC is on" in det and "1=" in det
-              and len(o.get("party") or []) == n0 - 1)
+              and len(o.get("party") or []) == pre_party)
         print(f"  {'ok  ' if ok else 'FAIL'}  a bare interact opens the PC "
               f"and stops at its menu instead of mashing through it")
         if not ok:
@@ -228,7 +241,7 @@ def main():
         # ...and once THERE, a blind press is refused, without shutting it
         r = (b.send("mash_a", times=3) or {}).get("result") or {}
         o = b.obs() or {}
-        ok = (not r.get("ok")) and "PC STORAGE is open" in str(r.get("detail")
+        ok = (not r.get("ok")) and "PC STORAGE" in str(r.get("detail")
                                                               or "") \
             and (o.get("ui") or {}).get("screenId") == "BoxMenu"
         print(f"  {'ok  ' if ok else 'FAIL'}  mashing inside BoxMenu is "
@@ -258,9 +271,14 @@ def main():
         # the box, so put something back first — otherwise this would pass
         # or fail for a reason that has nothing to do with the guard.
         b.send("pc_deposit", slot=n0 - 1)
+        # measure right before, because what the party holds by now depends
+        # on what this particular save started with — the last version
+        # hard-coded n0-1 and failed on a deposit the PC had refused
+        # (it will not take your last Pokemon)
+        pre = len((b.obs() or {}).get("party") or [])
         r = (b.send("pc_withdraw", index=1, box=1) or {}).get("result") or {}
         o = b.obs() or {}
-        ok = r.get("ok") and len(o.get("party") or []) == n0 - 1
+        ok = r.get("ok") and len(o.get("party") or []) == pre + 1
         print(f"  {'ok  ' if ok else 'FAIL'}  ...while pc_withdraw still "
               f"drives the same screen")
         if not ok:
@@ -297,7 +315,10 @@ def main():
             det = str(r.get("detail") or "")
             o2 = b.obs() or {}
             spent = (o2.get("money") or 0) < (o.get("money") or 0)
-            ok = ("shop COUNTER is open" in det) and not spent
+            # LEADS WITH THE WORDS, and stays short. Dropping the clerk's
+            # own line was the bug: the model asked her a question and got
+            # 392 characters of guard notice instead of an answer.
+            ok = ("shop COUNTER" in det) and not spent and len(det) < 200
             print(f"  {'ok  ' if ok else 'FAIL'}  a bare interact on the "
                   f"clerk is handed back, and nothing is bought")
             if not ok:
