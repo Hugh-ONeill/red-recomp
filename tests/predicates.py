@@ -63,6 +63,17 @@ CASES = [
      {"mode": "ui"}, False),
     ("...boot", {"mode": "boot"}, False),
 
+    # THE PREDICATE THAT MAKES "pc" UNNECESSARY. `mode` can only say that
+    # SOME menu is open; `screen` names which one, off the label the shim
+    # has always passed through as ui.screenId and nothing could test.
+    ("the PC's Pokemon storage is nameable", {"screen": "BoxMenu"}, False),
+    ("...and its item storage", {"screen": "PlayerPC"}, False),
+    ("...and the shop counter", {"screen": "ShopMenu"}, False),
+    ("a screen the engine never pushes is refused",
+     {"screen": "PC"}, True),
+    ("...including the one the old mode guess meant",
+     {"screen": "pc"}, True),
+
     # the shapes this validator already caught, so the new branch has not
     # eaten any of them on its way in
     ("a string where a bool belongs is still refused",
@@ -111,6 +122,37 @@ def main():
           f"predicate list the author is shown")
     if not told:
         fails.append("published")
+
+    # THE SCREEN VOCABULARY, same three properties: read from the engine,
+    # published, and a real key rather than a string the loop ignores.
+    eng = ""
+    root = Path.home() / "Developer" / "gen1recomp" / "src"
+    if root.is_dir():
+        for p in root.rglob("*.lua"):
+            eng += p.read_text(errors="ignore")
+    live = set(re.findall(r'Screens\.push\(\s*\w+\s*,\s*"([A-Za-z]+)"', eng))
+    ok = bool(live) and live == set(A.UI_SCREENS)
+    print(f"  {'ok  ' if ok else 'FAIL'}  the screen list is read from the "
+          f"engine, not copied ({len(live)} screens)")
+    if not ok:
+        print(f"          engine {sorted(live)}")
+        print(f"          author {sorted(A.UI_SCREENS)}")
+        fails.append("screen source")
+
+    ok = ("screen" in A.VALID_KEYS
+          and all(s in A.PREDICATES["screen"] for s in A.UI_SCREENS))
+    print(f"  {'ok  ' if ok else 'FAIL'}  ...and screen is a real predicate "
+          f"key with its values published")
+    if not ok:
+        fails.append("screen published")
+
+    # BoxMenu must be reachable as a predicate for the storage work to be
+    # writable at all — this is the whole point of the exercise
+    ok = "BoxMenu" in A.UI_SCREENS and "PlayerPC" in A.UI_SCREENS
+    print(f"  {'ok  ' if ok else 'FAIL'}  both halves of the PC are "
+          f"nameable (BoxMenu, PlayerPC)")
+    if not ok:
+        fails.append("pc screens")
 
     print(f"\n{'-' * 60}")
     if fails:

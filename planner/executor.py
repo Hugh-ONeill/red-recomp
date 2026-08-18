@@ -14,6 +14,7 @@ A plan (JSON) is an ordered list of subgoals. Each subgoal has:
 Predicate DSL (all listed keys must hold):
   {"map": "PALLET_TOWN"}       current map id
   {"mode": "overworld"}        obs mode
+  {"screen": "BoxMenu"}        WHICH ui screen is open (obs.ui.screenId)
   {"party_nonempty": true}     at least one party mon
   {"badge": "BOULDERBADGE"}    badge earned
   {"flag": "EVENT_..."}        save event flag set (executor instrumentation)
@@ -355,6 +356,17 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
                 return False
         elif key == "mode":
             if obs.get("mode") != want:
+                return False
+        elif key == "screen":
+            # WHICH menu, when `mode` can only say THAT one is open. Every
+            # UI screen reports "ui" — a PC, a shop counter, a naming box —
+            # so "access the PC" was inexpressible and the model reached
+            # for a mode that does not exist ({"mode":"pc"}), which cost a
+            # whole chain. The engine names its own screens and the shim
+            # has always passed the name through as ui.screenId; nothing
+            # could test it. This is that test, and nothing more: it reads
+            # the label already on the observation.
+            if ((obs.get("ui") or {}).get("screenId")) != want:
                 return False
         elif key == "party_nonempty":
             want = _as_bool(want)

@@ -64,11 +64,44 @@ def _shim_modes() -> tuple:
 OBS_MODES = _shim_modes()
 
 
+# EVERY UI SCREEN THE ENGINE PUSHES BY NAME, read out of the engine for the
+# same reason the modes are read out of the shim: a copy drifts, and drift
+# is what put an impossible predicate in five consecutive plans.
+#
+# `mode` can only say that SOME menu is open. The engine gives each screen
+# an id (Screens.push(Game, "BoxMenu")) and the shim has always passed it
+# through as ui.screenId — nothing could test it, so "access the PC" was
+# inexpressible and the model reached for {"mode":"pc"}. This is the
+# vocabulary that makes it sayable.
+def _engine_screens() -> tuple:
+    try:
+        src = ""
+        root = Path.home() / "Developer" / "gen1recomp" / "src"
+        for p in root.rglob("*.lua"):
+            src += p.read_text(errors="ignore")
+    except OSError:
+        src = ""
+    found = tuple(sorted(set(
+        re.findall(r'Screens\.push\(\s*\w+\s*,\s*"([A-Za-z]+)"', src))))
+    # an unreadable engine must not silently accept anything
+    return found or ("BoxMenu", "DexEntryMenu", "PlayerPC", "ShopMenu",
+                     "SlotMachine", "StartMenu")
+
+
+UI_SCREENS = _engine_screens()
+
+
 # The vocabulary the decomposition may reference. Predicates come from the
 # executor's DSL; maps/flags are the executor's instrumentation, exposed here
 # so the model can name done_when conditions exactly.
 PREDICATES = {
     "map": "current map id equals VALUE (e.g. {\"map\":\"PEWTER_CITY\"})",
+    "screen": "a particular UI screen is open (e.g. {\"screen\":\"BoxMenu\"} "
+              "for the Pokemon storage in a PC, {\"screen\":\"PlayerPC\"} "
+              "for its item storage). This is the one that can name a "
+              "SPECIFIC machine or menu, which \"mode\" cannot — every menu "
+              "in the game reports mode \"ui\". The screens that exist are: "
+              + ", ".join(UI_SCREENS),
     "mode": "obs mode equals VALUE, and the ONLY values that exist are "
             + ", ".join(f'"{m}"' for m in OBS_MODES)
             + " (usually \"overworld\"). There is no mode for a particular "
@@ -754,6 +787,13 @@ def _check_pred_shapes(dw: dict, tag: str, sid, probs: list):
                    if isinstance(v, str) else "")
             probs.append(f"{tag} ({sid}) {k} takes true or false, "
                          f"not {v!r}{why}")
+        elif k == "screen" and v not in UI_SCREENS:
+            # Same treatment as mode, and for the same reason: a screen id
+            # the engine never pushes is a condition that can never be
+            # true, and finding that out costs four attempts and a ladder.
+            probs.append(
+                f"{tag} ({sid}) screen {v!r} is not a screen this game has "
+                f"— the ones that exist are " + ", ".join(UI_SCREENS))
         elif k == "mode" and v not in OBS_MODES:
             # NAME THE FIVE, and say what the near miss was reaching for.
             # "pc" is not a wrong guess so much as a reasonable one about a

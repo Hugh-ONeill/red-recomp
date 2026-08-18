@@ -796,6 +796,35 @@ local function observe(G, seq, result)
     end
   end
   table.sort(o.key_items)
+  -- ...AND WHAT IT IS HOLDING THAT IS ALIVE (user, 2026-08-17). Without
+  -- it every deposit is a one-way door: a Pokemon put away stops existing
+  -- as far as the run is concerned, so "the party holds a WATER type"
+  -- cannot be answered by the WATER type already in storage, and a full
+  -- party has no visible way to make room for the one it just walked to.
+  --
+  -- THIS IS RECALL, NOT READING AHEAD, and the difference is the whole
+  -- rule. I flagged it as borderline alongside enter_shop; the user's
+  -- ruling was that perfect recall is an advantage a bot need not be
+  -- hobbled out of, and on inspection it is not even close to the line.
+  -- EVERY mon in a box got there by being caught or deposited, both of
+  -- which the run did and was told about ("...was sent to BILL'S PC!").
+  -- Nothing here is state the run has never looked at. enter_shop is
+  -- genuinely different: it reads the objects of a map nobody has entered
+  -- and decides where the body goes. Remembering what you did is free.
+  -- Knowing what is behind a door you have not opened is not.
+  --
+  -- Species and level only, which is exactly what a box row prints. No
+  -- moves, no stats: those need the summary screen opened on that mon,
+  -- and the model can open it.
+  o.pc_mons = {}
+  local _boxes = (G.save and G.save.boxes) or {}
+  for bi = 1, 12 do
+    for _, m in ipairs(_boxes[bi] or {}) do
+      o.pc_mons[#o.pc_mons + 1] = {
+        species = m.species, level = m.level, box = bi }
+    end
+  end
+  o.pc_box = (G.save and G.save.currentBox) or 1
   -- WHO IS AT THE DAY CARE. Same reason as pc_items: the run answered
   -- "yes" to the DAYCARE_GENTLEMAN while hunting for a way to Celadon and
   -- handed over a level 40 CHARIZARD, leaving a level 6 MAGIKARP to beat
