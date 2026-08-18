@@ -3561,8 +3561,48 @@ class Executor:
                  answer=a, why=str(d.get("why") or "")[:200])
         return a == "yes"
 
+    def _fired_text(self, sg) -> str:
+        """The events this run has watched fire, when it is stuck on one.
+
+        author.py already settles the principle — "the only flags the
+        PROMPT volunteers are the ones this run has watched fire" — and the
+        LEG AUTHOR gets them under WHERE EVENTS ACTUALLY FIRED. The
+        escalation, which is the thing actually deciding what to do next
+        while a flag refuses to set, was shown none of them: `EVENT_` did
+        not appear once in a 5,570-character prompt.
+
+        It cost a leg. Stuck on EVENT_GOT_POKEBALLS_FROM_OAK, the run's own
+        history already held
+
+            EVENT_ROUTE22_RIVAL_WANTS_BATTLE   fired in OAKS_LAB|4,1
+
+        which is the game's own record that somebody is waiting on Route 22
+        — and the flag that gates the balls is exactly "beat that rival".
+        This is recall, not a walkthrough: every line is something this run
+        did and was told about at the time, and no flag is named that has
+        not fired. What any of them MEANS stays the model's own knowledge,
+        which is the same line author.py draws.
+
+        Only rendered when the subgoal is waiting on a flag; otherwise it
+        is noise, and space in this prompt is the budget.
+        """
+        if "flag" not in pred_keys(sg.get("done_when") or {}):
+            return ""
+        # self.flag_sites is flag -> where it fired, kept in fire order and
+        # persisted with the rest of the memory. No journal re-read needed.
+        rows = [f"  {f} (fired in {where})"
+                for f, where in reversed(list(
+                    (self.flag_sites or {}).items()))]
+        if not rows:
+            return ""
+        return ("\n\nEVENTS THIS RUN HAS ALREADY WATCHED FIRE, newest "
+                "first — the condition you are waiting on has not, and one "
+                "of these may be what it is waiting BEHIND:\n"
+                + "\n".join(rows[:12]))
+
     def _logged_exploration(self, obs, sg) -> str:
-        txt = self.exploration_text(obs, self._target_key(sg))
+        txt = self.exploration_text(obs, self._target_key(sg)) \
+            + self._fired_text(sg)
         self.log("escalate_context", subgoal=sg["id"],
                  target=self._target_key(sg), memory=txt[:6000])
         return txt
