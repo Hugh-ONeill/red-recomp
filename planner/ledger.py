@@ -591,6 +591,13 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         if c.kind == "fixture" and c.key != "PC" and c.status in (
                 "touched", "inert", "worth_a_word"):
             words += " — a fixture; it can be pressed again"
+        # AN ITEM IS FREE STUFF. Renamed to ITEM_x_y (its contents are not
+        # on the screen), "never pressed" undersells it: it is a thing lying
+        # on the ground that pressing A picks up, at no cost. Say that.
+        if c.kind == "item" and c.status == "untouched":
+            words = ("lying on the ground, never picked up — pressing A "
+                     "takes it and it costs nothing"
+                     + ("" if c.reachable else "; not walkable-to right now"))
         # NO COUNT IS NOT ZERO. Until _run_traced writes the outcomes
         # ledger, a pressed thing has no per-subgoal count; "pressed 0x"
         # would be a lie in the other direction.
