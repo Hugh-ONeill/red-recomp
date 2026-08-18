@@ -6925,7 +6925,16 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         # 4 stub every attempt, two rounds in, short-cutting
                         # past the escort further down the loop and ending
                         # the leg with the whole east side unvisited.
-                        moved = self._route_to_frontier(cur, sg, patient=True)
+                        # ...UNDER THE LEDGER THE WALK IS THE MODEL'S
+                        # (explore). Watched live in Cerulean: cross south
+                        # failed at the fence, this escorted the party into
+                        # the Pokemon Center (5 things never pressed), the
+                        # model walked out and tried south again, and round
+                        # after round it was walked back in. The ledger
+                        # names the trashed house's untried back door and
+                        # explore would take it; the choice is the model's.
+                        moved = (None if USE_LEDGER else
+                                 self._route_to_frontier(cur, sg, patient=True))
                         if moved:
                             cur = self.settle() or cur
                             trace.append(
