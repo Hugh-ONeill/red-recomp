@@ -739,6 +739,16 @@ local function observe(G, seq, result)
     end
     o.battle.me = side(top.player)
     o.battle.foe = side(top.enemy)
+    -- THE GHOST IS A GHOST. Without the SILPH SCOPE the Pokemon Tower's
+    -- foe is drawn and named "GHOST" on screen (BattleState:makeGhost); the
+    -- battle table still holds the real species, and side() read it -- so
+    -- the observation called it MAROWAK L30 to a player who could not
+    -- have known. Name it as the screen does and hide what the screen
+    -- hides. o.battle.ghost (a scalar on the state) rides along as-is.
+    if top.ghost and o.battle.foe then
+      local f = o.battle.foe
+      f.species, f.types, f.moves, f.stats, f.boosts = "GHOST", nil, {}, nil, nil
+    end
     o.battle.player_mon, o.battle.enemy_mon = nil, nil
     if last_probe then o.battle.probe = last_probe; last_probe = nil end
   elseif top and top.pages and top.pageIndex then

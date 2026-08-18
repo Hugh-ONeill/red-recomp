@@ -5896,6 +5896,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             before = self._snapshot(obs)
             traversal = op in ("cross", "walk_to", "use_warp", "grind")
             blackout = None
+            ghosted = False
             for _ in range(12):
                 try:
                     obs = self.b.send(op, **step)
@@ -5928,6 +5929,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # ledgers underground, exactly where they matter most.
                     is_wild = ((obs.get("battle") or {}).get("kind")
                                == "wild")
+                    # A GHOST is what the screen showed. The traversal
+                    # policy flees it without a word, so the op came back
+                    # "ok (moved, fled)" and the door it was walking to
+                    # stayed plain "untried" — the one fact that says why
+                    # the way is shut never reached the model.
+                    if (obs.get("battle") or {}).get("ghost"):
+                        ghosted = True
                     if self._cur_target and pre_map and not is_wild:
                         self._battle_regions.add(
                             f"{self._cur_target}|{self._where(pre_obs)}")
@@ -6314,6 +6322,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if det:
                     chg.append(str(det))
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
+            if ghosted:
+                note += " — a GHOST appeared in the way, and you fled from it"
             if blackout:
                 note += (f" — your party FAINTED mid-op (blackout): you "
                          f"respawned at {blackout}, party healed, position "
