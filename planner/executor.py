@@ -5210,6 +5210,15 @@ is the right move when the ledger says the area is fully worked and you
 have no better idea of your own; a map-changing op, so it must be the
 LAST op of your macro),
 
+HOW TO SEARCH when a step is not working: a thing that has already given
+its answer gives the same answer again; repeating it changes nothing. The
+ledger marks what HERE is untried, unpressed or unspoken, and what lies
+beyond each exit; work through the untried ones first ({"op":"explore"}
+takes the next one for you, and keeps taking them, room after room), and
+go back to a pressed thing only when something has changed since — the
+ledger says when it has. Everything untried, in every room you can reach,
+before the same thing again. If a step's own words turn out to describe
+something that is not there, {"op":"skip"} moves the plan on.
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
 and MAY BE IMPERFECT — if it names a target that isn't in obs.map.objects /
 obs.map.warps, or even a different STARTING MAP than the observation shows,
