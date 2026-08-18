@@ -1006,6 +1006,7 @@ class Executor:
         self._dead_why: dict = {}    # op signature -> last failure detail
         self._cut_bushes: dict = {}  # map -> ["x,y", ...] bushes cut before
         self._shelves: dict = {}     # mart map -> [items it sells], as seen
+        self._plan_hist: dict = {}   # target -> [(round, where, plan)] last 8
         self._last_overworld_map = None
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
@@ -1590,6 +1591,14 @@ class Executor:
             self._offered = data.get("offered") or {}
             self._cut_bushes = data.get("cut_bushes") or {}
             self._shelves = data.get("shelves") or {}
+            # MEMORY THAT OUTLIVES THE ATTEMPT. The outcome ledger and the
+            # plan history were per process, and every attempt is a new
+            # process — so each attempt re-supposed the same thing from
+            # zero ("Fresh Water at the Vermilion mart", the thirsty guard)
+            # while the rewrite alone saw the counts. Keyed by TARGET, so
+            # they survive a rewrite that renames the step.
+            self._outcomes = data.get("outcomes") or {}
+            self._plan_hist = data.get("plan_hist") or {}
             if not self._shelves:
                 # BACKFILL ONCE from this world's journal: the counter's
                 # "this mart sells: ..." replies are already recorded.
@@ -1891,6 +1900,8 @@ class Executor:
                  "offered": getattr(self, "_offered", {}),
                  "cut_bushes": getattr(self, "_cut_bushes", {}),
                  "shelves": getattr(self, "_shelves", {}),
+                 "outcomes": getattr(self, "_outcomes", {}),
+                 "plan_hist": getattr(self, "_plan_hist", {}),
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead,
                  "map_doors": {k: sorted(v)
@@ -6634,13 +6645,45 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # own carried forward — the trace it reads is ours. Its last
             # plan, in its words, goes back to it beside what happened.
             plan_echo = ""
-            if self._plans_said:
-                plan_echo = ("YOUR LAST PLANS, in your own words, oldest "
-                             "first, with where you stood when you wrote "
-                             "each:\n"
-                             + "\n".join(f"  R{_r} (at {_w}): {_p}"
-                                         for _r, _w, _p in self._plans_said)
-                             + "\n")
+            _hist = list(self._plan_hist.get(self._cur_target or "?", []))
+            # this escalation's own plans first; earlier attempts' plans for
+            # the same target behind them, so a supposition that failed
+            # last attempt is on the page when it is about to be made again
+            _older = [tuple(x) for x in _hist
+                      if tuple(x) not in {tuple(y) for y in self._plans_said}]
+            _older = _older[-4:]
+            if self._plans_said or _older:
+                plan_echo = "YOUR LAST PLANS, in your own words, oldest first, "\
+                            "with where you stood when you wrote each"
+                if _older:
+                    plan_echo += (" (the first ones are from EARLIER ATTEMPTS "
+                                  "at this same step)")
+                plan_echo += ":\n" + "\n".join(
+                    f"  R{_r} (at {_w}): {_p}"
+                    for _r, _w, _p in (_older + list(self._plans_said))) + "\n"
+            # ...AND WHAT YOU HAVE DONE FOR THIS STEP, over every attempt:
+            # the outcome ledger summed across areas — op, how many times,
+            # what happened last. The ledger block shows it per area; this
+            # is the whole step's rap sheet in eight lines.
+            _tk = self._cur_target or ""
+            _agg: dict = {}
+            for _k, _book in (self._outcomes or {}).items():
+                if not _k.startswith(_tk + "|"):
+                    continue
+                _area = _k.split("|", 1)[1]
+                for _key, _rec in (_book or {}).items():
+                    _e = _agg.setdefault(_key, {"n": 0, "last": "", "where": _area})
+                    _e["n"] += int(_rec.get("n") or 0)
+                    _e["last"] = _rec.get("last") or _e["last"]
+            _tried = sorted(_agg.items(), key=lambda kv: -kv[1]["n"])[:8]
+            if _tried and sum(v["n"] for _, v in _tried) >= 4:
+                plan_echo += ("WHAT YOU HAVE DONE FOR THIS STEP SO FAR, over "
+                              "every attempt (thing, how many times, what "
+                              "happened last):\n"
+                              + "\n".join(
+                                  f"  {k} x{v['n']} at {v['where']}"
+                                  + (f" — {v['last'][:110]}" if v['last'] else "")
+                                  for k, v in _tried) + "\n")
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
                     f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
@@ -6677,6 +6720,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self._plan_said = plan_said
                 self._plans_said.append((rnd, self._where(start), plan_said))
                 del self._plans_said[:-4]
+                _ph = self._plan_hist.setdefault(self._cur_target or "?", [])
+                _ph.append([rnd, self._where(start), plan_said])
+                del _ph[:-8]
+                self._save_memory()
             # {"op":"skip"} — THE MODEL DECLARES THIS STEP MOOT. Until now
             # a subgoal was done only when its predicate held, so a step
             # gated on a flag the model itself chose wrongly could be
