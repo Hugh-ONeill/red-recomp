@@ -849,6 +849,17 @@ being finished, then by what lies to the model.
   has_species; (b) whichever text renders for a catch target, state the ball
   count when it is zero ("BALLS: none — nothing can be caught without one;
   a mart sells them") — a fact, not a route.
+- [ ] **CATCH · Medium · VERIFIED — the grass's OFFER is known and unsaid.**
+  The journal has it exactly: under the catch policy Route 24 offered
+  Oddish 22, Kakuna 18, Weedle 16, Pidgey 15, Abra 14, Rattata, Mankey — 87
+  encounters, no WATER type; Route 25 the same shape. The current leg
+  grinds Route 25 grass for `party_type: WATER` (Water types there are in
+  the water — rod or Surf), and nothing shows the model that the grass has
+  never offered one. Add to the catch/training text: "in N encounters here
+  the grass offered: <species x n>" — evidence, from what it fought and
+  fled; the conclusion (this grass has no Water types; a rod is needed) is
+  the model's. Read from `battle_start` records per area, or keep a per-map
+  tally in the ledger.
 - [ ] **STRENGTH · High · REPORTED — no documented boulder push.** Boulders
   are entities; `Collision.occupied` blocks them so BFS/`walk_to` never
   routes through one; pushing needs two held presses into it, which only
