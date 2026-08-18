@@ -1754,6 +1754,18 @@ def tried_text(recs: list, top_subgoals: int = 4, top_ops: int = 5) -> str:
                     if head.startswith(c.split("(")[0]):
                         d["last"][c] = t.split(":", 1)[1].strip()[:110] \
                             if ":" in t else t[:110]
+                        # ...AND EVERY DISTINCT DEFINITIVE REFUSAL. "last:"
+                        # for use_item(HM_CUT) named only the most recent
+                        # species refused; the rewrite read PIDGEY and
+                        # SPEAROW and wrote "teach Wartortle" a third time,
+                        # the WARTORTLE refusal having been overwritten.
+                        # A "never" is a fact worth every one of them.
+                        _det = t.split(":", 1)[1].strip() if ":" in t else t
+                        if "NOT COMPATIBLE" in _det or "never" in _det:
+                            fs = d.setdefault("final", {}).setdefault(c, [])
+                            key = _det[:70]
+                            if key not in fs:
+                                fs.append(key)
             pending.pop(sg, None)
     rows = [(sg, d) for sg, d in per.items() if d["rounds"] >= 3]
     if not rows:
@@ -1771,6 +1783,10 @@ def tried_text(recs: list, top_subgoals: int = 4, top_ops: int = 5) -> str:
         for c, n in sorted(d["ops"].items(), key=lambda kv: -kv[1])[:top_ops]:
             last = d["last"].get(c)
             out.append(f"      {c} x{n}" + (f" — last: {last}" if last else ""))
+            fin = (d.get("final") or {}).get(c) or []
+            if len(fin) > 1:
+                out.append("          every definitive refusal so far: "
+                           + " | ".join(fin[:6]))
         for pl, n in sorted(d["plans"].items(), key=lambda kv: -kv[1])[:3]:
             out.append(f"      it said (x{n}): \"{pl[:140]}\"")
     return "\n".join(out)
