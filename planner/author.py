@@ -3519,6 +3519,14 @@ Reply with ONLY a JSON object, the reason FIRST:
 # a rule about how much the harness will rearrange the model's own list
 # on a single answer.
 PULL_NEAR = 3
+# ...and how far it will rearrange it at all. Beyond PULL_NEAR the pull
+# must say what it provides; beyond PULL_MAX it does not happen on any
+# answer. Live: "a party Pokemon knows FLY" was judged stuck behind
+# "Defeat Erika" (twelve legs later), the confirm answered "HM02" — a
+# fluent wrong fact — and the gym in the city the run cannot reach was
+# pulled to the front of the list. Twelve legs of the model's own order,
+# with Surge, Rock Tunnel and Lavender in between, on one sentence.
+PULL_MAX = 8
 
 
 def confirm_blocker(goal: str, n: int, text: str, gap: int, start: str,
@@ -3630,6 +3638,12 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
         print(f"[blocker] refused: leg {n} is already done", file=sys.stderr)
         return None
     gap = n - leg if leg else 0
+    if gap > PULL_MAX:
+        print(f"[blocker] refused a {gap}-leg pull: further than {PULL_MAX} "
+              f"— the list is not rearranged that far on one answer; if "
+              f"leg {n} truly comes first, the legs between are where the "
+              f"stuck one belongs", file=sys.stderr)
+        return None
     # EVERY PULL IS CONFIRMED, NEAR OR FAR. This ran only for pulls further
     # than PULL_NEAR, on the reasoning that a long reach is the suspicious
     # one — true, and it left the CIRCULAR pull entirely unguarded, because
