@@ -631,6 +631,19 @@ def build_prompt(goal: str, start: str | None = None) -> str:
 VALID_KEYS = set(PREDICATES)
 
 
+def pred_keys(pred) -> set:
+    """Every predicate key in play, including inside any_of branches (the
+    executor's helper, kept here so the author imports nothing from it)."""
+    out = set()
+    for k, v in (pred or {}).items() if isinstance(pred, dict) else []:
+        if k == "any_of":
+            for alt in (v or []):
+                out |= pred_keys(alt)
+        else:
+            out.add(k)
+    return out
+
+
 def validate(plan: dict) -> list:
     """Return a list of problems (empty = ok)."""
     probs = []
@@ -655,6 +668,32 @@ def validate(plan: dict) -> list:
             probs.append(f"{tag} ({sid}) missing/empty done_when")
             continue
         _check_pred(dw, tag, sid, probs)
+    # A PLACE IS NOT THE DEED. Leg 11 of run 13 ("Chase the Team Rocket
+    # thief out of the burgled house") ended on confront_thief:
+    # {"map":"CERULEAN_CITY"} — walking out of the house satisfied it, the
+    # judge said DONE, and EVENT_BEAT_CERULEAN_ROCKET_THIEF never fired: a
+    # false completion the run pays for later at Route 9. When the
+    # objective's own verb is a deed, its LAST subgoal must end on what the
+    # deed leaves behind — a flag, an item, a badge, a party change — not
+    # on standing somewhere.
+    goal = str(plan.get("goal") or plan.get("objective") or "").strip()
+    # verbs whose leftover is ALWAYS a flag/item/badge/party change. Not
+    # "give"/"talk"/"find": a drink handed to a guard leaves passage, and a
+    # hideout found IS a place — a place condition is right for those.
+    DEED = ("defeat", "chase", "retrieve", "rescue", "wake", "deliver",
+            "obtain", "buy", "clear", "beat", "catch", "receive")
+    if subs and goal and goal.split()[0].lower().rstrip(",:") in DEED:
+        last = subs[-1] if isinstance(subs[-1], dict) else {}
+        dw = last.get("done_when") or {}
+        keys = set(pred_keys(dw)) if isinstance(dw, dict) else set()
+        if keys and keys <= {"map", "area", "no_battle", "party_healthy"}:
+            probs.append(
+                f"subgoal[{len(subs) - 1}] ({last.get('id')}) is the LAST step "
+                f"of a leg whose objective is a deed (\"{goal[:60]}\"), but "
+                f"its condition is only a place ({', '.join(sorted(keys))}). "
+                f"Standing somewhere is not the deed done: end on what the "
+                f"deed leaves behind — an event flag, an item gained, a "
+                f"badge, a party change.")
     return probs
 
 
