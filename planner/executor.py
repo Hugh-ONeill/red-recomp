@@ -5190,6 +5190,9 @@ level. obs.party is in slot order),
 you are outside one on this map and talks to the NURSE. Free, always. It
 fails plainly if this map has no Center),
 {"op":"wait"}. Battles are auto-handled.
+{"op":"tap","btn":"b"} (press B once: closes an open menu, counter or
+list you are standing in — the way OUT of a shop counter or a PC screen
+you did not mean to open. Nothing is bought, sold or moved by B),
 {"op":"explore"} (the systematic search step, done for you: it presses
 the first thing HERE never pressed; if nothing, takes an exit HERE never
 taken; if nothing, walks you over ground you have already walked to the
