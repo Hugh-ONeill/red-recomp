@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""The boxes can be written to, and RELEASE really releases.
+"""The screens where a press spends something: boxes and counters.
+
+The boxes can be written to, RELEASE really releases, and neither
+a box nor a shop counter can be driven by a blind key press.
 
 Until 2026-08-17 obs.pc_mons listed what was in PC storage and no op could
 touch it. Pokemon went in exactly one way — caught with a full party, which
@@ -155,20 +158,93 @@ def main():
             fails.append("release")
         else:
             print(f"          {r.get('detail')}")
+        # --- AND A BARE PRESS MUST BOUNCE OFF. The whole reason the
+        # boxes were worth making writable is that blind A-presses were
+        # already moving things: menu(index=1) plus a boilerplate
+        # answer="yes" bought fifteen POKE_BALLs at a counter without a
+        # buy op ever being proposed. With storage writable the same shape
+        # could deposit or release, and a release does not come back.
+        r = (b.send("interact", name="PC") or {}).get("result") or {}
+        det = str(r.get("detail") or "")
+        o = b.obs() or {}
+        ok = ("PC STORAGE is open" in det
+              and o.get("mode") == "overworld"
+              and len(o.get("party") or []) == n0 - 1)
+        print(f"  {'ok  ' if ok else 'FAIL'}  a bare interact on the PC is "
+              f"handed back, not pressed into")
+        if not ok:
+            print(f"          {det[:150]}")
+            print(f"          mode {o.get('mode')} party {party_of(o)}")
+            fails.append("interact guard")
+
+        # ...and the ops that MEAN to drive it still can, which is the
+        # half a guard like this usually breaks. The release above emptied
+        # the box, so put something back first — otherwise this would pass
+        # or fail for a reason that has nothing to do with the guard.
+        b.send("pc_deposit", slot=n0 - 1)
+        r = (b.send("pc_withdraw", index=1, box=1) or {}).get("result") or {}
+        o = b.obs() or {}
+        ok = r.get("ok") and len(o.get("party") or []) == n0 - 1
+        print(f"  {'ok  ' if ok else 'FAIL'}  ...while pc_withdraw still "
+              f"drives the same screen")
+        if not ok:
+            print(f"          {r.get('detail')}")
+            fails.append("guard blocks real ops")
+
+        # ================= THE COUNTER =================
+        # This is where the guard was actually earned: fifteen POKE_BALLs
+        # bought without a buy op, 3175 money down to 175. Get outside to
+        # a map with a mart and check both halves — the trade ops still
+        # work, a bare press does not.
+        warps = ((b.obs() or {}).get("map") or {}).get("warps") or []
+        out = next((w for w in warps if w.get("x") is not None), None)
+        if out:
+            b.send("use_warp", x=out["x"], y=out["y"])
+        o = b.obs() or {}
+        if (o.get("map") or {}).get("id") == "VIRIDIAN_POKECENTER":
+            print("  SKIPPED (counter) — could not get out of the Center")
+        else:
+            money0 = o.get("money")
+            r = (b.send("sell", item="POKE_BALL", count=1)
+                 or {}).get("result") or {}
+            o = b.obs() or {}
+            ok = r.get("ok") and (o.get("money") or 0) > (money0 or 0)
+            print(f"  {'ok  ' if ok else 'FAIL'}  sell still drives the "
+                  f"counter (money {money0} -> {o.get('money')})")
+            if not ok:
+                print(f"          {r.get('detail')}")
+                fails.append("sell")
+
+            # the clerk, pressed blind, is where the 15 balls came from
+            r = (b.send("interact", name="VIRIDIANMART_CLERK")
+                 or {}).get("result") or {}
+            det = str(r.get("detail") or "")
+            o2 = b.obs() or {}
+            spent = (o2.get("money") or 0) < (o.get("money") or 0)
+            ok = ("shop COUNTER is open" in det) and not spent
+            print(f"  {'ok  ' if ok else 'FAIL'}  a bare interact on the "
+                  f"clerk is handed back, and nothing is bought")
+            if not ok:
+                print(f"          {det[:160]}")
+                print(f"          money {o.get('money')} -> {o2.get('money')}")
+                fails.append("clerk guard")
+
     finally:
+        # contract.stop_game, NOT proc.terminate(): run.sh execs xvfb-run,
+        # which spawns love as a child and does not forward SIGTERM, so
+        # terminate() kills the wrapper and leaves the game running on a
+        # dead display. Three of those piled up and blocked the next
+        # campaign launch with "a run is still live — stop it first".
+        # The helper kills the process GROUP, which is why it exists.
         if not args.keep:
-            proc.terminate()
-            try:
-                proc.wait(timeout=10)
-            except Exception:
-                proc.kill()
+            C.stop_game(proc)
 
     print(f"\n{'-' * 60}")
     if fails:
         print(f"THE BOXES DO NOT WORK: {len(fails)} case(s)")
         return 1
-    print("deposit, withdraw and release all work, and a misnamed release "
-          "takes nothing")
+    print("boxes and counters: the ops that name a decision work, a "
+          "blind press does not, and a misnamed release takes nothing")
     return 0
 
 

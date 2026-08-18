@@ -1325,12 +1325,62 @@ function OPS.new_game(G)
   return true, "new game"
 end
 
+-- A COUNTER AND A PC ARE NOT THINGS YOU PRESS A ON (user, 2026-08-17).
+-- Assigned once the ui_* helpers below exist; declared here because the
+-- generic key ops are defined above them.
+--
+-- WHAT THIS IS FOR. The run bought FIFTEEN POKE BALLs without ever
+-- proposing a buy op: menu(index=1) picked BUY and a boilerplate
+-- answer="yes" rode the "That'll be 200. OK?" confirmations, one ball per
+-- cycle, 3175 money down to 175, every trace line reading "ok (moved,
+-- dialog still open)". Nothing about that was a decision. The same shape
+-- can deposit or release a Pokemon by accident now that the boxes are
+-- writable, and a released Pokemon does not come back.
+--
+-- THIS IS THE FILE'S OWN RULE, not a new one. A bare interact already
+-- refuses to drive a party picker ("WHICH POKEMON IS NOT THE HARNESS'S
+-- CHOICE") and an elevator's floor list ("WHICH FLOOR IS NOT THE
+-- HARNESS'S CHOICE EITHER"), for exactly this reason: an op that has
+-- chosen says so, a bare press has not chosen anything. A shop counter
+-- and PC storage are the same kind of screen and were the only ones left
+-- open to blind pressing.
+--
+-- IT REMOVES NO CAPABILITY. Everything reachable by mashing is reachable
+-- through buy/sell/store_item/retrieve_item/pc_deposit/pc_withdraw/
+-- pc_release, and those say WHAT and HOW MANY, which is the part that was
+-- being lost. The PC's own top-level list is deliberately NOT guarded, so
+-- navigating it — PROF.OAK's dex rating, SEE YA — still works.
+local ui_transaction_up
+local function hands_off(G)
+  local kind = ui_transaction_up and ui_transaction_up(G)
+  if kind == "shop" then
+    return "a shop COUNTER is open. Pressing keys here buys and sells by "
+      .. "accident — a run once bought 15 POKE_BALLs this way and spent "
+      .. "3000 without meaning to. Trade with {\"op\":\"buy\","
+      .. "\"item\":...,\"count\":N} or {\"op\":\"sell\",...}, which "
+      .. "say what and how many. Backed out; nothing was bought."
+  elseif kind == "pc" then
+    return "PC STORAGE is open. Pressing keys here moves items and "
+      .. "POKEMON by accident, and a released Pokemon never comes back. "
+      .. "Use {\"op\":\"store_item\"/\"retrieve_item\",\"item\":...} "
+      .. "or {\"op\":\"pc_deposit\",\"slot\":N} / "
+      .. "{\"op\":\"pc_withdraw\",\"index\":N} / "
+      .. "{\"op\":\"pc_release\",\"index\":N,\"species\":...}. "
+      .. "Backed out; nothing was moved."
+  end
+  return nil
+end
+
 function OPS.tap(G, c)
+  local no = hands_off(G)
+  if no then ui_back_out(G) return false, no end
   U.tap(G, c.btn or "a")
   return true
 end
 
 function OPS.mash_a(G, c)
+  local no = hands_off(G)
+  if no then ui_back_out(G) return false, no end
   for _ = 1, (c.times or 10) do U.tap(G, "a") U.wait(2) end
   return true
 end
@@ -1942,6 +1992,28 @@ local function ui_shop_up(G)
   if tostring(t.screenId or "") == "ShopMenu" then return true end
   local title = tostring(t.title or ""):upper()
   return (title == "BUY" or title == "SELL") and ui_is_list(G)
+end
+
+-- WHICH SCREENS A BLIND PRESS CAN SPEND SOMETHING ON. Assigned into the
+-- forward-declared local near OPS.tap; see hands_off there for why.
+--
+-- The two engine screens that MOVE things carry their own ids (BoxMenu,
+-- PlayerPC), and the lists they push are raw ListMenus that keep the title
+-- they were built with ("BOX 3 (WITHDRAW)", "PARTY (DEPOSIT)", "DEPOSIT
+-- ITEM"). The PC's own top-level list is neither and stays open on
+-- purpose: choosing PROF.OAK's dex rating or SEE YA moves nothing.
+function ui_transaction_up(G)
+  if ui_shop_up(G) then return "shop" end
+  local t = ui_top(G)
+  if not t then return nil end
+  local sid = tostring(t.screenId or "")
+  if sid == "BoxMenu" or sid == "PlayerPC" then return "pc" end
+  local title = tostring(t.title or ""):upper()
+  if title:find("^BOX %d") or title:find("^PARTY %(DEPOSIT")
+     or title == "DEPOSIT ITEM" or title == "WITHDRAW ITEM" then
+    return "pc"
+  end
+  return nil
 end
 
 -- WHERE THE NEAREST COUNTER IS. "No shop clerk on this map" is true and
@@ -3501,6 +3573,8 @@ end
 -- List-menu navigation: any stack state exposing a numeric cursor `index`.
 -- Moves the cursor to c.index, then A (or just positions with c.press=false).
 function OPS.menu(G, c)
+  local no = hands_off(G)
+  if no then ui_back_out(G) return false, no end
   local top = G.stack:top()
   if not (top and type(top.index) == "number") then
     return false, "no list menu on top"
@@ -3818,7 +3892,21 @@ function OPS.interact(G, c)
       -- "shop menu never opened" after the clerk had plainly said "Hi
       -- there! May I help you?". Callers that intend to DRIVE a counter
       -- ask to be handed it instead.
-      if c.stop_at_menu and ui_shop_up(G) then return true end
+      -- ...AND AT PC STORAGE, AND WITHOUT BEING ASKED. This was opt-in,
+      -- so only buy and sell ever got handed the counter and a bare
+      -- interact still pressed into it — which is how answer="yes" rode
+      -- fifteen purchase confirmations. An op that means to DRIVE one of
+      -- these passes stop_at_menu and gets it silently; anyone else is
+      -- told which ops work here and left outside it.
+      do
+        local _kind = ui_transaction_up(G)
+        if _kind then
+          if c.stop_at_menu then return true end
+          local why = hands_off(G)
+          ui_back_out(G)
+          return true, (recent_text and (recent_text .. " ") or "") .. why
+        end
+      end
       -- WHICH POKEMON IS NOT THE HARNESS'S CHOICE. A party picker inside a
       -- dialog got A-pressed like any other screen, which selects whoever
       -- is in slot 1 -- and after collecting CHARIZARD that slot held
