@@ -8492,7 +8492,11 @@ def _write_last_state(b, failed_plan=None, failed_subgoal=None):
             # already exited.
             "party": [{"species": m.get("species"), "level": m.get("level"),
                        "hp": m.get("hp"), "max_hp": m.get("max_hp"),
-                       "status": m.get("status"), "moves": m.get("moves")}
+                       "status": m.get("status"), "moves": m.get("moves"),
+                       # types are on the party screen; without them the
+                       # sweep's state text could not tell CHARIZARD was
+                       # the FLYING type the objective wanted
+                       "types": m.get("types")}
                       for m in (o.get("party") or [])],
             "badges": o.get("badges") or [],
             "bag": o.get("bag") or {},
