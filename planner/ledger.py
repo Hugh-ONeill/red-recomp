@@ -472,7 +472,15 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None) -> str:
         first = f"walk {fk}" if not fk[0].isdigit() else f"door ({fk})"
         what = []
         if left:
-            what.append(f"take one of {', '.join(sorted(left)[:3])}")
+            # name a seam as an EDGE and a door as a DOOR: "take one of
+            # west" read as a typo; the untried thing on Route 7 was its
+            # west edge — the road to the next town.
+            def _word(k):
+                return (f"the {k} edge" if k in ("north", "south", "east",
+                                                "west") else f"door ({k})")
+            what.append("take " + " or ".join(_word(k)
+                                              for k in sorted(left)[:3])
+                        + " (never taken)")
         if things:
             what.append(f"press {', '.join(things[:3])}")
         return (f"THIS AREA IS FULLY WORKED — every exit taken, everything "
