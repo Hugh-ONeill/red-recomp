@@ -6535,6 +6535,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             if (ASKING in str(r.get("detail") or "")
                     and op == "interact" and step.get("name")):
                 self._retract_touch(self._where(pre_obs), step["name"])
+            # A PICKER BACKED OUT OF IS A QUESTION UNANSWERED. "asked WHICH
+            # POKEMON, and nothing here had chosen one — backed out" counted
+            # as a touch, so the Vermilion trader read as pressed 4x and her
+            # room as fully worked, when the one thing she asked was never
+            # answered. Same rule as ASKING: it is not a touch until it is.
+            if ("asked WHICH POKEMON" in str(r.get("detail") or "")
+                    and "backed out" in str(r.get("detail") or "")
+                    and op == "interact" and step.get("name")):
+                self._retract_touch(self._where(pre_obs), step["name"])
             if not r.get("ok"):
                 self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
                 self._dead_why[sig] = str(r.get("detail") or "")[:160]
