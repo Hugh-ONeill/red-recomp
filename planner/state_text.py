@@ -91,7 +91,9 @@ def respawn_text(r):
     if not r or not r.get("map"):
         return ""
     where = r.get("outdoor") or r.get("map")
-    return f" — if your party faints you wake at {where}"
+    return (f" — if your party faints you wake at {where}, the last Pokemon "
+            f"Center you healed at (healing at a Center makes it the place "
+            f"you wake)")
 
 
 def daycare_text(dc):

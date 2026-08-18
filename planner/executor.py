@@ -4200,8 +4200,24 @@ class Executor:
         # healing behind it is one wipe from losing the walk as well
         rs = (obs or {}).get("respawn") or {}
         if rs.get("map"):
-            lines.append(f"IF THE PARTY FAINTS you wake at {rs['map']}.")
+            lines.append(self._respawn_line(obs))
         return "\n".join(lines)
+
+    @staticmethod
+    def _respawn_line(obs) -> str:
+        """WHERE you wake, and the RULE that moves it. The place was stated
+        (training text, the author's start line) and the rule never was —
+        so the run walked from Cerulean to Route 24 with Viridian still its
+        respawn, wiped, and woke a whole map away. Manual tier: a blackout
+        returns you to the last Pokemon Center you healed at."""
+        rs = (obs or {}).get("respawn") or {}
+        if not rs.get("map"):
+            return ""
+        return (f"IF THE PARTY FAINTS you wake at {rs['map']} — the last "
+                f"Pokemon Center you HEALED at. Healing at any Center "
+                f"({{\"op\":\"heal\"}}) makes THAT Center the place you "
+                f"wake, so a heal before a hard stretch is also a shorter "
+                f"walk back.")
 
     def _hunted(self) -> bool:
         """Is the creature this subgoal wants to be CAUGHT, or handed over?
@@ -5028,7 +5044,9 @@ class Executor:
                     "you have NEVER taken: "
                     + "; ".join(t for _r, t in sorted(elsewhere)[:6])
                     + "." + near_hint)
+            _rs_line = self._respawn_line(obs)
             return (warned + "\n" + ledger_block + pp_line + lift_line
+                    + ("\n" + _rs_line if _rs_line else "")
                     + floor_note + floor_away + route_line + _remote_worked
                     + hint_line + remote_line + _elsewhere_str)
         loot_line += remote_line
