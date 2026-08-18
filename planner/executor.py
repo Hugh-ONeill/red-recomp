@@ -3683,6 +3683,28 @@ class Executor:
                 "creature and carrying enough balls to keep trying. Grind "
                 "fails plainly where there is no grass, and a floor whose "
                 "grass never offers one is a floor to leave.")
+            # ...AND THE BOX IS PART OF THE BUDGET NOW. Until today a
+            # party could only grow by catching, so "go to the grass" was
+            # the whole truth. It is not any more: a Pokemon in storage is
+            # one op away from the party, and the run had just put two
+            # PIDGEYs in a box while carrying a party_size goal it could
+            # no longer reach — it made its own subgoal harder with the
+            # ops it had been given and nothing said so. This restates
+            # obs.pc_mons, which is already in front of it; whether to
+            # withdraw or to catch something better stays its call.
+            stored = (obs or {}).get("pc_mons") or []
+            if stored:
+                who = ", ".join(
+                    f"{m.get('species')} L{m.get('level')} "
+                    f"(box {m.get('box')}, #{m.get('index')})"
+                    for m in stored[:6])
+                lines.append(
+                    "YOU ALREADY HAVE POKEMON IN STORAGE, and a boxed one "
+                    "does NOT count toward this condition: " + who
+                    + ". {\"op\":\"pc_withdraw\",\"index\":N,\"box\":B} "
+                    "at any Pokemon Center puts one back in the party, "
+                    "which is faster than catching if one of them already "
+                    "suits.")
             lines.append(
                 "BALLS ARE THE BUDGET: every throw spends one and a failed "
                 "throw spends it too. A mart counter sells more "
