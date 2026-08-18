@@ -518,6 +518,26 @@ NEW_GAME_START = (
     "(map REDS_HOUSE_2F) with no Pokemon and nothing in the bag.")
 
 
+def fired_flags() -> list:
+    """Every event flag this run has watched fire, oldest first — the only
+    flag names the harness may volunteer (they are history, not contents)."""
+    fired = []
+    try:
+        for line in Path("run/executor_log.jsonl").read_text().splitlines():
+            if '"flag_fired"' not in line:
+                continue
+            try:
+                r = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            f = r.get("flag")
+            if f and f not in fired:
+                fired.append(f)
+    except OSError:
+        pass
+    return fired
+
+
 def recent_events(cap: int = 14) -> str:
     """The last things that actually HAPPENED, newest last.
 
@@ -533,20 +553,7 @@ def recent_events(cap: int = 14) -> str:
     the one deed that mattered.
     """
     import collections
-    try:
-        fired = []
-        for line in Path("run/executor_log.jsonl").read_text().splitlines():
-            if '"flag_fired"' not in line:
-                continue
-            try:
-                r = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            f = r.get("flag")
-            if f and f not in fired:
-                fired.append(f)
-    except OSError:
-        return ""
+    fired = fired_flags()
     if not fired:
         return ""
     fam: collections.OrderedDict = collections.OrderedDict()
@@ -692,10 +699,20 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                         probs.append(f"{tag} ({sid}) '{item}' is not an item "
                                      f"id this game defines{hint}")
             elif k == "flag" and ENGINE_FLAGS and v not in ENGINE_FLAGS:
-                near = difflib.get_close_matches(v, ENGINE_FLAGS,
+                # A FLAG'S NAME IS A FACT. Close matches over the whole
+                # engine list told a plan that wrote EVENT_TOWER_GHOSTS_GONE
+                # "did you mean EVENT_BEAT_GHOST_MAROWAK?" — the ghost's
+                # identity, handed over by the spell-checker (2026-08-18).
+                # Items and species are pamphlet tier (a list of things
+                # that exist); event names are what the game contains.
+                # Suggest only from what this run has already watched
+                # fire; otherwise say to condition on something visible.
+                near = difflib.get_close_matches(v, fired_flags(),
                                                  n=3, cutoff=0.6)
-                hint = (f" — did you mean {', '.join(near)}?"
-                        if near else "")
+                hint = (f" — did you mean {', '.join(near)}?" if near else
+                        " — if you cannot spell the event, condition on "
+                        "something you can see instead: a map, an item, a "
+                        "badge, or a party change")
                 probs.append(f"{tag} ({sid}) flag '{v}' is not an event this "
                              f"game defines{hint}")
             elif k == "badge" and v not in BADGES:
