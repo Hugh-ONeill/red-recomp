@@ -8168,12 +8168,28 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 stuck_region = ((self.settle() or {}).get("map")
                                 or {}).get("region", "")
                 backtracks += 1
-                print(f"   <- backtracking: redoing {prev['id']} "
-                      f"(it may have finished in the wrong place)")
-                self.log("backtrack", failed=sg["id"], redoing=prev["id"])
+                # REDO ONLY WHEN IT IS TRUE. The candidate is chosen either
+                # because its condition still HOLDS and another place also
+                # satisfies it (relocate), or because its condition does
+                # NOT hold at all (it was never really done). Both were
+                # escalated with redo=True, whose prompt opens "you ALREADY
+                # satisfy DONE_WHEN — but you are in the WRONG PLACE" —
+                # told to a run that did not hold the item, twelve rounds
+                # running: it "knew" it had Fresh Water because we said so.
+                # A step whose condition is false gets an ordinary
+                # escalation of that step.
+                _redo = bool(pred_holds(prev.get("done_when") or {},
+                                        self.settle() or {}))
+                print(f"   <- backtracking: "
+                      + (f"redoing {prev['id']} (it may have finished in "
+                         f"the wrong place)" if _redo else
+                         f"re-opening {prev['id']} (its condition does not "
+                         f"hold)"))
+                self.log("backtrack", failed=sg["id"], redoing=prev["id"],
+                         redo=_redo)
                 try:
                     moved, ops = self.escalate(
-                        prev, redo=True, avoid_region=stuck_region,
+                        prev, redo=_redo, avoid_region=stuck_region,
                         blocked_target=self._target_key(sg),
                         blocked_by=sg.get("goal_text", sg["id"])[:120])
                 except TimeoutError as e:
@@ -8194,7 +8210,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                  redoing=prev["id"], attempt=backtracks)
                         try:
                             moved2, _ = self.escalate(
-                                prev, redo=True, avoid_region=stuck_region,
+                                prev, redo=bool(pred_holds(
+                                    prev.get("done_when") or {},
+                                    self.settle() or {})),
+                                avoid_region=stuck_region,
                                 blocked_target=self._target_key(sg),
                                 blocked_by=sg.get("goal_text", sg["id"])[:120])
                         except TimeoutError:
