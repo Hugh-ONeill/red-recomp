@@ -7674,6 +7674,25 @@ def main():
         # final condition against the live game before going on.
         if ok:
             final = (plan.get("subgoals") or [{}])[-1].get("done_when") or {}
+            # ...BUT A TRANSIENT CONDITION CANNOT BE RE-WITNESSED. This
+            # re-check calls settle(), whose whole job is to resolve the
+            # game to a clean decision state — which CLOSES whatever menu
+            # is open. So a leg whose objective is a UI screen is failed by
+            # the act of checking it: leg 3 opened the PC, its subgoal
+            # reported done fourteen times, and every attempt died on
+            # "reached its last subgoal but its objective {"screen":
+            # "BoxMenu"} is NOT met". Twenty-two plan versions, hours, and
+            # the run never once did anything wrong.
+            # The guard is right for DURABLE facts — a badge, a flag, an
+            # item, a map — which is what it was written for (mountain
+            # subgoals running on a fresh Charmander with no badge). A
+            # screen is true only while it is open, the subgoal's own
+            # success already witnessed it, and there is nothing left to
+            # re-witness.
+            if final and pred_keys(final) <= {"screen", "mode"}:
+                ex.log("plan_objective_transient", plan=plan_path.name,
+                       final=json.dumps(final))
+                final = {}
             if final and not pred_holds(final, ex.settle()):
                 print(f"!! {plan_path.name} reached its last subgoal but its "
                       f"objective {json.dumps(final)} is NOT met — stopping "
