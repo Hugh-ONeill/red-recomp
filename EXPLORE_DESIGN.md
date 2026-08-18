@@ -330,6 +330,18 @@ written (19% of consecutive ledger-era plans were a leave-then-return flip
 made with only the last plan in view); `show_esc.sh -p [-f]` prints the
 thought stream; `run/status.txt` carries a THINKS line.
 
+## 6e. `skip` — the model may declare a step moot (2026-08-18)
+
+A subgoal was done only when its predicate held, so a step gated on a flag
+the model itself chose wrongly could be seen through ("I already have Poke
+Balls, but the event flag has not been registered") and still not stepped
+past until the ladder ran after four attempts. `{"op":"skip"}` moves the
+plan to the next step, logged `subgoal_skipped` with the model's stated
+reason (its plan text); not distilled, not marked done. Refused on the
+plan's LAST step (that is the objective; the ladder decides that), and the
+leg-end `--check-done` audit still judges the objective. The rewrite's
+journal digest shows `SKIPPED <step> — the model declared it moot: "…"`.
+
 ## 7. What this does not do
 
 - It does not point. The ledger holds only what the observation and the

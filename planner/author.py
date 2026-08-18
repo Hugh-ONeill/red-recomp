@@ -1470,6 +1470,9 @@ def journal_text(path: Path, limit: int = 60) -> str:
                              " no building was entered)" if idle else ""))
         elif k == "subgoal_failed":
             events.append(f"  FAILED  {r.get('subgoal')}")
+        elif k == "subgoal_skipped":
+            events.append(f"  SKIPPED {r.get('subgoal')} — the model "
+                          f"declared it moot: \"{(r.get('reason') or '')[:120]}\"")
         elif k == "blackout":
             race = ""
             if dealt and taken:

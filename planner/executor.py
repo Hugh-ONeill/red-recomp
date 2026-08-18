@@ -915,6 +915,7 @@ class Executor:
         # view. Seeing its own last four in a row is how the flip becomes
         # visible to the one who is doing it. Its words, unedited.
         self._plans_said: list = []
+        self._skipped = None        # subgoal id the model declared moot
         self._entered_map: dict = {}   # "target|map" -> entries for target
         self._revisit_refusals: dict = {}   # target -> refusals spent
         self._battle_regions: set = set()   # "target|region" a fight ran in
@@ -5193,6 +5194,13 @@ fails plainly if this map has no Center),
 {"op":"tap","btn":"b"} (press B once: closes an open menu, counter or
 list you are standing in — the way OUT of a shop counter or a PC screen
 you did not mean to open. Nothing is bought, sold or moved by B),
+{"op":"skip"} (declare THIS subgoal moot and move the plan on to its next
+step: for a step whose condition can no longer come true, or that is
+already pointless — you hold what it was for, its event fired under
+another name. Say why in your plan; the reason is recorded. It is refused
+on a plan's LAST step, which is the objective itself, and the plan is
+judged on the objective at the end regardless — skipping does not make
+anything true),
 {"op":"explore"} (the systematic search step, done for you: it presses
 the first thing HERE never pressed; if nothing, takes an exit HERE never
 taken; if nothing, walks you over ground you have already walked to the
@@ -6254,6 +6262,33 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self._plan_said = plan_said
                 self._plans_said.append((rnd, self._where(start), plan_said))
                 del self._plans_said[:-4]
+            # {"op":"skip"} — THE MODEL DECLARES THIS STEP MOOT. Until now
+            # a subgoal was done only when its predicate held, so a step
+            # gated on a flag the model itself chose wrongly could be
+            # SEEN through ("I already have Poke Balls…") and still not
+            # stepped past. Its judgment, its stated reason; the plan moves
+            # to the next step. Not on the LAST step: that is the objective,
+            # and the objective is what the leg is judged on afterwards.
+            if any(isinstance(s2, dict) and s2.get("op") == "skip"
+                   for s2 in (macro or [])):
+                subs = (self.plan or {}).get("subgoals") or []
+                idx = next((i for i, s2 in enumerate(subs)
+                            if s2.get("id") == sg.get("id")), None)
+                if idx is not None and idx == len(subs) - 1:
+                    self.log("skip_refused", subgoal=sg["id"], round=rnd,
+                             why="last step of the plan")
+                    feedback = ("skip is not allowed on the plan's LAST "
+                                "step — that step is the objective itself. "
+                                "Finish it, or let the plan fail so it can "
+                                "be rewritten from what happened.")
+                    spent += 1
+                    continue
+                self.log("subgoal_skipped", subgoal=sg["id"], round=rnd,
+                         reason=self._plan_said)
+                print(f"   (the model skipped {sg['id']}: "
+                      f"{(self._plan_said or '')[:120]})")
+                self._skipped = sg["id"]
+                return True, []
             if not macro:
                 self.log("escalate_bad_proposal", subgoal=sg["id"], round=rnd,
                          reply=reply[:600])
@@ -7559,7 +7594,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 success, ops = False, []
             if success:
                 ok = True
-                if self.distill(sg, ops):
+                if getattr(self, "_skipped", None) == sg.get("id"):
+                    self._skipped = None
+                    print(f"   {sg['id']} skipped by the model — not "
+                          f"distilled, not done; the plan moves on")
+                elif self.distill(sg, ops):
                     print(f"   distilled {sg['id']} ({len(ops)} ops)")
                 else:
                     # say which it was: "0 ops" read as a distilled route
