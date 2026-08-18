@@ -6982,9 +6982,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if _older:
                     plan_echo += (" (the first ones are from EARLIER ATTEMPTS "
                                   "at this same step)")
+                def _pl(t):
+                    _r, _w, _p = t[0], t[1], t[2]
+                    _v = t[3] if len(t) > 3 and t[3] else ""
+                    return (f"  R{_r} (at {_w}): {_p}"
+                            + (f"  → {_v}" if _v else ""))
                 plan_echo += ":\n" + "\n".join(
-                    f"  R{_r} (at {_w}): {_p}"
-                    for _r, _w, _p in (_older + list(self._plans_said))) + "\n"
+                    _pl(t) for t in (_older + list(self._plans_said))) + "\n"
             # ...AND WHAT YOU HAVE DONE FOR THIS STEP, over every attempt:
             # the outcome ledger summed across areas — op, how many times,
             # what happened last. The ledger block shows it per area; this
@@ -8083,11 +8087,28 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # ui) wipe five stale rounds of pacing between the mart and the
             # street, and the mart leg was pacing exactly that. Only new
             # ground or a changed fingerprint says the run got somewhere.
-            if _fresh_ground or _fp != self._stale_fp:
+            _moved_world = bool(_fresh_ground or _fp != self._stale_fp)
+            if _moved_world:
                 self._stale_rounds = 0
             elif not _exempt:
                 self._stale_rounds += 1
             self._stale_fp = _fp
+            # WRITE THE VERDICT ON THE PLAN. The plan echo quoted past plans
+            # in the model's own words and nothing else, so "engage the
+            # ghost in battle" read back as a plan, not as a plan that had
+            # already changed nothing four times — and it was re-adopted
+            # "based on previous attempts". Each plan now carries what came
+            # of it: new ground / something changed / NOTHING CHANGED.
+            _verdict = ("new ground" if _fresh_ground else
+                        "something changed" if _moved_world else
+                        "NOTHING CHANGED")
+            if self._plans_said and len(self._plans_said[-1]) == 3 \
+                    and self._plans_said[-1][0] == rnd:
+                _r0, _w0, _p0 = self._plans_said[-1]
+                self._plans_said[-1] = (_r0, _w0, _p0, _verdict)
+                _ph = self._plan_hist.get(self._cur_target or "?") or []
+                if _ph and _ph[-1][0] == rnd and len(_ph[-1]) == 3:
+                    _ph[-1] = [_r0, _w0, _p0, _verdict]
             # THE CLOCK, IN VIEW. A step about to be ended for staleness
             # should say so while there is still a round to spend on the
             # untried list instead — a fact about the harness's own budget,
