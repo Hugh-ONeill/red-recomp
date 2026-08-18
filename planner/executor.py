@@ -2774,6 +2774,7 @@ class Executor:
             e["n"] += 1
             e["to"] = dst
             e.pop("shut", None)          # it opened; whatever shut it is gone
+            e.pop("blocked_at", None)    # it landed; the block is gone
             # WHERE THIS DOOR PUT YOU. Only the region label was kept, and
             # a region is coarse: Cerulean's front door and the hole in the
             # trashed house's back wall both read CERULEAN_CITY|20,0, so
@@ -2927,12 +2928,17 @@ class Executor:
                     out.setdefault(k, v)
             return out
 
+        _now = getattr(self, "_mark_now", None)
         seen, q = {frm} | set(avoid or ()), deque([(frm, [])])
         while q:
             cur, path = q.popleft()
             for key, e in edges(cur).items():
                 nxt = e.get("to")
                 if not nxt or nxt in seen:
+                    continue
+                # a hop that failed to land in THIS world state is not
+                # routed again until the world moves (see _walk_route)
+                if _now is not None and e.get("blocked_at") == _now:
                     continue
                 hop = path + [(key, nxt)]
                 if nxt == to or nxt in AREA_ALIASES.get(to, ()):
@@ -3493,8 +3499,23 @@ class Executor:
                 frm = self._where(pre)
                 rec = (self.explored.get(frm) or {}).get(key)
                 if rec and rec.get("to") == nxt:
-                    del self.explored[frm][key]
-                    self.log("edge_voided", frm=frm, via=key, to=nxt)
+                    if int(rec.get("n") or 0) >= 1:
+                        # A WALKED EDGE IS NOT A PHANTOM. Voiding was written
+                        # for edges minted by a blackout walk-back that never
+                        # existed; applied to an edge the run had actually
+                        # walked, one failed hop (a wanderer in the corridor,
+                        # a script, a battle mid-walk) deleted the route —
+                        # four true edges in one morning, including the
+                        # fossil room's way out, and the auto-walk to
+                        # Cerulean stopped existing. Blocked for NOW: the
+                        # router skips it while the world mark stands, and
+                        # it is a road again the moment anything changes.
+                        rec["blocked_at"] = self._world_mark(o)
+                        self.log("edge_blocked", frm=frm, via=key, to=nxt,
+                                 n=rec.get("n"))
+                    else:
+                        del self.explored[frm][key]
+                        self.log("edge_voided", frm=frm, via=key, to=nxt)
                 self.log("route_walk_lost", subgoal=sg["id"], wanted=nxt,
                          got=self._where(o))
                 return self._where(o)
