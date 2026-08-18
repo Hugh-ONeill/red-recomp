@@ -7195,9 +7195,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                .get(_here_now))
                        or _switches or had_blackout
                        or cur.get("mode") != "overworld")
-            if _exempt or _fresh_ground or _fp != self._stale_fp:
+            # An exempt round is NOT COUNTED — neither for nor against.
+            # Resetting on it let a round that ended in the shop menu (mode
+            # ui) wipe five stale rounds of pacing between the mart and the
+            # street, and the mart leg was pacing exactly that. Only new
+            # ground or a changed fingerprint says the run got somewhere.
+            if _fresh_ground or _fp != self._stale_fp:
                 self._stale_rounds = 0
-            else:
+            elif not _exempt:
                 self._stale_rounds += 1
             self._stale_fp = _fp
             if self._stale_rounds >= STALE_CUTOFF and spent < rounds:
