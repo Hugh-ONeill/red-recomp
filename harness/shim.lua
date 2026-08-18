@@ -3506,12 +3506,13 @@ function OPS.daycare_withdraw(G, c)
   return false, tostring(want) .. " is still at the day care"
 end
 
--- Level-grind primitive: stand in this map's wild grass and pace until an
--- encounter interrupts (or the step budget runs out). The EXECUTOR fights
+-- Level-grind primitive: stand where this map's wilds spawn (grass; any
+-- floor tile of a cave or tower) and pace until an encounter interrupts (or
+-- the step budget runs out). The EXECUTOR fights
 -- each battle with the subgoal's policy and re-sends this op — the same
 -- battle-retry machinery as traversal — until the plan's done_when (a
 -- level gate) holds. Decision-free: the model decides WHERE (which map)
--- and the plan decides UNTIL; walking into grass is mechanics.
+-- and the plan decides UNTIL; walking onto wild ground is mechanics.
 function OPS.grind(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close)"
@@ -3521,12 +3522,42 @@ function OPS.grind(G, c)
   local p = ow.player
   local map = ow.map
   if not (map and map.isGrassCell) then return false, "no map" end
+  -- WHERE A WILD CAN APPEAR, by the engine's own rule (OverworldController
+  -- :3585): in grass; on water while surfing; or, on an INDOOR map with an
+  -- encounter table whose tileset is not FOREST, on EVERY tile -- caves,
+  -- towers, the Mansion, the Power Plant. grind only knew grass, so in Rock
+  -- Tunnel it said "no reachable grass on this map" while every floor tile
+  -- there spawns Zubat.
+  local indoor = G.data and G.data.field and G.data.field.indoorEncounters
+  local encDef = G.data and G.data.encounters and G.data.encounters[map.id]
+  local md = map.def or {}
+  local anywhere = encDef and indoor and md.index and indoor.firstIndoorMap
+    and md.index >= indoor.firstIndoorMap
+    and md.tileset ~= indoor.excludedTileset
+  local afloat = p.surfing and encDef and encDef.water and map.isWaterCell
+  -- (never onto a warp tile: a cave's ladders and mouths are floor too, and
+  -- pacing across one would leave the map mid-grind)
+  local warp_at = {}
+  for _, w in ipairs(md.warps or {}) do warp_at[w.x .. "," .. w.y] = true end
+  local function enc_cell(x, y)
+    if not map:inBounds(x, y) then return false end
+    if anywhere then
+      return map:isWalkableCell(x, y) and not warp_at[x .. "," .. y]
+    end
+    if afloat and map:isWaterCell(x, y) then return true end
+    return map:isGrassCell(x, y)
+  end
+  if not encDef then
+    return false, "no wild Pokemon live on this map (no grass, and not a "
+      .. "cave or tower floor that spawns them)"
+  end
+  local ground = anywhere and "the floor" or (afloat and "the water" or "grass")
   local function dirname_of(d)
     return (d[1] == 0 and (d[2] < 0 and "up" or "down"))
       or (d[1] < 0 and "left" or "right")
   end
-  -- stand in grass: BFS to the nearest reachable grass cell if not on one
-  if not map:isGrassCell(p.cellX, p.cellY) then
+  -- stand where wilds spawn: BFS to the nearest such cell if not on one
+  if not enc_cell(p.cellX, p.cellY) then
     local key = function(x, y) return x .. "," .. y end
     local seen = { [key(p.cellX, p.cellY)] = true }
     local queue = { { x = p.cellX, y = p.cellY } }
@@ -3540,27 +3571,27 @@ function OPS.grind(G, c)
                                      { __index = p })
           if Collision.canMove(map, ow.entities, probe, dirname_of(d)) then
             seen[key(nx, ny)] = true
-            if map:isGrassCell(nx, ny) then gx, gy = nx, ny break end
+            if enc_cell(nx, ny) then gx, gy = nx, ny break end
             queue[#queue + 1] = { x = nx, y = ny }
           end
         end
       end
     end
-    if not gx then return false, "no reachable grass on this map" end
+    if not gx then return false, "no reachable " .. ground .. " on this map" end
     OPS.walk_to(G, { x = gx, y = gy, max_steps = c.max_steps or 200 })
-    if G.stack:top() ~= ow then return true, "battle en route to grass" end
-    if not map:isGrassCell(p.cellX, p.cellY) then
-      return false, "couldn't reach the grass"
+    if G.stack:top() ~= ow then return true, "battle en route to " .. ground end
+    if not enc_cell(p.cellX, p.cellY) then
+      return false, "couldn't reach the " .. ground
     end
   end
-  -- pace: step between adjacent grass cells (each step rolls the wild RNG)
+  -- pace: step between adjacent spawning cells (each step rolls the wild RNG)
   local BACK = { left = "right", right = "left", up = "down", down = "up" }
   for _ = 1, (c.steps or 80) do
     if G.stack:top() ~= ow then return true, "encounter" end
     local moved = false
     for _, dn in ipairs({ "left", "right", "up", "down" }) do
       local d = DIRS[dn]
-      if map:isGrassCell(p.cellX + d[1], p.cellY + d[2])
+      if enc_cell(p.cellX + d[1], p.cellY + d[2])
          and Collision.canMove(map, ow.entities, p, dn) then
         walk(G, dn, 1)
         moved = true
@@ -3578,7 +3609,7 @@ function OPS.grind(G, c)
           break
         end
       end
-      if not moved then return false, "boxed in on the grass" end
+      if not moved then return false, "boxed in on the " .. ground end
     end
   end
   if G.stack:top() ~= ow then return true, "encounter" end

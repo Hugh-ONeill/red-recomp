@@ -4103,9 +4103,10 @@ class Executor:
             lines = [f"\nTHIS IS NOT SOMEWHERE TO GO — IT IS SOMETHING TO "
                      f"BECOME. The condition is {kind} {dw_val}, and no "
                      f"door satisfies it. But WHERE YOU STAND DECIDES WHAT "
-                     f"YOU MEET: the grass on this floor holds what it "
-                     f"holds, and if it never offers the right creature, "
-                     f"the answer is different grass, not more of this."]
+                     f"YOU MEET: the wild ground on this floor (grass, or "
+                     f"a cave's every tile) holds what it holds, and if it "
+                     f"never offers the right creature, the answer is "
+                     f"different ground, not more of this."]
             # AND YOU CANNOT CATCH ANYTHING WITHOUT A BALL. The harness's
             # own catch policy already refuses to throw one it does not
             # have, so this is not game knowledge being handed over — it is
@@ -4196,14 +4197,15 @@ class Executor:
         # just as wrong for a shop clerk as the hunting one was.
         if kind in ("party_size", "has_species", "party_type", "dex_owned"):
             lines.append(
-                "HOW TO DO IT: {\"op\":\"grind\"} walks into this floor's "
-                "wild grass and paces until something appears. YOU DO NOT "
+                "HOW TO DO IT: {\"op\":\"grind\"} walks onto this floor's "
+                "wild ground (tall grass outdoors; in a cave or tower, any "
+                "floor tile) and paces until something appears. YOU DO NOT "
                 "FIGHT THESE BATTLES — the balls are thrown for you, at "
                 "what this subgoal asked for, and anything else is run "
                 "from. Your part is being somewhere that offers the right "
                 "creature and carrying enough balls to keep trying. Grind "
-                "fails plainly where there is no grass, and a floor whose "
-                "grass never offers one is a floor to leave.")
+                "fails plainly where nothing wild lives, and a floor whose "
+                "wilds never include one is a floor to leave.")
             # ...AND THE BOX IS PART OF THE BUDGET NOW. Until today a
             # party could only grow by catching, so "go to the grass" was
             # the whole truth. It is not any more: a Pokemon in storage is
@@ -4252,19 +4254,20 @@ class Executor:
                 _tot = sum(_off.values())
                 _top = sorted(_off.items(), key=lambda kv: -kv[1])[:10]
                 lines.append(
-                    f"WHAT THE GRASS HERE HAS OFFERED, in {_tot} wild "
+                    f"WHAT THE WILD GROUND HERE HAS OFFERED, in {_tot} wild "
                     f"encounter(s) on {_mid}: "
                     + ", ".join(f"{sp} x{n}" for sp, n in _top)
-                    + ". A floor whose grass never offers the thing you "
+                    + ". A floor whose wilds never include the thing you "
                       "want is a floor to leave, or ground of a different "
                       "kind — water, for one — to reach.")
         else:
             lines.append(
-                "HOW TO DO IT: {\"op\":\"grind\"} walks into this floor's "
-                "wild grass and paces until something appears, and every "
+                "HOW TO DO IT: {\"op\":\"grind\"} walks onto this floor's "
+                "wild ground (tall grass outdoors; in a cave or tower, any "
+                "floor tile) and paces until something appears, and every "
                 "wild battle is experience for whoever you send out. It "
-                "fails plainly if this floor has no grass, and then "
-                "somewhere with grass is where to go. To level ONE Pokemon, "
+                "fails plainly if nothing wild lives on this floor, and then "
+                "somewhere wild is where to go. To level ONE Pokemon, "
                 "put it in slot 1 first ({\"op\":\"party_swap\"}) — the lead "
                 "is who gets sent out, and only what fights, earns.")
         # the ONE navigational fact that still matters: a run with no
@@ -5489,9 +5492,10 @@ operated, press A at the tile it occupies. (answer
 accepts a yes/no question the thing asks — taking an item it offers needs
 "yes"; with no answer given the question is DECLINED), {"op":"menu","index":N}
 (1-based: 1=YES/first, 2=NO/second), {"op":"grind"} (pace this map's wild
-grass; each battle is fought and the op repeats until the subgoal's
-DONE_WHEN is met, whatever it is — levels, or party size. Wild Pokemon
-appear by WALKING in tall grass, never by standing still, so this is the
+ground — tall grass outdoors, ANY floor tile in a cave or tower; each battle
+is fought and the op repeats until the subgoal's DONE_WHEN is met, whatever
+it is — levels, or party size. Wild Pokemon appear by WALKING on such
+ground, never by standing still, so this is the
 op for TRAINING *and* for finding something to CATCH; {"op":"wait"} will
 never produce an encounter),
 {"op":"buy","item":"POTION","count":N} (own N total of the item, buying
