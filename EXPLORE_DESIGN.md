@@ -342,6 +342,17 @@ plan's LAST step (that is the objective; the ladder decides that), and the
 leg-end `--check-done` audit still judges the objective. The rewrite's
 journal digest shows `SKIPPED <step> — the model declared it moot: "…"`.
 
+## 6f. VOID — the wording rung's third verdict (2026-08-18)
+
+First ladder pass with the counted evidence in front of it, the model
+answered the wording rung: "the run history and event flags show the parcel
+is delivered; there is no Pokemon to retrieve" — and the rung had only
+restate / stands, so the recognition fell through and the chain halted on a
+line the model had just called empty. `{"why","reword":null,"void":true}`
+now crosses the leg off (run/outline_skips) with the reason kept in
+run/outline_void; the objectives after it stand. Exit 5 from
+`author.py --check-wording`; `fresh_discovery.sh` handles it beside exit 4.
+
 ## 7. What this does not do
 
 - It does not point. The ledger holds only what the observation and the
