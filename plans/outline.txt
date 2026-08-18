@@ -4,7 +4,6 @@ Buy Poke Balls at the Viridian City Poke Mart
 the party holds 2 or more Pokemon
 Reach Pewter City
 every party member is at least level 12
-Defeat Brock for the Boulder Badge
 Exit Mt. Moon
 Reach Cerulean City
 Retrieve the S.S. Ticket from Bill

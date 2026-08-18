@@ -4661,18 +4661,37 @@ class Executor:
                     _p = _c
             if _p is None:
                 continue
-            _rows.append((len(_p), _mid, len(_doors), sorted(_left)))
+            # NEVER TAKEN IS NOT NEVER STOOD BESIDE. This line called every
+            # untaken door "on parts you have never stood on … how to reach
+            # the rest is not known" — including Route 5's underground-path
+            # door, which sat on the frontier of the very region the run had
+            # stood in four times. Split them: doors on the frontier of a
+            # walked part are plain untried doors to go back for; only the
+            # rest are on ground never reached.
+            _fr = set()
+            for _r2, _keys in (self.frontier or {}).items():
+                if _r2.split("|")[0] == _mid and _r2 in (self.visits or {}):
+                    _fr |= {k for k in _keys if "," in str(k)}
+            _open = sorted(_left & _fr)
+            _far = sorted(_left - _fr)
+            _rows.append((len(_p), _mid, len(_doors), _open, _far))
         if _rows:
             _rows.sort()
+            def _floor_row(_n, _m, _t, _open, _far):
+                parts = []
+                if _open:
+                    parts.append(f"{len(_open)} never taken and on ground you "
+                                 f"have stood on ({', '.join(_open[:4])}) — "
+                                 f"plain untried doors, {_n} leg(s) away")
+                if _far:
+                    parts.append(f"{len(_far)} on parts you have never stood "
+                                 f"on ({', '.join(_far[:4])})")
+                return f"{_m} has {_t} doorway(s): " + "; ".join(parts)
             floor_away = ("\nFLOORS YOU HAVE WALKED THAT ARE NOT FINISHED: "
-                          + "; ".join(
-                              f"{_m} has {_t} doorway(s) and {len(_l)} of them "
-                              f"({', '.join(_l[:4])}) are on parts you have "
-                              f"never stood on — {_n} leg(s) away"
-                              for _n, _m, _t, _l in _rows[:3])
-                          + ". Every room you know on such a floor can report "
-                            "nothing left to try and this still be true; how "
-                            "to reach the rest is not known.")
+                          + "; ".join(_floor_row(*r) for r in _rows[:3])
+                          + ". A door never taken on ground you have stood "
+                            "on is reached by going back there; how to reach "
+                            "a part never stood on is not known.")
         # A seam PROVEN uncrossable from this region is not an exit. A map
         # connection belongs to the whole map, so the stub side of a split
         # route still lists the far side's edge — and advertising it as
