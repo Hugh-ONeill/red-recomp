@@ -6942,16 +6942,30 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                 f"is unopened, so you were walked to {moved}, "
                                 f"which still has doors never taken. Take one.")
                             continue
+                        if USE_LEDGER:
+                            # say it, and let the round go on: the ledger's
+                            # remote lists name where ways never taken are
+                            # and explore walks there; ending the subgoal
+                            # here was the escort's shadow
+                            trace.append(
+                                f"Nothing in {here} serves this goal and no "
+                                f"exit here is unopened. Areas you have been "
+                                f"that still have ways never taken are "
+                                f"listed above with their first leg; "
+                                f"{{\"op\":\"explore\"}} walks to the "
+                                f"nearest and takes one.")
+                        else:
+                            print(f"   (target unreachable from {here} — "
+                                  f"abandoning this area)")
+                            break
+                    else:
                         print(f"   (target unreachable from {here} — "
-                              f"abandoning this area)")
-                        break
-                    print(f"   (target unreachable from {here} — "
-                          f"{len(ways)} untried exit(s) left, keeping on)")
-                    trace.append(
-                        f"PROVEN: what this goal needs is NOT in {here}. "
-                        f"But {len(ways)} way(s) out of here have never been "
-                        f"taken: {', '.join(ways)}. Take one — do not give "
-                        f"up and do not re-search this area.")
+                              f"{len(ways)} untried exit(s) left, keeping on)")
+                        trace.append(
+                            f"PROVEN: what this goal needs is NOT in {here}. "
+                            f"But {len(ways)} way(s) out of here have never "
+                            f"been taken: {', '.join(ways)}. Take one — do "
+                            f"not give up and do not re-search this area.")
             if not cur:
                 # bridge hiccup lost the state: fall back to the subgoal start
                 self.log("escalate_state_lost", subgoal=sg["id"], round=rnd)
