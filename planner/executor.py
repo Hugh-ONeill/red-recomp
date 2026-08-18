@@ -42,8 +42,19 @@ from pathlib import Path
 
 from bridge import Bridge, RUN
 import battle_policy
+import ledger
 
 # Which gym holds which badge — the pamphlet's leader page.
+# THE LEDGER SWITCH. RED_LEDGER=0 renders the exploration prompt the old
+# way (the ~20 prose sections) so the two can be A/B'd with repeats.py and
+# decisions.py; the default is the ledger (EXPLORE_DESIGN.md §3, §6b).
+USE_LEDGER = os.environ.get("RED_LEDGER", "1") != "0"
+# THE STALE BUDGET (EXPLORE_DESIGN §6d): rounds in a row that changed
+# nothing the run carries, knows or is, on ground already walked this
+# subgoal, before the subgoal is ended so the plan can be rewritten. A rule
+# about spending, not about the game; RED_STALE=0 disables it.
+STALE_CUTOFF = int(os.environ.get("RED_STALE", "6") or 0)
+
 BADGE_GYMS = {
     "BOULDERBADGE": "PEWTER_GYM", "CASCADEBADGE": "CERULEAN_GYM",
     "THUNDERBADGE": "VERMILION_GYM", "RAINBOWBADGE": "CELADON_GYM",
@@ -885,6 +896,25 @@ class Executor:
         self._came_from = None      # the region we were in a moment ago
         self._reversals = 0
         self._dead_visits = 0
+        # THE OUTCOME LEDGER (EXPLORE_DESIGN §3, §6b): per "target|area",
+        # per exit key or object name, how many times THIS subgoal did it
+        # and what happened last, verbatim from the trace. Read by
+        # ledger.build so every entry the model sees carries its own
+        # history — "walk south -> ROUTE_1 — taken 4x — ok (crossed)".
+        # In-memory only: it describes this subgoal, not the world.
+        self._outcomes: dict = {}
+        # THE PLAN ECHO (§6c): the model's own one-or-two-sentence plan
+        # from its last reply, shown back to it next round. Ours to keep,
+        # never to write.
+        self._plan_said = ""
+        # ...and the last few, with where it stood each time. Measured on
+        # the first 128 ledger-era rounds: 19% of consecutive plans were a
+        # leave-then-return flip ("Route 1 is fully worked, I will go
+        # north" -> "the goal is on Route 1, I will return"), each round a
+        # fresh derivation from the subgoal text with only the LAST plan in
+        # view. Seeing its own last four in a row is how the flip becomes
+        # visible to the one who is doing it. Its words, unedited.
+        self._plans_said: list = []
         self._entered_map: dict = {}   # "target|map" -> entries for target
         self._revisit_refusals: dict = {}   # target -> refusals spent
         self._battle_regions: set = set()   # "target|region" a fight ran in
@@ -1056,6 +1086,156 @@ class Executor:
         self._stamp_touch(region)
         self._mark_touch(region, name, res_obs)
         return True
+
+    def _record_outcome(self, pre_obs, op: str, step: dict, note: str):
+        """The outcome ledger: per (target|area) per key, how many times
+        THIS subgoal did this thing here and what happened last, verbatim
+        from the trace line minus the op's own name (the ledger prints the
+        key). Read by ledger.build, so the entry the model sees next round
+        says "taken 4x — ok (map->ROUTE_1, crossed)" or "pressed 3x — the
+        world did not change, but it SPOKE — it said: ...". A wiped-out op
+        is recorded like any other: what happened is what happened."""
+        if op == "use_warp":
+            key = f"{step.get('x')},{step.get('y')}"
+        elif op == "cross":
+            key = str(step.get("dir"))
+        elif op == "interact" and step.get("name"):
+            key = str(step["name"])
+        else:
+            return
+        here = self._where(pre_obs)
+        if not here or "None" in str(here):
+            return
+        book = self._outcomes.setdefault(f"{self._cur_target}|{here}", {})
+        rec = book.setdefault(key, {"n": 0, "last": ""})
+        rec["n"] = int(rec.get("n") or 0) + 1
+        last = note.split(": ", 1)[1] if ": " in note else note
+        rec["last"] = last.strip()[:200]
+
+    def _explore_step(self, sg, obs, ignore_done=False):
+        """One deterministic frontier expansion, because the model asked.
+
+        The order is ledger.plan_explore's, and the ledger's ranking is
+        arithmetic on walked ground: press the first thing here never
+        pressed (items, then fixtures, people, signs); else take the best
+        exit here never taken; else walk over walked ground to the nearest
+        area that still has one and take or press it there; else say that
+        nothing untried is reachable. It knows no destinations it has not
+        walked and prefers no door for what is behind it. What it chose to
+        run is run through _run_traced, so the touch rule, the hint
+        ledger, transitions, blackout detection and the outcome ledger all
+        see it as they would any op — and the concrete op is what gets
+        distilled, never the word "explore".
+
+        Returns (done, trace_lines, clean_ops)."""
+        target = self._cur_target or ""
+        cands = ledger.build(self, obs, target,
+                             outcomes=self._outcomes_here(obs),
+                             want_explore=False)
+        order = {"item": 0, "fixture": 1, "cut_tree": 1, "npc": 2,
+                 "trainer": 2, "sign": 3}
+        things = sorted((c for c in cands
+                         if c.status in ("untouched", "unspoken", "cuttable")
+                         and c.kind not in ("door", "seam", "op")),
+                        key=lambda c: (order.get(c.kind, 4), c.key))
+        exits = [c for c in cands
+                 if c.status == "untried" and c.kind in ("door", "seam")]
+
+        def _run(step, why):
+            ok, tr, cl = self._run_traced(sg, [step], ignore_done=ignore_done)
+            return ok, [f"explore ({why}): {t}" for t in tr], cl
+
+        def _thing_op(c):
+            if c.status == "cuttable":
+                return ({"op": "field_move", "move": "CUT", "x": c.x, "y": c.y},
+                        f"cutting the bush at ({c.x},{c.y})")
+            return ({"op": "interact", "name": c.key},
+                    f"{len(things)} thing(s) here never pressed; "
+                    f"pressing {c.key} first")
+
+        if things:
+            c = things[0]
+            self.log("explore_step", subgoal=sg.get("id"), step="press",
+                     what=c.key, left=len(things))
+            return _run(*_thing_op(c))
+        if exits:
+            c = exits[0]
+            self.log("explore_step", subgoal=sg.get("id"), step="exit",
+                     what=c.key, left=len(exits))
+            step = ({"op": "cross", "dir": c.key} if c.kind == "seam"
+                    else {"op": "use_warp",
+                          "x": int(c.key.split(",")[0]),
+                          "y": int(c.key.split(",")[1])})
+            return _run(step, f"{len(exits)} exit(s) here never taken; "
+                              f"taking {c.label()}")
+        # nowhere here: the nearest area over walked ground with a way never
+        # taken or a thing never pressed (same rule as ledger.plan_explore)
+        here = self._where(obs)
+        best = None
+        regions = set(list(self.frontier or {}) + list(self.sightings or {}))
+        for region in regions:
+            if region == here:
+                continue
+            left = self._frontier_left(region)
+            unpressed = ledger.untouched_in(self, region)
+            if not (left or unpressed):
+                continue
+            path = self._route(here, region)
+            if not path:
+                continue
+            r = (len(path), -(len(left) + len(unpressed)), region)
+            if best is None or r < best[0]:
+                best = (r, region, left, unpressed, path)
+        if not best:
+            self.log("explore_step", subgoal=sg.get("id"), step="none")
+            return False, ["explore: nothing untried anywhere you can walk "
+                           "to over walked ground — something you have done "
+                           "must be undone or something you carry must be "
+                           "used to open new ground"], []
+        _, region, left, unpressed, path = best
+        self.log("explore_step", subgoal=sg.get("id"), step="walk",
+                 to=region, legs=len(path), left=len(left),
+                 unpressed=len(unpressed))
+        arrived = self._walk_route(sg, path)
+        cur = self.settle() or {}
+        tr = [f"explore: this area is fully worked, so you were walked "
+              f"{len(path)} leg(s) over walked ground to {region}, which "
+              f"still has {len(left)} exit(s) never taken and "
+              f"{len(unpressed)} thing(s) never pressed — now at "
+              f"{arrived or self._where(cur) or 'an unexpected stop'}"]
+        if not ignore_done and pred_holds(sg.get("done_when"), cur):
+            return True, tr, []
+        if self._where(cur) != region:
+            tr.append("explore: the walk did not arrive; author from here")
+            return False, tr, []
+        # one expansion on arrival — the same order as at home
+        cands2 = ledger.build(self, cur, target,
+                              outcomes=self._outcomes_here(cur),
+                              want_explore=False)
+        things2 = sorted((c for c in cands2
+                          if c.status in ("untouched", "unspoken", "cuttable")
+                          and c.kind not in ("door", "seam", "op")),
+                         key=lambda c: (order.get(c.kind, 4), c.key))
+        exits2 = [c for c in cands2
+                  if c.status == "untried" and c.kind in ("door", "seam")]
+        if things2:
+            things = things2                # for _thing_op's count
+            ok, t2, cl = _run(*_thing_op(things2[0]))
+            return ok, tr + t2, cl
+        if exits2:
+            c = exits2[0]
+            step = ({"op": "cross", "dir": c.key} if c.kind == "seam"
+                    else {"op": "use_warp",
+                          "x": int(c.key.split(",")[0]),
+                          "y": int(c.key.split(",")[1])})
+            ok, t2, cl = _run(step, f"taking {c.label()} there")
+            return ok, tr + t2, cl
+        return False, tr, []
+
+    def _outcomes_here(self, obs) -> dict:
+        """This subgoal's outcome ledger for the area being stood in."""
+        return self._outcomes.get(
+            f"{self._cur_target}|{self._where(obs)}", {})
 
     def _retract_touch(self, region, name) -> None:
         """Un-write a provisional touch the interaction did not earn."""
@@ -3824,6 +4004,19 @@ class Executor:
         if self._is_party_goal(target) and self._hunted():
             return self.training_text(obs, target)
         here = self._where(obs)
+        # THE LEDGER (EXPLORE_DESIGN §3): one ranked block for everything
+        # LOCAL — exits, things, people, each with its status and what
+        # happened last time this subgoal did it. It replaces the exits
+        # block, the shut-doors line, the untouched / pressed / worth-a-
+        # word / never-spoken lines and the edge line below; the REMOTE
+        # and target-level sections (unfinished floors, the known way,
+        # what was said elsewhere, rooms elsewhere with things left,
+        # places with ways never taken) stay, after it.
+        ledger_block = ""
+        if USE_LEDGER:
+            _cands = ledger.build(self, obs, target,
+                                  outcomes=self._outcomes_here(obs))
+            ledger_block = ledger.render(_cands, self, obs, target)
         taken = self._taken_here(here)
         m = (obs or {}).get("map") or {}
         # candidates are DOORS *and* MAP EDGES. Listing only warps meant a
@@ -4184,7 +4377,8 @@ class Executor:
         # stronger. It obeyed the concrete instruction and left, 19 times.
         # The law is already written for the stuck note: a party wipe
         # outranks an exhausted room.
-        if been >= 2 and not self.contested.get(target, {}).get(here):
+        if been >= 2 and not USE_LEDGER \
+                and not self.contested.get(target, {}).get(here):
             # COUNT IT, DO NOT COMMAND. "Take a different exit" is a
             # strategy claim the harness cannot support, and it is loudest
             # in exactly the rooms that matter: it fired ten times over in
@@ -4335,6 +4529,13 @@ class Executor:
         reach = [_named(o) for o in (m.get("objects") or [])
                  if o.get("reachable") and o.get("name")]
         loot_line = pp_line + lift_line
+        # LOCAL vs REMOTE. Under the ledger the four local lines below
+        # (untouched things, everything pressed + what was carried, worth
+        # another word, people never spoken to) are entries in the block;
+        # they are still composed for the legacy renderer and dropped at
+        # assembly. The remote lines (rooms elsewhere with things never
+        # touched / people worth another word) stay either way.
+        remote_line = ""
         if loot:
             loot_line += (f"\nTHINGS within reach here you have NOT touched "
                          f"yet: {', '.join(loot[:12])}. Press A on them before "
@@ -4472,7 +4673,7 @@ class Executor:
                          f"{len(path)} leg(s) away)"))
         if held:
             held.sort(key=lambda p: p[0])
-            loot_line += ("\nRooms you have SEEN things in that you have "
+            remote_line += ("\nRooms you have SEEN things in that you have "
                           "never touched: "
                           + "; ".join(t for _, t in held[:4])
                           + ". A thing in a passage can BE the blockage — "
@@ -4504,7 +4705,7 @@ class Executor:
                           f"{len(path)} leg(s) away)"))
         if aloud:
             aloud.sort(key=lambda p: p[0])
-            loot_line += ("\nROOMS WHERE SOMEBODY IS WORTH ANOTHER WORD — "
+            remote_line += ("\nROOMS WHERE SOMEBODY IS WORTH ANOTHER WORD — "
                           "you pressed these when you were carrying "
                           "different things, before things had happened "
                           "that have happened since: "
@@ -4571,6 +4772,24 @@ class Executor:
             # in the ranking (which prices exactly those legs) and in the
             # visit counts the model is already shown. Do not reinstate the
             # path in order to hang that annotation off it.
+        if USE_LEDGER:
+            # LOCAL FIRST, IN ONE BLOCK; then the target line and the
+            # remote lists. searched_line for THIS area is the header's
+            # FULLY WORKED verdict now; the "already fully worked
+            # elsewhere" variant is remote and stays.
+            _remote_worked = searched_line if "Already fully worked" in \
+                searched_line else ""
+            _elsewhere_str = ""
+            if elsewhere:
+                _elsewhere_str = (
+                    "\nPlaces you have already been that still have ways "
+                    "you have NEVER taken: "
+                    + "; ".join(t for _r, t in sorted(elsewhere)[:6])
+                    + "." + near_hint)
+            return (warned + "\n" + ledger_block + pp_line + lift_line
+                    + floor_note + floor_away + route_line + _remote_worked
+                    + hint_line + remote_line + _elsewhere_str)
+        loot_line += remote_line
         if not (untried or tried):
             if elsewhere:
                 return (warned + route_line
@@ -4706,6 +4925,9 @@ class Executor:
             f"SUBGOAL  {st.get('subgoal','?')}  [{st.get('phase','')}]",
             f"GOAL     {(st.get('goal_text') or '')[:150]}",
             f"DONE_WHEN{json.dumps(st.get('done_when') or {})}",
+            # what it is THINKING: its own plan from the last reply (the
+            # plan echo), so the status line shows intent in its words
+            f"THINKS   {(getattr(self, '_plan_said', '') or '')[:220]}",
             f"DOING    {st.get('doing','')}",
             f"LAST     {(st.get('last') or '')[:150]}",
             f"WHERE    {(obs.get('map') or {}).get('id')} "
@@ -4968,6 +5190,14 @@ level. obs.party is in slot order),
 you are outside one on this map and talks to the NURSE. Free, always. It
 fails plainly if this map has no Center),
 {"op":"wait"}. Battles are auto-handled.
+{"op":"explore"} (the systematic search step, done for you: it presses
+the first thing HERE never pressed; if nothing, takes an exit HERE never
+taken; if nothing, walks you over ground you have already walked to the
+nearest area that still has one and takes or presses it there. It knows
+nothing about where anything leads. It reports what it did and found. It
+is the right move when the ledger says the area is fully worked and you
+have no better idea of your own; a map-changing op, so it must be the
+LAST op of your macro),
 
 GROUND TRUTH: your real target is DONE_WHEN. The SUBGOAL text is only a hint
 and MAY BE IMPERFECT — if it names a target that isn't in obs.map.objects /
@@ -4977,11 +5207,43 @@ macro made partial progress, the state CARRIED FORWARD — author only the
 remaining ops from the current observation. Only interact objects/warps that appear
 in the current observation. (E.g. receiving a Pokemon usually means
 interacting an item/Poke-Ball object, not an NPC.)
-Reply with ONLY a JSON array of ops, e.g.
-[{"op":"use_warp","x":7,"y":1},{"op":"use_warp","x":2,"y":7}]"""
+Reply with ONLY a JSON object of the form
+{"plan":"one or two sentences, in your own words: what you are doing and
+why — this is shown back to you next round, so it is how your strategy
+survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
+(a bare JSON array of ops is also accepted)."""
 
     @staticmethod
     def _parse_macro(text: str):
+        """The macro in a reply, and the model's PLAN if it gave one.
+
+        Returns (ops, plan). Two shapes: {"plan": "...", "ops": [...]} —
+        the plan is the model's own sentence about what it is doing, kept
+        and echoed next round (EXPLORE_DESIGN §6c) — or a bare array, as
+        every reply before 2026-08-18 was. The object is tried first from
+        each '{'; a plan text containing '[' cannot fool the array path
+        because the array path only runs when no object parsed."""
+        dec = json.JSONDecoder()
+        idx = text.find("{")
+        while idx != -1:
+            try:
+                obj, _ = dec.raw_decode(text, idx)
+            except json.JSONDecodeError:
+                idx = text.find("{", idx + 1)
+                continue
+            if isinstance(obj, dict) and isinstance(obj.get("ops"), list):
+                ops = [o for o in obj["ops"] if isinstance(o, dict)]
+                plan = str(obj.get("plan") or "").strip()
+                return ops, plan[:400]
+            # a single op object, e.g. {"op":"cross","dir":"north"}
+            if isinstance(obj, dict) and obj.get("op") and "ops" not in obj:
+                return [obj], ""
+            idx = text.find("{", idx + 1)
+        arr = Executor._parse_macro_array(text)
+        return arr, ""
+
+    @staticmethod
+    def _parse_macro_array(text: str):
         # raw_decode from each '[' parses the FIRST complete JSON array and
         # ignores trailing prose — a greedy [.*] regex spanned to the last ']'
         # in the reply, so a valid array followed by commentary failed to
@@ -5151,124 +5413,49 @@ Reply with ONLY a JSON array of ops, e.g.
             # city, and an NPC parked in the gap can make even the good
             # side fail transiently. Three such misses sealed the only road
             # to Route 5 for the rest of the leg.
+            # {"op":"explore"} — THE FRONTIER STEP, ON REQUEST (EXPLORE_DESIGN
+            # §4). Not a shim op: the executor picks the concrete op the
+            # ledger ranks first and runs it through this same loop, so
+            # every rule below applies to it unchanged.
+            if op == "explore":
+                _ok, _tr, _cl = self._explore_step(sg, obs, ignore_done)
+                trace.extend(_tr)
+                clean.extend(_cl)
+                if _ok:
+                    return True, trace, clean
+                continue
             sig = (self._cur_target, self._where(obs), op,
                    step.get("name") or step.get("dir")
                    or (step.get("x"), step.get("y")))
-            if op == "use_warp":
-                known = (self.explored.get(self._where(obs), {}) or {}).get(
-                    f"{step.get('x')},{step.get('y')}")
-                bad = self.dead_for(self._target_key(sg),
-                                    (known or {}).get("to", ""))
-                if bad and self._dead_visits < 2:
-                    self._dead_visits += 1
+            # THE LEDGER IS THE GUARD (EXPLORE_DESIGN §2, §6b). Five
+            # refusals used to live here — the door you came in by, a map
+            # entered twice for this goal, a room already fully searched,
+            # a door into a proven dead end, a thing pressed with nothing
+            # changed — each of them a fact the ledger now prints on the
+            # entry itself, and each of them measured (planner/repeats.py)
+            # refusing what the same prompt had offered, then yielding on
+            # the third go. Nothing on the ledger is refused. The one
+            # refusal left on this ground is OFF-LEDGER: a door, direction
+            # or name that is not here at all — the shim would fail it
+            # anyway; saying so first is cheaper and names what IS here.
+            # (only with a real observation under it: a bridge hiccup that
+            # returned {} must not turn every op into "not here")
+            if ((obs.get("map") or {}).get("id")
+                    and (op in ("use_warp", "cross")
+                         or (op == "interact" and step.get("name")))):
+                _cands = ledger.build(self, obs, self._cur_target or "",
+                                      want_explore=False)
+                if ledger.lookup(_cands, step) is None:
+                    _keys = [c.label() for c in _cands
+                             if c.kind in ("door", "seam")] \
+                        if op != "interact" else \
+                        [c.key for c in _cands
+                         if c.kind not in ("door", "seam", "op")]
                     trace.append(
-                        f"use_warp({step.get('x')},{step.get('y')}): REFUSED "
-                        f"— it leads to {known['to']}, where this goal has "
-                        f"already provably failed {bad}x. Take a different "
-                        f"exit.")
-                    continue
-                # ROOM ALREADY ANSWERED. Advice ("the trigger is not here,
-                # take an untried exit") loses to the subgoal's own goal
-                # prose, which names a place: enter_oaks_lab kept walking
-                # back into the lab while its flag actually fires by
-                # travelling north out of town, and the run ping-ponged
-                # Pallet<->lab until its rounds ran out. Entering the same
-                # map a third time in one subgoal, while DONE_WHEN is still
-                # false and an untried way out exists, cannot be new
-                # information. Yields after 3 refusals so a genuinely
-                # single-exit room is never sealed shut.
-                dest_map = next(
-                    (w.get("dest") for w in
-                     ((obs.get("map") or {}).get("warps") or [])
-                     if (w.get("x"), w.get("y")) == (step.get("x"),
-                                                     step.get("y"))), None)
-                tgt = self._cur_target
-                # ALREADY-SEARCHED ROOM. The searched ledger was advice only,
-                # and advice keeps losing — the run kept dropping back into
-                # the same two Mt Moon rooms it had already worked. Refuse
-                # the door, but ONLY when nothing unsearched lies beyond it:
-                # a finished room is often the corridor to an unfinished one.
-                known_dest = (self.explored.get(self._where(obs), {}) or {}).get(
-                    f"{step.get('x')},{step.get('y')}")
-                dest_region = (known_dest or {}).get("to")
-                worked = self.searched.get("*", {})
-                contested = self.contested.get(tgt, {})
-                if (dest_region and worked.get(dest_region)
-                        and not contested.get(dest_region)
-                        # A PURCHASE is not a search: the mart reads "fully
-                        # worked" from every pass-through, but an item goal
-                        # can only ever be satisfied at its counter. Only a
-                        # shop proof ("is not sold here", a dead end) may
-                        # shut a door against an item target.
-                        and not (tgt or "").startswith("item:")
-                        # Nor is HEALING. A Pokemon Center is where the
-                        # condition is SATISFIED, not where something is
-                        # found, and it stays satisfiable however many
-                        # times the party has been inside. Sealing that
-                        # door left the run walking to the Center and being
-                        # turned away at it, round after round, with a
-                        # half-dead lead.
-                        and not (tgt or "").startswith("party_healthy")
-                        and self._revisit_refusals.get(tgt, 0) < 3):
-                    unsearched = sorted(
-                        r for r in
-                        set(list(self.explored) + list(self.visits))
-                        if not worked.get(r))
-                    # Reaching unsearched ground by walking BACK OUT through
-                    # this door is not "beyond" — B2F|23,21 is a one-exit
-                    # room, so everything unsearched was nominally reachable
-                    # from it and the refusal never fired. Exclude the room
-                    # we are standing in from the path.
-                    # Check EVERY unsearched region: a sampled subset in set
-                    # order dropped Cerulean from the list and this refusal
-                    # then sealed the mountain door — the one route to it —
-                    # as "nothing unsearched beyond".
-                    here_now = self._where(obs)
-                    beyond = any(self._route(dest_region, u,
-                                             avoid={here_now})
-                                 for u in unsearched)
-                    if not beyond:
-                        self._revisit_refusals[tgt] = \
-                            self._revisit_refusals.get(tgt, 0) + 1
-                        trace.append(
-                            f"use_warp({step.get('x')},{step.get('y')}): "
-                            f"REFUSED — {dest_region} has already been fully "
-                            f"searched for this goal and nothing unsearched "
-                            f"lies beyond it. Going back in cannot find "
-                            f"anything. Try somewhere you have not worked.")
-                        continue
-                seen_n = self._entered_map.get(f"{tgt}|{dest_map}", 0)
-                spent_r = self._revisit_refusals.get(tgt, 0)
-                # A SERVICE goal is satisfied by GOING BACK. "You have been
-                # there twice and it is still false, so it is not there" is
-                # sound for finding a thing and exactly backwards for using
-                # one: a hurt party heals at the Center it already knows,
-                # and a shopping list is filled at the counter it already
-                # walked to. Refused re-entry to Pewter, a heal goal toured
-                # the museum, then crossed the forest back to Viridian, and
-                # the gym leg after it wandered to Route 22.
-                # ...AND NOT INTO A PLACE THAT STILL HAS UNOPENED DOORS.
-                # "Been there twice and it is still false, so it is not
-                # there" is sound for a room and wrong for a dungeon:
-                # ROCK_TUNNEL_1F had SIX doorways never walked when this
-                # refused the third entry, and Celadon is on the far side
-                # of them. Crossing a maze takes many trips, and the goal
-                # cannot come true until the last one.
-                if (dest_map and seen_n >= 2 and spent_r < 3
-                        and tgt != f"map:{dest_map}"
-                        and not (tgt or "").startswith(("party_healthy",
-                                                        "item:"))
-                        and not self._fought_at(tgt, obs, step, dest_map)
-                        and not self._map_has_unopened_doors(dest_map)
-                        and self._untried_exits(obs)):
-                    self._revisit_refusals[tgt] = spent_r + 1
-                    trace.append(
-                        f"use_warp({step.get('x')},{step.get('y')}): REFUSED "
-                        f"— you have already been in {dest_map} {seen_n}x "
-                        f"chasing this same goal and the condition is still "
-                        f"false, so it is not there. Untried ways out of "
-                        f"here: {', '.join(self._untried_exits(obs))}. "
-                        f"Take one.")
+                        f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
+                        f": REFUSED — OFF-LEDGER: there is no such "
+                        f"{'thing' if op == 'interact' else 'door or direction'}"
+                        f" here. What is here: {', '.join(_keys[:16]) or 'nothing'}.")
                     continue
             if op == "buy" and step.get("item") in self._cant_afford:
                 # The 3-strikes guard keys on the op AND its params, so
@@ -5290,170 +5477,26 @@ Reply with ONLY a JSON array of ops, e.g.
                 self._cant_afford.pop(step["item"], None)   # wallet grew
             if op == "interact":
                 here_r = self._where(obs)
-                # Talking again to something that did NOTHING last time is
-                # pure repetition — the Pewter Jigglypuff sings and changes
-                # no state, and the run kept greeting it. This is narrower
-                # than "never interact twice": the Pokemon Center nurse
-                # changes party HP, so she never lands here.
-                _in = self._inert_objs.get(here_r, {})
-                if _in.get(step.get("name")) == self._snapshot(obs):
-                    trace.append(
-                        f"interact({step.get('name')}): REFUSED — you already "
-                        f"interacted with it here and NOTHING changed. It has "
-                        f"nothing more to give; spend the turn elsewhere.")
-                    continue
-                tried = self._tried_objs.setdefault(here_r, set())
-                objs = [o for o in ((obs.get("map") or {}).get("objects")
-                                    or []) if o.get("reachable")]
-                names = {o.get("name") for o in objs}
-                spent = bool(names) and names.issubset(
-                    self._untaken(obs.get("map") or {}, tried))
-                # A ROOM YOU LOST A FIGHT IN IS NOT EXHAUSTED. Talking to
-                # Brock IS the fight; losing it leaves him talked-to, so
-                # "everything reachable is touched" became true and this
-                # refusal evicted the run from the one room the badge is in
-                # — gym, backtrack, wander to the forest, gym again, on a
-                # loop. Same law note_searched already obeys: a fight that
-                # beat us is unfinished business, not an emptied room.
-                if self.contested.get(self._cur_target, {}).get(here_r):
-                    spent = False
-                if spent and step.get("name") in tried:
-                    # WARN, don't refuse. The refusal was refusing the
-                    # WINNING move (same epitaph as the cross guard below):
-                    # Bill's script requires talking to him AGAIN in the
-                    # same visit that presses the separator, and `tried`
-                    # persists across attempts, so a fresh attempt arrived
-                    # pre-banned from the one interaction that arms the
-                    # machine. Repeat-interact spam costs the model its own
-                    # escalation budget, which is its trade to make.
-                    # State the fact; do not counsel against the repeat.
-                    # "Doing it AGAIN is only worth it if something has
-                    # changed... otherwise take an exit you have not used"
-                    # is a strategy claim, and in the Vermilion gym it is
-                    # the wrong one: the room IS the puzzle, its locks
-                    # re-randomise on every miss, and pressing again is the
-                    # only way through. 143 presses went in under a note
-                    # telling the run to leave.
-                    trace.append(
-                        f"interact({step.get('name')}): note — everything "
-                        f"reachable here ({len(tried)} things) has been "
-                        f"pressed at least once already.")
                 # NOTE: marked provisionally, and RETRACTED below if the
                 # interact did not actually happen. Marking on intent alone
                 # let an unreachable item count as touched, so a floor with
                 # item balls still on it reported "everything reachable
                 # touched" and was recorded as fully searched.
                 if step.get("name"):
+                    tried = self._tried_objs.setdefault(here_r, set())
                     tried.add(step["name"])
                     self._stamp_touch(here_r)
                     self._mark_touch(here_r, step["name"], obs)
-            # A seam PROVEN uncrossable is refused, not retried. The trace
-            # said so every time and the model kept proposing cross(east)
-            # from the Route 4 stub anyway — advice failed, so this is
-            # enforcement, and a refused-only round stays free instead of
-            # burning budget.
-            if False and op == "cross" and step.get("dir") in \
-                    self._no_cross.get(self._where(obs), set()):
-                # DISABLED — the refusal was refusing the WINNING move.
-                # Route 4's one-way ledges make its east segment's
-                # reachable-cell fingerprint identical to the west stub's
-                # (from the east you can drop down and reach west cells),
-                # so a seam proof earned on the west side sealed the cross
-                # from the east side, where it succeeds and IS the way to
-                # Cerulean. A region id is not a sound key under one-way
-                # passability; until fingerprints are direction-aware the
-                # cross must always be allowed to run — the shim's seam
-                # search fails fast where it genuinely cannot work.
-                here_r = self._where(obs)
-                doors = []
-                for region, exits in self.frontier.items():
-                    if region == here_r:
-                        continue
-                    left = self._frontier_left(region)
-                    if not left:
-                        continue
-                    path = self._route(here_r, region)
-                    if path:
-                        doors.append((len(path), region, left, path[0]))
-                doors.sort(key=lambda d: d[0])
-                extra = ""
-                if doors:
-                    parts = []
-                    for n, region, left, (fk, fd) in doors[:3]:
-                        leg = (f"walk {fk}" if not fk[0].isdigit()
-                               else f"door ({fk})")
-                        parts.append(f"{region} (unopened: "
-                                     f"{', '.join(sorted(left))}; {n} "
-                                     f"leg(s), first {leg} to {fd})")
-                    extra = (" The only ways that can still open new "
-                             "ground: " + "; ".join(parts) + ". Proposing "
-                             "this cross again changes nothing — pick one "
-                             "of those.")
-                trace.append(
-                    f"cross({step.get('dir')}): REFUSED — that seam is "
-                    f"PROVEN uncrossable from this area (terrain blocks "
-                    f"every cell of the edge). It will never work from "
-                    f"here; the way onward is somewhere else." + extra)
-                continue
-            # NO IMMEDIATE REVERSAL — the classic search prune, not game
-            # knowledge: both directions of a ladder read as "untried" from
-            # their own side, so the run oscillated B1F<->B2F until its
-            # rounds ran out. Yields after 2 refusals so a true dead end can
-            # still be backed out of.
-            back = False
-            if op == "use_warp" and self._arrived \
-                    and self._where(obs) == self._arrived[0]:
-                back = (step.get("x"), step.get("y")) == self._arrived[1]
-                if not back:
-                    # doorways come in TWIN tiles leading to the same place
-                    # (gates, building fronts). The obs already states each
-                    # warp's destination MAP, so we do not need to have
-                    # walked the twin first — checking only the learned
-                    # graph let a first-time twin through, which is how the
-                    # run kept re-entering Viridian Forest from its north
-                    # gate instead of stepping out to Route 2.
-                    dest_map = None
-                    for w in ((obs.get("map") or {}).get("warps") or []):
-                        if (w.get("x"), w.get("y")) == (step.get("x"),
-                                                        step.get("y")):
-                            dest_map = w.get("dest")
-                            break
-                    prev_map = (self._came_from or "").split("|")[0]
-                    back = bool(dest_map and prev_map
-                                and dest_map == prev_map)
-                    # ...but "same MAP" only means "same PLACE" on a map
-                    # with one region. Mt Moon B1F has four, and its
-                    # north-east pocket — the one holding the mountain's
-                    # east exit — is reachable ONLY by a B2F ladder whose
-                    # destMap is, of course, MT_MOON_B1F. Every time the
-                    # model proposed it this guard called it the door it
-                    # had just come through and refused the one move that
-                    # leads onward. Where the map is known to have several
-                    # regions, only the learned graph (below) may conclude
-                    # a reversal.
-                    if back and dest_map:
-                        regions = {r for r in
-                                   set(list(self.explored) + list(self.visits))
-                                   if r.split("|")[0] == dest_map}
-                        if len(regions) > 1:
-                            back = False
-                    if not back:
-                        known = (self.explored.get(self._where(obs), {})
-                                 or {}).get(f"{step.get('x')},{step.get('y')}")
-                        back = bool(known and self._came_from
-                                    and known.get("to") == self._came_from)
-            if back and self._reversals < 2:
-                self._reversals += 1
-                trace.append(
-                    f"use_warp({step.get('x')},{step.get('y')}): REFUSED — "
-                    "that is the door you just came in through; taking it "
-                    "returns you where you were a moment ago. Use a "
-                    "different exit.")
-                continue
             if self._dead_ops.get(sig, 0) >= 3:
-                trace.append(f"{op}: REFUSED — this exact action has already "
-                             "failed 3 times in this subgoal; it cannot work "
-                             "from here, do something different")
+                # NAME THE OP. This printed the bare op name, so a macro
+                # holding two crosses or two interacts was told "cross:
+                # REFUSED" with no way to tell which one.
+                _args = ",".join(f"{k}={v}" for k, v in step.items()
+                                 if k in ("x", "y", "dir", "name", "item"))
+                trace.append(f"{op}({_args}): REFUSED — this exact action "
+                             "has already failed 3 times in this subgoal "
+                             "from this area; it cannot work from here, do "
+                             "something different")
                 continue
             pre_obs = obs
             before = self._snapshot(obs)
@@ -5704,7 +5747,8 @@ Reply with ONLY a JSON array of ops, e.g.
                         or "no path" in det):
                     near = [o.get("name") for o in
                             ((obs.get("map") or {}).get("objects") or [])
-                            if o.get("reachable") and o.get("kind") != "item"
+                            if o.get("reachable")
+                            and o.get("kind") in ("npc", "trainer")
                             and o.get("name") not in
                             self._tried_objs.get(self._where(obs), set())]
                     if near:
@@ -5885,6 +5929,7 @@ Reply with ONLY a JSON array of ops, e.g.
             if heard:
                 note += f' — it said: "{heard[:160]}"'
             trace.append(note)
+            self._record_outcome(pre_obs, op, step, note)
             self.status(last=note, obs=obs, doing=f"{op} {json.dumps(step)}")
             # distill an op if it ran OK *or* changed the state — cross via the
             # Oak escort reports ok=False ("cross attempted") yet the map
@@ -5999,6 +6044,10 @@ Reply with ONLY a JSON array of ops, e.g.
         # throws the words away, and the words are the only thing that says
         # whether a creature is to be CAUGHT or HANDED OVER. See _hunted.
         self._cur_sg = sg
+        self._plan_said = ""      # a plan belongs to the subgoal it served
+        self._plans_said = []
+        self._stale_rounds = 0    # the stale budget counts per subgoal
+        self._stale_fp = None
         self._idle_rounds = 0     # laps count per subgoal, not per run
         self._seen_this_sg = set()   # rooms this subgoal has stood in
         self._stuck_in: dict = {}
@@ -6154,10 +6203,23 @@ Reply with ONLY a JSON array of ops, e.g.
             # the prompt was never recorded anywhere.
             self.log("escalate_context", subgoal=sg["id"],
                      target=self._target_key(sg), memory=memory[:6000])
+            # THE PLAN ECHO (§6c). 80% of proposals are one op, so the
+            # model re-derives its intent every round with nothing of its
+            # own carried forward — the trace it reads is ours. Its last
+            # plan, in its words, goes back to it beside what happened.
+            plan_echo = ""
+            if self._plans_said:
+                plan_echo = ("YOUR LAST PLANS, in your own words, oldest "
+                             "first, with where you stood when you wrote "
+                             "each:\n"
+                             + "\n".join(f"  R{_r} (at {_w}): {_p}"
+                                         for _r, _w, _p in self._plans_said)
+                             + "\n")
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
                     f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
                     f"{atlas or 'nothing yet'}\n"
+                    f"{plan_echo}"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
                     f"CURRENT_OBSERVATION: "
                     f"{json.dumps(obs, separators=(',', ':'))}\n"
@@ -6184,18 +6246,24 @@ Reply with ONLY a JSON array of ops, e.g.
                     break
                 spent += 1
                 continue
-            macro = self._parse_macro(reply)
+            macro, plan_said = self._parse_macro(reply)
+            if plan_said:
+                self._plan_said = plan_said
+                self._plans_said.append((rnd, self._where(start), plan_said))
+                del self._plans_said[:-4]
             if not macro:
                 self.log("escalate_bad_proposal", subgoal=sg["id"], round=rnd,
                          reply=reply[:600])
-                feedback = "Your last reply was not a JSON op array. Return " \
-                           "ONLY a JSON array of op objects."
+                feedback = ("Your last reply held no ops. Return ONLY a JSON "
+                            "object {\"plan\":\"...\",\"ops\":[...]} "
+                            "(or a bare JSON array of ops).")
                 spent += 1
                 continue
             # ONE LEG PER MACRO, enforced: ops after the first map-changing op
             # target a map the model has never seen — always hallucinated.
             cut = next((i for i, s in enumerate(macro)
-                        if s.get("op") in ("cross", "use_warp")), None)
+                        if s.get("op") in ("cross", "use_warp", "explore")),
+                       None)
             stripped = 0
             if cut is not None:
                 if cut + 1 < len(macro):
@@ -6213,7 +6281,7 @@ Reply with ONLY a JSON array of ops, e.g.
                              round=rnd, dropped=stripped)
                     macro = keep + [macro[-1]]
             self.log("escalate_proposal", subgoal=sg["id"], round=rnd,
-                     macro=macro)
+                     macro=macro, plan=self._plan_said)
             self.status(subgoal=sg["id"], goal_text=goal, done_when=done,
                         obs=self.settle(),
                         phase=("REDO " if redo else "") + f"escalation {rnd}",
@@ -6356,9 +6424,13 @@ Reply with ONLY a JSON array of ops, e.g.
                 # still on it. People move; items do not, so an untouched
                 # item is unfinished business either way.
                 _tried = self._untaken(cur.get("map") or {}, _tried)
+                # A BUSH IS NOT A THING YOU HAVE NEVER INTERACTED WITH:
+                # interact by name never reaches one, so counting it here
+                # sent the model to "interact CUT_TREE" (watched live).
                 live = [o.get("name") for o in
                         ((cur.get("map") or {}).get("objects") or [])
                         if (o.get("reachable") or o.get("kind") == "item")
+                        and o.get("kind") != "cut_tree"
                         and o.get("name") not in _tried]
                 # FIXTURES ARE SWITCHES: pressable AGAIN by nature, and
                 # some puzzles REQUIRE re-pressing (the gym's trash-can
@@ -6895,7 +6967,14 @@ Reply with ONLY a JSON array of ops, e.g.
                                 + f") -> {sig1[0]}")
                         if desc not in backward:
                             backward.append(desc)
+                    # COUNT, DO NOT COMMAND (the ledger prints "taken Nx"
+                    # on the very exit; "do not re-enter maps you just
+                    # left" is a strategy claim). Under the ledger the
+                    # count is the whole note.
                     loop_note = (
+                        f"\nThis is visit #{visits[sig1[0]]} to {sig1[0]} "
+                        f"during this subgoal."
+                        if USE_LEDGER else
                         f"\nWARNING: you are going in CIRCLES — this is visit "
                         f"#{visits[sig1[0]]} to {sig1[0]} during this subgoal. "
                         f"Use the ATLAS to pick the direction that leads "
@@ -7086,6 +7165,50 @@ Reply with ONLY a JSON array of ops, e.g.
                     moved_itself = False
             else:
                 self._idle_rounds = 0
+            # THE STALE BUDGET. Six rounds in a row that changed nothing
+            # the run CARRIES (badges, flags, bag kinds), KNOWS (no ground
+            # new to this subgoal) or IS (party species/levels, money) is
+            # a subgoal spending inference on an idea, not on the world —
+            # the mart leg ran 78 rounds of it. End it here and hand the
+            # loop to the rewrite, which now sees the repetition counted
+            # (author.tried_text). This decides nothing about the game:
+            # it is the same "long stretch getting no nearer" rule
+            # _goal_drift applies to travel, made to work where distance
+            # is undefined (a flag, an item, a person).
+            # WHAT IT MUST NEVER CUT: a fight being lost and come back to
+            # (contested), a room with re-pressable switches (Surge's cans
+            # re-randomise on a miss — the room IS the puzzle and pressing
+            # again is the only way through; a PC is a service, not a
+            # switch), a training goal (levels ARE the change), a round
+            # that fainted, or one that ended off the overworld.
+            _fp = (tuple(self._world_mark(cur)),
+                   tuple((m.get("species"), m.get("level"))
+                         for m in (cur.get("party") or [])),
+                   cur.get("money"))
+            _switches = any(
+                o.get("kind") == "fixture" and o.get("reachable")
+                and str(o.get("name") or "") != "PC"
+                for o in ((cur.get("map") or {}).get("objects") or []))
+            _exempt = (STALE_CUTOFF <= 0
+                       or self._is_party_goal(self._cur_target or "")
+                       or bool(self.contested.get(self._cur_target, {})
+                               .get(_here_now))
+                       or _switches or had_blackout
+                       or cur.get("mode") != "overworld")
+            if _exempt or _fresh_ground or _fp != self._stale_fp:
+                self._stale_rounds = 0
+            else:
+                self._stale_rounds += 1
+            self._stale_fp = _fp
+            if self._stale_rounds >= STALE_CUTOFF and spent < rounds:
+                self.log("stale_cutoff", subgoal=sg["id"], round=rnd,
+                         stale=self._stale_rounds, at=_here_now)
+                stuck_note += (
+                    f"\n{self._stale_rounds} rounds in a row changed "
+                    f"nothing you carry, know or are, on ground you had "
+                    f"already walked for this subgoal. It is being ended "
+                    f"here so the plan can be rewritten from what happened.")
+                spent = rounds
             if not moved_itself and (patient
                                      or not self._untried_exits(cur)):
                 went = self._route_to_frontier(cur, sg, patient=patient)
@@ -7107,8 +7230,23 @@ Reply with ONLY a JSON array of ops, e.g.
                         f"steps, do not repeat ones that already took effect."
                         + loop_note + stuck_note
                         + open_prompt
-                        + self._logged_exploration(cur, sg)
-                        + (("\nWarps you can currently WALK TO from here: "
+                        # ONE LEDGER PER PROMPT. This re-rendered the whole
+                        # exploration text from the round-end state inside
+                        # the feedback, one settle away from the fresh
+                        # render at the top of the next round — the same
+                        # block twice, and two escalate_context records per
+                        # round. Under the ledger only the events-fired
+                        # note rides here; the legacy renderer keeps both.
+                        + (self._fired_text(cur, sg) if USE_LEDGER
+                           else self._logged_exploration(cur, sg))
+                        # ...and under the ledger, nothing below: the
+                        # reachable / unreachable warps, the edges, the
+                        # object list, the inert and backward lists are all
+                        # entries in the block at the top of the prompt,
+                        # with their history. Feedback is the trace and
+                        # what changed (EXPLORE_DESIGN §2 item 6).
+                        + ("" if USE_LEDGER else
+                           (("\nWarps you can currently WALK TO from here: "
                             + ", ".join(
                                 f"({w.get('x')},{w.get('y')})->{w.get('dest')}"
                                 for w in ((cur.get("map") or {}).get("warps")
@@ -7142,7 +7280,7 @@ Reply with ONLY a JSON array of ops, e.g.
                            f"pick a DIFFERENT one: {inert}" if inert else "")
                         + (f"\nThese ops moved you BACKWARD to already-"
                            f"visited maps — never use them again this "
-                           f"subgoal: {backward}" if backward else ""))
+                           f"subgoal: {backward}" if backward else "")))
             self.log("escalate_note", subgoal=sg["id"], round=rnd,
                      stuck=stuck_note[:400], loop=loop_note[:200])
             self.log("escalate_feedback", subgoal=sg["id"], round=rnd,
