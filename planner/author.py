@@ -1038,10 +1038,18 @@ def observed_text(path: Path) -> str:
     # TRASH_CAN_n). Order by that, collapse numbered families, and say what
     # was dropped rather than truncating in silence.
     seen = []
+    # NEVER PRESSED IS A FACT THE AUTHOR WAS NOT SHOWN. This listed every
+    # thing ever sighted, so a house whose two people the run has never
+    # spoken to read exactly like the mart it has pressed nine times. The
+    # touched ledger is right there; a * marks what this run has never
+    # pressed, and those go first. Which of them is worth a subgoal is the
+    # author's; that they are unpressed is not a judgment.
+    touched_all = d.get("touched") or {}
     for region, names in sorted((d.get("sightings") or {}).items()):
         if not names:
             continue
         pre = region.split("|")[0].replace("_", "")
+        got = set(touched_all.get(region) or [])
 
         def _rank(n, _p=pre):
             if n.startswith("TEXT_"):
@@ -1054,9 +1062,16 @@ def observed_text(path: Path) -> str:
         for n in names:
             base = re.sub(r"_\d+$", "", n)
             fam.setdefault(base, []).append(n)
-        collapsed = [b if len(g) == 1 else f"{b} x{len(g)}"
-                     for b, g in fam.items()]
-        collapsed.sort(key=lambda n: (_rank(n.split(" x")[0]), n))
+        collapsed = []
+        for b, g in fam.items():
+            unpressed = [n for n in g if n not in got]
+            label = b if len(g) == 1 else f"{b} x{len(g)}"
+            if unpressed:
+                label += "*"
+            collapsed.append((0 if unpressed else 1, label))
+        collapsed.sort(key=lambda t: (t[0], _rank(t[1].split(" x")[0]
+                                                  .rstrip("*")), t[1]))
+        collapsed = [t[1] for t in collapsed]
         shown, extra = collapsed[:8], len(collapsed) - 8
         seen.append(f"  {region}: {', '.join(shown)}"
                     + (f" (+{extra} more)" if extra > 0 else ""))
@@ -1172,7 +1187,7 @@ def observed_text(path: Path) -> str:
         out += ("\n\nWHAT WAS SEEN IN EACH AREA (so you can aim a subgoal "
                 "at the RIGHT part of a map — the same map id can have "
                 "several unconnected parts, and only one of them holds the "
-                "thing you need)"
+                "thing you need; * = this run has never pressed it)"
                 + (f", first {len(shown_seen)} of {len(seen)} areas"
                    if cut else "")
                 + ":\n" + "\n".join(shown_seen))
