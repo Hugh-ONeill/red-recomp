@@ -6718,6 +6718,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                              if heard else
                              ": ran but had NO visible effect "
                              "(nothing changed)")
+                    # ...AND KEEP WHAT THE OP ITSELF SAID. A no-change
+                    # result dropped the op's own detail behind "it SPOKE",
+                    # so the trader's WHICH POKEMON back-out — "backed out
+                    # (which the game takes as a no); re-send with slot=N"
+                    # — reached the ledger only as her "That's too bad",
+                    # four times, and read as a refusal by her.
+                    if det0 and det0 not in ("ok", "done") \
+                            and det0[:60] not in note:
+                        note += f" — {det0[:220]}"
                     if op == "interact" and step.get("name"):
                         # remember WHICH state it was useless in; if the
                         # world changes (hp drops, a flag fires) it is
