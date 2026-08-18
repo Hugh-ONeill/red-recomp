@@ -58,9 +58,16 @@ CASES = [
     ("every mode the shim really emits is accepted: overworld",
      {"mode": "overworld"}, False),
     ("...battle", {"mode": "battle"}, False),
-    ("...dialog", {"mode": "dialog"}, False),
     ("...ui, which is what a PC actually reports",
      {"mode": "ui"}, False),
+
+    # A REAL MODE THAT IS NEVER TRUE WHEN IT IS TESTED. done_when is
+    # evaluated against a SETTLED observation and settle() rides plain text
+    # to the next decision, so the box has always closed by then. The run
+    # spoke to the Viridian old man and sat through the entire catch
+    # tutorial, over and over, with {"mode":"dialog"} never once holding.
+    ("dialog is a real mode and still refused as a condition",
+     {"mode": "dialog"}, True),
     ("...boot", {"mode": "boot"}, False),
 
     # THE PREDICATE THAT MAKES "pc" UNNECESSARY. `mode` can only say that
@@ -115,6 +122,25 @@ def main():
     if not ok:
         print(f"          shim says {live}, author says {A.OBS_MODES}")
         fails.append("vocabulary source")
+
+    # THE REFUSAL MUST CARRY ITS REASON. "dialog is not allowed" invites
+    # the model to try "ui" next and lose another leg; the reason is what
+    # sends it to a flag instead.
+    msg = " ".join(probs_for({"mode": "dialog"}))
+    ok = "settle" in msg and ("flag" in msg or "CHANGED" in msg)
+    print(f"  {'ok  ' if ok else 'FAIL'}  ...and says WHY dialog can never "
+          f"hold, and what to use instead")
+    if not ok:
+        print(f"          {msg}")
+        fails.append("dialog reason")
+
+    # the note must warn about BOTH halves: screens and people
+    note = A.PREDICATES["mode"]
+    ok = "naming box" in note and "dialog" in note
+    print(f"  {'ok  ' if ok else 'FAIL'}  the published note covers screens "
+          f"AND people, not just screens")
+    if not ok:
+        fails.append("half-written note")
 
     # and the model must be TOLD, not only corrected afterwards
     told = all(m in A.PREDICATES["mode"] for m in A.OBS_MODES)

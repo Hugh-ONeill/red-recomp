@@ -104,10 +104,17 @@ PREDICATES = {
               + ", ".join(UI_SCREENS),
     "mode": "obs mode equals VALUE, and the ONLY values that exist are "
             + ", ".join(f'"{m}"' for m in OBS_MODES)
-            + " (usually \"overworld\"). There is no mode for a particular "
-              "screen — a PC, a shop counter and a naming box are all "
-              "\"ui\" — so a subgoal about one specific machine needs a "
-              "different predicate, not a mode nobody reports",
+            + " (usually \"overworld\"). A mode says WHAT KIND of screen is "
+              "up and never WHICH ONE or WHOSE: a PC, a shop counter and a "
+              "naming box are all \"ui\", and every person in the game "
+              "speaks in \"dialog\", so neither can mark a subgoal about "
+              "one particular machine or one particular person. And "
+              "\"dialog\" can never be TRUE when a condition is tested: "
+              "conditions are checked once the game has settled, and "
+              "settling rides plain text to the next decision, so the box "
+              "has always closed by then. Mark a conversation that matters "
+              "by what it CHANGED — an event flag, an item, a party "
+              "member — not by the box it was said in",
     "party_nonempty": "true = have at least one Pokemon",
     "party_alive": "true = at least one Pokemon with HP > 0",
     "badge": "VALUE badge earned (e.g. {\"badge\":\"BOULDERBADGE\"})",
@@ -794,6 +801,23 @@ def _check_pred_shapes(dw: dict, tag: str, sid, probs: list):
             probs.append(
                 f"{tag} ({sid}) screen {v!r} is not a screen this game has "
                 f"— the ones that exist are " + ", ".join(UI_SCREENS))
+        elif k == "mode" and v == "dialog":
+            # A REAL MODE THAT IS NEVER TRUE WHEN IT IS TESTED. done_when is
+            # evaluated against a SETTLED observation, and settle()'s whole
+            # job is to ride plain text to the next decision — so the box is
+            # always closed by the time the check runs. The run spoke to the
+            # Viridian old man and sat through the whole catch tutorial over
+            # and over with {"mode":"dialog"} never once holding.
+            # Same class as {"mode":"pc"}: a value the harness accepts and
+            # can never report at the moment it matters. Rejected where it
+            # is written, for the same reason and at the same cost.
+            probs.append(
+                f"{tag} ({sid}) mode \"dialog\" can never be true when a "
+                f"condition is checked: conditions are tested after the "
+                f"game settles, and settling rides plain text to the next "
+                f"decision, so the box has always closed. Mark the "
+                f"conversation by what it CHANGED — a flag, an item, a "
+                f"party member — not by the box it was said in")
         elif k == "mode" and v not in OBS_MODES:
             # NAME THE FIVE, and say what the near miss was reaching for.
             # "pc" is not a wrong guess so much as a reasonable one about a
