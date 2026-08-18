@@ -1138,6 +1138,7 @@ class Executor:
                  "trainer": 2, "sign": 3}
         things = sorted((c for c in cands
                          if c.status in ("untouched", "unspoken", "cuttable")
+                         and c.reachable
                          and c.kind not in ("door", "seam", "op")),
                         key=lambda c: (order.get(c.kind, 4), c.key))
         exits = [c for c in cands
@@ -1216,6 +1217,7 @@ class Executor:
                               want_explore=False)
         things2 = sorted((c for c in cands2
                           if c.status in ("untouched", "unspoken", "cuttable")
+                          and c.reachable
                           and c.kind not in ("door", "seam", "op")),
                          key=lambda c: (order.get(c.kind, 4), c.key))
         exits2 = [c for c in cands2

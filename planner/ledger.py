@@ -93,6 +93,7 @@ class Candidate:
                                  # the status, bounded by render()
     x: int | None = None         # things: where it sits (for a field move)
     y: int | None = None
+    reachable: bool = True       # things: can be walked to right now
     beyond: str = ""             # exits: what lies past a walked exit —
                                  # fully worked, or how much is left there
     hops: int | None = None      # exits: legs to the goal over walked ground
@@ -349,12 +350,13 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         if not name:
             continue
         if name in seen_names:
-            seen_names[name].note = (seen_names[name].note + "; " if
-                                     seen_names[name].note else "") + \
-                "more than one of these here"
+            if "more than one of these here" not in (seen_names[name].note or ""):
+                seen_names[name].note = _join(seen_names[name].note,
+                                              "more than one of these here")
             continue
         kind = o.get("kind") or "thing"
-        c = Candidate(key=name, kind=kind, x=o.get("x"), y=o.get("y"))
+        c = Candidate(key=name, kind=kind, x=o.get("x"), y=o.get("y"),
+                      reachable=bool(o.get("reachable")))
         seen_names[name] = c
         oc = outcomes.get(name) or {}
         c.n = int(oc.get("n") or 0)
@@ -388,7 +390,10 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         # SEEN before one back into a seen map (unopened before known);
         # among taken, fewest takes first; then key for determinism
         into_seen = bool(c.dest) and _map_of(c.dest) in seen_maps
-        c.rank = (STATUS_RANK.get(c.status, 9), into_seen, c.n, c.kind, c.key)
+        # what can be acted on NOW first: an item you cannot walk to is
+        # still never-pressed (items do not move) but it is not a move
+        c.rank = (not c.reachable, STATUS_RANK.get(c.status, 9), into_seen,
+                  c.n, c.kind, c.key)
     out.sort(key=lambda c: c.rank)
 
     # ---- explore ------------------------------------------------------
@@ -411,6 +416,7 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None) -> str:
              "sign": 3}
     things = sorted((c for c in cands
                      if c.status in ("untouched", "unspoken", "cuttable")
+                     and c.reachable
                      and c.kind not in ("door", "seam", "op")),
                     key=lambda c: (order.get(c.kind, 4), c.key))
     if things:

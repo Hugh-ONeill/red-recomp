@@ -301,6 +301,21 @@ def main():
     check("a PC alone does not keep a room open (it is a service, not a switch)",
           L.fully_worked(L.build(ex, o, target="flag:X")))
 
+    # --- explore never reaches for what cannot be walked to --------------
+    ex = make(explored={U.HERE: {"1,1": {"to": "GATE|0,0", "n": 2}}},
+              frontier={U.HERE: ["1,1"], "GATE|0,0": ["9,9"]})
+    ex.visits = {U.HERE: 3, "GATE|0,0": 1}
+    o = obs(ex, ["1,1"], objects=[
+        {"name": "HP_UP", "kind": "item", "x": 13, "y": 45, "reachable": False}])
+    cands = L.build(ex, o, target="map:PEWTER_CITY")
+    st = {c.key: c for c in cands}
+    check("an unreachable item is still listed as never pressed",
+          st["HP_UP"].status == "untouched" and not st["HP_UP"].reachable)
+    check("...but ranks below the walked door with something beyond it",
+          cands.index(st["1,1"]) < cands.index(st["HP_UP"]))
+    check("...and explore does not try to press it",
+          "HP_UP" not in cands[0].note, cands[0].note)
+
     print(f"\n{'-' * 60}")
     if FAILS:
         print(f"LEDGER BROKEN: {len(FAILS)} check(s) failed")
