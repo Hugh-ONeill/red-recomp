@@ -2468,7 +2468,14 @@ class Executor:
                     continue
                 _back = self.explored.setdefault(dst, {})
                 if _ak not in _back:
-                    _back[_ak] = {"to": src, "n": 1}
+                    # n=0, NOT 1. This edge is learned by ARRIVING
+                    # through it, which proves where it goes but is not a
+                    # traversal in this direction — and the count is
+                    # printed to the model as "taken Nx". Seeding it at 1
+                    # and then adding 1 per real departure made a room
+                    # entered once report its door as taken twice, which
+                    # is not a thing that can happen.
+                    _back[_ak] = {"to": src, "n": 0}
                     self.log("reverse_edge", frm=dst, via=_ak, to=src)
                     self._save_memory()
                 break
@@ -3926,7 +3933,13 @@ class Executor:
                         f"holds it changes")
                 else:
                     tried.append(
-                        f"({k}) -> {dest} [taken {taken[k]['n']}x"
+                        f"({k}) -> {dest} ["
+                        + (f"taken {taken[k]['n']}x"
+                           if (taken[k].get('n') or 0) > 0 else
+                           # the honest description of a door you have only
+                           # ever come IN through
+                           "you arrived through it; never taken from this "
+                           "side")
                         + (f"; that area is a KNOWN DEAD END for this goal, "
                            f"failed there {bad}x — do NOT go back"
                            if bad else beyond)
