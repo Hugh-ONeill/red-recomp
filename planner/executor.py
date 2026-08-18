@@ -3561,7 +3561,7 @@ class Executor:
                  answer=a, why=str(d.get("why") or "")[:200])
         return a == "yes"
 
-    def _fired_text(self, sg) -> str:
+    def _fired_text(self, obs, sg) -> str:
         """The events this run has watched fire, when it is stuck on one.
 
         author.py already settles the principle — "the only flags the
@@ -3588,11 +3588,21 @@ class Executor:
         """
         if "flag" not in pred_keys(sg.get("done_when") or {}):
             return ""
-        # self.flag_sites is flag -> where it fired, kept in fire order and
-        # persisted with the rest of the memory. No journal re-read needed.
+        # ...AND ONLY WHAT IS STILL TRUE. flag_sites is persisted memory and
+        # the SAVE CAN ROLL BACK under it: an attempt that reloads an
+        # earlier save leaves the ledger holding events the current world
+        # has not seen. Measured minutes after this block first shipped —
+        # five of ten, including GOT_POKEDEX and OAK_GOT_PARCEL, recorded
+        # as fired while the live save had neither. Volunteering those
+        # would tell the run it holds a Pokedex it does not have, which is
+        # the same shape as the deed ledger outliving its world.
+        # The live observation is the authority on what is SET; flag_sites
+        # only supplies where it happened.
+        live = set((obs or {}).get("flags") or [])
         rows = [f"  {f} (fired in {where})"
                 for f, where in reversed(list(
-                    (self.flag_sites or {}).items()))]
+                    (self.flag_sites or {}).items()))
+                if f in live]
         if not rows:
             return ""
         return ("\n\nEVENTS THIS RUN HAS ALREADY WATCHED FIRE, newest "
@@ -3602,7 +3612,7 @@ class Executor:
 
     def _logged_exploration(self, obs, sg) -> str:
         txt = self.exploration_text(obs, self._target_key(sg)) \
-            + self._fired_text(sg)
+            + self._fired_text(obs, sg)
         self.log("escalate_context", subgoal=sg["id"],
                  target=self._target_key(sg), memory=txt[:6000])
         return txt
