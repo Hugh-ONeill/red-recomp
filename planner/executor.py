@@ -5564,6 +5564,39 @@ class Executor:
             _m = getattr(self, "_last_overworld_map", None) or "?"
             book = self._offered.setdefault(_m, {})
             book[str(foe["species"])] = book.get(str(foe["species"]), 0) + 1
+        # THE GHOST CANNOT BE FOUGHT, AND ONLY TRYING SHOWS IT. The policy
+        # flees the tower's fixed GHOST without a word, so the model was
+        # left planning to "fight the Ghost to completion" — a thing the
+        # screen would have refused on the first press of FIGHT ("X is too
+        # scared to move!"). Press FIGHT once per run, read what the screen
+        # says, write it on the blocker, then flee as before. One turn of
+        # exposure, once; the sentence is the game's own.
+        if (b0.get("ghost") and b0.get("noCatch")
+                and not getattr(self, "_ghost_probed", False)):
+            self._ghost_probed = True
+            try:
+                o2 = self.b.send("battle_move", index=1)
+                det = str(((o2 or {}).get("result") or {}).get("detail")
+                          or "")
+                said = ""
+                if "the screen says: " in det:
+                    said = det.split("the screen says: ", 1)[1].strip(
+                        ' "')
+                line = ("you pressed FIGHT: "
+                        + (f'"{said[:120]}"' if said else
+                           f"no move list opened ({det[:80]})"))
+                self.log("ghost_probe", subgoal=subgoal["id"], said=said[:160],
+                         detail=det[:120])
+                for bk, bl in self.blockers.items():
+                    if "GHOST" in (bl.get("what") or "") \
+                            and not bl.get("cleared") \
+                            and "FIGHT" not in (bl.get("what") or ""):
+                        bl["what"] = (bl["what"] + " — " + line)[:220]
+                self._save_memory()
+                obs = self.settle() if (o2 or {}).get("mode") != "battle" \
+                    else o2
+            except Exception as e:      # a probe must never cost the fight
+                self.log("ghost_probe_error", err=str(e)[:120])
         # LEAD WITH THE POKEMON THE PLAN IS TRAINING. A slot_level goal is
         # unsatisfiable otherwise: only the mon that FIGHTS earns, battles
         # always opened with slot 1, and nothing outside a faint prompt can

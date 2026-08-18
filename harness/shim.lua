@@ -3763,6 +3763,16 @@ function OPS.battle_move(G, c)
   if not battle_menu_to(G, b, 1) then return false, "couldn't reach FIGHT" end
   U.tap(G, "a"); U.wait(4)
   if b.phase ~= "moveSelect" then
+    -- SAY WHAT THE SCREEN SAID. Against the tower's GHOST, FIGHT does not
+    -- open the move list: the game prints "<mon> is too scared to move!"
+    -- and the turn passes. "no moveSelect (disabled/struggle?)" was a
+    -- guess about the cause; the sentence on screen is the fact.
+    local cur = b.current or (b.queue and b.queue[1])
+    local said = cur and type(cur) == "table" and cur.text
+    if type(said) == "string" and said ~= "" then
+      return false, "no move list opened — the screen says: \""
+        .. said:gsub("\n", " ") .. "\""
+    end
     return false, "no moveSelect (disabled/struggle?)"
   end
   for _ = 1, 8 do
