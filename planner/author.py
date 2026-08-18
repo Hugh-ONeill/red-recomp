@@ -34,12 +34,47 @@ from pathlib import Path
 
 import brock_probe   # reuse chat()
 
+# EVERY MODE THE SHIM CAN ACTUALLY REPORT, read out of the shim so the two
+# cannot drift. `mode` was the one predicate whose values were freeform:
+# every other vocabulary in this file is enumerated and spell-checked —
+# map ids, flags, items, moves, species, types — while the mode
+# description said only 'obs mode equals VALUE (usually "overworld")' and
+# named none of them.
+#
+# So run 10 wrote {"mode": "pc"} for "Access the PC for the first time",
+# which is the obvious guess and is not one of the five. The plan
+# validated, ran four attempts, and every rung of the ladder was spent on
+# it — check-done said NOT_DONE, check-wording said "the wording stands",
+# check-later said "stays where it is" — and THE CHAIN STOPPED THERE. The
+# run had in fact opened the PC: the trace carries its reply, "What? There
+# are no POKéMON here!". The deed was done and no predicate on offer could
+# say so, because the one the model reached for does not exist.
+# A condition that can never be true is the most expensive kind of typo,
+# and this is the same rejection every other vocabulary already gets.
+def _shim_modes() -> tuple:
+    try:
+        src = (Path(__file__).parent.parent / "harness" / "shim.lua").read_text()
+    except OSError:
+        src = ""
+    found = tuple(dict.fromkeys(re.findall(r'o\.mode = "([a-z]+)"', src)))
+    # never let an unreadable shim silently disable the check
+    return found or ("overworld", "battle", "dialog", "ui", "boot")
+
+
+OBS_MODES = _shim_modes()
+
+
 # The vocabulary the decomposition may reference. Predicates come from the
 # executor's DSL; maps/flags are the executor's instrumentation, exposed here
 # so the model can name done_when conditions exactly.
 PREDICATES = {
     "map": "current map id equals VALUE (e.g. {\"map\":\"PEWTER_CITY\"})",
-    "mode": "obs mode equals VALUE (usually \"overworld\")",
+    "mode": "obs mode equals VALUE, and the ONLY values that exist are "
+            + ", ".join(f'"{m}"' for m in OBS_MODES)
+            + " (usually \"overworld\"). There is no mode for a particular "
+              "screen — a PC, a shop counter and a naming box are all "
+              "\"ui\" — so a subgoal about one specific machine needs a "
+              "different predicate, not a mode nobody reports",
     "party_nonempty": "true = have at least one Pokemon",
     "party_alive": "true = at least one Pokemon with HP > 0",
     "badge": "VALUE badge earned (e.g. {\"badge\":\"BOULDERBADGE\"})",
@@ -719,6 +754,16 @@ def _check_pred_shapes(dw: dict, tag: str, sid, probs: list):
                    if isinstance(v, str) else "")
             probs.append(f"{tag} ({sid}) {k} takes true or false, "
                          f"not {v!r}{why}")
+        elif k == "mode" and v not in OBS_MODES:
+            # NAME THE FIVE, and say what the near miss was reaching for.
+            # "pc" is not a wrong guess so much as a reasonable one about a
+            # vocabulary nobody published.
+            probs.append(
+                f"{tag} ({sid}) mode {v!r} is not a mode this game "
+                f"reports — the only ones that exist are "
+                + ", ".join(OBS_MODES)
+                + ". Every menu screen is \"ui\", so a subgoal about one "
+                  "particular machine cannot be marked by mode at all")
         elif k == "player_at":
             if not isinstance(v, dict):
                 probs.append(f"{tag} ({sid}) player_at takes "
@@ -1820,7 +1865,6 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
                       f"{json.dumps(a.get('done_when'))}")
         return revised
     return plan
-
 
 
 OUTLINE_SYS = """You are laying out a PLAYTHROUGH of Pokemon Red as an
