@@ -976,6 +976,7 @@ class Executor:
         self.hints: dict = {}
         self.hints_at: dict = {}     # region -> {line: flags fired when heard}
         self._offered: dict = {}     # map -> {species: wild encounters}
+        self._dead_why: dict = {}    # op signature -> last failure detail
         self._last_overworld_map = None
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
@@ -5796,10 +5797,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # REFUSED" with no way to tell which one.
                 _args = ",".join(f"{k}={v}" for k, v in step.items()
                                  if k in ("x", "y", "dir", "name", "item"))
+                # SAY WHAT STOPPED IT. "It cannot work from here" with no
+                # reason left the model re-proposing the gym door after a
+                # reload had regrown the bush in front of it — the three
+                # failures all said "couldn't reach the warp tile", and the
+                # ledger lists that bush as cuttable one line up.
+                _why = self._dead_why.get(sig) or ""
                 trace.append(f"{op}({_args}): REFUSED — this exact action "
                              "has already failed 3 times in this subgoal "
-                             "from this area; it cannot work from here, do "
-                             "something different")
+                             "from this area"
+                             + (f", each time: {_why}" if _why else "")
+                             + "; it cannot work from here as things stand. "
+                             "Whatever stopped it is what has to change.")
                 continue
             pre_obs = obs
             before = self._snapshot(obs)
@@ -6009,6 +6018,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self._retract_touch(self._where(pre_obs), step["name"])
             if not r.get("ok"):
                 self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
+                self._dead_why[sig] = str(r.get("detail") or "")[:160]
                 note += f": FAILED — {r.get('detail')}"
                 # An interact that never happened leaves the thing UNTOUCHED.
                 # Without this the provisional mark stands, and a room whose
@@ -6356,6 +6366,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         self._stale_rounds = 0    # the stale budget counts per subgoal
         self._stale_fp = None
         self._left_target = set() # target maps walked out of on purpose
+        self._dead_why = getattr(self, "_dead_why", {})
         self._idle_rounds = 0     # laps count per subgoal, not per run
         self._seen_this_sg = set()   # rooms this subgoal has stood in
         self._stuck_in: dict = {}
