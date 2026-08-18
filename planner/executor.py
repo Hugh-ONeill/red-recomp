@@ -259,9 +259,36 @@ def _looks_like_item_name(name: str) -> bool:
     return any("_".join(parts[i:]) in _ITEM_IDS for i in range(1, len(parts)))
 
 
-def model_view(obs: dict) -> dict:
+def model_view(obs: dict, holding_map: bool = False,
+               walked_dest=None) -> dict:
+    """The observation as the MODEL may see it.
+
+    WHAT A DOOR LEADS TO IS NOT ON THE SCREEN. `map.warps[].dest` is the
+    warp table — the far side of every door on the map the moment you set
+    foot on it — and it rode into CURRENT_OBSERVATION every round while
+    the renderers were being made to say UNKNOWN. Stripped here; a door's
+    walked destination (from `walked_dest`) is the only one that stays.
+    Seam names (`map.connections`) are the printed map's, and are shown
+    only while the run holds the TOWN MAP; otherwise the direction alone.
+    """
     o = dict(obs or {})
     o.pop("flags", None)
+    if isinstance(o.get("map"), dict):
+        _mm = dict(o["map"])
+        _mid = _mm.get("id")
+        _ws = []
+        for w in (_mm.get("warps") or []):
+            w2 = {k: v for k, v in dict(w).items() if k != "dest"}
+            _known = walked_dest(_mid, f"{w.get('x')},{w.get('y')}") \
+                if walked_dest else None
+            if _known:
+                w2["walked_to"] = _known
+            _ws.append(w2)
+        _mm["warps"] = _ws
+        if not holding_map:
+            _mm["connections"] = {d: "?" for d in
+                                  (_mm.get("connections") or {})}
+        o["map"] = _mm
     # HARNESS BOOKKEEPING IS NOT A THING THE PLAYER CAN SEE. `flags` and the
     # oracle probe were stripped and two others were not: `region_anchors`
     # is our own region-naming scratchpad, and `events` is the raw engine
@@ -5149,11 +5176,15 @@ class Executor:
 
     def _atlas_text(self, here: str | None = None) -> str:
         parts = []
+        # seam names come from the printed map: shown only while the run
+        # holds it; otherwise a seam is named by where the run came OUT
+        _held = self._holding_town_map(self._st.get("obs") or {})
         for mid, e in self.atlas.items():
             bits = []
             if e.get("edges"):
-                bits.append(", ".join(f"{d}->{t}"
-                                      for d, t in e["edges"].items()))
+                bits.append(", ".join(
+                    f"{d}->{t if _held else (self._walked_dest(mid, d) or 'UNKNOWN')}"
+                    for d, t in e["edges"].items()))
             if e.get("warps"):
                 dd: dict = {}
                 for w in e["warps"]:
@@ -5389,19 +5420,23 @@ class Executor:
 achieve one Pokemon Red subgoal, then the executor RUNS it. You do NOT pilot
 live; you write the whole sequence up front, reading the observation for exact
 coordinates. Read:
-  obs.map.warps      doors/stairs as {x,y,dest} — use_warp their x,y to exit
+  obs.map.warps      doors/stairs as {x,y} — use_warp their x,y to exit.
+    Where a door leads is not written on it: a door you have walked
+    carries walked_to; any other leads to UNKNOWN until you take it.
   obs.map.objects    interactables as {kind,name,x,y} — interact by name
-  obs.map.connections adjacent maps by direction — cross that direction.
-    ROUTE: pick the direction whose DEST map leads toward the goal, using the
-    ATLAS of edges you have already seen. ONE LEG PER MACRO: your macro may
+  obs.map.connections which SIDES of this map have a road out (a seam),
+    by direction — cross that direction. The road's name is on the TOWN
+    MAP if you hold one; otherwise it is "?" until you have crossed it.
+    ROUTE: pick the direction that leads toward the goal, using the
+    ATLAS of edges you have already walked. ONE LEG PER MACRO: your macro may
     contain at most ONE map-changing op (cross, or use_warp through a door)
     and it must be the LAST op — anything after it is DISCARDED, because you
     cannot know coordinates on a map you are not standing in. You will be
     re-prompted with a fresh observation after arriving.
     The warp tile AT OR NEXT TO your position is the door you came IN by —
     use_warp on it goes BACKWARD. To go forward, pick a warp elsewhere on
-    the map whose dest leads toward the goal (compare warp dests in
-    obs.map.warps), or cross an edge.
+    the map (the ledger says which are untried and where the walked ones
+    go), or cross an edge.
 Ops: {"op":"walk_to","x":N,"y":N} (within-map), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
 door/stairs), {"op":"interact","name":"OBJECT_NAME","answer":"yes"} OR
@@ -6500,7 +6535,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             sig0 = self._snapshot(start)
             if rnd == 1 and sig0[0]:
                 visits[sig0[0]] = 1
-            obs = model_view(start)
+            obs = model_view(start, holding_map=self._holding_town_map(start),
+                             walked_dest=self._walked_dest)
             atlas = self._atlas_text(
                 ((start or {}).get("map") or {}).get("id"))
             redo_note = ""

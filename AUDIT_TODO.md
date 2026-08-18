@@ -860,6 +860,14 @@ being finished, then by what lies to the model.
   fled; the conclusion (this grass has no Water types; a rod is needed) is
   the model's. Read from `battle_start` records per area, or keep a per-map
   tally in the ledger.
+- [x] **CLAIM · OVER · VERIFIED — the raw observation named where every
+  door leads.** `model_view` passed `map.warps[].dest` (the warp table) and
+  `map.connections` (the printed map's seam names) into CURRENT_OBSERVATION
+  every round, and the system prompt told the model to read `dest`; the
+  renderers had been made to say UNKNOWN while the JSON underneath still
+  said CELADON. **DONE (2026-08-18)** — warps carry no `dest`; a walked door
+  carries `walked_to`; seam names only while the TOWN MAP is in the bag,
+  else "?"; the atlas's seam names likewise; the prompt says so.
 - [ ] **STRENGTH · High · REPORTED — no documented boulder push.** Boulders
   are entities; `Collision.occupied` blocks them so BFS/`walk_to` never
   routes through one; pushing needs two held presses into it, which only
