@@ -4167,8 +4167,33 @@ function OPS.interact(G, c)
           U.tap(G, "b"); U.wait(4)
         end
         return true, "it asked WHICH POKEMON, and nothing here had chosen "
-          .. "one — backed out. Use an op that names the slot (for the day "
-          .. "care that is daycare_deposit with slot=N)."
+          .. "one — backed out (which the game takes as a no). To hand "
+          .. "over the Pokemon in party slot N, re-send this same interact "
+          .. "with slot=N (an in-game trade works this way; the day care "
+          .. "has its own daycare_deposit slot=N)."
+      end
+      -- ...AND WHEN THE OP DID NAME ONE, PICK THAT ONE. With slot= set the
+      -- picker fell through to the generic "tap A", which selects whoever
+      -- the cursor rests on -- slot 1 -- so the named Pokemon was never
+      -- the one handed over. Same cursor walk daycare_deposit uses.
+      if t and t.screenId == "PartyMenu" and c.slot then
+        local want = math.floor(tonumber(c.slot) or 0)
+        local n = #((G.save or {}).party or {})
+        if want < 1 or want > n then
+          U.tap(G, "b"); U.wait(6)
+          for _ = 1, 20 do
+            if G.stack:top() == ow then break end
+            U.tap(G, "b"); U.wait(4)
+          end
+          return false, ("it asked WHICH POKEMON and slot=%s is not a party "
+            .. "slot (the party has %d) — backed out"):format(
+              tostring(c.slot), n)
+        end
+        ui_cursor_to(G, "index", want)
+        U.tap(G, "a"); U.wait(8)
+        -- the dialog that follows (a confirm, the trade, or a refusal in
+        -- words) is read like any other page below, on the fresh top
+        t = G.stack:top()
       end
       -- ANY OTHER LIST IS A CHOICE, AND CHOICES ARE THE MODEL'S. Every
       -- screen not named above fell through to "tap A", and a ListMenu

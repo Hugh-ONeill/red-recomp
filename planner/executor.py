@@ -5814,7 +5814,9 @@ scenery and are never listed, so a coordinate is the only way to reach one.
 If a room's listed objects are exhausted and something in it must still be
 operated, press A at the tile it occupies. (answer
 accepts a yes/no question the thing asks — taking an item it offers needs
-"yes"; with no answer given the question is DECLINED), {"op":"menu","index":N}
+"yes"; with no answer given the question is DECLINED; when the thing then
+asks WHICH POKEMON — a trade, a hand-over — say slot=N on the same interact
+or it is backed out of, which the game takes as a no), {"op":"menu","index":N}
 (1-based: 1=YES/first, 2=NO/second), {"op":"grind"} (pace this map's wild
 ground — tall grass outdoors, ANY floor tile in a cave or tower; each battle
 is fought and the op repeats until the subgoal's DONE_WHEN is met, whatever
