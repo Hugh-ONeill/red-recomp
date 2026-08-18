@@ -887,6 +887,13 @@ def _subgoal_words(subgoal: dict) -> set:
     return set(_re.findall(r"[a-z]+", text.lower().replace("_", " ")))
 
 
+# the fifteen gen-1 type names, for telling a wanted TYPE from a wanted
+# SPECIES on an op's want= (planner/engine_types.txt is the same list)
+TYPE_NAMES = {"NORMAL", "FIGHTING", "FLYING", "POISON", "GROUND", "ROCK",
+              "BUG", "GHOST", "FIRE", "WATER", "GRASS", "ELECTRIC",
+              "PSYCHIC", "ICE", "DRAGON"}
+
+
 def choose_battle_policy(subgoal: dict) -> tuple:
     """(policy name, why) for one subgoal. Pure: no game, no observation.
 
@@ -993,6 +1000,7 @@ class Executor:
         # thinks lifts each one, as a predicate like a goal's, and the
         # harness only reports whether that holds now. key = "AREA|exit".
         self.blockers: dict = {}
+        self._op_intent = None
         # region -> {dir: world mark when it was proven}. A seam proof that
         # never expires is the one thing a shut DOOR is not (see _sealed).
         self._no_cross_at: dict = {}
@@ -5571,6 +5579,11 @@ class Executor:
         # See choose_battle_policy: party_size is satisfied by catching one
         # OR by being handed one, and only the words say which.
         name, why = choose_battle_policy(subgoal)
+        _oi = getattr(self, "_op_intent", None)
+        if _oi and _oi.get("intent"):
+            name = {"catch": "catch", "train": "default", "fight": "default",
+                    "pass": "traversal", "traversal": "traversal"}[_oi["intent"]]
+            why = "the op said so"
         if name not in BATTLE_POLICIES:          # never crash on a bad key
             name = "traversal"
         if why.startswith("the predicate"):
@@ -5673,7 +5686,8 @@ class Executor:
         self.status(doing=f"BATTLE ({name} policy)", obs=obs)
         obs = BATTLE_POLICIES[name](self.b, obs, self.log,
                                     self.max_battle_turns,
-                                    self._catch_target(subgoal))
+                                    (_oi.get("want") if _oi and _oi.get("want")
+                                     else self._catch_target(subgoal)))
         # spec-rule field cure/heal after the battle (no turn cost) for the
         # neediest party mon: the model's rules decide when an item beats
         # walking on. Cure first — poison keeps chipping until it is.
@@ -5774,8 +5788,13 @@ accepts a yes/no question the thing asks — taking an item it offers needs
 (1-based: 1=YES/first, 2=NO/second), {"op":"grind"} (pace this map's wild
 ground — tall grass outdoors, ANY floor tile in a cave or tower; each battle
 is fought and the op repeats until the subgoal's DONE_WHEN is met, whatever
-it is — levels, or party size. Wild Pokemon appear by WALKING on such
-ground, never by standing still, so this is the
+it is — levels, or party size. What the battles are FOR follows the step's
+condition (a level → fight; a catch → balls; anything else → wilds are
+fled) unless the op says otherwise: "intent":"catch" with "want":"ODDISH"
+or a type like "GRASS" or a list (balls thrown at what you name, the rest
+fled), "intent":"train" (fight them), "intent":"pass" (flee them). Wild
+Pokemon appear by WALKING on such ground, never by standing still, so this
+is the
 op for TRAINING *and* for finding something to CATCH; {"op":"wait"} will
 never produce an encounter),
 {"op":"buy","item":"POTION","count":N} (own N total of the item, buying
@@ -6078,6 +6097,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             step = dict(step)
             when = step.pop("when", None)
             op = step.pop("op", None)
+            self._op_intent = None          # an intent belongs to ONE op
             if not op:
                 continue
             obs = self.settle()
@@ -6214,6 +6234,27 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             blackout = None
             ghosted = None
             low_hp_flee = ""
+            # THE OP MAY SAY WHAT ITS BATTLES ARE FOR. The battle policy is
+            # chosen per STEP from the step's predicate, so a knows_move
+            # step whose model-authored plan was "catch something that can
+            # learn CUT" ran grind under the traversal policy and fled
+            # every wild — the intent was the model's, and it had no way to
+            # say it. {"op":"grind","intent":"catch","want":"ODDISH"} (or a
+            # type, or a list) / "intent":"train" / "intent":"pass" now
+            # rides on the op for the battles that op starts.
+            self._op_intent = None
+            _int = str(step.get("intent") or "").lower().strip()
+            if _int in ("catch", "train", "fight", "pass", "traversal"):
+                _w = step.get("want")
+                _wl = ([_w] if isinstance(_w, str)
+                       else list(_w) if isinstance(_w, (list, tuple)) else [])
+                _wl = [str(x).upper() for x in _wl if str(x).strip()]
+                _types = {x for x in _wl if x in TYPE_NAMES}
+                _species = {x for x in _wl if x not in TYPE_NAMES}
+                self._op_intent = {
+                    "intent": _int,
+                    "want": ({"species": _species, "types": _types}
+                             if (_species or _types) else None)}
             for _ in range(12):
                 try:
                     obs = self.b.send(op, **step)
@@ -6663,6 +6704,16 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if det:
                     chg.append(str(det))
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
+            if (op == "grind" and "fled" in note and not low_hp_flee
+                    and not getattr(self, "_op_intent", None)
+                    and choose_battle_policy(sg)[0] == "traversal"):
+                note += (" — the battles under this step run the traversal "
+                         "policy (wilds are fled) because the step's "
+                         "condition is not a catch or a level; to CATCH "
+                         "with grind say so on the op — {\"op\":\"grind\","
+                         "\"intent\":\"catch\",\"want\":\"SPECIES or TYPE\"} "
+                         "(balls thrown at what you name, the rest fled) — "
+                         "or \"intent\":\"train\" to fight them")
             if low_hp_flee and "fled" in note:
                 note += (f" — fled because your lead was {low_hp_flee}: "
                          f"under {int(_hb * 100) if _hb else 20}% a wild "
