@@ -4850,6 +4850,19 @@ THIS map's PC — every Pokemon Center has one. Frees a bag slot and
 DESTROYS NOTHING; obs.pc_items lists what is already in there),
 {"op":"retrieve_item","item":"HM_CUT","count":N} (take one back out of
 the PC; it fails if the bag is already at 20 kinds),
+{"op":"pc_deposit","slot":N} (put party member N into a PC box, at THIS
+map's PC. It keeps its levels and moves and can be taken back out; it will
+not leave you with an empty party. This is how you make room),
+{"op":"pc_withdraw","index":N,"box":B} (take stored Pokemon N back into the
+party — obs.pc_mons gives every stored one with its box and index, and box
+defaults to the one that is open. Needs a free party slot. A boxed Pokemon
+is NOT in the party, so a type or species condition cannot be satisfied by
+one sitting in storage),
+{"op":"pc_release","index":N,"species":"PIDGEY","box":B} (RELEASE it. It is
+gone permanently: no box holds it, and that individual cannot be caught
+again. Name the species as well as the index so a shifted list cannot
+release the wrong one. Whether releasing anything is a good idea is YOUR
+call — this is here so it is available, not because it is advised),
 {"op":"daycare_deposit","slot":N} (board party member N with the DAY-CARE
 MAN on ROUTE_5. It gains 1 exp for EVERY STEP you walk anywhere in Kanto
 and cannot faint, be used, or be switched in while it is there. It takes

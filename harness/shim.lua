@@ -816,12 +816,15 @@ local function observe(G, seq, result)
   -- Species and level only, which is exactly what a box row prints. No
   -- moves, no stats: those need the summary screen opened on that mon,
   -- and the model can open it.
+  -- `index` is the row number WITHIN its box, which is what pc_withdraw
+  -- and pc_release address. Listing them without it would be describing a
+  -- shelf with no way to point at anything on it.
   o.pc_mons = {}
   local _boxes = (G.save and G.save.boxes) or {}
   for bi = 1, 12 do
-    for _, m in ipairs(_boxes[bi] or {}) do
+    for mi, m in ipairs(_boxes[bi] or {}) do
       o.pc_mons[#o.pc_mons + 1] = {
-        species = m.species, level = m.level, box = bi }
+        species = m.species, level = m.level, box = bi, index = mi }
     end
   end
   o.pc_box = (G.save and G.save.currentBox) or 1
@@ -2657,7 +2660,10 @@ local function ui_row_labelled(G, want)
   end
 end
 
-local function pc_open_storage(G)
+-- Walk to this map's PC and turn it on, leaving its top menu up. Says
+-- nothing about WHICH storage you wanted; pc_open_storage and
+-- pc_open_boxes pick that up from here.
+local function pc_open_menu(G)
   local ow = G.overworld
   local px, py, pfacing
   for _, f in ipairs(map_fixtures(G, ((ow.map or {}).id))) do
@@ -2701,6 +2707,19 @@ local function pc_open_storage(G)
   if not ui_is_menu(G) then
     ui_back_out(G); return false, "the PC never opened"
   end
+  return true
+end
+
+-- WHICH PC. The terminal offers several: the player's own name is item
+-- storage, "SOMEONE'S PC" (or "BILL'S PC" once you have met him) is the
+-- Pokemon boxes, and PROF.OAK's is the dex rating. Everything above this
+-- line is walking to the machine and turning it on, which is identical
+-- whichever one you want — it was written inline in the item path and had
+-- to come out whole before the boxes could reuse it rather than grow a
+-- second copy of the same twelve taps.
+local function pc_open_storage(G)
+  local ok, why = pc_open_menu(G)
+  if not ok then return false, why end
   if not ui_row_labelled(G, "DEPOSIT ITEM") then   -- the multi-PC menu
     local own = ui_row_labelled(G, "'S PC")
     -- "SOMEONE'S PC"/"BILL'S PC" is the BOX menu and matches that too; the
@@ -2717,6 +2736,35 @@ local function pc_open_storage(G)
   end
   if not ui_row_labelled(G, "DEPOSIT ITEM") then
     ui_back_out(G); return false, "item storage never opened"
+  end
+  return true
+end
+
+-- ...and the same door into the BOXES. The row is named for whoever owns
+-- it, which changes when you meet Bill (bills_pc.asm gates on
+-- EVENT_MET_BILL), so match on the suffix and exclude the player's own.
+local function pc_open_boxes(G)
+  local ok, why = pc_open_menu(G)
+  if not ok then return false, why end
+  if not ui_row_labelled(G, "WITHDRAW") then
+    local name = ((G.save or {}).player or {}).name
+    local mine = name and name ~= "" and (name:upper() .. "'S PC") or nil
+    local want
+    for i, r in ipairs(ui_rows(G) or {}) do
+      local lab = tostring(r.label or r.value or ""):upper()
+      if lab:find("'S PC") and not (mine and lab:find(mine, 1, true)) then
+        want = i break
+      end
+    end
+    if not want then
+      ui_back_out(G)
+      return false, "no Pokemon-storage row on the PC menu"
+    end
+    ui_cursor_to(G, "index", want)
+    U.tap(G, "a"); U.wait(10)
+  end
+  if not ui_row_labelled(G, "WITHDRAW") then
+    ui_back_out(G); return false, "the boxes never opened"
   end
   return true
 end
@@ -2790,6 +2838,206 @@ function OPS.store_item(G, c) return pc_move(G, c, "DEPOSIT ITEM", true) end
 -- Take an item back out of PC storage.
 function OPS.retrieve_item(G, c)
   return pc_move(G, c, "WITHDRAW ITEM", false)
+end
+
+-- THE BOXES, WHICH WERE READ-ONLY UNTIL NOW (user, 2026-08-17).
+-- obs.pc_mons listed what was in storage and no op could touch it: mons
+-- went in exactly one way, by being caught with a full party (this engine
+-- auto-deposits rather than refusing the catch), and never came out. That
+-- made "the party holds a WATER type" UNSATISFIABLE rather than merely
+-- hard the moment the right creature was boxed, which is the same shape
+-- as the mode that did not exist. The harness was even telling the run to
+-- do it: daycare_withdraw refuses with "there is nowhere to put X until
+-- one is deposited in the PC", naming an action with no op behind it.
+local function pc_change_box(G, want)
+  local cur = tonumber(((G.save or {}).currentBox)) or 1
+  if not want or want == cur then return true end
+  local r = ui_row_labelled(G, "CHANGE BOX")
+  if not r then return false, "no CHANGE BOX row" end
+  ui_cursor_to(G, "index", r)
+  U.tap(G, "a"); U.wait(8)
+  -- rows read "  BOX  3" (a mark on the current one); find by number
+  local want_i
+  for i, row in ipairs(ui_rows(G) or {}) do
+    if tostring(row.label or row.value or ""):match("BOX%s+0?" .. want
+                                                    .. "%s*$") then
+      want_i = i break
+    end
+  end
+  if not want_i then ui_back_out(G); return false, "no BOX " .. want end
+  ui_cursor_to(G, "index", want_i)
+  U.tap(G, "a"); U.wait(10)
+  for _ = 1, 8 do                        -- "BOX N selected" / save prompt
+    local t = ui_top(G)
+    if not (t and t.pages) then break end
+    U.tap(G, "a"); U.wait(5)
+  end
+  if (tonumber(((G.save or {}).currentBox)) or 1) ~= want then
+    return false, "the PC would not switch to BOX " .. want
+  end
+  return true
+end
+
+-- One driver for all three, because the menus are the same shape: pick the
+-- action row, pick a Pokemon from the list it opens, then confirm. Only
+-- the confirmation differs, and only for RELEASE.
+local function pc_mon(G, c, row, pick)
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close)"
+  end
+  local ok, why = pc_open_boxes(G)
+  if not ok then return false, why end
+  if c.box then
+    local moved, mwhy = pc_change_box(G, tonumber(c.box))
+    if not moved then ui_back_out(G); return false, mwhy end
+  end
+  local r = ui_row_labelled(G, row)
+  if not r then ui_back_out(G); return false, row .. " row missing" end
+  ui_cursor_to(G, "index", r)
+  U.tap(G, "a"); U.wait(8)
+  if not ui_is_list(G) then
+    -- an empty box answers with "What? There are no POKéMON here!"
+    ui_back_out(G)
+    return false, row .. ": no list opened (is the box empty?)"
+  end
+  local rows = ui_rows(G) or {}
+  local want = tonumber(pick)
+  if not want or want < 1 or want > #rows then
+    ui_back_out(G)
+    return false, ("%s: there is no #%s here — this list has %d"):format(
+      row, tostring(pick), #rows)
+  end
+  local label = tostring(rows[want].label or rows[want].value or "")
+  ui_cursor_to(G, "index", want)
+  U.tap(G, "a"); U.wait(8)
+  return true, label
+end
+
+-- Put party member N into the current box.
+function OPS.pc_deposit(G, c)
+  local n = tonumber(c.slot)
+  local party = (G.save or {}).party or {}
+  if not n then return false, "pc_deposit needs slot" end
+  if #party <= 1 then
+    return false, "that is your last Pokemon — the PC will not take it"
+  end
+  local before = #party
+  local ok, label = pc_mon(G, c, "DEPOSIT", n)
+  if not ok then return false, label end
+  -- the per-mon submenu: DEPOSIT / STATS / CANCEL, action first
+  ui_cursor_to(G, "index", 1)
+  U.tap(G, "a"); U.wait(10)
+  for _ = 1, 8 do
+    local t = ui_top(G)
+    if not (t and t.pages) then break end
+    U.tap(G, "a"); U.wait(5)
+  end
+  ui_back_out(G)
+  local after = #((G.save or {}).party or {})
+  if after >= before then
+    return false, "the deposit did not go through (party still " .. after
+      .. ")"
+  end
+  return true, ("deposited %s — party is now %d"):format(label, after)
+end
+
+-- Take stored Pokemon #index out of box `box` (default: the current one).
+function OPS.pc_withdraw(G, c)
+  local n = tonumber(c.index)
+  if not n then return false, "pc_withdraw needs index" end
+  local party = (G.save or {}).party or {}
+  if #party >= 6 then
+    return false, "the party is full (6) — deposit one first "
+      .. "({\"op\":\"pc_deposit\",\"slot\":N})"
+  end
+  local before = #party
+  local ok, label = pc_mon(G, c, "WITHDRAW", n)
+  if not ok then return false, label end
+  ui_cursor_to(G, "index", 1)
+  U.tap(G, "a"); U.wait(10)
+  for _ = 1, 8 do
+    local t = ui_top(G)
+    if not (t and t.pages) then break end
+    U.tap(G, "a"); U.wait(5)
+  end
+  ui_back_out(G)
+  local after = #((G.save or {}).party or {})
+  if after <= before then
+    return false, "the withdrawal did not go through (party still " .. after
+      .. ")"
+  end
+  return true, ("withdrew %s — party is now %d"):format(label, after)
+end
+
+-- Release stored Pokemon #index. IT IS GONE. There is no undo, no box it
+-- moves to, and no way to catch that individual again.
+--
+-- THE HARNESS DOES NOT GET A VOTE (user, 2026-08-17: "cant tie its hands
+-- even if it wants to make a bad decision"). So this is a real op and it
+-- really works. What it does insist on is that the model name the species
+-- it means, and that is not a veto: a mismatch is a WRONG FACT about
+-- which row is which, not a bad decision, and refusing wrong facts is the
+-- one thing the harness is for. Releasing the Pokemon you meant to
+-- release is the model's call; releasing a different one because the list
+-- shifted under an index is nobody's.
+--
+-- The engine's own prompt defaults to NO (defaultNo, bills_pc.asm), so
+-- this must move the cursor to YES deliberately. A mashed A does nothing,
+-- which is exactly right and is left as it is.
+function OPS.pc_release(G, c)
+  local n = tonumber(c.index)
+  if not n then return false, "pc_release needs index" end
+  if not c.species then
+    return false, "pc_release needs species too — name the one you mean, "
+      .. "so an index that has shifted cannot release the wrong Pokemon"
+  end
+  local want = tostring(c.species):upper():gsub("[^A-Z0-9]", "")
+  local boxes = (G.save or {}).boxes or {}
+  local bi = tonumber(c.box) or tonumber((G.save or {}).currentBox) or 1
+  local mon = (boxes[bi] or {})[n]
+  if not mon then
+    return false, ("there is no #%d in BOX %d"):format(n, bi)
+  end
+  local have = tostring(mon.species or ""):upper():gsub("[^A-Z0-9]", "")
+  if have ~= want then
+    return false, ("#%d in BOX %d is a %s, not a %s — nothing was released")
+      :format(n, bi, tostring(mon.species), tostring(c.species))
+  end
+  local before = #(boxes[bi] or {})
+  local ok, label = pc_mon(G, c, "RELEASE", n)
+  if not ok then return false, label end
+  -- "Once released, X is gone forever. OK?" — a ChoiceBox pushed on top of
+  -- the text once it finishes paging, with the cursor STARTING ON NO
+  -- (defaultNo, bills_pc.asm). Ride the text with the harness's own
+  -- press-until rather than a private loop: the first version of this was
+  -- a hand-rolled copy of exactly that and it never saw the box.
+  if not ui_press_until(G, ui_is_choice, "a", 20) then
+    ui_back_out(G)
+    return false, "the release confirmation never appeared"
+  end
+  -- YES is index 1. Nothing else in this file has had to move a cursor
+  -- ONTO a destructive answer, and that asymmetry is the engine being
+  -- careful rather than an accident: a mashed A here answers NO and the
+  -- Pokemon lives. Left exactly as it is.
+  ui_cursor_to(G, "index", 1)
+  U.tap(G, "a"); U.wait(8)
+  for _ = 1, 8 do                      -- "...was released outside. Bye X!"
+    local t = ui_top(G)
+    if not (t and t.pages) then break end
+    U.tap(G, "a"); U.wait(5)
+  end
+  ui_back_out(G)
+  local after = #(((G.save or {}).boxes or {})[bi] or {})
+  if after >= before then
+    return false, "the release did not go through (BOX " .. bi
+      .. " still holds " .. after .. ")"
+  end
+  -- the box row prints a padded nickname ("AAAAAAAAAA :L12"); say the
+  -- species and level plainly instead. This is the sentence that reports
+  -- something irreversible, so it should read like one.
+  return true, ("released the %s (L%s) from BOX %d — it is gone for good; "
+                .. "BOX %d now holds %d"):format(
+    tostring(mon.species), tostring(mon.level or "?"), bi, bi, after)
 end
 
 -- THE DAY CARE, AS A BOX. Boarding a Pokemon was reachable only by saying
