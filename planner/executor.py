@@ -6337,6 +6337,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         self._plans_said = []
         self._stale_rounds = 0    # the stale budget counts per subgoal
         self._stale_fp = None
+        self._left_target = set() # target maps walked out of on purpose
         self._idle_rounds = 0     # laps count per subgoal, not per run
         self._seen_this_sg = set()   # rooms this subgoal has stood in
         self._stuck_in: dict = {}
@@ -6407,6 +6408,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 cands = [tk0.split(":", 1)[1]]
             here0 = self._where(start)
             r0 = None
+            # A PLACE THE MODEL WALKED OUT OF ON PURPOSE IS NOT WALKED BACK
+            # INTO FOR IT. Watched live at Misty: fainted in the gym, "heal
+            # first" in its plan, walked out to the city — and this block
+            # walked it back into the gym at the top of every round, four
+            # times, before it could reach the Center. Once the model has
+            # left the target map by its own op this escalation, the
+            # known-way walk stands down for that target; the ledger's
+            # KNOWN WAY line still names the first leg, and it can walk
+            # back the moment it means to.
+            _left = getattr(self, "_left_target", set())
+            cands = [c for c in cands if c.split("|")[0] not in _left]
             for dest0 in cands:
                 if here0.startswith(dest0.split("|")[0]):
                     r0 = None
@@ -6958,6 +6970,25 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             sig1 = self._snapshot(cur)
             here_now = self._where(cur)
             self._stuck_in[here_now] = self._stuck_in.get(here_now, 0) + 1
+            # did THIS round's own ops walk the party out of the target
+            # map? (see the known-way block at the top of the round)
+            _tmaps = set()
+            _tk1 = self._target_key(sg)
+            if _tk1.startswith("badge:"):
+                _g1 = BADGE_GYMS.get(_tk1.split(":", 1)[1])
+                if _g1:
+                    _tmaps = {_g1, _g1.replace("_GYM", "_CITY")}
+            elif _tk1.startswith(("map:", "area:")):
+                _tmaps = {_tk1.split(":", 1)[1].split("|")[0]}
+            _m0 = sig0[0]
+            if (_m0 in _tmaps and sig1[0] and sig1[0] != _m0
+                    and any(c.get("op") in ("cross", "use_warp")
+                            for c in clean)):
+                if not hasattr(self, "_left_target"):
+                    self._left_target = set()
+                self._left_target.add(_m0)
+                self.log("left_target_on_purpose", subgoal=sg["id"],
+                         round=rnd, left=_m0, now=sig1[0])
             # NB: do not reset stuck_note here — the blackout walk-back note
             # is appended above and a reset at this point deleted it before
             # it was ever sent, so the round after a wipe never learned it
