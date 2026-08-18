@@ -949,7 +949,8 @@ class Executor:
         self._touch_bag: dict = {}   # region -> key items held when pressed
         # region -> {object name: [world mark when pressed, times re-offered]}
         self._touch_mark: dict = {}
-        self.hints: dict = {}        # region -> things people said here
+        self.hints: dict = {}
+        self.hints_at: dict = {}     # region -> {line: flags fired when heard}
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
         # A RESUMED SAVE ARRIVES MID-SENTENCE. The loaded game still holds
@@ -1518,6 +1519,13 @@ class Executor:
                 r: [_re.sub(r"^([^ ]+)->\S+", r"\1", s) for s in (v or [])]
                 for r, v in (data.get("shut_doors") or {}).items()}
             self.hints = data.get("hints") or {}
+            # WHEN each line was heard: the count of event flags fired at
+            # the time. A sentence re-served without its date reads as a
+            # standing instruction — "Say hi to PROF.OAK for me!" was said
+            # before the parcel was delivered and kept sending the run to
+            # Oak for hours after. Lines recorded before this existed have
+            # no stamp and are shown undated.
+            self.hints_at = data.get("hints_at") or {}
             self.map_doors = {k: set(v) for k, v
                               in (data.get("map_doors") or {}).items()}
             # Wipe counts persist: each campaign attempt is a fresh process
@@ -1682,6 +1690,7 @@ class Executor:
                  "flag_sites": self.flag_sites,
                  "shut_doors": self.shut_doors,
                  "hints": self.hints,
+                 "hints_at": getattr(self, "hints_at", {}),
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead,
                  "map_doors": {k: sorted(v)
@@ -4366,7 +4375,8 @@ class Executor:
                          "the order you heard them — a gate in this game is "
                          "usually explained out loud by whoever is standing "
                          "at it):\n  "
-                         + "\n  ".join(said_here[-6:]))
+                         + "\n  ".join(self._dated(here, l, obs)
+                                        for l in said_here[-6:]))
         been = self.visits.get(here, 0)
         warned = ""
         # A ROOM YOU KEEP LOSING IN IS THE RIGHT ROOM. Coming back is the
@@ -4623,7 +4633,8 @@ class Executor:
             _body = []
             for _n, _rg, _ls in said_away:
                 for _l in _ls:
-                    _body.append(f"  ({_rg}, {_n} leg(s) away) {_l}")
+                    _body.append(f"  ({_rg}, {_n} leg(s) away) "
+                                 f"{self._dated(_rg, _l, obs)}")
                 if len(_body) >= 8:
                     break
             _body = _body[:8]
@@ -4869,6 +4880,20 @@ class Executor:
     # the op vocabulary lives. Bound it the same way the author's evidence
     # is bounded, and by the same rule: keep what is NEAR, say how much went.
     ATLAS_BUDGET = 4000
+
+    def _dated(self, region: str, line: str, obs) -> str:
+        """A hint line with WHEN it was heard, if that is known: how many
+        events have fired since. Said before the world moved is a fact the
+        reader needs to weigh a sentence; whether it still applies is the
+        model's."""
+        then = ((getattr(self, "hints_at", {}) or {}).get(region) or {}).get(line)
+        if then is None:
+            return line
+        now = len((obs or {}).get("flags") or [])
+        if now > then:
+            return (f"{line}  (said before {now - then} event(s) that have "
+                    f"fired since)")
+        return line
 
     def _atlas_text(self, here: str | None = None) -> str:
         parts = []
@@ -5697,6 +5722,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     if line not in lst:
                         lst.append(line)
                         del lst[:-8]
+                        if not hasattr(self, "hints_at"):
+                            self.hints_at = {}
+                        self.hints_at.setdefault(reg, {})[line] = len(
+                            (obs or {}).get("flags") or [])
                         self._save_memory()
             self._said_ready = True
             note = f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
