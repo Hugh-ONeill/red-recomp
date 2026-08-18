@@ -6829,7 +6829,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         retalked_now = True
                 here_r = self._where(cur)
                 untried = self._frontier_left(here_r)
-                if (not retalked_now and untried
+                # ...and neither does the free round's exit walk (same
+                # rule; the free round still re-talks people and sweeps,
+                # neither of which moves the party).
+                if (not USE_LEDGER and not retalked_now and untried
                         and (cur or {}).get("mode") == "overworld"):
                     # goal-ward edge first, same rule as the reroute rank:
                     # by DISTANCE over the printed map, so a first hop
@@ -7214,8 +7217,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     f"already walked for this subgoal. It is being ended "
                     f"here so the plan can be rewritten from what happened.")
                 spent = rounds
-            if not moved_itself and (patient
-                                     or not self._untried_exits(cur)):
+            # THE ESCORT DOES NOT SELF-FIRE UNDER THE LEDGER. Watched live
+            # on the mart leg: the model entered the mart to talk to the
+            # clerk three rounds running and the escort hauled it back to
+            # the street after each — the harness undoing a move the model
+            # made, every round. The frontier walk is {"op":"explore"} now,
+            # offered as entry 1 whenever the area is worked; taking it is
+            # the model's. (The legacy renderer keeps the escort.)
+            if (not USE_LEDGER and not moved_itself
+                    and (patient or not self._untried_exits(cur))):
                 went = self._route_to_frontier(cur, sg, patient=patient)
                 if went:
                     cur = self.settle() or cur
