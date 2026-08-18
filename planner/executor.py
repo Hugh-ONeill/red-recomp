@@ -1558,6 +1558,51 @@ class Executor:
             # no stamp and are shown undated.
             self.hints_at = data.get("hints_at") or {}
             self._offered = data.get("offered") or {}
+            # ...and drop any edge already filed that contradicts a seam
+            # proof on the same region (the false ROUTE_4|4,4 east edge in
+            # run 12), so the live world heals at the next start without a
+            # hand edit under a running executor.
+            _bad = set()
+            for _r, _dirs in list((self._no_cross or {}).items()):
+                for _d in list(_dirs or ()):
+                    if _d in (self.explored.get(_r) or {}):
+                        _bad.add((_r, _d))
+            # The proof itself can have been revoked BY the false edge (the
+            # load rule below trusts a walked edge over a stored proof), so
+            # read the journal's own BFS verdicts too: "cross(dir=east):
+            # FAILED — the east seam of ROUTE_4 cannot be walked to from
+            # here" recorded at a region is geometry, not weather.
+            try:
+                import re as _re2
+                _pat = _re2.compile(r"cross\(dir=(\w+)\): FAILED — the \1 "
+                                    r"seam of (\w+) .*cannot be walked to")
+                for _l in (RUN / "executor_log.jsonl").read_text().splitlines():
+                    if '"escalate_feedback"' not in _l or "seam of" not in _l:
+                        continue
+                    try:
+                        _r0 = json.loads(_l)
+                    except ValueError:
+                        continue
+                    _at = str(_r0.get("at") or "")
+                    for _t in (_r0.get("trace") or []):
+                        _m = _pat.search(_t)
+                        if _m and _at.split("|")[0] == _m.group(2) \
+                                and _m.group(1) in (self.explored.get(_at)
+                                                    or {}):
+                            _bad.add((_at, _m.group(1)))
+            except OSError:
+                pass
+            for _r, _d in sorted(_bad):
+                _e = (self.explored.get(_r) or {}).get(_d) or {}
+                # only a CROSSING filed once — a shut record (to == self)
+                # is the failure itself, and a seam crossed twice or more
+                # from here is a road something merely stood in one day
+                if _e.get("to") in (None, _r) or int(_e.get("n") or 0) > 1:
+                    continue
+                self.explored[_r].pop(_d, None)
+                print(f"[memory] dropped {_r} --{_d}--> {_e.get('to')}: the "
+                      f"{_d} seam is proven unwalkable from that region, so "
+                      f"the crossing was filed under the wrong label")
             if not self._offered:
                 # BACKFILL ONCE from this world's journal: the tally is new
                 # and the encounters are not — Route 24's 87 are already
@@ -2791,6 +2836,20 @@ class Executor:
                 and not any(w.get("x") == step.get("x")
                             and w.get("y") == step.get("y") for w in _mw)):
             self.log("edge_key_foreign", frm=src, via=str(key), to=dst)
+            return
+        # A REGION WITH A SEAM PROOF DID NOT JUST CROSS THAT SEAM. Route 4
+        # west (ROUTE_4|4,4) had "the east seam cannot be walked to from
+        # here" proven from (9,17); minutes later a cross east filed under
+        # ROUTE_4|4,4 -> CERULEAN, because the party stood on the east half
+        # under a stale/mislabelled region while a harness route-walk had
+        # just moved it. The router then offered Route 3 -> Route 4 west ->
+        # Cerulean, a road that skips the mountain and dies at the seam.
+        # A crossing and a standing seam proof cannot both be true of one
+        # region: the label is the wrong one, so file nothing under it.
+        if ("," not in str(key)
+                and str(key) in (self._no_cross.get(src) or set())):
+            self.log("edge_misattributed", frm=src, via=str(key), to=dst,
+                     why="seam proven uncrossable from this region")
             return
         node = self.explored.setdefault(src, {})
         # A door's destination is deterministic, so a walk that lands
