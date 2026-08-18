@@ -5992,6 +5992,21 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         continue
                 break
             r = (obs or {}).get("result") or {}
+            # THE PRESS THAT LANDED COUNTS. The provisional touch above is
+            # retracted when a battle interrupts the interact, and the
+            # re-sent interact that then reaches the thing never re-marked
+            # it — so on a cave floor, where every approach step rolls a
+            # wild, a person reached through a Geodude stayed "never
+            # pressed" for ever and explore pressed him again next round
+            # (Rock Tunnel B1F, SUPER_NERD2, twice running). Mark on the
+            # landing; the blackout / asked / failed retractions below still
+            # undo it where they should.
+            if op == "interact" and step.get("name") and r.get("ok"):
+                _hr = self._where(pre_obs)
+                if _hr and "None" not in str(_hr):
+                    self._tried_objs.setdefault(_hr, set()).add(step["name"])
+                    self._stamp_touch(_hr)
+                    self._mark_touch(_hr, step["name"], obs)
             after = self._snapshot(obs)
             # STATE-BASED blackout fallback. The battle-mode detector only
             # fires when the executor sees mode=="battle" after an op — but
