@@ -1496,7 +1496,8 @@ def journal_text(path: Path, limit: int = 60) -> str:
                     events.append(lock)
             elif "party FAINTED" in t:
                 pass
-    if not events and not unreach:
+    tried = tried_text(recs)
+    if not events and not unreach and not tried:
         return ""
     # Collapse consecutive repeats before taking the tail: 27 identical
     # wander lines told the reviewer nothing 26 times, and cost the window
@@ -1523,7 +1524,103 @@ def journal_text(path: Path, limit: int = 60) -> str:
             who = f", with {', '.join(objs)} right there" if objs else ""
             out += (f"  during {sg}: could not get {tgt} in {reg} — "
                     f"{n} attempts{who}\n")
-    return out
+    return out + tried
+
+
+def _canon_op(step: dict) -> str:
+    op = step.get("op")
+    if op in ("use_warp", "walk_to", "field_move"):
+        return f"{op}({step.get('x')},{step.get('y')})"
+    if op == "cross":
+        return f"cross({step.get('dir')})"
+    if op == "interact":
+        return f"interact({step.get('name') or (step.get('x'), step.get('y'))})"
+    if op in ("buy", "sell", "use_item", "toss"):
+        return f"{op}({step.get('item')})"
+    return f"{op}()"
+
+
+def tried_text(recs: list, top_subgoals: int = 4, top_ops: int = 5) -> str:
+    """WHAT EACH SUBGOAL OF THE LAST PLAN TRIED, COUNTED — and what the
+    executor's model said it was doing while it tried.
+
+    The rewrite pass is asked to fix a leg that failed, and it was shown
+    the story (wipes, walls, money) and the could-not-get ledger — but not
+    the repetition itself: that talk_to_clerk ran 27 escalation rounds over
+    four attempts, proposed interact(VIRIDIANMART_CLERK) nine times and got
+    the shop counter every time, and that its own plans read "I will check
+    the mart clerk again" five rounds running. A plan that does the same
+    thing five times with nothing changing is not a plan the author can
+    recognise if the five are collapsed into one FAILED line. This is the
+    executor's own ops and the model's own words, counted; nothing here
+    says what to do instead.
+
+    Scoped to the LAST plan in the journal (every attempt of it): the leg
+    being rewritten is the one whose evidence this is."""
+    # the last plan's goal, and everything from its first attempt onward
+    starts = [i for i, r in enumerate(recs) if r.get("kind") == "plan_start"]
+    if not starts:
+        return ""
+    goal = recs[starts[-1]].get("goal")
+    first = next(i for i in starts if recs[i].get("goal") == goal)
+    seg = recs[first:]
+    per: dict = {}
+    pending: dict = {}
+    for r in seg:
+        k = r.get("kind")
+        sg = r.get("subgoal")
+        if not sg:
+            continue
+        d = per.setdefault(sg, {"attempts": 0, "rounds": 0, "ops": {},
+                                "last": {}, "plans": {}, "goal": ""})
+        if k == "escalate_start":
+            # one per attempt (and per backtrack); subgoal_attempt is only
+            # logged for steps that HAVE a macro to replay, and the steps
+            # that get here mostly do not
+            d["attempts"] += 1
+            d["goal"] = d["goal"] or (r.get("goal") or "")
+        elif k == "escalate_proposal":
+            d["rounds"] += 1
+            macro = [m for m in (r.get("macro") or []) if isinstance(m, dict)]
+            for m in macro:
+                c = _canon_op(m)
+                d["ops"][c] = d["ops"].get(c, 0) + 1
+            pending[sg] = [_canon_op(m) for m in macro]
+            pl = (r.get("plan") or "").strip()
+            if pl:
+                d["plans"][pl] = d["plans"].get(pl, 0) + 1
+        elif k == "escalate_feedback":
+            for t in (r.get("trace") or []):
+                head = t.split(":", 1)[0]
+                for c in pending.get(sg, []):
+                    if head.startswith(c.split("(")[0]) and c not in d["last"]:
+                        d["last"][c] = t.split(":", 1)[1].strip()[:110] \
+                            if ":" in t else t[:110]
+                # keep the LAST outcome, not the first
+                for c in pending.get(sg, []):
+                    if head.startswith(c.split("(")[0]):
+                        d["last"][c] = t.split(":", 1)[1].strip()[:110] \
+                            if ":" in t else t[:110]
+            pending.pop(sg, None)
+    rows = [(sg, d) for sg, d in per.items() if d["rounds"] >= 3]
+    if not rows:
+        return ""
+    rows.sort(key=lambda kv: -kv[1]["rounds"])
+    out = ["\n\nWHAT EACH STEP OF THAT PLAN TRIED, counted over all its "
+           "attempts — the executor's own ops and, in quotes, what it "
+           "said it was doing. A step that proposes the same thing again "
+           "and again with the same result is a step whose IDEA is wrong, "
+           "not one that needs another go:"]
+    for sg, d in rows[:top_subgoals]:
+        out.append(f"  {sg}: escalated {d['attempts']} time(s), "
+                   f"{d['rounds']} round(s) in all"
+                   + (f" — \"{d['goal'][:80]}\"" if d["goal"] else ""))
+        for c, n in sorted(d["ops"].items(), key=lambda kv: -kv[1])[:top_ops]:
+            last = d["last"].get(c)
+            out.append(f"      {c} x{n}" + (f" — last: {last}" if last else ""))
+        for pl, n in sorted(d["plans"].items(), key=lambda kv: -kv[1])[:3]:
+            out.append(f"      it said (x{n}): \"{pl[:140]}\"")
+    return "\n".join(out)
 
 
 def build_review(goal: str, plan: dict, start: str | None) -> str:
