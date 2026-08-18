@@ -165,6 +165,47 @@ def main():
     check("already there is said, nothing walked",
           not ex.walked and any("already in" in t for t in tr), str(tr))
 
+    print("\nthe blockers ledger:")
+    NEXT = f"{U.MAP}|9,9"
+    ex = bare(explored={U.HERE: {"north": {"to": NEXT, "n": 3}},
+                        NEXT: {"south": {"to": U.HERE, "n": 3}}},
+              frontier={U.HERE: ["north"], NEXT: ["south", "7,7"]})
+    ex.visits = {U.HERE: 4, NEXT: 3}
+    ex.blockers = {}
+    ex._save_memory = lambda: None
+    o_here = obs(U.MAP, "0,0", conns=["north"])
+    ex._note_blocker(NEXT, "7,7", "door", 'it said: "I\'m thirsty"')
+    ex._note_blocker(NEXT, "7,7", "door", "")
+    ex._note_blocker("FAR|1,1", "3,3", "door", "a GHOST appeared in the way")
+    b = ex.blockers[f"{NEXT}|7,7"]
+    check("a shut way is recorded once, bumped, words kept",
+          b["n"] == 2 and "thirsty" in b["what"] and len(ex.blockers) == 2, str(ex.blockers))
+    txt = ex.blockers_text(o_here)
+    check("rendered nearest first (routed 1 leg before no-route)",
+          txt.index(NEXT) < txt.index("FAR|1,1") and "nothing named yet" in txt, txt)
+    lines = ex._declare_blockers(
+        [{"where": NEXT, "lifts": {"has_item": {"FRESH_WATER": 1}}}], o_here)
+    check("the model's lifting condition is taken by area and echoed",
+          b["lifts"] == {"has_item": {"FRESH_WATER": 1}} and lines and "lifts it" in lines[0],
+          str((b, lines)))
+    txt = ex.blockers_text(o_here)
+    check("...and rendered as 'not yet' when it does not hold", "not yet" in txt, txt)
+    o_held = dict(o_here); o_held["bag"] = {"FRESH_WATER": 1}
+    txt = ex.blockers_text(o_held)
+    check("...and 'HOLDS NOW' when it does", "HOLDS NOW" in txt, txt)
+    ex._clear_blocker(NEXT, "7,7", "it opened")
+    txt = ex.blockers_text(o_here)
+    check("a cleared way leaves the list", NEXT not in txt and "FAR|1,1" in txt, txt)
+    lines = ex._declare_blockers([{"where": "FAR|1,1", "cleared": True}], o_here)
+    check("the model can declare one dealt with", ex.blockers["FAR|1,1|3,3"]["cleared"]
+          and ex.blockers_text(o_here) == "", str(lines))
+    E.Executor._last_decls = []
+    ops, plan = E.Executor._parse_macro(
+        '{"plan":"x","ops":[{"op":"wait"}],"blockers":[{"where":"A|1,1","lifts":{"flag":"F"}}]}')
+    check("the reply parser keeps the blockers key",
+          E.Executor._last_decls == [{"where": "A|1,1", "lifts": {"flag": "F"}}],
+          str(E.Executor._last_decls))
+
     print("\nthe reply parser:")
     ops, plan = E.Executor._parse_macro(
         'Sure. {"plan":"go north to Route 2, the gate is that way","ops":'

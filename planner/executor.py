@@ -984,6 +984,15 @@ class Executor:
         self._inert_objs: dict = {}         # region -> {object: state it was inert in}
         self._cant_afford: dict = {}        # item -> unit price we lack
         self._no_cross: dict = {}           # region -> dirs proven uncrossable
+        # THE BLOCKERS LEDGER (EXPLORE_DESIGN §8): ways that turned the run
+        # back, anywhere, remembered across targets and attempts so they
+        # are not rediscovered — the Saffron guard was met on Route 8, then
+        # Route 7, then Route 8 again, a leg apart each time. The HARNESS
+        # writes what happened (a door that refused, the fixed ghost, a
+        # script that spoke and turned you back); the MODEL names what it
+        # thinks lifts each one, as a predicate like a goal's, and the
+        # harness only reports whether that holds now. key = "AREA|exit".
+        self.blockers: dict = {}
         # region -> {dir: world mark when it was proven}. A seam proof that
         # never expires is the one thing a shut DOOR is not (see _sealed).
         self._no_cross_at: dict = {}
@@ -1146,6 +1155,128 @@ class Executor:
         self._mark_touch(region, name, res_obs)
         return True
 
+    def _note_blocker(self, area: str, key: str, kind: str, what: str):
+        """Write (or bump) a way that turned the run back. Evidence only:
+        WHERE, WHICH exit, WHAT was seen or said. Never what lifts it."""
+        if not area or not key or "None" in str(area):
+            return
+        bk = f"{area}|{key}"
+        b = self.blockers.setdefault(bk, {
+            "where": area, "key": str(key), "kind": kind, "n": 0,
+            "what": "", "lifts": None, "lifts_note": "", "cleared": False,
+            "first": self._cur_target or ""})
+        b["n"] = int(b.get("n") or 0) + 1
+        w = (what or "").strip()
+        if w:
+            b["what"] = w[:220]
+        b["cleared"] = False
+        b["last"] = self._cur_target or ""
+
+    def _clear_blocker(self, area: str, key: str, how: str):
+        b = self.blockers.get(f"{area}|{key}")
+        if b and not b.get("cleared"):
+            b["cleared"] = True
+            b["cleared_how"] = (how or "")[:160]
+            self.log("blocker_cleared", where=area, key=str(key), how=how)
+
+    def _declare_blockers(self, decls, obs) -> list:
+        """The MODEL's word on blockers, from its reply's "blockers" key:
+        [{"where": AREA?, "key": exit?, "what": ..., "lifts": {pred},
+          "cleared": bool}]. Matches a recorded blocker by area (+ key when
+        given), else records a new one it names. Returns trace lines."""
+        out = []
+        here = self._where(obs)
+        for d in decls or []:
+            if not isinstance(d, dict):
+                continue
+            where = str(d.get("where") or here or "").strip()
+            key = str(d.get("key") or "").strip()
+            cands = [b for b in self.blockers.values()
+                     if b.get("where") == where
+                     or (where and b.get("where", "").split("|")[0] == where)]
+            if key:
+                cands = [b for b in cands if b.get("key") == key]
+            b = None
+            if cands:
+                live = [b for b in cands if not b.get("cleared")]
+                b = (live or cands)[0]
+            elif where:
+                bk = f"{where}|{key or 'way'}"
+                b = self.blockers.setdefault(bk, {
+                    "where": where, "key": key or "way", "kind": "named",
+                    "n": 0, "what": "", "lifts": None, "lifts_note": "",
+                    "cleared": False, "first": self._cur_target or ""})
+            if b is None:
+                continue
+            if d.get("what"):
+                b["what"] = str(d["what"])[:220] if not b.get("what")                     else b["what"]
+                b["your_words"] = str(d["what"])[:160]
+            if isinstance(d.get("lifts"), dict) and d["lifts"]:
+                b["lifts"] = d["lifts"]
+                b["lifts_note"] = str(d.get("note") or "")[:120]
+                out.append(f"noted: {b['where']} {b['key']} — you say "
+                           f"{json.dumps(d['lifts'])} lifts it")
+            if d.get("cleared") is True:
+                b["cleared"] = True
+                b["cleared_how"] = "you said so"
+                out.append(f"noted: {b['where']} {b['key']} — you say it "
+                           f"is dealt with")
+        if out:
+            self._save_memory()
+        return out
+
+    def blockers_text(self, obs, cap: int = 4) -> str:
+        """WAYS THAT TURNED YOU BACK, nearest first, with the model's own
+        lifting condition and whether it holds now. Empty when none."""
+        here = self._where(obs)
+        rows = []
+        for bk, b in self.blockers.items():
+            if b.get("cleared"):
+                continue
+            path = self._route(here, b["where"]) if here else None
+            dist = (len(path) if path is not None
+                    else (0 if b["where"] == here else 99))
+            rows.append((dist, bk, b))
+        if not rows:
+            return ""
+        rows.sort(key=lambda r: (r[0], r[1]))
+        lines = []
+        for i, (dist, bk, b) in enumerate(rows[:cap], 1):
+            k = b.get("key") or "way"
+            what = ("a door" if b.get("kind") == "door"
+                    else "the way" if b.get("kind") == "seam" else "a way")
+            spot = (f"{what} ({k})" if b.get("kind") == "door"
+                    else f"the way {k}" if b.get("kind") == "seam"
+                    else f"{k}")
+            far = ("here" if dist == 0 else
+                   f"{dist} leg(s) away" if dist < 99 else
+                   "no walked route from here")
+            line = f"  {i}. {b['where']}, {spot}, {far} — turned you back"
+            if b.get("n"):
+                line += f" {b['n']}x"
+            if b.get("what"):
+                line += f" — {b['what']}"
+            if b.get("your_words"):
+                line += f" — you called it: {b['your_words']}"
+            if b.get("lifts"):
+                holds = pred_holds(b["lifts"], obs)
+                line += (f" — you said {json.dumps(b['lifts'])} lifts it: "
+                         + ("THAT HOLDS NOW — worth going back to try"
+                            if holds else "not yet"))
+            else:
+                line += (" — nothing named yet as what lifts it")
+            lines.append(line)
+        more = len(rows) - min(len(rows), cap)
+        return ("\nWAYS THAT TURNED YOU BACK, nearest first — remembered "
+                "across steps so they are not rediscovered. What lifts each "
+                "is YOUR call: say it in your reply as \"blockers\":[{"
+                "\"where\":AREA,\"lifts\":{condition}}] (a condition "
+                "written like a DONE_WHEN — has_item, flag, badge, party_"
+                "type...) and the ledger will say when it holds; say "
+                "\"cleared\":true when one is dealt with:\n"
+                + "\n".join(lines)
+                + (f"\n  (+{more} more, further off)" if more > 0 else ""))
+
     def _record_outcome(self, pre_obs, op: str, step: dict, note: str):
         """The outcome ledger: per (target|area) per key, how many times
         THIS subgoal did this thing here and what happened last, verbatim
@@ -1170,6 +1301,23 @@ class Executor:
         rec["n"] = int(rec.get("n") or 0) + 1
         last = note.split(": ", 1)[1] if ": " in note else note
         rec["last"] = last.strip()[:200]
+        # A WAY THAT SPOKE AND DID NOT OPEN turned you back: the fixed
+        # ghost, a guard's line, a sleeping thing's — evidence for the
+        # blockers ledger, in the words the game used.
+        if op in ("use_warp", "cross") and "map->" in note:
+            self._clear_blocker(here, key, "it opened")
+        if op in ("use_warp", "cross") and (
+                "GHOST appeared in the way" in note
+                or ("did not change, but it SPOKE" in note)):
+            said = ""
+            if "it said: " in note:
+                said = note.split("it said: ", 1)[1].strip()[:160]
+            what = ("a GHOST appeared in the way"
+                    if "GHOST appeared in the way" in note else "")
+            what = (what + (" — " if what and said else "") + said).strip()
+            self._note_blocker(here, key,
+                               "door" if op == "use_warp" else "seam",
+                               what or "it spoke and did not open")
 
     def _go_step(self, sg, obs, step, ignore_done=False):
         """Walk to an area this run has walked before, by walked edges only.
@@ -1640,6 +1788,7 @@ class Executor:
                 r: [_re.sub(r"^([^ ]+)->\S+", r"\1", s) for s in (v or [])]
                 for r, v in (data.get("shut_doors") or {}).items()}
             self.hints = data.get("hints") or {}
+            self.blockers = data.get("blockers") or {}
             # WHEN each line was heard: the count of event flags fired at
             # the time. A sentence re-served without its date reads as a
             # standing instruction — "Say hi to PROF.OAK for me!" was said
@@ -1955,6 +2104,7 @@ class Executor:
                  "flag_sites": self.flag_sites,
                  "shut_doors": self.shut_doors,
                  "hints": self.hints,
+                 "blockers": self.blockers,
                  "hints_at": getattr(self, "hints_at", {}),
                  "offered": getattr(self, "_offered", {}),
                  "cut_bushes": getattr(self, "_cut_bushes", {}),
@@ -2885,6 +3035,7 @@ class Executor:
                 # is shut.
                 if "couldn't reach" not in (reason or ""):
                     e["shut"] = True
+                    self._note_blocker(src, k, "door", reason or "")
                 # WHEN it was shut, so we can tell whether anything has
                 # happened since. A door that turned you back is worth one
                 # more press once you are carrying something you were not
@@ -3015,6 +3166,7 @@ class Executor:
             e["to"] = dst
             e.pop("shut", None)          # it opened; whatever shut it is gone
             e.pop("blocked_at", None)    # it landed; the block is gone
+            self._clear_blocker(src, k, f"it opened — you came out at {dst}")
             # WHERE THIS DOOR PUT YOU. Only the region label was kept, and
             # a region is coarse: Cerulean's front door and the hole in the
             # trashed house's back wall both read CERULEAN_CITY|20,0, so
@@ -5251,7 +5403,8 @@ class Executor:
                 + "; ".join(t for _r, t in sorted(elsewhere)[:6])
                 + "." + near_hint)
         out += (floor_note + floor_away + route_line + searched_line + shut_line
-                + hint_line + loot_line + _elsewhere_str)
+                + hint_line + loot_line + _elsewhere_str
+                + self.blockers_text(obs))
         return out
 
     # Every map the run has ever entered, in one line of the escalation
@@ -5640,6 +5793,14 @@ e.g. "POKEMON_TOWER_6F|10,2", or a bare map id like "LAVENDER_TOWN" for
 the nearest walked part of it. Walked ground only: it fails plainly if no
 chain of taken exits joins here to there. Saves a round per door on ground
 you know; a map-changing op, so LAST in your macro),
+BLOCKERS: the ledger lists WAYS THAT TURNED YOU BACK anywhere you have been
+(a door that refused you, a guard, the ghost) with what was seen or said.
+What LIFTS each one is your call, and you can write it down so it is not
+worked out twice: add "blockers":[{"where":AREA,"lifts":{condition}}] to
+your reply object beside "plan" and "ops" — the condition written like a
+DONE_WHEN ({"has_item":{"FRESH_WATER":1}}, {"flag":...}, {"badge":...},
+{"party_type":...}) — and the ledger will say when it holds; "cleared":true
+marks one dealt with,
 
 HOW TO SEARCH when a step is not working: a thing that has already given
 its answer gives the same answer again; repeating it changes nothing. The
@@ -5664,6 +5825,8 @@ why — this is shown back to you next round, so it is how your strategy
 survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
 (a bare JSON array of ops is also accepted)."""
 
+    _last_decls: list = []
+
     @staticmethod
     def _parse_macro(text: str):
         """The macro in a reply, and the model's PLAN if it gave one.
@@ -5685,6 +5848,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             if isinstance(obj, dict) and isinstance(obj.get("ops"), list):
                 ops = [o for o in obj["ops"] if isinstance(o, dict)]
                 plan = str(obj.get("plan") or "").strip()
+                # the model's word on blockers rides in the same object;
+                # kept on the parser so the caller sees it (a static
+                # method cannot store it — the caller reads _last_decls)
+                Executor._last_decls = [d for d in (obj.get("blockers") or [])
+                                        if isinstance(d, dict)] \
+                    if isinstance(obj.get("blockers"), list) else []
                 return ops, plan[:400]
             # a single op object, e.g. {"op":"cross","dir":"north"}
             if isinstance(obj, dict) and obj.get("op") and "ops" not in obj:
@@ -6832,7 +7001,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     break
                 spent += 1
                 continue
+            Executor._last_decls = []
             macro, plan_said = self._parse_macro(reply)
+            _decl_lines = self._declare_blockers(Executor._last_decls, obs)
+            if _decl_lines:
+                self.log("blockers_declared", subgoal=sg["id"], round=rnd,
+                         lines=_decl_lines)
             if plan_said:
                 self._plan_said = plan_said
                 self._plans_said.append((rnd, self._where(start), plan_said))
@@ -6912,6 +7086,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         doing=json.dumps(macro)[:150])
             ok, trace, clean = self._run_traced(sg, macro,
                                                 ignore_done=redo)
+            if _decl_lines:
+                trace = list(_decl_lines) + list(trace)
             if ok and redo:
                 # "somewhere else that also satisfies it": a couple of tiles
                 # is the same place. A real relocation crosses the map (the

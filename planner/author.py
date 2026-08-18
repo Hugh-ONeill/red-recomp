@@ -1317,6 +1317,31 @@ def observed_text(path: Path) -> str:
                 + "\n".join(fired))
     if dead:
         out += "\n\nPROVEN UNREACHABLE:\n" + "\n".join(dead)
+    # WAYS THAT TURNED THE RUN BACK, with the model's own lifting
+    # condition where it named one — the blockers ledger, so a rewrite
+    # does not send the plan back into a guard it has met three times
+    # without a step for what the model itself said opens the way.
+    blk = [b for b in (d.get("blockers") or {}).values()
+           if isinstance(b, dict) and not b.get("cleared")]
+    if blk:
+        rows = []
+        for b in sorted(blk, key=lambda b: (-int(b.get("n") or 0),
+                                             str(b.get("where")))):
+            row = f"  {b.get('where')} ({b.get('key')}): turned back"
+            if b.get("n"):
+                row += f" {b['n']}x"
+            if b.get("what"):
+                row += f" — {b['what']}"
+            if b.get("your_words"):
+                row += f" — you called it: {b['your_words']}"
+            if b.get("lifts"):
+                row += f" — YOU SAID {json.dumps(b['lifts'])} lifts it"
+            else:
+                row += " — nothing named yet as what lifts it"
+            rows.append(row)
+        out += ("\n\nWAYS THAT TURNED THE RUN BACK (a plan that walks into "
+                "one again without first meeting what lifts it is a plan "
+                "that has already failed):\n" + "\n".join(rows[:8]))
     # Nearness = the maps the run has spent the most time in, which is
     # where it is and where it keeps returning. Mechanical, not a judgment
     # about what matters.

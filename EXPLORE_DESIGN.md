@@ -353,6 +353,48 @@ now crosses the leg off (run/outline_skips) with the reason kept in
 run/outline_void; the objectives after it stand. Exit 5 from
 `author.py --check-wording`; `fresh_discovery.sh` handles it beside exit 4.
 
+## 6g. `go` — the way you know, on request (2026-08-18)
+
+The tower was climbed floor by floor, each floor a full round of thinking,
+six times over, because a distilled macro exists only for a subgoal that
+SUCCEEDED (down: `exit_tower`) and never for one that failed at the top.
+`{"op":"go","to":AREA}` runs `_route` + `_walk_route` — the machinery
+`explore` already uses to reach remote ground — over walked edges only:
+AREA as the ledger names it (`POKEMON_TOWER_6F|10,2`) or a bare map id for
+its nearest walked part; refused by name for anywhere unwalked, and "no
+walked way" when no chain of taken exits joins here to there. Map-changing,
+so last in a macro. Nothing is guessed; it is cross-by-recall for a whole
+route.
+
+## 6h. The blockers ledger (user idea, 2026-08-18)
+
+"Maybe to remember these and not spend time rediscovering them we could
+introduce some manner of 'blockers' section … blockers and then the
+eventflag/item/party-requirement that fulfils them, same as goals." The
+Saffron guard was met on Route 8, then Route 7, then Route 8 again, a leg
+apart each time, and each time the run had to be turned back to learn it.
+
+Two tiers, split the way the whole harness is split:
+
+- **The harness records what turned you back** — evidence only: a door
+  walked into that refused (`shut`), the tower's fixed GHOST, a door or seam
+  that spoke and did not open (the guard's line, verbatim). Keyed
+  `AREA|exit`, persisted in `run/explored.json` under `blockers`, bumped on
+  every repeat, cleared automatically when the way later opens
+  (`note_transition`'s opened branch, or `map->` on the same key).
+- **The model names what lifts each one** — in its reply object, beside
+  `plan` and `ops`: `"blockers":[{"where":AREA,"lifts":{condition}}]`, the
+  condition written like a DONE_WHEN. The harness stores it and only reports
+  `pred_holds` on it: "not yet" / "THAT HOLDS NOW — worth going back to
+  try". `"cleared":true` lets the model close one by judgment.
+
+Rendered as `WAYS THAT TURNED YOU BACK, nearest first` at the end of the
+exploration text (remote block, after local), capped at 4; and to the plan
+author as `WAYS THAT TURNED THE RUN BACK` in the observed evidence, so a
+rewrite that walks into a met guard without a step for what the model itself
+said opens the way is at least visibly doing so. Deciding when a blocker is
+dealt with is the model's; the harness never says what lifts anything.
+
 ## 7. What this does not do
 
 - It does not point. The ledger holds only what the observation and the
