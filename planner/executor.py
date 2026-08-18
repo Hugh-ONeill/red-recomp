@@ -1168,7 +1168,15 @@ class Executor:
         b["n"] = int(b.get("n") or 0) + 1
         w = (what or "").strip()
         if w:
-            b["what"] = w[:220]
+            # keep what the FIGHT probe wrote: it is the one sentence that
+            # says the fixed ghost cannot be fought, and a repeat of the
+            # same "Be gone" line must not erase it
+            keep = ""
+            old = b.get("what") or ""
+            if " — you pressed FIGHT" in old:
+                keep = old[old.index(" — you pressed FIGHT"):]
+            b["what"] = (w + keep)[:260] if keep and "you pressed FIGHT" not in w \
+                else w[:260]
         b["cleared"] = False
         b["last"] = self._cur_target or ""
 
@@ -1267,13 +1275,16 @@ class Executor:
                 line += (" — nothing named yet as what lifts it")
             lines.append(line)
         more = len(rows) - min(len(rows), cap)
-        return ("\nWAYS THAT TURNED YOU BACK, nearest first — remembered "
-                "across steps so they are not rediscovered. What lifts each "
-                "is YOUR call: say it in your reply as \"blockers\":[{"
-                "\"where\":AREA,\"lifts\":{condition}}] (a condition "
-                "written like a DONE_WHEN — has_item, flag, badge, party_"
-                "type...) and the ledger will say when it holds; say "
-                "\"cleared\":true when one is dealt with:\n"
+        return ("\nWAYS THAT HAVE ALREADY TURNED YOU BACK — not places to go: "
+                "a record of what refused you and what was seen or said, "
+                "kept so it is not tried again UNCHANGED. Nothing about you "
+                "changed since = the same way gives the same answer; the "
+                "untried ground is in the ledger above and in the places "
+                "with ways never taken. If you know what would lift one, "
+                "write it as \"blockers\":[{\"where\":AREA,\"lifts\":"
+                "{condition}}] (a DONE_WHEN-style condition) and this list "
+                "will say when you actually have it; \"cleared\":true when "
+                "one is dealt with:\n"
                 + "\n".join(lines)
                 + (f"\n  (+{more} more, further off)" if more > 0 else ""))
 
@@ -1307,13 +1318,13 @@ class Executor:
         if op in ("use_warp", "cross") and "map->" in note:
             self._clear_blocker(here, key, "it opened")
         if op in ("use_warp", "cross") and (
-                "GHOST appeared in the way" in note
+                "GHOST appeared on the way" in note
                 or ("did not change, but it SPOKE" in note)):
             said = ""
             if "it said: " in note:
                 said = note.split("it said: ", 1)[1].strip()[:160]
-            what = ("a GHOST appeared in the way"
-                    if "GHOST appeared in the way" in note else "")
+            what = ("a GHOST appeared on the way there"
+                    if "GHOST appeared on the way" in note else "")
             what = (what + (" — " if what and said else "") + said).strip()
             self._note_blocker(here, key,
                                "door" if op == "use_warp" else "seam",
@@ -6616,7 +6627,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     chg.append(str(det))
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
             if ghosted == "fixed":
-                note += " — a GHOST appeared in the way, and you fled from it"
+                note += (" — a GHOST appeared on the way there, and you fled "
+                         "from it")
             elif ghosted:
                 note += " — a wild GHOST appeared, and you fled from it"
             if blackout:
