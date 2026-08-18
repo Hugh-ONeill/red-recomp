@@ -6,6 +6,10 @@
 #   ./show_esc.sh 20         last 20
 #   ./show_esc.sh -f         follow: print each new round as it lands
 #   ./show_esc.sh -q         proposals and results only, no context text
+#   ./show_esc.sh -p         THOUGHTS: the model's own plan per round, one
+#                            line each, with a one-line result — what it is
+#                            "thinking" (the plan echo, EXPLORE_DESIGN §6c)
+#   ./show_esc.sh -p -f      ...and follow it live
 #
 # A READER, not a change to the executor. The chain spawns a fresh
 # executor per attempt, so editing it mid-run lands on the next leg and
@@ -20,6 +24,7 @@ import time
 args = sys.argv[1:]
 follow = "-f" in args
 quiet = "-q" in args
+thoughts = "-p" in args
 nums = [a for a in args if a.lstrip("-").isdigit()]
 last_n = int(nums[0]) if nums else 5
 LOG = "run/executor_log.jsonl"
@@ -48,6 +53,28 @@ def wrap(text, indent):
 def show(d):
     k = d.get("kind")
     sg, rnd, dt = d.get("subgoal"), d.get("round"), d.get("dt")
+    if thoughts:
+        # THE THOUGHT STREAM. One line of the model's own plan per round,
+        # then what came of it in one line. Nothing else.
+        if k == "escalate_start":
+            print(f"\n{BOLD}{sg}{OFF}  {DIM}{(d.get('goal') or '')[:90]}{OFF}")
+        elif k == "escalate_proposal":
+            plan = d.get("plan") or "(no plan given)"
+            ops = ", ".join(
+                o.get("op", "?") + ("(" + ",".join(
+                    f"{kk}={vv}" for kk, vv in o.items()
+                    if kk not in ("op", "when")) + ")"
+                    if len(o) > 1 else "")
+                for o in (d.get("macro") or []) if isinstance(o, dict))
+            print(f"{YELL}R{rnd}{OFF} {plan}")
+            print(f"    {DIM}-> {ops}{OFF}")
+        elif k == "escalate_feedback":
+            tr = [t for t in (d.get("trace") or []) if not t.startswith("(")]
+            first = (tr or d.get("trace") or ["?"])[0]
+            print(f"    {GREY}{first[:150]}{OFF}  {DIM}[at {d.get('at')}]{OFF}")
+        elif k == "escalate_end":
+            print(f"    {BOLD}{'SOLVED' if d.get('success') else 'gave up'}{OFF}")
+        return
     if k == "escalate_context" and not quiet:
         print(f"\n{GREY}{'-' * 70}{OFF}")
         print(f"{BOLD}{sg}{OFF}  {DIM}target {d.get('target')}  "
@@ -60,6 +87,8 @@ def show(d):
     elif k == "escalate_proposal":
         print(f"\n{YELL}ROUND {rnd} — IT PROPOSES:{OFF}  {DIM}({sg}){OFF}"
               if quiet else f"{YELL}ROUND {rnd} — IT PROPOSES:{OFF}")
+        if d.get("plan"):
+            print(wrap(f"plan: {d['plan']}", "   "))
         for op in d.get("macro") or []:
             print(f"   {json.dumps(op)}")
     elif k == "escalate_feedback":
@@ -75,7 +104,7 @@ def show(d):
 
 
 KINDS = {"escalate_context", "escalate_note", "escalate_proposal",
-         "escalate_feedback", "escalate_end"}
+         "escalate_feedback", "escalate_end", "escalate_start"}
 
 
 def parse(line):
