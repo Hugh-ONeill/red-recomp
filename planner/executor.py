@@ -3454,7 +3454,17 @@ class Executor:
                          step=str(key), standing=self._where(_now),
                          why="this map has no such way out")
                 return o if o is not None else _now
-            for _ in range(4):
+            # A WILD BATTLE IS NOT A FAILED HOP. Four tries was the cap and
+            # a wild encounter spent one: in Mt Moon the walk to the fossil
+            # room's ladder was jumped by a Paras and three Zubat in a row,
+            # fled each, and on the fourth the hop was declared lost — and
+            # the edge voided (see below). Each retry resumes from where the
+            # party stands, so an interrupted walk is only more walk. Retry
+            # while a battle was the interruption and the party is still
+            # getting somewhere; give up after two tries that moved nothing.
+            _stuck = 0
+            _last_pos = None
+            for _ in range(12):
                 pre = self.b.obs()
                 if "," in key:
                     x, y = key.split(",")
@@ -3481,6 +3491,11 @@ class Executor:
                     fought = True
                 if self._where(o) == nxt or not fought:
                     break
+                _pos_now = (self._where(o), self._pos(o))
+                _stuck = _stuck + 1 if _pos_now == _last_pos else 0
+                _last_pos = _pos_now
+                if _stuck >= 2:
+                    break                    # fought, and went nowhere twice
             if self._where(o) != nxt and "," not in key:
                 # A directional edge can be TRUE from one part of a region
                 # and unwalkable from another (Cerulean's south is crossed
