@@ -3703,6 +3703,16 @@ DONE_LEDGER = Path("plans/outline.done")
 # telling us, in its own words, what the objective MEANS, and then the
 # evidence saying that thing has happened. See check_wording.
 WORDING_SAYS_DONE = [False]
+# THE THIRD VERDICT (2026-08-18). Asked to restate "Retrieve the Pokemon
+# from the Poke Mart" with the counted repetition in front of it, the
+# model answered "the run history and event flags show the parcel is
+# delivered; there is no Pokemon to retrieve" — and the rung had only two
+# outcomes, restate or stands, so the recognition fell through as "the
+# wording stands" and the chain halted on a line the model had just called
+# empty. VOID is the model's own verdict that the sentence describes
+# nothing; the leg is crossed off with the reason recorded, exactly as a
+# done-under-another-name is. The harness proposes nothing.
+WORDING_SAYS_VOID = [False]
 
 
 def done_ledger() -> list:
@@ -4075,12 +4085,19 @@ intent, said accurately. Do not make it easier, and do not restate
 something you have already finished — you will be asked, and a
 restatement that turns out to be already done is thrown away.
 
+If the sentence asks for something that is NOT THERE AT ALL — nothing in
+this game does what the line describes, and no accurate restatement of
+the same intent exists — say that. The line is crossed off your list with
+your reason recorded, and nothing else changes; the objectives after it
+stand.
+
 If the wording is fine and you have simply not managed it yet, say so.
 That is an ordinary answer and often the right one; the run stops and a
 person looks at it.
 
 Reply with ONLY a JSON object, the reason FIRST:
 {"why": "one sentence", "reword": "the objective, said accurately"}   or
+{"why": "one sentence", "reword": null, "void": true}                 or
 {"why": "one sentence", "reword": null}"""
 
 
@@ -4170,6 +4187,16 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
         return ""
     new = str(ans.get("reword") or "").strip()
     why = str(ans.get("why") or "")[:160]
+    if (not new or new.lower() in ("none", "null")) and ans.get("void"):
+        print(f"[wording] VOID, by the model's own account: {why}",
+              file=sys.stderr)
+        WORDING_SAYS_VOID[0] = True
+        try:
+            with open("run/outline_void", "a") as fh:
+                fh.write(f"{goal}\t{why}\n")
+        except OSError:
+            pass
+        return ""
     if not new or new.lower() in ("none", "null"):
         print(f"[wording] the wording stands: {why}", file=sys.stderr)
         return ""
@@ -4431,8 +4458,10 @@ def main():
             print(new)
             sys.exit(0)
         # 4 = "this objective is already accomplished under another name";
-        # the chain crosses the leg off instead of halting on it
-        sys.exit(4 if WORDING_SAYS_DONE[0] else 3)
+        # 5 = "this objective describes nothing that is there" (VOID);
+        # the chain crosses the leg off instead of halting on it, either way
+        sys.exit(4 if WORDING_SAYS_DONE[0] else 5 if WORDING_SAYS_VOID[0]
+                 else 3)
     if args.check_later:
         if not (args.outline_path and args.leg):
             ap.error("--check-later needs --outline-path and --leg")

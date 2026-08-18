@@ -112,6 +112,7 @@ if [ "$done_legs" = 0 ]; then
   # these budgets belong to a chain, not to the directory
   : > run/outline_reorders
   rm -f run/outline_skips run/outline_inserts run/outline_rewordings \
+        run/outline_void \
         run/leg_audit_redo run/outline_upkeep_missed \
         run/outline_pushes \
         run/outline_pulls run/outline_pulls_failed
@@ -352,6 +353,19 @@ while :; do
       # blocked reaches the exit below unchanged.
       if [ $wrc = 4 ]; then
         echo "=== leg $i/${#LEGS[@]} is done under another name — " \
+             "crossing it off: $leg ===" >&2
+        echo "$leg" >> run/outline_skips
+        echo "$i" > "$PROGRESS"
+        sweep_ahead "$i"
+        continue
+      fi
+      # EXIT 5: VOID — the model says the sentence describes nothing that
+      # is there ("there is no Pokemon to retrieve"). Its verdict, its
+      # reason (run/outline_void); the line is crossed off the same way a
+      # done-under-another-name is, and the objectives after it stand.
+      # The first live case halted the chain on exactly this answer.
+      if [ $wrc = 5 ]; then
+        echo "=== leg $i/${#LEGS[@]} is VOID by the model's own account — " \
              "crossing it off: $leg ===" >&2
         echo "$leg" >> run/outline_skips
         echo "$i" > "$PROGRESS"
