@@ -977,6 +977,7 @@ class Executor:
         self.hints_at: dict = {}     # region -> {line: flags fired when heard}
         self._offered: dict = {}     # map -> {species: wild encounters}
         self._dead_why: dict = {}    # op signature -> last failure detail
+        self._cut_bushes: dict = {}  # map -> ["x,y", ...] bushes cut before
         self._last_overworld_map = None
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
@@ -1559,6 +1560,7 @@ class Executor:
             # no stamp and are shown undated.
             self.hints_at = data.get("hints_at") or {}
             self._offered = data.get("offered") or {}
+            self._cut_bushes = data.get("cut_bushes") or {}
             # ...and drop any edge already filed that contradicts a seam
             # proof on the same region (the false ROUTE_4|4,4 east edge in
             # run 12), so the live world heals at the next start without a
@@ -1832,6 +1834,7 @@ class Executor:
                  "hints": self.hints,
                  "hints_at": getattr(self, "hints_at", {}),
                  "offered": getattr(self, "_offered", {}),
+                 "cut_bushes": getattr(self, "_cut_bushes", {}),
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead,
                  "map_doors": {k: sorted(v)
@@ -6247,6 +6250,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 note += f' — it said: "{heard[:160]}"'
             trace.append(note)
             self._record_outcome(pre_obs, op, step, note)
+            # A BUSH YOU CUT COMES BACK ON RELOAD in this recomp. Remember
+            # where you cut, so the regrown bush can be named as the same
+            # one — the run cut the Vermilion gym's bush, the campaign
+            # relaunched, and it then insisted the path was clear while
+            # the door failed three times "couldn't reach the warp tile".
+            if (op == "field_move" and str(step.get("move")).upper() == "CUT"
+                    and r.get("ok") and "hacked away" in note):
+                _cm = ((pre_obs or {}).get("map") or {}).get("id")
+                if _cm and step.get("x") is not None:
+                    self._cut_bushes.setdefault(_cm, [])
+                    _xy = f"{step.get('x')},{step.get('y')}"
+                    if _xy not in self._cut_bushes[_cm]:
+                        self._cut_bushes[_cm].append(_xy)
+                        self._save_memory()
             self.status(last=note, obs=obs, doing=f"{op} {json.dumps(step)}")
             # distill an op if it ran OK *or* changed the state — cross via the
             # Oak escort reports ok=False ("cross attempted") yet the map

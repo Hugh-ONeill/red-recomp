@@ -369,6 +369,13 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             # it first every round. It is a way on once CUT is known.
             c.status = ("unreachable" if not o.get("reachable")
                         else "cuttable" if knows_cut else "bush")
+            # ...and one you cut before has grown back (reload does that
+            # in this recomp): say it is the same bush.
+            _cut = (getattr(ex, "_cut_bushes", {}) or {}).get(mid) or []
+            if f"{o.get('x')},{o.get('y')}" in _cut:
+                c.note = _join(c.note, "you CUT this bush before and it has "
+                                       "grown back — a bush comes back when "
+                                       "the game reloads; it cuts again")
         elif not o.get("reachable") and kind != "item":
             c.status = "unreachable"
         elif name in inert and snap is not None and inert.get(name) == snap:
