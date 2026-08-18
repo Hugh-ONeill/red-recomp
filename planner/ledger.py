@@ -187,28 +187,66 @@ def shelf_of(ex, region_or_map: str) -> list:
     return list((getattr(ex, "_shelves", {}) or {}).get(mid) or [])
 
 
-def beyond(ex, dest: str, target: str) -> str:
-    """What lies past a walked exit, in one clause: fully worked (nothing
-    new that way), or how much is still untried there. THIS is the fact the
-    ideal turns on — leave a worked area for ground that still has
-    something, and do not go back into ground that has nothing."""
+def _left_parts(ex, region: str) -> list:
+    left = ex._frontier_left(region)
+    things = untouched_in(ex, region)
+    parts = []
+    if left:
+        parts.append(f"{len(left)} exit(s) never taken")
+    if things:
+        parts.append(f"{len(things)} thing(s) never pressed "
+                     f"({', '.join(things[:3])})")
+    return parts
+
+
+def beyond(ex, dest: str, target: str, here: str | None = None) -> str:
+    """What lies past a walked exit, in one clause: how much is still
+    untried there, or — when the area itself is worked — the nearest ground
+    THROUGH it that still has something, over walked edges, not doubling
+    back through here. THIS is the fact the ideal turns on — leave a worked
+    area for ground that still has something, and do not go back into
+    ground that has nothing.
+
+    One hop was a lie by overreach: the Route 8 stairs down read "the
+    Underground Path is fully worked — nothing new that way" while Route 7's
+    west edge, three walked legs on through that very door, had never been
+    taken; the run sat in Lavender for a leg on the strength of it."""
     _shelf = shelf_of(ex, dest)
     if _shelf:
         # a shop's shelf is what lies beyond its door, and it is the fact
         # a re-supposed purchase keeps missing
         return f"{dest} sells: {', '.join(_shelf[:8])}"
-    left = ex._frontier_left(dest)
-    things = untouched_in(ex, dest)
-    if left or things:
-        parts = []
-        if left:
-            parts.append(f"{len(left)} exit(s) never taken")
-        if things:
-            parts.append(f"{len(things)} thing(s) never pressed "
-                         f"({', '.join(things[:3])})")
+    parts = _left_parts(ex, dest)
+    if parts:
         return f"{dest} still has " + " and ".join(parts)
-    if dest in worked_regions(ex, target):
-        return f"{dest} is fully worked — nothing new that way"
+    # transitive, over walked ground, never back through here
+    from collections import deque
+    seen = {dest} | ({here} if here else set())
+    q = deque([(dest, 0)])
+    found = None
+    while q and found is None:
+        cur, n = q.popleft()
+        for _k, e in (ex.explored.get(cur) or {}).items():
+            nxt = (e or {}).get("to")
+            if not nxt or nxt in seen or (e or {}).get("shut"):
+                continue
+            seen.add(nxt)
+            p2 = _left_parts(ex, nxt)
+            if p2:
+                found = (nxt, n + 1, p2)
+                break
+            q.append((nxt, n + 1))
+    worked = dest in worked_regions(ex, target)
+    if found:
+        nxt, n, p2 = found
+        return ((f"{dest} is fully worked itself" if worked
+                 else f"{dest} has nothing untried itself")
+                + f", but {n} more leg(s) on through it {nxt} still has "
+                + " and ".join(p2))
+    if worked:
+        return (f"{dest} is fully worked and so is everything you have "
+                f"walked beyond it — nothing new that way as far as you "
+                f"have walked")
     return ""
 
 
@@ -310,7 +348,7 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                     c.note = c.note or ("you arrived through it; never taken "
                                         "from this side")
             if walked and not bad:
-                c.beyond = beyond(ex, walked, target)
+                c.beyond = beyond(ex, walked, target, here)
         else:
             # NEVER WALKED: no destination — the frontage words at most
             c.status = "untried"
@@ -347,7 +385,7 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             else:
                 c.status = "taken"
                 if walked:
-                    c.beyond = beyond(ex, walked, target)
+                    c.beyond = beyond(ex, walked, target, here)
         else:
             c.status = "untried"
         out.append(c)
