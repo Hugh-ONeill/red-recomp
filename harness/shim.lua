@@ -1832,11 +1832,22 @@ function OPS.cross(G, c)
     -- walked to" here means "not this second", not "not ever". Naming a
     -- bush as cuttable and a person as a person is the same act: saying
     -- what is there. Whether to wait, go round, or give up stays open.
+    -- ...AND A PERSON BESIDE THE STALL POINT COUNTS WHEREVER THE STALL IS.
+    -- The near-seam band is 12 cells; Route 9's walk from Cerulean stalled
+    -- at 4,8 with the east seam 55 cells off, and the one thing next to
+    -- 4,8 -- whoever was standing in the corridor -- failed the band test
+    -- and went unnamed, while a trainer at 48,8 was reported as "near
+    -- that edge, though not what stopped you". Name what is next to where
+    -- the walk stopped first; the band still covers the rest.
     for _, npc in ipairs((ow.npcs) or {}) do
       local nx, ny = npc.cellX, npc.cellY
-      if nx and ny and near_seam(nx, ny) then
-        add(tostring((npc.def or {}).name or "someone")
-            .. " (a person, who moves)", nx, ny)
+      if nx and ny then
+        local by_stall = stallx and stally
+          and (math.abs(nx - stallx) + math.abs(ny - stally)) <= 1
+        if by_stall or near_seam(nx, ny) then
+          add(tostring((npc.def or {}).name or "someone")
+              .. " (a person, who moves)", nx, ny)
+        end
       end
     end
     for _, f in ipairs(map_fixtures(G, (lm and lm.id)) or {}) do

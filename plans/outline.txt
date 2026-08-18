@@ -1,25 +1,45 @@
-Choose a starter Pokemon
+Obtain a starter Pokemon
+Deliver the OAKS_PARCEL to Professor Oak
+Learn how to catch Pokemon from the old man
 Reach Viridian City
-Defeat Brock for the Boulder Badge
-Navigate through Mt. Moon
-Reach Cerulean City
-Deliver the parcel from Bill to the Oak Lab
+Retrieve the Pokemon from the Poke Mart
+Exit Mt. Moon
+the party holds a WATER or ELECTRIC type
+the party holds a WATER or GRASS type
 Defeat Misty for the Cascade Badge
-Clear S.S. Anne and obtain HM01
+Retrieve the S.S. Ticket from Bill
+Retrieve the HM01 from the S.S. Anne
+the party holds a FLYING type
+a party Pokemon knows CUT
+the party holds a GROUND type
 Defeat Lt. Surge for the Thunder Badge
+Reach Vermilion City
+Reach Rock Tunnel
+Reach Lavender Town
+Obtain the Silph Scope
+Retrieve the Pokemon Flute from Mr. Fuji
+Clear the Pokemon Tower
+a party Pokemon knows FLASH
 Defeat Erika for the Rainbow Badge
-Obtain the Secret Key from the Rocket Hideout
-Clear out the Pokémon Tower in Lavender Town
-Clear Team Rocket out of the Silph Co. building
-Obtain HM03 Surf from the Safari Zone
-Defeat Koga for the Soul Badge
+Reach Celadon City
+Retrieve the Secret Key from the Game Corner
+Retrieve the Master Ball from Silph Co.
 Defeat Sabrina for the Marsh Badge
-Retrieve the Snorlax-blocking Flute
-Wake up Snorlax to clear the path
-Navigate through the Safari Zone
-Obtain the HM03 Surf from the Safari Zone
-Defeat Blaine for the volcano Badge
-Assemble a final team of six
+Reach Saffron City
+a party Pokemon knows FLY
+Retrieve the Cycling Road access
+a party Pokemon knows SURF
+Retrieve the HM04 from the Safari Zone
+a party Pokemon knows STRENGTH
+Defeat Koga for the Soul Badge
+Reach Fuchsia City
+Retrieve the Gold Teeth for the Warden
+Defeat Blaine for the Volcano Badge
+Reach Cinnabar Island
+Retrieve the HM07 from Cinnabar Island
 Defeat Giovanni for the Earth Badge
-Conquer the Elite Four
-Defeat the Champion
+Reach Viridian City Gym
+Reach the Indigo Plateau
+Navigate the Victory Road
+every party member is at least level 50
+Defeat the Elite Four and become the Champion
