@@ -837,6 +837,18 @@ being finished, then by what lies to the model.
   moment. Recovery for the live world: `edge_conflict` voids the false edge
   when the seam is next tried from 4,4 and fails? No — a failed cross does
   not contradict; delete `ROUTE_4|4,4:east` by hand at the next stop.
+- [ ] **CATCH · Medium · VERIFIED — a catch subgoal with ZERO balls grinds
+  on, and the prompt it gets does not say so.** Run 12 leg 7 (`catch_water_
+  pokemon`, `any_of party_type WATER/GRASS`): four balls thrown at a Paras
+  and lost, bag has no POKE_BALL, the policy then flees every wild ("out of
+  balls for this one"), and the round rendered the exploration LEDGER (not
+  `training_text`, which carries the BALLS-ARE-THE-BUDGET fact) — the
+  `_is_party_goal(target) and self._hunted()` gate must have read false for
+  an any_of predicate. Its plan: "continue using the grind operation".
+  Fix: (a) the party-goal test must recognise `any_of` of party_type /
+  has_species; (b) whichever text renders for a catch target, state the ball
+  count when it is zero ("BALLS: none — nothing can be caught without one;
+  a mart sells them") — a fact, not a route.
 - [ ] **STRENGTH · High · REPORTED — no documented boulder push.** Boulders
   are entities; `Collision.occupied` blocks them so BFS/`walk_to` never
   routes through one; pushing needs two held presses into it, which only
