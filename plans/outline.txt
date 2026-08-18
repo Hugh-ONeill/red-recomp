@@ -1,46 +1,45 @@
 Obtain a starter Pokemon
 Deliver the OAKS_PARCEL to Professor Oak
-Learn how to catch Pokemon from the old man
-Reach Viridian City
-Retrieve the Pokemon from the Poke Mart
+Buy Poke Balls at the Viridian City Poke Mart
+the party holds 2 or more Pokemon
+Reach Pewter City
+every party member is at least level 12
+Defeat Brock for the Boulder Badge
 Exit Mt. Moon
-the party holds a WATER or ELECTRIC type
-the party holds a WATER or GRASS type
-Defeat Misty for the Cascade Badge
+Reach Cerulean City
 Retrieve the S.S. Ticket from Bill
-Retrieve the HM01 from the S.S. Anne
-the party holds a FLYING type
-a party Pokemon knows CUT
-the party holds a GROUND type
-Defeat Lt. Surge for the Thunder Badge
+Defeat Misty for the Cascade Badge
+Chase the Team Rocket thief out of the burgled house in Cerulean City
 Reach Vermilion City
-Reach Rock Tunnel
+Retrieve the HM01 from the captain of the S.S. Anne
+a party Pokemon knows CUT
+Defeat Lt. Surge for the Thunder Badge
+every party member is at least level 25
 Reach Lavender Town
-Defeat the Team Rocket members in Pokemon Tower
-Obtain the Silph Scope from Mr. Fuji
-Retrieve the Pokemon Flute from Mr. Fuji
-Clear the Pokemon Tower
-a party Pokemon knows FLASH
-Defeat Erika for the Rainbow Badge
 Reach Celadon City
-Retrieve the Secret Key from the Game Corner
-Retrieve the Master Ball from Silph Co.
-Defeat Sabrina for the Marsh Badge
-Reach Saffron City
+Defeat Erika for the Rainbow Badge
+Find the Rocket Hideout under the Celadon Game Corner
+Retrieve the Lift Key in the Rocket Hideout
+Defeat Giovanni in the Rocket Hideout for the Silph Scope
+Give a drink from the Celadon Department Store to a thirsty guard of Saffron City
+Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute
+Retrieve the HM02 from the house on Route 16
 a party Pokemon knows FLY
-Retrieve the Cycling Road access
+Wake the Snorlax sleeping on Route 12 with the Poke Flute
+Reach Fuchsia City
+Retrieve the HM03 from the Secret House in the Safari Zone
+Retrieve the Gold Teeth from the Safari Zone and return them to the Warden for HM04
 a party Pokemon knows SURF
-Retrieve the HM04 from the Safari Zone
 a party Pokemon knows STRENGTH
 Defeat Koga for the Soul Badge
-Reach Fuchsia City
-Retrieve the Gold Teeth for the Warden
-Defeat Blaine for the Volcano Badge
+every party member is at least level 40
+Rescue the Silph Co. president from Team Rocket
+Defeat Sabrina for the Marsh Badge
 Reach Cinnabar Island
-Retrieve the HM07 from Cinnabar Island
+Retrieve the Secret Key from the Pokemon Mansion
+Defeat Blaine for the Volcano Badge
 Defeat Giovanni for the Earth Badge
-Reach Viridian City Gym
-Reach the Indigo Plateau
-Navigate the Victory Road
 every party member is at least level 50
+Navigate the Victory Road
+Reach the Indigo Plateau
 Defeat the Elite Four and become the Champion

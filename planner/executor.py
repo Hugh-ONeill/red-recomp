@@ -6194,6 +6194,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             traversal = op in ("cross", "walk_to", "use_warp", "grind")
             blackout = None
             ghosted = None
+            low_hp_flee = ""
             for _ in range(12):
                 try:
                     obs = self.b.send(op, **step)
@@ -6256,6 +6257,23 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     if op == "interact" and step.get("name"):
                         self._retract_touch(self._where(pre_obs),
                                             step["name"])
+                    # SAY WHY A TRAINING BATTLE WAS FLED. The spec flees a
+                    # wild when the lead is under its HP line, whatever the
+                    # goal — right, and invisible: a level grind at 4/25 HP
+                    # read "grind: ok (moved, fled)" round after round with
+                    # no levels and no word that HP was the reason. The
+                    # rule is ours; saying it is not pointing.
+                    _bme = ((obs.get("battle") or {}).get("me") or {})
+                    _bkind = (obs.get("battle") or {}).get("kind")
+                    _hb = ((ACTIVE_SPEC.get("flee_wild") or {})
+                           .get("hp_below"))
+                    if (_bkind == "wild" and _hb is not None
+                            and _bme.get("maxhp")
+                            and (_bme.get("hp") or 0) / _bme["maxhp"] < _hb
+                            and choose_battle_policy(sg)[0] != "traversal"):
+                        low_hp_flee = (f"{_bme.get('species')} at "
+                                       f"{_bme.get('hp')}/{_bme.get('maxhp')} "
+                                       f"HP")
                     obs = self.handle_battle(sg, obs)
                     obs = self.settle()
                     post_map = ((obs or {}).get("map") or {}).get("id")
@@ -6626,6 +6644,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if det:
                     chg.append(str(det))
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
+            if low_hp_flee and "fled" in note:
+                note += (f" — fled because your lead was {low_hp_flee}: "
+                         f"under {int(_hb * 100) if _hb else 20}% a wild "
+                         f"fight is fled to keep it alive, so a grind at "
+                         f"this HP earns nothing; heal first (a Center, or "
+                         f"a POTION) and it fights")
             if ghosted == "fixed":
                 note += (" — a GHOST appeared on the way there, and you fled "
                          "from it")
