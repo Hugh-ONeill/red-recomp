@@ -905,6 +905,33 @@ local function observe(G, seq, result)
 end
 
 -- -------------------------------------------------------------- executors
+-- SCRIPT TILES, LEARNED BY STEPPING ON THEM. A map's coordinate events
+-- (the Pokemon Tower ghost at 6F (10,16), the badge guards, the rival
+-- ambushes) are Lua onStep functions in the engine, not data the shim can
+-- read -- so the pathfinder walked over them as plain floor. The ghost's
+-- script pushes you one step off its tile after a flee, and the next
+-- BFS toward anything whose shortest path crossed (10,16) stepped straight
+-- back on: "Be gone... Intruders..." twelve times a second, on a walk that
+-- was trying to LEAVE. Remember, per map, every cell whose step put a text
+-- box up (a battle alone is a wild encounter, not a script), and route
+-- around such cells when any other way exists. Only when a script tile is
+-- the only way -- or the destination itself -- is it stepped on, and then
+-- the model is told what came up. In-process memory: relearned once per
+-- game start, which costs one firing.
+local TRIGGERS = {}
+local function trigger_cells(G)
+  local mid = G.overworld and G.overworld.map and G.overworld.map.id
+  if not mid then return {} end
+  TRIGGERS[mid] = TRIGGERS[mid] or {}
+  return TRIGGERS[mid]
+end
+local function is_warp_cell(md, x, y)
+  for _, w in ipairs((md and md.warps) or {}) do
+    if w.x == x and w.y == y then return true end
+  end
+  return false
+end
+
 local function walk(G, dir, steps)
   local ow = G.overworld
   for step = 1, steps do
@@ -914,6 +941,7 @@ local function walk(G, dir, steps)
       U.wait(4)
     end
     local sx, sy = p.cellX, p.cellY
+    local map_before = ow.map and ow.map.id
     local moved = false
     for _ = 1, 60 do
       table.insert(G.input.pressQueue, dir)
@@ -923,6 +951,15 @@ local function walk(G, dir, steps)
     end
     G.input.state[dir] = false
     U.wait(4)                  -- settle into the cell
+    if moved and ow.map and ow.map.id == map_before then
+      local top = G.stack:top()
+      if top and top ~= ow and not (top.enemy or top.kind)
+         and not is_warp_cell(ow.map.def, p.cellX, p.cellY) then
+        local t = trigger_cells(G)
+        local k = p.cellX .. "," .. p.cellY
+        t[k] = (t[k] or 0) + 1
+      end
+    end
     if not moved then
       return false, ("stuck at step %d/%d (%s,%s)"):format(
         step, steps, tostring(p.cellX), tostring(p.cellY))
@@ -1085,13 +1122,11 @@ local function warp_block(G, tx, ty)
   return blocked
 end
 
-local function bfs_dir(G, tx, ty)
+local function bfs_dir_pass(G, tx, ty, wblock)
   local Collision = require("src.world.Collision")
   local ow = G.overworld
   local p = ow.player
-  if p.cellX == tx and p.cellY == ty then return nil, "arrived" end
   local key = function(x, y) return x .. "," .. y end
-  local wblock = warp_block(G, tx, ty)
   local seen = { [key(p.cellX, p.cellY)] = true }
   local queue = { { x = p.cellX, y = p.cellY, first = nil } }
   local head = 1
@@ -1134,6 +1169,26 @@ local function bfs_dir(G, tx, ty)
     end
   end
   return nil, "no path"
+end
+
+local function bfs_dir(G, tx, ty)
+  local p = G.overworld.player
+  if p.cellX == tx and p.cellY == ty then return nil, "arrived" end
+  local wblock = warp_block(G, tx, ty)
+  -- first around every learned script tile (bar the destination itself);
+  -- only if that leaves no way at all, straight through
+  local trig = trigger_cells(G)
+  local any = false
+  local soft = {}
+  for k in pairs(wblock) do soft[k] = true end
+  for k in pairs(trig) do
+    if k ~= (tx .. "," .. ty) then soft[k] = true; any = true end
+  end
+  if any then
+    local dir = bfs_dir_pass(G, tx, ty, soft)
+    if dir then return dir end
+  end
+  return bfs_dir_pass(G, tx, ty, wblock)
 end
 
 -- Nearest reachable tile on a given map edge (the walkable gap in a fence is
@@ -3549,6 +3604,7 @@ function OPS.grind(G, c)
   -- pacing across one would leave the map mid-grind)
   local warp_at = {}
   for _, w in ipairs(md.warps or {}) do warp_at[w.x .. "," .. w.y] = true end
+  for k in pairs(trigger_cells(G)) do warp_at[k] = true end   -- nor script tiles
   local function enc_cell(x, y)
     if not map:inBounds(x, y) then return false end
     if anywhere then
