@@ -7246,6 +7246,19 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             elif not _exempt:
                 self._stale_rounds += 1
             self._stale_fp = _fp
+            # THE CLOCK, IN VIEW. A step about to be ended for staleness
+            # should say so while there is still a round to spend on the
+            # untried list instead — a fact about the harness's own budget,
+            # not the game. What is untried is in the ledger; explore takes
+            # the next one; which is the model's.
+            if 0 < self._stale_rounds < STALE_CUTOFF:
+                stuck_note += (
+                    f"\nSTALE {self._stale_rounds} of {STALE_CUTOFF}: that "
+                    f"many rounds in a row have changed nothing you carry, "
+                    f"know or are, on ground already walked for this step. "
+                    f"At {STALE_CUTOFF} this step is ended and the plan "
+                    f"rewritten. Everything still untried is in the ledger "
+                    f"above; {{\"op\":\"explore\"}} takes the next one.")
             if self._stale_rounds >= STALE_CUTOFF and spent < rounds:
                 self.log("stale_cutoff", subgoal=sg["id"], round=rnd,
                          stale=self._stale_rounds, at=_here_now)
