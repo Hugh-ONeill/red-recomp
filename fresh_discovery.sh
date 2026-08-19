@@ -289,7 +289,20 @@ while :; do
     # gated: a leg is not pulled if it is already done, not pulled twice
     # if the first pull failed, and not pulled from far down the list
     # unless it can say what it provides that the stuck leg needs.
-    if [ "$(cat run/outline_reorders 2>/dev/null | wc -l)" -lt 8 ] \
+    # A LEG THAT WAS PUSHED AWAY MUST NOT BE PULLED STRAIGHT BACK. The
+    # two rungs disagree by design — "later" moves a stuck leg down the
+    # list, "blocker" pulls a needed one up — and with two legs that need
+    # each other they trade places for ever: HM02 was pushed 29->38, the
+    # FLY leg then named it as its blocker and pulled it back to 29, and
+    # round again. If this leg has already been pushed, the pull rung is
+    # not asked (2026-08-19).
+    pushed_before=$(grep -Fc "$leg" run/outline_pushes 2>/dev/null) || pushed_before=0
+    if [ "$pushed_before" -gt 0 ]; then
+      echo "    (not asking the blocker rung: this leg has been pushed" \
+           "before — pulling it back is the loop that costs the run)"
+    fi
+    if [ "$pushed_before" = 0 ] \
+        && [ "$(cat run/outline_reorders 2>/dev/null | wc -l)" -lt 8 ] \
         && blocker=$(python planner/author.py --check-blocker \
             --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
             --start "$(python planner/state_text.py)" \
