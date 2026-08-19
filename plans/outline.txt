@@ -25,6 +25,7 @@ Defeat Giovanni in the Rocket Hideout for the Silph Scope
 Give a drink from the Celadon Department Store to a thirsty guard of Saffron City
 Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute
 Wake the Snorlax sleeping on Route 12 with the Poke Flute
+Exchange the BIKE_VOUCHER for a BICYCLE at the bike shop in Cerulean City
 Retrieve the HM02 from the house on Route 16
 a party Pokemon knows FLY
 Reach Fuchsia City
