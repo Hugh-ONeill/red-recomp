@@ -1820,6 +1820,72 @@ class Executor:
                 for r, v in (data.get("shut_doors") or {}).items()}
             self.hints = data.get("hints") or {}
             self.blockers = data.get("blockers") or {}
+            # BACKFILL THE BLOCKERS FROM THE JOURNAL, once: the recorders
+            # for a fenced or spoken-at way arrived mid-run, so ways that
+            # turned the run back before they existed (Route 9's bush wall,
+            # the first Snorlax fence) were nowhere on the list. The run's
+            # own history, in the words it was told at the time.
+            if not data.get("blockers_backfilled"):
+                try:
+                    _n0 = len(self.blockers)
+                    for _l in (RUN / "executor_log.jsonl").read_text() \
+                            .splitlines():
+                        if '"escalate_feedback"' not in _l:
+                            continue
+                        try:
+                            _r = json.loads(_l)
+                        except ValueError:
+                            continue
+                        _at = str(_r.get("at") or "")
+                        if not _at or "None" in _at:
+                            continue
+                        for _t in (_r.get("trace") or []):
+                            _t = str(_t)
+                            _op = _t.split("(", 1)[0]
+                            if _op not in ("cross", "use_warp"):
+                                continue
+                            _m = (_re.match(r"cross\(dir=(\w+)\)", _t)
+                                  if _op == "cross" else
+                                  _re.match(r"use_warp\(x=(\d+),y=(\d+)\)", _t))
+                            if not _m:
+                                continue
+                            _key = (_m.group(1) if _op == "cross"
+                                    else f"{_m.group(1)},{_m.group(2)}")
+                            _kind = "seam" if _op == "cross" else "door"
+                            _hit = False
+                            for tag in ("standing at its edge:",
+                                        "Right where the walk stopped:"):
+                                if "FAILED" in _t and tag in _t:
+                                    clause = _t.split(tag, 1)[1].strip() \
+                                        .split(".")[0][:160]
+                                    self._note_blocker(
+                                        _at, _key, _kind,
+                                        f"the walk was fenced — {clause}")
+                                    _hit = True
+                                    break
+                            if not _hit and (
+                                    "GHOST appeared" in _t
+                                    or "did not change, but it SPOKE" in _t):
+                                said = (_t.split("it said: ", 1)[1]
+                                        .strip()[:160]
+                                        if "it said: " in _t else "")
+                                self._note_blocker(
+                                    _at, _key, _kind,
+                                    said or "it spoke and did not open")
+                    # a backfilled way that has since OPENED is no blocker:
+                    # a walked edge on the same key clears it
+                    for bk, b in list(self.blockers.items()):
+                        e = (self.explored.get(b.get("where")) or {}) \
+                            .get(b.get("key")) or {}
+                        if e.get("to") and not e.get("shut"):
+                            b["cleared"] = True
+                            b["cleared_how"] = "walked since"
+                    if len(self.blockers) > _n0:
+                        print(f"[memory] blockers backfilled: "
+                              f"{len(self.blockers) - _n0} from the journal")
+                except OSError:
+                    pass
+            self._blockers_backfilled = True
             # the FIGHT probe against the tower's ghost is once per RUN, not
             # per attempt: its answer is already written on the blocker
             self._ghost_probed = any(
@@ -2141,6 +2207,8 @@ class Executor:
                  "shut_doors": self.shut_doors,
                  "hints": self.hints,
                  "blockers": self.blockers,
+                 "blockers_backfilled": bool(getattr(
+                     self, "_blockers_backfilled", False)),
                  "hints_at": getattr(self, "hints_at", {}),
                  "offered": getattr(self, "_offered", {}),
                  "cut_bushes": getattr(self, "_cut_bushes", {}),
