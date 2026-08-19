@@ -7500,6 +7500,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # the prompt was never recorded anywhere.
             self.log("escalate_context", subgoal=sg["id"],
                      target=self._target_key(sg), memory=memory[:6000])
+            # ...and the ECHO the model reads beside it. The context log was
+            # written before plan_echo exists, so the one part of the prompt
+            # that carries the model's own beliefs forward — the part that
+            # explains why a dead idea keeps coming back — has never been in
+            # the journal, and reading a stuck leg meant guessing at it.
             # THE PLAN ECHO (§6c). 80% of proposals are one op, so the
             # model re-derives its intent every round with nothing of its
             # own carried forward — the trace it reads is ours. Its last
@@ -7548,6 +7553,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                   f"  {k} x{v['n']} at {v['where']}"
                                   + (f" — {v['last'][:110]}" if v['last'] else "")
                                   for k, v in _tried) + "\n")
+            if plan_echo:
+                self.log("escalate_echo", subgoal=sg["id"], round=rnd,
+                         echo=plan_echo[:2000])
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
                     f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
