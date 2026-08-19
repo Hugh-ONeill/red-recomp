@@ -10102,6 +10102,16 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     print(f"   !! {sg['id']} failed — continuing")
                     self.log("subgoal_failed_continuing", subgoal=sg["id"],
                              consecutive=fails)
+                    # ...AND THE END OF THE RUN MUST SAY SO. Carrying a
+                    # missed map hop is deliberate; reporting the result as
+                    # ALL PLANS COMPLETE afterwards is not. Leg 34 skipped
+                    # three of six subgoals (never reached Celadon, never
+                    # bought the drink), satisfied a last subgoal that only
+                    # asked to be standing in a gate building, and printed
+                    # the same sentence a clean run prints.
+                    self._carried = getattr(self, "_carried", 0) + 1
+                    self._carried_ids = getattr(self, "_carried_ids", [])
+                    self._carried_ids.append(sg["id"])
                     continue
             elif ok:
                 fails = 0
@@ -10365,7 +10375,11 @@ def main():
         r = (ex._send_safe("save_game") or {}).get("result") or {}
         print(f"[save] (after a failed plan, to keep what it earned) "
               f"{r.get('detail') or 'save failed'}")
-    print(f"\nRESULT: {'ALL PLANS COMPLETE' if ok else 'PLAN FAILED'} | "
+    _carried = getattr(ex, "_carried_ids", [])
+    _verdict = ("ALL PLANS COMPLETE" if ok and not _carried else
+                (f"PLANS ENDED WITH UNMET SUBGOALS ({', '.join(_carried)})"
+                 if ok else "PLAN FAILED"))
+    print(f"\nRESULT: {_verdict} | "
           f"map={(o.get('map') or {}).get('id')} "
           f"party={[(m.get('species'), m.get('level')) for m in o.get('party') or []]} "
           f"badges={o.get('badges')}")

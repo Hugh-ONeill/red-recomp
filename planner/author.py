@@ -518,6 +518,36 @@ NEW_GAME_START = (
     "(map REDS_HOUSE_2F) with no Pokemon and nothing in the bag.")
 
 
+def visited_maps() -> set:
+    """Every map this run has stood on, by name. Run history, like
+    fired_flags — not contents."""
+    try:
+        d = json.loads(Path("run/explored.json").read_text() or "{}")
+    except (OSError, ValueError, json.JSONDecodeError):
+        return set()
+    return {str(r).split("|")[0] for r in (d.get("visits") or {})}
+
+
+def _place_names(dw) -> set:
+    """Map names a predicate can be satisfied by standing somewhere."""
+    out = set()
+    if not isinstance(dw, dict):
+        return out
+    for k, v in dw.items():
+        if k == "map" and isinstance(v, str):
+            out.add(v)
+        elif k == "area" and isinstance(v, str):
+            out.add(v.split("|")[0])
+        elif k == "any_of" and isinstance(v, list):
+            for alt in v:
+                sub = _place_names(alt)
+                if not sub:
+                    return set()      # one alternative is not a place: the
+                    # branch can be met without standing anywhere
+                out |= sub
+    return out
+
+
 def fired_flags() -> list:
     """Every event flag this run has watched fire, oldest first — the only
     flag names the harness may volunteer (they are history, not contents)."""
@@ -707,7 +737,29 @@ def validate(plan: dict) -> list:
                 f"'{fl}', which ALREADY FIRED earlier in this run — it holds "
                 f"before the plan takes a single step, so it cannot witness "
                 f"this leg's deed. End on what THIS deed leaves behind.")
+    # A PLACE YOU HAVE ALREADY STOOD IN WITNESSES NOTHING. Leg 34 ended on
+    # any_of the four Saffron GATE buildings: three of its six subgoals
+    # failed (never reached Celadon, never bought the drink), the party
+    # walked into ROUTE_6_GATE — a room it had been in before — and the
+    # plan reported ALL PLANS COMPLETE. Same shape as the already-fired
+    # flag rule above, and the same answer: a finish line that holds before
+    # the plan takes a step cannot say the deed happened. Travel objectives
+    # are exempt — going back somewhere IS the deed there.
     goal = str(plan.get("goal") or plan.get("objective") or "").strip()
+    _TRAVEL = ("go", "travel", "return", "reach", "head", "walk", "fly",
+               "enter", "visit", "arrive")
+    if subs and goal and goal.split()[0].lower().rstrip(",:") not in _TRAVEL:
+        last0 = subs[-1] if isinstance(subs[-1], dict) else {}
+        dw0 = last0.get("done_when") or {}
+        _places = _place_names(dw0)
+        _vis = visited_maps()
+        if _places and _vis and _places <= _vis:
+            probs.append(
+                f"subgoal[{len(subs) - 1}] ({last0.get('id')}) ends on "
+                f"{'/'.join(sorted(_places))}, which this run has ALREADY "
+                f"stood in — it holds before the plan takes a step, so it "
+                f"cannot witness this objective. End on what the objective "
+                f"CHANGES, or on a place the run has never reached.")
     # verbs whose leftover is ALWAYS a flag/item/badge/party change. Not
     # "give"/"talk"/"find": a drink handed to a guard leaves passage, and a
     # hideout found IS a place — a place condition is right for those.

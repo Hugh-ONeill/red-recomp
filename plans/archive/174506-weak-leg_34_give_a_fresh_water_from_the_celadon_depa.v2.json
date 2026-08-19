@@ -92,6 +92,22 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "via": "author.py decomposition",
         "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 10,
+          "y": 7,
+          "when": {
+            "map": "ROUTE_6"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
       }
     }
   ],

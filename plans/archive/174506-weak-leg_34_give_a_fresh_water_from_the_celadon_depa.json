@@ -70,20 +70,20 @@
     },
     {
       "id": "give_water_to_guard",
-      "goal_text": "Give the FRESH WATER to the thirsty guard at one of the Saffron City gates",
+      "goal_text": "Give the FRESH WATER to the thirsty guard at one of the gates of Saffron City",
       "done_when": {
         "any_of": [
           {
-            "map": "ROUTE_5_GATE"
+            "map": "ROUTE_5"
           },
           {
-            "map": "ROUTE_6_GATE"
+            "map": "ROUTE_6"
           },
           {
-            "map": "ROUTE_7_GATE"
+            "map": "ROUTE_7"
           },
           {
-            "map": "ROUTE_8_GATE"
+            "map": "ROUTE_8"
           }
         ]
       },
