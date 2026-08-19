@@ -26,7 +26,6 @@ Give a drink from the Celadon Department Store to a thirsty guard of Saffron Cit
 Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute
 Wake the Snorlax sleeping on Route 12 with the Poke Flute
 Exchange the BIKE_VOUCHER for a BICYCLE at the bike shop in Cerulean City
-a party Pokemon knows FLY
 Retrieve the HM03 from the Secret House in the Safari Zone
 Retrieve the Gold Teeth from the Safari Zone and return them to the Warden for HM04
 a party Pokemon knows SURF
@@ -34,7 +33,8 @@ a party Pokemon knows STRENGTH
 Defeat Koga for the Soul Badge
 every party member is at least level 40
 Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate
-Retrieve the HM02 from the house on Route 16
+Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor (its doors on Route 16 are at 24,4 and 24,5)
+a party Pokemon knows FLY
 Rescue the Silph Co. president from Team Rocket
 Defeat Sabrina for the Marsh Badge
 Reach Cinnabar Island
