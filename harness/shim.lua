@@ -586,10 +586,16 @@ local function observe(G, seq, result)
       end
       return false
     end
-    local function adjacent_reachable(x, y)
+    local function adjacent_reachable(x, y, over_counter)
       if objreach[(x - 1) .. "," .. y] or objreach[(x + 1) .. "," .. y]
          or objreach[x .. "," .. (y - 1)] or objreach[x .. "," .. (y + 1)]
       then return true end
+      -- the distance-2 stand exists for talking ACROSS A COUNTER, which
+      -- only PEOPLE do (the nurse, the clerk). Applying it to fixtures
+      -- called a slot machine boxed in by its neighbours "reachable" —
+      -- the tile between is another machine, and the engine only reads
+      -- the tile the player faces.
+      if over_counter == false then return false end
       local over = { { x, y + 2, x, y + 1 }, { x, y - 2, x, y - 1 },
                      { x - 2, y, x - 1, y }, { x + 2, y, x + 1, y } }
       for _, o in ipairs(over) do
@@ -662,7 +668,7 @@ local function observe(G, seq, result)
                                         .. tostring(sg.y))
       o.map.objects[#o.map.objects + 1] = {
         x = sg.x, y = sg.y, kind = "sign", name = nm,
-        reachable = adjacent_reachable(sg.x, sg.y),
+        reachable = adjacent_reachable(sg.x, sg.y, false),
       }
     end
     -- The comment above promised Bill's separator; md.signs never
@@ -671,7 +677,7 @@ local function observe(G, seq, result)
     for _, f in ipairs(map_fixtures(G, map.id)) do
       o.map.objects[#o.map.objects + 1] = {
         x = f.x, y = f.y, kind = "fixture", name = f.name,
-        reachable = adjacent_reachable(f.x, f.y),
+        reachable = adjacent_reachable(f.x, f.y, false),
       }
     end
     -- CUT TREES are drawn bushes — the most on-screen thing there is —
@@ -699,7 +705,7 @@ local function observe(G, seq, result)
                and not lm:isWalkableCell(cx, cy) then
               o.map.objects[#o.map.objects + 1] = {
                 x = cx, y = cy, kind = "cut_tree", name = "CUT_TREE",
-                reachable = adjacent_reachable(cx, cy),
+                reachable = adjacent_reachable(cx, cy, false),
               }
             end
           end
