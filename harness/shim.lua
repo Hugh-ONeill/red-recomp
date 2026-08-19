@@ -1381,7 +1381,7 @@ local function bfs_to_edge(G, dir)
             edge_rejected > 0
               and ("; it DID reach the edge " .. edge_rejected
                    .. "x but the landing on the far side was refused")
-              or ""), bestx, besty
+              or ""), bestx, besty, seen, nseen
 end
 
 local OPS = {}
@@ -1765,8 +1765,9 @@ function OPS.cross(G, c)
   end
 
   local ex, ey, bfs_why, stallx, stally
+  local seen_cells, nseen_cells
   for round = 1, 4 do
-    ex, ey, bfs_why, stallx, stally = bfs_to_edge(G, dir)
+    ex, ey, bfs_why, stallx, stally, seen_cells, nseen_cells = bfs_to_edge(G, dir)
     if ex then break end
     U.wait(40)
     if G.stack:top() ~= ow then
@@ -1864,12 +1865,29 @@ function OPS.cross(G, c)
     -- and went unnamed, while a trainer at 48,8 was reported as "near
     -- that edge, though not what stopped you". Name what is next to where
     -- the walk stopped first; the band still covers the rest.
+    -- ...AND WHOEVER STANDS AT THE EDGE OF A SMALL POCKET. Route 12 from
+    -- the Route 11 gate is a 14-cell pocket with a sleeping SNORLAX on its
+    -- one road north; the stall point (the cell nearest the seam) was two
+    -- cells from the seam and nowhere near the Snorlax, so the report read
+    -- "Nothing this map lists sits against that edge". When the ground
+    -- reachable is small, anyone adjacent to ANY of it is what fences it.
+    local pocket = (seen_cells and nseen_cells and nseen_cells <= 60)
+      and seen_cells or nil
+    local function fences_pocket(nx, ny)
+      if not pocket then return false end
+      return pocket[(nx + 1) .. "," .. ny] or pocket[(nx - 1) .. "," .. ny]
+        or pocket[nx .. "," .. (ny + 1)] or pocket[nx .. "," .. (ny - 1)]
+    end
+    local fence = {}
     for _, npc in ipairs((ow.npcs) or {}) do
       local nx, ny = npc.cellX, npc.cellY
       if nx and ny then
         local by_stall = stallx and stally
           and (math.abs(nx - stallx) + math.abs(ny - stally)) <= 1
-        if by_stall or near_seam(nx, ny) then
+        if fences_pocket(nx, ny) and not by_stall then
+          fence[#fence + 1] = ("%s at %d,%d"):format(
+            tostring((npc.def or {}).name or "someone"), nx, ny)
+        elseif by_stall or near_seam(nx, ny) then
           add(tostring((npc.def or {}).name or "someone")
               .. " (a person, who moves)", nx, ny)
         end
@@ -1908,6 +1926,11 @@ function OPS.cross(G, c)
     if #blockers > 0 then
       said = said .. " Right where the walk stopped: "
         .. table.concat(blockers, ", ") .. "."
+    end
+    if #fence > 0 then
+      said = said .. (" The ground you can reach from here is only %d "
+        .. "cell(s), and standing at its edge: %s."):format(
+          nseen_cells or 0, table.concat(fence, ", "))
     end
     if #elsewhere > 0 then
       -- NOT "on this map" — everything here already passed the near-seam
