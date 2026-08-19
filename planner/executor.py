@@ -1792,6 +1792,7 @@ class Executor:
         if (obs or {}).get("mode") == "overworld" and \
                 ((obs or {}).get("map") or {}).get("id"):
             self._last_overworld_map = obs["map"]["id"]
+            self._note_intra(obs)
         self.note_frontier(obs)
         self.note_region_anchors(obs)
         self.note_sightings(obs)
@@ -1809,6 +1810,45 @@ class Executor:
                 e["warps"] = [{"x": w.get("x"), "y": w.get("y")}
                               for w in m["warps"]]
         return obs
+
+    def _note_intra(self, obs):
+        """WALKING FROM ONE PART OF A MAP TO ANOTHER IS A FACT TOO.
+
+        The graph only ever learned an edge when the MAP changed, so every
+        transition WITHIN a map was thrown away — and ledge-split routes
+        are exactly that. Route 9 entered from Cerulean is region |0,8, the
+        component that exits east to Route 10 is |50,6, and the run has
+        walked between them (down the ledges) more than once. Nothing
+        recorded it, so Vermilion -> Celadon read as NO ROUTE for a chain
+        the party had physically walked: Route 6, both underground paths,
+        Route 5, Cerulean, Route 9, Rock Tunnel, Lavender, all of it
+        walked, all of it useless because of one unrecorded step.
+
+        Recorded ONE WAY, which is what was observed: a ledge you dropped
+        off is not a ledge you can climb. If the way back is walkable it
+        records itself the moment it is walked.
+        """
+        here = self._where(obs)
+        prev = getattr(self, "_intra_prev", None)
+        self._intra_prev = here
+        if not prev or prev == here or "None" in prev or "None" in here:
+            return
+        if prev.split("|")[0] != here.split("|")[0]:
+            return                       # a map change: note_transition's
+        # A FAINT IS NOT A WALK. Blacking out moves the body without the
+        # party walking the ground between, and the walk-back is the one
+        # place that must not learn a road from it.
+        if self._faint_at:
+            return
+        e = self.explored.setdefault(prev, {})
+        k = f"walk:{here}"
+        rec = e.setdefault(k, {"n": 0, "to": here, "intra": True})
+        rec["n"] = int(rec.get("n") or 0) + 1
+        rec["to"] = here
+        rec["intra"] = True
+        if rec["n"] == 1:
+            self.log("intra_walk", frm=prev, to=here)
+            self._save_memory()
 
     MEMORY = RUN / "explored.json"
 
@@ -4251,6 +4291,32 @@ class Executor:
                     self.log("route_abandoned", subgoal=sg.get("id"),
                              step=str(key), standing=self._where(o),
                              why="the lift did not put us on that floor")
+                    return o
+                continue
+            # AN INTRA-MAP HOP IS A WALK, not a door and not a seam. It
+            # is recorded by _note_intra when the party walks from one
+            # component of a map into another (down a ledge, through a
+            # gap), and it is the only way a ledge-split route like Route 9
+            # is connected at all.
+            if str(key).startswith("walk:"):
+                _want = str(key).split(":", 1)[1]
+                try:
+                    _ax, _ay = (int(v) for v in
+                                _want.split("|", 1)[1].split(","))
+                except (ValueError, IndexError):
+                    self.log("route_abandoned", subgoal=sg.get("id"),
+                             step=str(key), standing=self._where(_now),
+                             why="that walked-to area has no anchor cell")
+                    return o if o is not None else _now
+                self._send_safe("walk_to", x=_ax, y=_ay)
+                o = self.settle() or _now
+                while o and o.get("mode") == "battle":
+                    o = self.handle_battle(sg, o)
+                    o = self.settle()
+                if self._where(o) != nxt:
+                    self.log("route_abandoned", subgoal=sg.get("id"),
+                             step=str(key), standing=self._where(o),
+                             why="the walk across this map did not arrive")
                     return o
                 continue
             if _is_door_key(key):
