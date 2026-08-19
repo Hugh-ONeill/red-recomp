@@ -4537,7 +4537,7 @@ class Executor:
                 + "\n".join(rows[:12]))
 
     def _logged_exploration(self, obs, sg) -> str:
-        txt = self.exploration_text(obs, self._target_key(sg)) \
+        txt = self.exploration_text(obs, self._target_key(sg), sg) \
             + self._fired_text(obs, sg)
         self.log("escalate_context", subgoal=sg["id"],
                  target=self._target_key(sg), memory=txt[:6000])
@@ -4739,6 +4739,40 @@ class Executor:
             lines.append(self._respawn_line(obs))
         return "\n".join(lines)
 
+    BAG_SLOTS = 20          # gen 1's bag is twenty distinct items
+
+    def _bag_line(self, obs, sg) -> str:
+        """A FULL BAG REFUSES A GIFT, and only an op failing ever said so.
+        20/20 has blocked three legs this run (the Lift Key, the Silph
+        Scope, HM02) and each time the run learned by being refused. When
+        this step is FOR an item, say the count before it costs a round —
+        and name what can go, which is the game's own rule (key items
+        cannot be tossed), never which one to pick."""
+        bag = (obs or {}).get("bag") or {}
+        n = len(bag)
+        if n < self.BAG_SLOTS - 1:
+            return ""
+        wants_item = "has_item" in pred_keys(sg.get("done_when") or {})
+        if not wants_item:
+            _subs = ((self.plan or {}).get("subgoals") or [])
+            wants_item = any("has_item" in pred_keys(s2.get("done_when") or {})
+                             for s2 in _subs if isinstance(s2, dict))
+        if not wants_item:
+            return ""
+        keys = set((obs or {}).get("key_items") or [])
+        spare = sorted(k for k in bag if k not in keys)
+        return ("\nYOUR BAG HOLDS " + f"{n}/{self.BAG_SLOTS}"
+                + " KINDS OF THING"
+                + (" — IT IS FULL" if n >= self.BAG_SLOTS else "")
+                + ". A gift or a pickup is REFUSED when it is full, and this "
+                  "step is for an item. What you can get rid of ({\"op\":"
+                  "\"toss\",\"item\":X} throws it away, {\"op\":\"sell\"} "
+                  "at a shop counter turns it into money; key items can be "
+                  "neither): "
+                + (", ".join(spare[:10]) if spare else "nothing — every "
+                   "single thing you carry is a key item")
+                + ".")
+
     def _respawn_line(self, obs) -> str:
         """WHERE you wake, and the RULE that moves it. The place was stated
         (training text, the author's start line) and the rule never was —
@@ -4812,7 +4846,7 @@ class Executor:
             return True
         return not (words & set(_GIVEN_WORDS))
 
-    def exploration_text(self, obs, target: str = "") -> str:
+    def exploration_text(self, obs, target: str = "", sg: dict | None = None) -> str:
         """Untried vs already-taken exits from where we stand."""
         # A LEVEL IS NOT A PLACE. Everything below answers "where do I go
         # next", which is the wrong question for a subgoal satisfied by
@@ -4820,6 +4854,7 @@ class Executor:
         # out of the grass to open doors at a museum.
         # ...UNLESS THE POKEMON IS BEING HANDED OVER, in which case where
         # you stand is the whole question and the exits are the answer.
+        sg_for_bag = sg or {"done_when": {}}
         if self._is_party_goal(target) and self._hunted():
             return self.training_text(obs, target)
         here = self._where(obs)
@@ -5675,6 +5710,7 @@ class Executor:
                     + floor_note + floor_away + route_line + _remote_worked
                     + shut_line
                     + hint_line + remote_line + _elsewhere_str
+                    + self._bag_line(obs, sg_for_bag)
                     + self.blockers_text(obs))
         loot_line += remote_line
         if not (untried or tried):
@@ -5746,6 +5782,7 @@ class Executor:
                 + "." + near_hint)
         out += (floor_note + floor_away + route_line + searched_line + shut_line
                 + hint_line + loot_line + _elsewhere_str
+                + self._bag_line(obs, sg_for_bag)
                 + self.blockers_text(obs))
         return move_head + out
 
@@ -7463,7 +7500,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     "you reached the wrong one. Get to a DIFFERENT place that "
                     "also satisfies it — typically by going back the way you "
                     "came and taking another route. Standing still is failure.")
-            memory = self.exploration_text(start, self._target_key(sg))
+            memory = self.exploration_text(start, self._target_key(sg), sg)
             # A FULL BAG fails every gift silently: the captain's HM01
             # played its "got it!" text into a 20-of-20 bag and vanished.
             # The game normally says "no room" on screen; say it here.
