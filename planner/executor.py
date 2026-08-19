@@ -4747,6 +4747,25 @@ class Executor:
                           "one in the party is counted however it got there.")
         else:
             lines.append("YOUR PARTY IS EMPTY.")
+        # ...AND THE WAYS OUT, WHICH THIS PROMPT USED TO HIDE. A training
+        # goal still has to WALK: the grass may be past a gate, and while
+        # grinding the model was shown no doors at all — it sat in Route
+        # 15's west pocket, whose only way east is the gate's far doors,
+        # with a prompt that said "walking somewhere new is not progress".
+        # Progress toward a LEVEL is fighting; getting to ground that
+        # offers fights is still walking, and the ledger is how that is
+        # seen. Same block the exploration prompt uses, under its own head.
+        try:
+            _cands = ledger.build(self, obs, target,
+                                  outcomes=self._outcomes_here(obs))
+            _blk = ledger.render(_cands, self, obs, target)
+            if _blk:
+                lines.append(
+                    "WAYS OUT OF HERE — if this ground offers no fights, "
+                    "the ground that does is through one of these:\n"
+                    + _blk + (getattr(ledger, "LAST_PASS_NOTE", "") or ""))
+        except Exception as _e:          # a prompt must never die of this
+            self.log("training_ledger_error", err=str(_e)[:120])
         # WHAT SOMEBODY TOLD YOU SOMEWHERE ELSE. exploration_text returns
         # this function EARLY for a party goal, which drops the whole
         # exploration context — including the remote-hints block built this
