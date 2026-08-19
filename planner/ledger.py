@@ -346,12 +346,27 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             _left = sorted({x for x in _xs if x <= 1})
             _right = sorted({x for x in _xs if x >= _w - 2})
             if _left and _right:
-                _pass = ("\nTHIS ROOM HAS DOORS ON BOTH SIDES (x=" 
+                _pass = ("\nTHIS ROOM HAS DOORS ON BOTH SIDES (x="
                          + ",".join(str(x) for x in _left) + " and x="
                          + ",".join(str(x) for x in _right)
                          + "): a room like this is a way THROUGH — going in "
                            "one side and out the other puts you somewhere "
                            "the outside of it could not reach.")
+            # ...AND ONE BUILDING CAN HOLD SEVERAL SEPARATE ROOMS. The
+            # Route 16 gate is two corridors on one map with no way between
+            # them: doors listed here as unreachable are not "blocked", they
+            # are in the OTHER room, entered by its own door from outside
+            # (user, 2026-08-19: "specify that they're two separate rooms").
+            _unreach = [w0 for w0 in (m.get("warps") or [])
+                        if not w0.get("reachable")]
+            if _unreach and (m.get("warps") or []):
+                _others = ", ".join(f"({w0.get('x')},{w0.get('y')})"
+                                    for w0 in _unreach[:6])
+                _pass += ("\nTHIS MAP HOLDS MORE THAN ONE ROOM: the door(s) "
+                          + _others + " are on it but not reachable from "
+                          "where you stand — walls, not obstacles. A room "
+                          "you cannot walk to from inside the same building "
+                          "is entered by its OWN door from outside.")
     except (TypeError, ValueError):
         _pass = ""
     LAST_PASS_NOTE = _pass
