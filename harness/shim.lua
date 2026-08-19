@@ -586,9 +586,19 @@ local function observe(G, seq, result)
       end
       return false
     end
+    -- an ARROW TILE is not a stand: you arrive and are slid away, and
+    -- walk_to will not end on one — so a thing whose only neighbours are
+    -- arrows is not reachable however full the fill looks (B2F's item at
+    -- 3,21 read reachable and every walk answered "no path")
+    local _spin = {}
+    for _, e in ipairs((G.data and G.data.field and G.data.field.spinners
+                        and G.data.field.spinners[map.id]) or {}) do
+      _spin[e.x .. "," .. e.y] = true
+    end
+    local function stand_ok(k) return objreach[k] and not _spin[k] end
     local function adjacent_reachable(x, y, over_counter)
-      if objreach[(x - 1) .. "," .. y] or objreach[(x + 1) .. "," .. y]
-         or objreach[x .. "," .. (y - 1)] or objreach[x .. "," .. (y + 1)]
+      if stand_ok((x - 1) .. "," .. y) or stand_ok((x + 1) .. "," .. y)
+         or stand_ok(x .. "," .. (y - 1)) or stand_ok(x .. "," .. (y + 1))
       then return true end
       -- the distance-2 stand exists for talking ACROSS A COUNTER, which
       -- only PEOPLE do (the nurse, the clerk). Applying it to fixtures
@@ -599,7 +609,7 @@ local function observe(G, seq, result)
       local over = { { x, y + 2, x, y + 1 }, { x, y - 2, x, y - 1 },
                      { x - 2, y, x - 1, y }, { x + 2, y, x + 1, y } }
       for _, o in ipairs(over) do
-        if objreach[o[1] .. "," .. o[2]] and not occupied_cell(o[3], o[4]) then
+        if stand_ok(o[1] .. "," .. o[2]) and not occupied_cell(o[3], o[4]) then
           return true
         end
       end
@@ -4081,6 +4091,35 @@ function OPS.interact(G, c)
     end
   end
   if not tx then return false, "interact needs x,y or name" end
+  -- REACHING PAST A SPINNER. On an arrow-tile floor the only stand beside
+  -- a thing can be an arrow: walk_to refuses to end on one (you arrive and
+  -- are slid away), and adjacent_reachable counts it, so the observation
+  -- said "reachable" while every walk said "no path" (ROCKET_HIDEOUT_B2F
+  -- item at 3,21, five rounds). The engine reads the tile you FACE, so a
+  -- press from the far side of the arrow is impossible — but stepping ON
+  -- the arrow slides you, and gen 1's slide stops when it meets a wall,
+  -- which is how the floor is meant to be crossed. Say so plainly rather
+  -- than reporting a pathing failure.
+  local spin_only = nil
+  do
+    local sp = G.data and G.data.field and G.data.field.spinners
+               and G.data.field.spinners[(ow.map or {}).id]
+    if sp then
+      local function is_spin(x, y)
+        for _, e in ipairs(sp) do
+          if e.x == x and e.y == y then return true end
+        end
+        return false
+      end
+      local free = false
+      for _, a in ipairs({ {tx, ty + 1}, {tx, ty - 1},
+                           {tx - 1, ty}, {tx + 1, ty} }) do
+        if ow.map.isWalkableCell and ow.map:isWalkableCell(a[1], a[2])
+           and not is_spin(a[1], a[2]) then free = true end
+      end
+      if not free then spin_only = true end
+    end
+  end
   -- stand on an orthogonally adjacent walkable tile, then face the target.
   -- Counter NPCs (Center nurse, mart clerk) have NO walkable adjacent tile:
   -- gen1 talks ACROSS the counter, so the distance-2 spots facing the
@@ -4440,6 +4479,12 @@ function OPS.interact(G, c)
       refresh_target()
       if press_from_adjacent() then return settle_dialog() end
     end
+  end
+  if spin_only then
+    return false, "every tile beside that is an ARROW TILE — you cannot "
+      .. "stand on one (it slides you the moment you step on), so nothing "
+      .. "here can be pressed from beside it. This floor is crossed by "
+      .. "RIDING the arrows: step on one and see where it puts you."
   end
   return false, "no reachable tile adjacent to target"
 end
