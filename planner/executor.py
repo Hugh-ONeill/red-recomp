@@ -320,6 +320,13 @@ def model_view(obs: dict, holding_map: bool = False,
 AREA_ALIASES: dict = {}
 
 
+def _is_door_key(k) -> bool:
+    """A door is keyed "x,y"; a seam by its direction (possibly with an
+    "#alt" suffix when one seam lands in two places). Half the executor used
+    to ask "is there a comma in it", which a suffixed key answers wrongly."""
+    return bool(_re.fullmatch(r"\d+,\d+", str(k)))
+
+
 def pred_keys(pred: dict | None) -> set:
     """Every predicate key in play, INCLUDING inside any_of branches.
 
@@ -3596,7 +3603,13 @@ class Executor:
                     if _back not in out:
                         out[_back] = {"n": 0, "to": _r2, "inferred": True}
                     elif (out[_back] or {}).get("to") != _r2:
-                        _alt = f"{_back}#{_r2}"
+                        # NO COMMA IN THE KEY: a door key is "x,y" and half
+                        # the executor tests for a comma to tell doors from
+                        # seams — "west#ROUTE_14|5,4" tripped int() and
+                        # killed the leg. The destination lives in the edge.
+                        _alt = f"{_back}#alt"
+                        while _alt in out and (out[_alt] or {}).get("to") != _r2:
+                            _alt += "x"
                         out.setdefault(_alt, {"n": 0, "to": _r2,
                                               "inferred": True})
             return out
@@ -3742,7 +3755,7 @@ class Executor:
                 got = None
                 for _resend in range(4):
                     pre_hop = self.b.obs()
-                    if "," in key:
+                    if _is_door_key(key):
                         x, y = key.split(",")
                         self.b.send("use_warp", x=int(x), y=int(y))
                     else:
@@ -3759,7 +3772,7 @@ class Executor:
                         self.note_transition(
                             pre_hop,
                             {"x": int(key.split(",")[0]),
-                             "y": int(key.split(",")[1])} if "," in key
+                             "y": int(key.split(",")[1])} if _is_door_key(key)
                             else {"dir": key}, o)
                     total += 1
                     got = self._where(o)
@@ -3970,7 +3983,7 @@ class Executor:
             o = None
             for _ in range(4):
                 pre_hop = self.b.obs()
-                if "," in key:
+                if _is_door_key(key):
                     x, y = key.split(",")
                     self.b.send("use_warp", x=int(x), y=int(y))
                 else:
@@ -3985,7 +3998,7 @@ class Executor:
                     self.note_transition(
                         pre_hop,
                         {"x": int(key.split(",")[0]),
-                         "y": int(key.split(",")[1])} if "," in key
+                         "y": int(key.split(",")[1])} if _is_door_key(key)
                         else {"dir": key}, o)
                 fought = False
                 while o and o.get("mode") == "battle":
@@ -4034,10 +4047,10 @@ class Executor:
             # interrupts and try the same door again, the way _walk_route
             # already does for routed hops.
             step = ({"x": int(key.split(",")[0]), "y": int(key.split(",")[1])}
-                    if "," in key else {"dir": key})
+                    if _is_door_key(key) else {"dir": key})
             r, o2 = None, None
             for _try in range(4):
-                if "," in key:
+                if _is_door_key(key):
                     r = self._send_safe("use_warp", **step)
                 else:
                     r = self._send_safe("cross", dir=key)
@@ -4153,7 +4166,7 @@ class Executor:
                              why="the lift did not put us on that floor")
                     return o
                 continue
-            if "," in key:
+            if _is_door_key(key):
                 _x, _y = (int(v) for v in key.split(","))
                 _has = any(w.get("x") == _x and w.get("y") == _y
                            for w in (_m.get("warps") or []))
@@ -4177,7 +4190,7 @@ class Executor:
             for _ in range(12):
                 pre = self.b.obs()
                 _sf = bool(getattr(self, "_go_surf", False))
-                if "," in key:
+                if _is_door_key(key):
                     x, y = key.split(",")
                     _res = self._send_safe("use_warp", x=int(x), y=int(y))
                     step = {"x": int(x), "y": int(y)}
@@ -8920,7 +8933,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     if key is None:
                         key = scored[0][1] if scored else sorted(untried)[0]
                     pre = cur
-                    if "," in key:
+                    if _is_door_key(key):
                         x, y = key.split(",")
                         self._send_safe("use_warp", x=int(x), y=int(y))
                         step = {"x": int(x), "y": int(y)}
