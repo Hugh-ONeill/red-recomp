@@ -3585,8 +3585,20 @@ class Executor:
                     if _k2 not in _OPP or (_e2 or {}).get("to") != region:
                         continue
                     _back = _OPP[_k2]
+                    # A SEAM CAN LAND IN TWO DIFFERENT PLACES. Route 13's
+                    # west edge is recorded as landing in ROUTE_14|16,6 (a
+                    # four-cell nook), while the run also walked east OUT of
+                    # ROUTE_14|5,4 — the pocket that connects on to Route 15
+                    # and Fuchsia. Keyed by direction alone, the second
+                    # landing was dropped and `go` refused a road the run
+                    # had walked. Keep both; the alternative rides under a
+                    # suffixed key that _walk_route strips before crossing.
                     if _back not in out:
                         out[_back] = {"n": 0, "to": _r2, "inferred": True}
+                    elif (out[_back] or {}).get("to") != _r2:
+                        _alt = f"{_back}#{_r2}"
+                        out.setdefault(_alt, {"n": 0, "to": _r2,
+                                              "inferred": True})
             return out
 
         _now = getattr(self, "_mark_now", None)
@@ -4146,7 +4158,7 @@ class Executor:
                 _has = any(w.get("x") == _x and w.get("y") == _y
                            for w in (_m.get("warps") or []))
             else:
-                _has = key in (_m.get("connections") or {})
+                _has = str(key).split("#", 1)[0] in (_m.get("connections") or {})
             if _m.get("id") and not _has:
                 self.log("route_abandoned", subgoal=sg.get("id"),
                          step=str(key), standing=self._where(_now),
@@ -4170,9 +4182,10 @@ class Executor:
                     _res = self._send_safe("use_warp", x=int(x), y=int(y))
                     step = {"x": int(x), "y": int(y)}
                 else:
-                    _res = (self._send_safe("cross", dir=key, surf=True)
-                            if _sf else self._send_safe("cross", dir=key))
-                    step = {"dir": key}
+                    _dirk = str(key).split("#", 1)[0]
+                    _res = (self._send_safe("cross", dir=_dirk, surf=True)
+                            if _sf else self._send_safe("cross", dir=_dirk))
+                    step = {"dir": _dirk}
                 o = self.settle()
                 # KEEP THE OP'S OWN VERDICT. settle() overwrites result with
                 # its own, so "crossed mid-walk (door unknown)" was thrown
