@@ -6376,7 +6376,9 @@ coordinates. Read:
 Ops: {"op":"walk_to","x":N,"y":N} (within-map; when a building splits the
 map and you have already walked through it, you are taken round through the
 doors you actually used, and told that is what happened), {"op":"cross","dir":"north|
-south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
+south|east|west"} (to the adjacent map; if that seam cannot be reached from
+where you stand but another part of this map you have walked HAS crossed it,
+you are taken there first through the doors you used, and told so), {"op":"use_warp","x":N,"y":N} (a
 door/stairs; add "map":"MAP_ID" when the door belongs to a map you are NOT
 standing on — you are first walked there over ground you have walked, by
 the exits you actually took; an unwalked map is refused. walk_to takes
@@ -6809,6 +6811,70 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         f"op named {_want})")
                     if not ignore_done and pred_holds(done, obs):
                         return True, trace, clean
+            # ...AND THE SAME FOR A SEAM. `cross` walks to the map's edge
+            # from where you stand, so a fence, a building or a river
+            # between you and that edge answers "the south seam cannot be
+            # walked to from here" — while the run has crossed that very
+            # seam from ANOTHER part of the same map (Cerulean's south seam:
+            # unreachable from the main square, walked nine times from the
+            # eastern strip). Hop to a part that has crossed it, over walked
+            # ground, and ask again. Recall only.
+            if op == "cross" and step.get("dir"):
+                _pre = self.settle() or obs
+                _r0 = (self._send_safe("cross", **step) or {})
+                _d0 = str((_r0.get("result") or {}).get("detail") or "")
+                if (_r0.get("result") or {}).get("ok"):
+                    obs = self.settle() or _pre
+                    _note = f"cross(dir={step['dir']}): ok"
+                    if _d0:
+                        _note += f" ({_d0})"
+                    trace.append(_note)
+                    self._record_outcome(_pre, op, step, _note)
+                    if ((_pre.get("map") or {}).get("id")
+                            != (obs.get("map") or {}).get("id")):
+                        self.note_transition(_pre, step, obs, op_detail=_d0)
+                    continue
+                if "cannot be walked to" in _d0 or "no walkable path" in _d0:
+                    _here = self._where(_pre)
+                    _mid = _here.split("|")[0]
+                    _dir = step["dir"]
+                    _cands2 = [r for r in (self.explored or {})
+                               if r.split("|")[0] == _mid and r != _here
+                               and _dir in (self.explored.get(r) or {})]
+                    for _reg in _cands2[:2]:
+                        _path = self._route(_here, _reg)
+                        if not _path:
+                            continue
+                        self.log("cross_via_region", subgoal=sg.get("id"),
+                                 to=_reg, dir=_dir, legs=len(_path))
+                        self._walk_route(sg, _path)
+                        _cur = self.settle() or _pre
+                        _r1 = (self._send_safe("cross", **step) or {})
+                        if (_r1.get("result") or {}).get("ok"):
+                            obs = self.settle() or _cur
+                            trace.append(
+                                f"cross(dir={_dir}): that seam could not be "
+                                f"reached from where you stood, so you were "
+                                f"walked {len(_path)} leg(s) over ground you "
+                                f"have walked to {_reg} — which HAS crossed "
+                                f"it before — and from there it worked")
+                            self.note_transition(_cur, step, obs)
+                            self._record_outcome(_pre, op, step,
+                                                 "cross: ok via " + _reg)
+                            break
+                    else:
+                        obs = self.settle() or _pre
+                        trace.append(f"cross(dir={_dir}): FAILED — {_d0}"
+                                     + (f"; nor from the {len(_cands2)} other "
+                                        f"part(s) of {_mid} that have crossed "
+                                        f"it" if _cands2 else ""))
+                        self._record_outcome(_pre, op, step,
+                                             f"cross: FAILED — {_d0}")
+                    continue
+                obs = self.settle() or _pre
+                trace.append(f"cross(dir={step['dir']}): FAILED — {_d0}")
+                self._record_outcome(_pre, op, step, f"cross: FAILED — {_d0}")
+                continue
             # A BUILDING IN THE MIDDLE OF A MAP IS NOT A WALL IF YOU HAVE
             # WALKED THROUGH IT. walk_to BFSes one map's cells, so a route
             # gate splitting a road ("no path" to a tile 50 cells east)
