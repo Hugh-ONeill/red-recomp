@@ -3864,18 +3864,24 @@ class Executor:
                 "east": "west", "west": "east"}
         here = self._where(obs)
         mymap = here.split("|")[0]
-        if getattr(self, "_uncorking", False):
+
+        def _no(why, **kw):
+            self.log("uncork_declined", where=here, asked=dirname, why=why,
+                     **kw)
             return None
+        if getattr(self, "_uncorking", False):
+            return _no("already uncorking")
         key = (here, dirname)
         if key in getattr(self, "_uncorked", set()):
-            return None
+            return _no("tried once already this process")
         ways = {k: v for k, v in (self.explored.get(here) or {}).items()
                 if (v or {}).get("to") and not (v or {}).get("shut")}
         if len(ways) != 1:
-            return None
+            return _no("not a pocket", ways=sorted(ways))
         back = next(iter(ways))
         if back not in _OPP or back == dirname:
-            return None
+            return _no("the one way out is not a compass seam to come back "
+                       "through", back=back)
         self._uncorked = getattr(self, "_uncorked", set()) | {key}
         self._uncorking = True
         final = obs
