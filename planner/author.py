@@ -676,6 +676,20 @@ def validate(plan: dict) -> list:
     # objective's own verb is a deed, its LAST subgoal must end on what the
     # deed leaves behind — a flag, an item, a badge, a party change — not
     # on standing somewhere.
+    # A FINAL FLAG THAT HAS ALREADY FIRED can witness nothing: the inserted
+    # "Defeat the Team Rocket Admin" leg ended on EVENT_GOT_TM34 — Brock's
+    # TM, fired hours before — so the plan completed in seconds twice and
+    # the bounded redo accepted a deed that never happened.
+    if subs:
+        last0 = subs[-1] if isinstance(subs[-1], dict) else {}
+        dw0 = last0.get("done_when") or {}
+        fl = dw0.get("flag") if isinstance(dw0, dict) else None
+        if fl and fl in set(fired_flags()):
+            probs.append(
+                f"subgoal[{len(subs) - 1}] ({last0.get('id')}) ends on flag "
+                f"'{fl}', which ALREADY FIRED earlier in this run — it holds "
+                f"before the plan takes a single step, so it cannot witness "
+                f"this leg's deed. End on what THIS deed leaves behind.")
     goal = str(plan.get("goal") or plan.get("objective") or "").strip()
     # verbs whose leftover is ALWAYS a flag/item/badge/party change. Not
     # "give"/"talk"/"find": a drink handed to a guard leaves passage, and a
