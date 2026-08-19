@@ -548,14 +548,27 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         out.append(c)
 
     # ---- rank ---------------------------------------------------------
+    # an item goal is answered by items; an event by the fixtures that fire
+    # them (a switch, a machine, a lever) — not by whoever is standing near
+    _t = str(target or "")
+    _goal_kinds = ({"item"} if _t.startswith("item:")
+                   else {"fixture"} if _t.startswith("flag:")
+                   else set())
     for c in out:
         # untried before taken; among untried, an exit into a map never
         # SEEN before one back into a seen map (unopened before known);
         # among taken, fewest takes first; then key for determinism
         into_seen = bool(c.dest) and _map_of(c.dest) in seen_maps
-        # what can be acted on NOW first: an item you cannot walk to is
-        # still never-pressed (items do not move) but it is not a move
-        c.rank = (not c.reachable, STATUS_RANK.get(c.status, 9), into_seen,
+        # THE KIND OF THING THAT ANSWERS THIS GOAL COMES FIRST. On the
+        # Celadon roof, with the subgoal "has_item FRESH_WATER", the top
+        # entry was `press CELADONMARTROOF_LITTLE_GIRL` — an NPC, ranked
+        # ahead of three untouched vending machines, and the girl is the
+        # one who WANTS a drink. Ranked BELOW status, so untried still
+        # beats taken and nothing spent gets promoted: this only orders
+        # things that are equally fresh. Which to take is still the
+        # model's; this decides what to read first, not what to do.
+        c.rank = (not c.reachable, STATUS_RANK.get(c.status, 9),
+                  0 if c.kind in _goal_kinds else 1, into_seen,
                   c.n, c.kind, c.key)
     out.sort(key=lambda c: c.rank)
 

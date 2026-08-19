@@ -1,0 +1,157 @@
+{
+  "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate",
+  "subgoals": [
+    {
+      "id": "go_to_celadon_city",
+      "goal_text": "Travel to Celadon City",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      }
+    },
+    {
+      "id": "enter_department_store",
+      "goal_text": "Enter the Celadon Department Store",
+      "done_when": {
+        "map": "CELADON_MART_1F"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      }
+    },
+    {
+      "id": "go_to_roof",
+      "goal_text": "Go to the roof of the Department Store",
+      "done_when": {
+        "map": "CELADON_MART_ROOF"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      }
+    },
+    {
+      "id": "get_fresh_water",
+      "goal_text": "Interact with the old man on the roof to receive FRESH WATER",
+      "done_when": {
+        "has_item": {
+          "FRESH_WATER": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 1,
+          "when": {
+            "map": "CELADON_MART_1F"
+          }
+        },
+        {
+          "op": "elevator",
+          "floor": "5F",
+          "when": {
+            "map": "CELADON_MART_ELEVATOR"
+          }
+        },
+        {
+          "op": "tap",
+          "btn": "b"
+        },
+        {
+          "op": "elevator",
+          "floor": "5F",
+          "when": {
+            "map": "CELADON_MART_ELEVATOR"
+          }
+        },
+        {
+          "op": "tap",
+          "btn": "b"
+        },
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 3,
+          "when": {
+            "map": "CELADON_MART_ELEVATOR"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 1,
+          "when": {
+            "map": "CELADON_MART_5F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TEXT_CELADONMARTROOF_VENDING_MACHINE1",
+          "when": {
+            "map": "CELADON_MART_ROOF"
+          }
+        },
+        {
+          "op": "tap",
+          "btn": "b"
+        },
+        {
+          "op": "interact",
+          "name": "TEXT_CELADONMARTROOF_VENDING_MACHINE2",
+          "when": {
+            "map": "CELADON_MART_ROOF"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TEXT_CELADONMARTROOF_VENDING_MACHINE3",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_MART_ROOF"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 12
+      }
+    },
+    {
+      "id": "go_to_saffron_city",
+      "goal_text": "Travel to Saffron City",
+      "done_when": {
+        "map": "SAFFRON_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}
