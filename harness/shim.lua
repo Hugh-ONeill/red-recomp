@@ -1283,7 +1283,49 @@ local function bfs_dir_pass(G, tx, ty, wblock)
       end
     end
   end
-  return nil, "no path"
+  -- WHY THERE IS NO PATH, in the same words the seam report uses. "no
+  -- path" was the least informative sentence the harness could produce and
+  -- the most often produced: use_warp hands it straight back ("couldn't
+  -- reach the warp tile (no path)") and the model is left to invent a
+  -- cause. Say how far the walk got, which reachable cell came closest,
+  -- and what stands between that ground and the rest of the map.
+  local nseen, bx, by, best = 0, nil, nil, 1e9
+  for k in pairs(seen) do
+    nseen = nseen + 1
+    local cx, cy = k:match("^(-?%d+),(-?%d+)$")
+    if cx then
+      cx, cy = tonumber(cx), tonumber(cy)
+      local d = math.abs(cx - tx) + math.abs(cy - ty)
+      if d < best then best, bx, by = d, cx, cy end
+    end
+  end
+  local said = ("no path — the ground you can walk from here is %d cell(s) "
+    .. "and the closest it comes to %d,%d is %s,%s"):format(
+      nseen, tx, ty, tostring(bx), tostring(by))
+  local fence = {}
+  for _, npc in ipairs(ow.npcs or {}) do
+    local nx, ny = npc.cellX, npc.cellY
+    if nx and ny then
+      for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
+        if seen[key(nx + d[1], ny + d[2])] and #fence < 4 then
+          local mv = ((npc.def or {}).movement) or "STAY"
+          fence[#fence + 1] = ("%s (a person, %s) at %d,%d"):format(
+            tostring((npc.def or {}).name or "someone"),
+            mv == "WALK" and "who wanders"
+              or "standing still — they do not wander", nx, ny)
+          break
+        end
+      end
+    end
+  end
+  for _, b in ipairs(bushes_blocking(G, tx, ty, seen)) do
+    if #fence < 6 then fence[#fence + 1] = b end
+  end
+  if #fence > 0 then
+    said = said .. ". Standing against that ground: " ..
+      table.concat(fence, ", ")
+  end
+  return nil, said
 end
 
 local function bfs_dir(G, tx, ty)
