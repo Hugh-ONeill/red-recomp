@@ -4557,6 +4557,22 @@ def check_done(goal: str, start: str, model: str,
         print(f"[check-done] refused: this objective names {badge} and the "
               f"run is not wearing it")
         return False
+    # A PLACE NAMED IN THE OBJECTIVE MUST BE THE PLACE IN THE EVIDENCE.
+    # "Wake the Snorlax sleeping on ROUTE 12" was judged done on
+    # EVENT_BEAT_ROUTE16_SNORLAX — the other Snorlax, a map away. Event
+    # names carry their place; when the objective names a route or town and
+    # the only bearing event names a DIFFERENT one, that is not evidence.
+    _place = re.search(r"\b(ROUTE\s*\d+|[A-Z][a-z]+\s+(?:CITY|TOWN|ISLAND))\b",
+                       goal, re.I)
+    if _place and bearing:
+        want = re.sub(r"\s+", "_", _place.group(1).strip()).upper()
+        names = re.findall(r"EVENT_[A-Z0-9_]+", bearing)
+        if names and not any(want in n or want.replace("ROUTE_", "ROUTE") in n
+                             for n in names):
+            print(f"[check-done] refused: this objective names {want} and "
+                  f"the events it could rest on name somewhere else "
+                  f"({', '.join(names[:3])})")
+            return False
     reply = brock_probe.chat(
         [{"role": "system", "content": CHECKDONE_SYS},
          {"role": "user", "content": f"THE OBJECTIVE: {goal}\n\n"
