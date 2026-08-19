@@ -4562,9 +4562,18 @@ def check_done(goal: str, start: str, model: str,
     # EVENT_BEAT_ROUTE16_SNORLAX — the other Snorlax, a map away. Event
     # names carry their place; when the objective names a route or town and
     # the only bearing event names a DIFFERENT one, that is not evidence.
+    # ...and only where the DEED itself is placed. This asks "the events
+    # you could rest on name somewhere else", which is evidence of nothing
+    # when the objective's place is merely where the errand happens and the
+    # deed left an item: the Bicycle leg was refused because Cerulean's own
+    # events are gym battles, while BICYCLE x1 sat in the bag and
+    # EVENT_GOT_BICYCLE had just fired. Skip the check when what the run
+    # GAINED this leg already speaks (an item, a badge, an event).
+    _gained_speaks = bool(re.search(r"items gained:|badges earned:|"
+                                    r"events that fired:", gained or ""))
     _place = re.search(r"\b(ROUTE\s*\d+|[A-Z][a-z]+\s+(?:CITY|TOWN|ISLAND))\b",
                        goal, re.I)
-    if _place and bearing:
+    if _place and bearing and not _gained_speaks:
         want = re.sub(r"\s+", "_", _place.group(1).strip()).upper()
         names = re.findall(r"EVENT_[A-Z0-9_]+", bearing)
         if names and not any(want in n or want.replace("ROUTE_", "ROUTE") in n
