@@ -5051,7 +5051,13 @@ class Executor:
             _far = sorted(_left - _fr)
             _rows.append((len(_p), _mid, len(_doors), _open, _far))
         if _rows:
-            _rows.sort()
+            # A FLOOR WITH A DOOR YOU CAN GO BACK AND OPEN OUTRANKS ONE
+            # WHOSE UNFINISHED PART IS UNREACHABLE. Sorted by distance
+            # alone and cut at three, ROUTE_16_GATE_1F — two never-taken
+            # doors on ground already stood in, the only way to the Fly
+            # house — was crowded out by floors whose only "unfinished"
+            # part cannot be walked to at all, for four attempts.
+            _rows.sort(key=lambda r: (0 if r[3] else 1, r[0], r[1]))
             def _floor_row(_n, _m, _t, _open, _far):
                 parts = []
                 if _open:
