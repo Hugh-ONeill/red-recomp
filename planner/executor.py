@@ -4459,8 +4459,14 @@ class Executor:
                     # Lavender and everything past it is further along the
                     # same edge. Step back out and re-cross elsewhere; only
                     # if that finds nothing is the inference itself wrong.
-                    _un = self._uncork_seam(o, sg,
-                                            str(key).split("#", 1)[0])
+                    # ...ONLY FOR A SEAM. This branch fires for any hop,
+                    # and a door key ("18,9") is not a direction to re-cross
+                    # at another cell: the first decline logged was exactly
+                    # that, Saffron's door asked of a seam routine.
+                    _dk = str(key).split("#", 1)[0]
+                    _un = (self._uncork_seam(o, sg, _dk)
+                           if _dk in ("north", "south", "east", "west")
+                           else None)
                     if _un is not None and _replans < 1:
                         _rest2 = self._route(self._where(_un), _final)
                         if _rest2:
