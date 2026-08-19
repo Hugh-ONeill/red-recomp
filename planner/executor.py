@@ -1368,6 +1368,18 @@ class Executor:
         # ...and a seam whose walk was fenced by somebody standing there
         # (the Snorlax on Route 12, a guard in a corridor) — the diagnostic
         # names them; keep that as the blocker's words
+        # ...and a DOOR whose walk was interrupted by a script that spoke.
+        # The Cycling Road gate shoves pedestrians back with "No pedestrians
+        # are allowed on CYCLING ROAD!" — the op reports "couldn't reach the
+        # warp tile (interrupted (battle or script))" with the line
+        # attached, which is a refusal in every sense, and nothing recorded
+        # it as one.
+        elif (op == "use_warp" and "FAILED" in note
+              and "interrupted (battle or script)" in note
+              and "it said:" in note):
+            said = note.split("it said: ", 1)[1].strip()[:160]
+            self._note_blocker(here, key, "door",
+                               f"a script turned you back — {said}")
         elif op == "cross" and "FAILED" in note and (
                 "standing at its edge:" in note
                 or "Right where the walk stopped:" in note):
