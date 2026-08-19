@@ -3144,6 +3144,19 @@ class Executor:
         # rule voided the honest one, and the way into the Day Care was
         # gone. The shim now says so when it cannot name the door. Take the
         # visit, take the region, write no edge.
+        # AN ELEVATOR CAR HAS NO FIXED DOORS. Its exit warps are rewritten
+        # by the panel every ride, so the ledger's one-door-one-destination
+        # model is false inside one: the Celadon car taught "(1,3) -> 5F",
+        # came out on 3F next ride, the edge conflicted, was deleted and
+        # relearned, and the run spent 48 visits re-deriving the building.
+        # Take the visit, learn no edge; the panel line already says what
+        # the car offers.
+        _srcmap = ((before_obs or {}).get("map") or {}).get("id") or ""
+        if (str(_srcmap).endswith("_ELEVATOR")
+                or ((before_obs or {}).get("map") or {}).get("lift_floors")):
+            self._count_visit(dst)
+            self.log("elevator_exit", frm=src, to=dst)
+            return
         _d = str(((after_obs or {}).get("result") or {}).get("detail") or "")
         # ...or straight from the op, because a caller that settles after
         # sending has already replaced result with the settle's own.

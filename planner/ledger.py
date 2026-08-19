@@ -309,6 +309,8 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
     here = ex._where(obs)
     outcomes = outcomes or {}
     now = getattr(ex, "_mark_now", None)
+    in_car = (str(mid).endswith("_ELEVATOR")
+              or bool((obs.get("map") or {}).get("lift_floors")))
 
     taken = ex._taken_here(here)
     spent = ex._spent_exits(here)
@@ -337,7 +339,18 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         c.n = int(oc.get("n") or rec.get("n") or 0)
         if oc.get("last"):
             c.note = str(oc["last"])
-        if not w.get("reachable"):
+        if in_car:
+            # INSIDE A CAR EVERY DOOR IS THE SAME DOOR: the exit warps are
+            # rewritten by the panel, so a destination learned last ride is
+            # a lie this ride, and picking a different door changes nothing.
+            c.status = "taken" if c.n else "untried"
+            c.dest = None
+            c.note = _join(c.note,
+                           "a door of this CAR — it opens onto whichever "
+                           "floor the panel was last set to; where you come "
+                           "out is chosen with {\"op\":\"elevator\","
+                           "\"floor\":\"F\"}, never by picking another door")
+        elif not w.get("reachable"):
             c.status = "unreachable"
             # the nearest person is context, never the cause
             folk = [(abs((o.get("x") or 0) - (w.get("x") or 0))
