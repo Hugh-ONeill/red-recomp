@@ -1352,6 +1352,19 @@ local function bfs_to_edge(G, dir)
     end
   end
   local nwall_ledge = 0
+  -- WATER IS NOT A WALL IF SOMEBODY CAN SURF. The pathfinder asks the
+  -- engine, which blocks water for a walker, so an ocean between here and
+  -- the seam came back as a flat "no walkable path" — the one fact that
+  -- would change the answer (a party member knows SURF) never said.
+  local nwater = 0
+  local knows_surf = false
+  for _, mon in ipairs((G.save or {}).party or {}) do
+    for _, mv in ipairs(mon.moves or {}) do
+      if tostring(type(mv) == "table" and mv.id or mv) == "SURF" then
+        knows_surf = true
+      end
+    end
+  end
   -- ...AND CYCLING ROAD IS NOT LEDGES AT ALL. On a slope map the bike is
   -- pulled one cell SOUTH on every idle poll (OverworldController:1251,
   -- Game.data.field.forcedMovement.slopeMaps) unless A or B is held, so a
@@ -1380,6 +1393,10 @@ local function bfs_to_edge(G, dir)
       if d2 and ow.map and ow.map.cellTile then
         local t2 = ow.map:cellTile(x + d2[1], y + d2[2])
         if ledge_tiles[t2] then nwall_ledge = nwall_ledge + 1 end
+      end
+      if d2 and ow.map and ow.map.isWaterCell
+         and ow.map:isWaterCell(x + d2[1], y + d2[2]) then
+        nwater = nwater + 1
       end
     end
     local dd = dist(x, y)
@@ -1470,6 +1487,16 @@ local function bfs_to_edge(G, dir)
              .. "drift only takes back the ground you stop on, so a walk "
              .. "up costs more steps than a walk down, and pausing loses "
              .. "some of it")
+        or "")
+    .. ((nwater > 0)
+        and ((". %d WATER cell(s) lie between the ground you can reach and "
+              .. "that edge%s"):format(nwater,
+             knows_surf
+               and (" — and a party Pokemon knows SURF: {\"op\":\"field_move"
+                    .. "\",\"move\":\"SURF\",\"x\":N,\"y\":N} at a water "
+                    .. "tile you are standing beside puts you on it, and "
+                    .. "from there water is walkable")
+               or " — nobody in the party can SURF, so water is a wall"))
         or "")
     .. (nwall_ledge > 0
         and (". " .. nwall_ledge .. " LEDGE tile(s) stand between the "
