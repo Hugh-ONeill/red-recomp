@@ -5821,6 +5821,15 @@ class Executor:
                     + "; ".join(t for _r, t in sorted(elsewhere)[:6])
                     + "." + near_hint)
             _rs_line = self._respawn_line(obs)
+        # THE SAFARI CLOCK, while it is running: steps left and balls left
+        # are both on screen in the game and neither was ever said.
+        _sf = (obs or {}).get("safari") or {}
+        if _sf.get("steps") is not None:
+            _rs_line = (f"THE SAFARI GAME IS RUNNING: {_sf.get('steps')} "
+                        f"step(s) left and {_sf.get('balls')} SAFARI BALL(s). "
+                        f"When the steps run out you are shown the door, and "
+                        f"walking out of the zone ends the game too — what "
+                        f"you have caught you keep.\n") + _rs_line
             # (the blockers list rides here too — it had been appended
             # only to the legacy renderer's return, i.e. never shown)
             # DOORS ON THIS MAP NEVER OPENED. The ledger lists them, but a

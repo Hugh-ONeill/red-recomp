@@ -816,6 +816,17 @@ local function observe(G, seq, result)
   else
     o.mode = "boot"
   end
+  -- THE SAFARI GAME IS A CLOCK AND A BALL COUNT, and neither was in the
+  -- observation: the run paid its 500, walked in, and had no way to know
+  -- it was on a 500-step timer with 30 SAFARI BALLs — both of which the
+  -- game shows on screen the moment either is asked about. Ends by itself
+  -- when the steps run out or you leave.
+  do
+    local sf = (G.save or {}).safari
+    if sf then
+      o.safari = { balls = sf.balls, steps = sf.steps }
+    end
+  end
   o.party = party(G)
   o.badges = badges(G)
   o.pokedex = pokedex(G)
