@@ -1431,10 +1431,18 @@ class Executor:
                              want_explore=False)
         order = {"item": 0, "fixture": 1, "cut_tree": 1, "npc": 2,
                  "trainer": 2, "sign": 3}
+        outs = self._outcomes_here(obs)
         things = sorted((c for c in cands
                          if c.status in ("untouched", "unspoken", "cuttable")
                          and c.reachable
-                         and c.kind not in ("door", "seam", "op")),
+                         and c.kind not in ("door", "seam", "op")
+                         # the observation called it reachable and the press
+                         # said otherwise: believe the press. explore re-
+                         # picked SLOT_MACHINE_13 three rounds running on
+                         # the obs's word while interact kept failing "no
+                         # reachable tile adjacent to target".
+                         and "no reachable tile" not in
+                         ((outs.get(c.key) or {}).get("last") or "")),
                         key=lambda c: (order.get(c.kind, 4), c.key))
         exits = [c for c in cands
                  if c.status == "untried" and c.kind in ("door", "seam")]
@@ -1510,10 +1518,13 @@ class Executor:
         cands2 = ledger.build(self, cur, target,
                               outcomes=self._outcomes_here(cur),
                               want_explore=False)
+        outs2 = self._outcomes_here(cur)
         things2 = sorted((c for c in cands2
                           if c.status in ("untouched", "unspoken", "cuttable")
                           and c.reachable
-                          and c.kind not in ("door", "seam", "op")),
+                          and c.kind not in ("door", "seam", "op")
+                          and "no reachable tile" not in
+                          ((outs2.get(c.key) or {}).get("last") or "")),
                          key=lambda c: (order.get(c.kind, 4), c.key))
         exits2 = [c for c in cands2
                   if c.status == "untried" and c.kind in ("door", "seam")]
