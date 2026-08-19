@@ -772,6 +772,31 @@ local function observe(G, seq, result)
     -- man), pressed A into the shopping list and spent 2000 doing it.
     -- Answer the question here, with the same test the shim itself uses.
     o.ui.is_choice = (top.index ~= nil and top.items == nil) and true or false
+    -- ...but a move list is not a yes/no: the level-up MoveLearnMenu in
+    -- its selecting state has a cursor and no items table, and read as a
+    -- question — an A pressed as "yes" would forget whatever the cursor
+    -- sat on. It is a list; the executor puts it to the model as one.
+    if top.screenId == "MoveLearnMenu" and top.selecting then
+      o.ui.is_choice = false
+    end
+    -- WHICH MOVE TO FORGET IS THE MODEL'S CHOICE, and it needs the list.
+    -- A level-up MoveLearnMenu in its selecting state (the yes was given)
+    -- shows four moves and CANCEL; scalars() drops top.mon, so say who is
+    -- learning, what, and what it knows, by name.
+    if top.screenId == "MoveLearnMenu" and top.mon then
+      local mv = {}
+      for i, m in ipairs(top.mon.moves or {}) do
+        mv[i] = tostring(type(m) == "table" and m.id or m)
+      end
+      o.ui.learner = tostring(top.mon.species)
+      o.ui.learner_slot = nil
+      for i, m in ipairs((G.save and G.save.party) or {}) do
+        if m == top.mon then o.ui.learner_slot = i end
+      end
+      o.ui.new_move = tostring(top.newMoveId)
+      o.ui.moves = mv
+      -- (top.selecting / top.index ride along from scalars())
+    end
   else
     o.mode = "boot"
   end
@@ -3802,6 +3827,15 @@ function OPS.battle_move(G, c)
     local nb = in_battle(G)
     if not nb then return true, "battle ended" end
     if nb.phase == "menu" then return true end
+    -- A LEVEL-UP MOVE LIST IS NOT TURN TEXT. Mashing A through it answers
+    -- "delete an older move?" with the cursor's YES and then forgets
+    -- whichever move the cursor rests on -- slot 1 -- a decision the
+    -- harness has no business making. Stop here; the executor puts the
+    -- list to the model.
+    local t = G.stack:top()
+    if t and t.screenId == "MoveLearnMenu" then
+      return true, "a Pokemon is trying to learn a move — the choice is on screen"
+    end
     U.tap(G, "a"); U.wait(3)
   end
   return true, "turn resolved (timeout advancing text)"

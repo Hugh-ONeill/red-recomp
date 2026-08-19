@@ -4149,6 +4149,17 @@ class Executor:
         text = (obs or {}).get("recent_text")
         self.log("ui_seen", subgoal=sg.get("id"), text=str(text)[:160],
                  pending=self._ui_pending)
+        # A LEVEL-UP MOVE LIST NEEDS NO PATIENCE: it is unambiguous, it is
+        # the model's choice, and every round it stays open is a round of
+        # ops failing "a box was up". Put it to the model at once.
+        _ui0 = (obs or {}).get("ui") or {}
+        if ((obs or {}).get("mode") == "ui"
+                and _ui0.get("screenId") == "MoveLearnMenu"
+                and _ui0.get("selecting")):
+            obs = self._maybe_forget(obs, sg)
+            if (obs or {}).get("mode") != "ui":
+                self._ui_pending = 0
+                return obs
         if self._ui_pending < 1:
             self._ui_pending += 1
             return obs
@@ -4172,6 +4183,7 @@ class Executor:
                          text=str(text)[:200], answer=("yes" if ans else "no"),
                          mode=(obs or {}).get("mode"))
                 self._ui_pending = 0
+                obs = self._maybe_forget(obs, sg)
                 return obs
         n = 0
         while obs and obs.get("mode") == "ui" and n < tries:
@@ -4183,6 +4195,81 @@ class Executor:
                      text=str(text)[:160], mode=(obs or {}).get("mode"))
         self._ui_pending = 0
         return obs
+
+    FORGET_SYS = (
+        "You are playing Pokemon Red. One of your Pokemon has levelled up "
+        "and is trying to learn a new move, but it already knows four. The "
+        "game is asking WHICH move to forget. Choose the way the player you "
+        "are would, given what you are trying to do. HM moves (CUT, FLY, "
+        "SURF, STRENGTH, FLASH) cannot be forgotten. Reply with a JSON "
+        "object and nothing else: {\"why\":\"<one short sentence>\","
+        "\"forget\":\"<one of the moves it knows>\"} — or "
+        "{\"why\":\"...\",\"forget\":null} to keep its four moves and "
+        "not learn the new one.")
+
+    def _maybe_forget(self, obs, sg):
+        """A level-up move list on screen: ask the model which move goes,
+        press it, and return the settled observation. The choice is the
+        model's; the harness only carries it. Falls back to keeping the
+        old moves (abandon) if the model cannot be understood, and says so.
+        """
+        ui = (obs or {}).get("ui") or {}
+        if not ((obs or {}).get("mode") == "ui"
+                and ui.get("screenId") == "MoveLearnMenu"
+                and ui.get("selecting")):
+            return obs
+        moves = [str(m) for m in (ui.get("moves") or [])]
+        new = str(ui.get("new_move") or "?")
+        who = str(ui.get("learner") or "your Pokemon")
+        user = (f"{who} is trying to learn {new}. It knows: "
+                + ", ".join(f"{i}={m}" for i, m in enumerate(moves, 1))
+                + f".\nWHAT YOU ARE TRYING TO DO RIGHT NOW: "
+                  f"{sg.get('goal_text') or sg.get('id') or 'make progress'}\n"
+                  "Which move should be forgotten for it, if any?")
+        choice = None
+        why = ""
+        try:
+            reply = brock_probe.chat(
+                [{"role": "system", "content": self.FORGET_SYS},
+                 {"role": "user", "content": user}], self.model)
+            m = _re.search(r"\{.*\}", reply or "", _re.S)
+            d = json.loads(m.group(0)) if m else {}
+            why = str(d.get("why") or "")[:200]
+            f = d.get("forget")
+            if f is not None:
+                f = str(f).upper().replace(" ", "_")
+                choice = f if f in moves else None
+                if choice is None:
+                    self.log("forget_unparsed", subgoal=sg.get("id"),
+                             said=str(f)[:60], moves=moves)
+            else:
+                choice = None
+        except Exception as e:
+            self.log("forget_chat_error", subgoal=sg.get("id"), err=str(e))
+        self.log("move_forget", subgoal=sg.get("id"), learner=who, new=new,
+                 forget=choice, why=why)
+        if choice:
+            idx = moves.index(choice) + 1
+            r = self.b.send("menu", index=idx)
+            cur = self.settle() or r or obs
+            # an HM refusal leaves the list open with the game's line up
+            _u2 = (cur or {}).get("ui") or {}
+            if _u2.get("screenId") == "MoveLearnMenu" and _u2.get("selecting"):
+                self.log("move_forget_refused", subgoal=sg.get("id"),
+                         forget=choice)
+                self.b.send("menu", index=len(moves) + 1)     # CANCEL
+                cur = self.settle() or cur
+                if self._is_question(cur):                    # abandon? yes
+                    self.b.send("tap", btn="a")
+                    cur = self.settle() or cur
+            return cur
+        # keep the old moves: CANCEL, then "Abandon learning X?" -> yes
+        self.b.send("menu", index=len(moves) + 1)
+        cur = self.settle() or obs
+        if self._is_question(cur):
+            self.b.send("tap", btn="a")
+            cur = self.settle() or cur
+        return cur
 
     @staticmethod
     def _is_question(obs) -> bool:
