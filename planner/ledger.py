@@ -336,7 +336,25 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                                 "known about what is beyond it")
         elif key in taken:
             bad = ex.dead_for(target, rec.get("to") or "") if target else 0
-            if bad:
+            # A DEAD END IS NOT A DOOR WITH UNTRIED GROUND BEHIND IT. The
+            # brand is written when an ATTEMPT of this goal failed while
+            # over there, which says where the attempt ran out of rounds,
+            # not that the ground is spent: Celadon 4F called the stairs to
+            # 5F a "KNOWN DEAD END" while the roof one floor further up —
+            # the only place in the building that sells a drink — had six
+            # things never pressed. Keep the count (it is true and it is
+            # evidence), drop the verdict when the far side demonstrably
+            # still has something.
+            _dest = rec.get("to") or ""
+            _left = ex._frontier_left(_dest) if _dest else []
+            _things = untouched_in(ex, _dest) if _dest else []
+            if bad and (_left or _things):
+                c.status = "taken"
+                c.note = _join(c.note, f"this goal has failed beyond it "
+                                       f"{bad}x — but that is where the "
+                                       f"attempt ran out, not proof the "
+                                       f"ground is spent")
+            elif bad:
                 c.status = "dead"
                 c.note = c.note or (f"this goal has already failed beyond it "
                                     f"{bad}x")
@@ -379,7 +397,14 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             c.n = spent[d]
         elif d in taken:
             bad = ex.dead_for(target, rec.get("to") or "") if target else 0
-            if bad:
+            _dest2 = rec.get("to") or ""
+            if bad and (ex._frontier_left(_dest2) if _dest2 else []) + (
+                    untouched_in(ex, _dest2) if _dest2 else []):
+                c.status = "taken"
+                c.note = _join(c.note, f"this goal has failed beyond it "
+                                       f"{bad}x — that is where the attempt "
+                                       f"ran out, not proof it is spent")
+            elif bad:
                 c.status = "dead"
                 c.note = c.note or f"this goal has already failed beyond it {bad}x"
             else:
