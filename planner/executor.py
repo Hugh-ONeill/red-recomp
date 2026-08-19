@@ -4121,6 +4121,12 @@ class Executor:
         send the edge, settle, fight through interruptions, record the
         transition. Returns where the walk ended."""
         o = None
+        # WHERE A WIDE SEAM LANDS DEPENDS ON WHERE YOU CROSS IT, so a hop
+        # can put you in a different pocket of the right map than the path
+        # expected. Keep the destination and re-plan from where we actually
+        # are rather than declaring the road lost.
+        _final = path[-1][1] if path else None
+        _replans = 0
         # A ROUTE STEP BELONGS TO THE PLACE IT WAS COMPUTED FROM. `pre` is
         # re-read every hop, so it always says where the party ACTUALLY is,
         # while `key` still names a tile from where the party WAS — and
@@ -4250,6 +4256,16 @@ class Executor:
                 # side. Same eye-fact as the through-building note, made
                 # into legs.
                 o = self._passage_retry(sg, key, o)
+            if (self._where(o) != nxt and _final and _replans < 2
+                    and str(nxt).split("|")[0]
+                    == str(self._where(o)).split("|")[0]):
+                _rest = self._route(self._where(o), _final)
+                if _rest:
+                    _replans += 1
+                    self.log("route_replanned", subgoal=sg.get("id"),
+                             landed=self._where(o), wanted=nxt,
+                             legs=len(_rest))
+                    return self._walk_route(sg, _rest)
             if self._where(o) != nxt:
                 # A hop that fails to land even after the passage retry
                 # CONTRADICTS the recorded edge: void it, or the router
