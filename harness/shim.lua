@@ -1721,8 +1721,9 @@ function OPS.use_warp(G, c)
         here[#here + 1] = ("(%d,%d)"):format(w.x, w.y)
       end
       return false, ("there is no door at (%d,%d) on %s — door coordinates "
-        .. "belong to ONE map, so a door you know from another map must be "
-        .. "used while standing on THAT map (walk or cross there first). "
+        .. "belong to ONE map. For a door on a map you have walked, say "
+        .. "{\"op\":\"use_warp\",\"map\":\"THAT_MAP\",\"x\":..,\"y\":..} "
+        .. "and you are walked there first over walked ground. "
         .. "Doors on this map: %s")
         :format(c.x, c.y, tostring(startMap),
                 #here > 0 and table.concat(here, ", ") or "none")

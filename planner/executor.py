@@ -5986,7 +5986,11 @@ coordinates. Read:
     go), or cross an edge.
 Ops: {"op":"walk_to","x":N,"y":N} (within-map), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map), {"op":"use_warp","x":N,"y":N} (a
-door/stairs), {"op":"interact","name":"OBJECT_NAME","answer":"yes"} OR
+door/stairs; add "map":"MAP_ID" when the door belongs to a map you are NOT
+standing on — you are first walked there over ground you have walked, by
+the exits you actually took; an unwalked map is refused. walk_to takes
+"map" the same way),
+{"op":"interact","name":"OBJECT_NAME","answer":"yes"} OR
 {"op":"interact","x":N,"y":N,"answer":"yes"} — press A on a TILE rather than
 a listed object. Not everything you can press A on is in obs.map.objects:
 machines, computers, statues, bookshelves and trash cans are part of the
@@ -6358,6 +6362,52 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     return True, trace, clean
                 obs = self.settle() or obs
                 continue
+            # A DOOR NAMED WITH ITS MAP IS REACHED FIRST. Door coordinates
+            # belong to one map, and the model kept aiming use_warp at a
+            # door it knew from another map ("no door at (17,13) on
+            # VERMILION_CITY"). {"op":"use_warp","map":"ROUTE_6",...} (and
+            # walk_to alike) now walks there first, over walked edges only
+            # — the same recall machinery as go/explore; nothing unwalked
+            # is routed, and an unwalked map is refused by name.
+            if op in ("use_warp", "walk_to") and step.get("map"):
+                _want = str(step.pop("map")).upper()
+                _hr = self._where(obs)
+                if _hr.split("|")[0] != _want:
+                    _known = [r for r in (set(self.visits or {})
+                                          | set(self.explored or {}))
+                              if r.split("|")[0] == _want]
+                    if not _known:
+                        trace.append(
+                            f"{op}: {_want} is not a map you have walked — "
+                            f"only walked ground can be walked back to; "
+                            f"find it first")
+                        continue
+                    _dk = f"{step.get('x')},{step.get('y')}"
+                    _pref = [r for r in _known
+                             if _dk in (self.frontier.get(r) or [])
+                             or _dk in (self.explored.get(r) or {})]
+                    _best = None
+                    for _t in (_pref or _known):
+                        _pth = self._route(_hr, _t)
+                        if _pth and (_best is None
+                                     or len(_pth) < len(_best[1])):
+                            _best = (_t, _pth)
+                    if not _best:
+                        trace.append(
+                            f"{op}: no walked way from {_hr} to {_want} is "
+                            f"known — you have never walked a connected "
+                            f"chain of exits between them")
+                        continue
+                    self.log("prewalk", subgoal=sg.get("id"), op=op,
+                             to=_best[0], legs=len(_best[1]))
+                    _arr = self._walk_route(sg, _best[1])
+                    obs = self.settle() or obs
+                    trace.append(
+                        f"(first walked {len(_best[1])} leg(s) over walked "
+                        f"ground to {_arr or self._where(obs)}, because the "
+                        f"op named {_want})")
+                    if not ignore_done and pred_holds(done, obs):
+                        return True, trace, clean
             sig = (self._cur_target, self._where(obs), op,
                    step.get("name") or step.get("dir")
                    or (step.get("x"), step.get("y")))
