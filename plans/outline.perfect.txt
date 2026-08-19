@@ -18,6 +18,7 @@ Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house
 a party Pokemon knows CUT
 Defeat Lt. Surge for the Thunder Badge
 every party member is at least level 25
+Travel through Rock Tunnel from the north side of Route 10 to its south side
 Reach Lavender Town
 Reach Celadon City
 Defeat Erika for the Rainbow Badge
