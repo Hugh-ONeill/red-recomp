@@ -3154,8 +3154,20 @@ class Executor:
         _srcmap = ((before_obs or {}).get("map") or {}).get("id") or ""
         if (str(_srcmap).endswith("_ELEVATOR")
                 or ((before_obs or {}).get("map") or {}).get("lift_floors")):
+            # ...but the CAR still connects to every floor it has carried
+            # you to, and that is a real, walkable edge — the graph needs
+            # it or a route through a department store has a hole in it
+            # (`go` answered "no walked way from the car to 1F" twice).
+            # Keyed by the RIDE, not by a door: "lift:<MAP>", which
+            # _walk_route knows how to execute.
             self._count_visit(dst)
-            self.log("elevator_exit", frm=src, to=dst)
+            node = self.explored.setdefault(src, {})
+            k = f"lift:{str(dst).split('|')[0]}"
+            e = node.setdefault(k, {"n": 0, "to": dst})
+            e["n"] = int(e.get("n") or 0) + 1
+            e["to"] = dst
+            self.log("elevator_exit", frm=src, to=dst, key=k)
+            self._save_memory()
             return
         _d = str(((after_obs or {}).get("result") or {}).get("detail") or "")
         # ...or straight from the op, because a caller that settles after
@@ -4053,6 +4065,34 @@ class Executor:
         for key, nxt in path:
             _now = self.b.obs() or {}
             _m = (_now.get("map") or {})
+            # A LIFT HOP: ride the panel to that floor, then walk out of the
+            # car. The label is the floor's own (5F, B4F, ROOF), which is
+            # how the panel lists it and how the elevator op takes it.
+            if str(key).startswith("lift:"):
+                _want_map = key.split(":", 1)[1]
+                _lab = _re.search(r"(B?\d+F|ROOF)$", _want_map)
+                _lab = _lab.group(1) if _lab else None
+                if not _lab:
+                    self.log("route_abandoned", subgoal=sg.get("id"),
+                             step=str(key), standing=self._where(_now),
+                             why="no floor label in that map id")
+                    return o if o is not None else _now
+                self._send_safe("elevator", floor=_lab)
+                o = self.settle() or _now
+                # out of the car by whichever of its doors is reachable
+                for _w in ((o.get("map") or {}).get("warps") or []):
+                    if _w.get("reachable"):
+                        self._send_safe("use_warp", x=_w.get("x"),
+                                        y=_w.get("y"))
+                        o = self.settle() or o
+                        break
+                if self._where(o) != nxt and (o.get("map") or {}).get("id") \
+                        != _want_map:
+                    self.log("route_abandoned", subgoal=sg.get("id"),
+                             step=str(key), standing=self._where(o),
+                             why="the lift did not put us on that floor")
+                    return o
+                continue
             if "," in key:
                 _x, _y = (int(v) for v in key.split(","))
                 _has = any(w.get("x") == _x and w.get("y") == _y
@@ -6283,12 +6323,15 @@ nothing about where anything leads. It reports what it did and found. It
 is the right move when the ledger says the area is fully worked and you
 have no better idea of your own; a map-changing op, so it must be the
 LAST op of your macro),
-{"op":"go","to":AREA} (walk back to a place you have already walked, by
-the exits you actually took to get there — AREA as the ledger names it,
-e.g. "POKEMON_TOWER_6F|10,2", or a bare map id like "LAVENDER_TOWN" for
+{"op":"go","to":AREA} (IF YOU HAVE BEEN SOMEWHERE BEFORE, ONE OP TAKES YOU
+BACK: it walks the whole route — every door, seam and lift ride you actually
+used — in a single action, however many legs it is. AREA as the ledger names
+it, e.g. "POKEMON_TOWER_6F|10,2", or a bare map id like "LAVENDER_TOWN" for
 the nearest walked part of it. Walked ground only: it fails plainly if no
-chain of taken exits joins here to there. Saves a round per door on ground
-you know; a map-changing op, so LAST in your macro),
+chain of taken exits joins here to there, and then the way is genuinely not
+known yet. PREFER THIS to re-deriving a journey door by door — a nine-leg
+walk costs you one round instead of nine, and the rounds are the budget. A
+map-changing op, so LAST in your macro),
 BLOCKERS: the ledger lists WAYS THAT TURNED YOU BACK anywhere you have been
 (a door that refused you, a guard, the ghost) with what was seen or said.
 What LIFTS each one is your call, and you can write it down so it is not
