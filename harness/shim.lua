@@ -1185,6 +1185,23 @@ function warp_reach(G, no_ledges)
     if mv ~= "WALK" then STATIC[#STATIC + 1] = e end
   end
   local NOBODY = STATIC
+  -- A DOOR IS AN ENDPOINT, NOT A CORRIDOR. warp_block already says a walk
+  -- may never pass THROUGH a warp tile — it fires on the step — but this
+  -- fill walked straight over them, so `reachable` was computed along
+  -- routes no walk can take. Route 7's east side is eight cells and the
+  -- gate doors at 11,9/11,10 are on the far side of the building, yet the
+  -- ledger offered them as plain available doors and use_warp answered
+  -- "no path" every time. A warp cell stays REACHABLE (you can step onto
+  -- it) and is not expanded FROM. Only for the warp-reachability fill:
+  -- region identity (no_ledges) keeps its own shape, since re-minting
+  -- every region id mid-run would orphan the whole walked graph.
+  local THROUGH = nil
+  if not no_ledges then
+    THROUGH = {}
+    for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
+      THROUGH[key(w.x, w.y)] = true
+    end
+  end
   while q[head] do
     local cur = q[head]; head = head + 1
     for dn, d in pairs(DIRS) do
@@ -1205,13 +1222,17 @@ function warp_reach(G, no_ledges)
             seen[key(nx, ny)] = true
           else
             seen[key(nx, ny)] = true
-            q[#q + 1] = { x = nx, y = ny }
+            if not (THROUGH and THROUGH[key(nx, ny)]) then
+              q[#q + 1] = { x = nx, y = ny }
+            end
           end
         elseif not no_ledges then
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dn)
           if lx and not seen[key(lx, ly)] then
             seen[key(lx, ly)] = true
-            q[#q + 1] = { x = lx, y = ly }
+            if not (THROUGH and THROUGH[key(lx, ly)]) then
+              q[#q + 1] = { x = lx, y = ly }
+            end
           end
         end
       end
