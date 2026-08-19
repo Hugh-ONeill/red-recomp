@@ -6703,6 +6703,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     self._stamp_touch(_hr)
                     self._mark_touch(_hr, step["name"], obs)
             after = self._snapshot(obs)
+            # A MAP OF None IS A MID-TRANSITION READ, NOT A PLACE. An op
+            # that ends while a menu or a warp fade is still up snapshots
+            # map=None, and the note then told the model "ok (map->None)" —
+            # which reads as "you are in a UI state" and had it pressing B
+            # at an overworld it was already standing in (the hideout
+            # elevator, three rounds). Settle once and read again.
+            if after[0] is None and not blackout:
+                _o2 = self.settle()
+                if ((_o2 or {}).get("map") or {}).get("id"):
+                    obs = _o2
+                    after = self._snapshot(obs)
             # STATE-BASED blackout fallback. The battle-mode detector only
             # fires when the executor sees mode=="battle" after an op — but
             # grind/cross/walk_to fight their encounters INSIDE the Lua op,
