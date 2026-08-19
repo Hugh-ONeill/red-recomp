@@ -1,0 +1,46 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "exit_viridian_forest",
+   "goal_text": "Walk through Viridian Forest to reach the north exit",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_pewter_city",
+   "goal_text": "Travel from Route 2 to Pewter City",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Enter the Pewter Gym and defeat Brock to earn the Boulder Badge",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel from Pewter City through Route 3, Mt. Moon, and Route 4 to reach Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_pokemon",
+   "goal_text": "Catch a Water-type Pokemon in the grass or water surrounding Cerulean City",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

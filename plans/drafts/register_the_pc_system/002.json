@@ -1,0 +1,46 @@
+{
+ "goal": "Register the PC system",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel to Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Travel north from Cerulean City to Route 24.",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_25",
+   "goal_text": "Travel east from Route 24 to Route 25.",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_bill_house",
+   "goal_text": "Enter Bill's House on Route 25.",
+   "done_when": {
+    "map": "BILLS_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "talk_to_bill",
+   "goal_text": "Talk to Bill inside his house to trigger the PC registration event.",
+   "done_when": {
+    "flag": "EVENT_MET_BILL"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

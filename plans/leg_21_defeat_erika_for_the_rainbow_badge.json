@@ -1,0 +1,107 @@
+{
+  "goal": "Defeat Erika for the Rainbow Badge",
+  "subgoals": [
+    {
+      "id": "find_rocket_hideout",
+      "goal_text": "Enter the Rocket Hideout located beneath the Celadon Game Corner",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "retrieve_lift_key",
+      "goal_text": "Find and pick up the Lift Key within the Rocket Hideout",
+      "done_when": {
+        "has_item": {
+          "LIFT_KEY": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "defeat_giovanni",
+      "goal_text": "Defeat Giovanni in the Rocket Hideout to obtain the Silph Scope",
+      "done_when": {
+        "has_item": {
+          "SILPH_SCOPE": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "buy_drink",
+      "goal_text": "Go to the Celadon Department Store and buy a Fresh Water",
+      "done_when": {
+        "has_item": {
+          "FRESH_WATER": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "give_drink_to_guard",
+      "goal_text": "Travel to the Saffron City gate and give the Fresh Water to the guard",
+      "done_when": {
+        "player_at": {
+          "x": 12,
+          "y": 10,
+          "radius": 5
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "enter_celadon_gym",
+      "goal_text": "Return to Celadon City and enter the Gym",
+      "done_when": {
+        "map": "CELADON_GYM"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "defeat_erika",
+      "goal_text": "Defeat Erika in battle to earn the Rainbow Badge",
+      "done_when": {
+        "badge": "RAINBOWBADGE"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

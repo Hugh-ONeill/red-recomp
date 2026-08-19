@@ -1,0 +1,38 @@
+{
+  "goal": "Retrieve the Pokemon from the Poke Mart",
+  "subgoals": [
+    {
+      "id": "go_to_viridian_city",
+      "goal_text": "Travel to Viridian City",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_viridian_mart",
+      "goal_text": "Enter the Viridian City Poke Mart",
+      "done_when": {
+        "area": "VIRIDIAN_MART|0,2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "talk_to_mart_clerk",
+      "goal_text": "Talk to the clerk to retrieve the Poke Balls",
+      "done_when": {
+        "flag": "EVENT_GOT_POKEBALLS_FROM_OAK"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "receive_pokemon",
+      "goal_text": "Retrieve the Pokemon from the clerk",
+      "done_when": {
+        "party_size": 2
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

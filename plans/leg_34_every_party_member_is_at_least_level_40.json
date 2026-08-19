@@ -1,0 +1,88 @@
+{
+  "goal": "every party member is at least level 40",
+  "subgoals": [
+    {
+      "id": "heal_party",
+      "goal_text": "Go to a Pokemon Center and heal the party to full HP.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 17,
+          "when": {
+            "map": "FUCHSIA_GYM"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 27,
+          "when": {
+            "map": "FUCHSIA_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "FUCHSIA_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "level_up_pidgeotto",
+      "goal_text": "Battle wild Pokemon or trainers until Pidgeotto reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 2,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_up_farfetchd",
+      "goal_text": "Battle wild Pokemon or trainers until Farfetch'd reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 3,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_up_fearow",
+      "goal_text": "Battle wild Pokemon or trainers until Fearow reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 1,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "final_check",
+      "goal_text": "Ensure all party members have reached at least level 40.",
+      "done_when": {
+        "party_min_level": 40
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

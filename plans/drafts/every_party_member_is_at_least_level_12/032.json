@@ -1,0 +1,61 @@
+{
+ "goal": "every party member is at least level 12",
+ "subgoals": [
+  {
+   "id": "heal_at_viridian",
+   "goal_text": "Go to the Viridian City Pokemon Center and heal the party.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "travel_to_route_2",
+   "goal_text": "Travel to Route 2 to grind levels for Pidgey.",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "level_pidgey",
+   "goal_text": "Battle wild Pokemon on Route 2 until Pidgey reaches level 12.",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "verify_party_levels",
+   "goal_text": "Ensure all party members are at least level 12.",
+   "done_when": {
+    "party_min_level": 12
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

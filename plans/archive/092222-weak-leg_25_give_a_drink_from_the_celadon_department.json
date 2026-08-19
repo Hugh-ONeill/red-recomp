@@ -1,0 +1,98 @@
+{
+  "goal": "Give a drink from the Celadon Department Store to a thirsty guard of Saffron City",
+  "subgoals": [
+    {
+      "id": "exit_rocket_hideout",
+      "goal_text": "Exit the Rocket Hideout and return to Celadon City",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "clear_bag_space",
+      "goal_text": "Discard or use an item to make room in the bag, as it is currently full",
+      "done_when": {
+        "any_of": [
+          {
+            "has_item": {
+              "HYPER_POTION": 0
+            }
+          },
+          {
+            "has_item": {
+              "RARE_CANDY": 0
+            }
+          }
+        ]
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_department_store",
+      "goal_text": "Enter the Celadon Department Store",
+      "done_when": {
+        "map": "CELADON_MART_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_elevator",
+      "goal_text": "Go to the elevator in the Department Store",
+      "done_when": {
+        "map": "CELADON_MART_ELEVATOR"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_fifth_floor",
+      "goal_text": "Take the elevator to the 5th floor of the Department Store",
+      "done_when": {
+        "map": "CELADON_MART_5F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_drink",
+      "goal_text": "Talk to the clerk on the 5th floor to receive a drink",
+      "done_when": {
+        "has_item": {
+          "FRESH_WATER": 1
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_saffron_border",
+      "goal_text": "Travel from Celadon City to one of the entrances of Saffron City",
+      "done_when": {
+        "any_of": [
+          {
+            "map": "ROUTE_5"
+          },
+          {
+            "map": "ROUTE_6"
+          },
+          {
+            "map": "ROUTE_7"
+          },
+          {
+            "map": "ROUTE_8"
+          }
+        ]
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "give_drink_to_guard",
+      "goal_text": "Give the Fresh Water to one of the guards blocking the entrances to Saffron City",
+      "done_when": {
+        "has_item": {
+          "FRESH_WATER": 0
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

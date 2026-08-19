@@ -1,0 +1,22 @@
+{
+ "goal": "Defeat the Mt. Moon boss",
+ "subgoals": [
+  {
+   "id": "reach_boss_room",
+   "goal_text": "Navigate to the deepest part of Mt. Moon (B2F) to find the Team Rocket boss.",
+   "done_when": {
+    "area": "MT_MOON_B2F|20,5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_mt_moon_boss",
+   "goal_text": "Defeat the Team Rocket boss (Jessie/James) in Mt. Moon.",
+   "done_when": {
+    "flag": "EVENT_BEAT_MT_MOON_3_JESSIE_JAMES"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

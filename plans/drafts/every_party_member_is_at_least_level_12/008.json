@@ -1,0 +1,47 @@
+{
+ "goal": "every party member is at least level 12",
+ "subgoals": [
+  {
+   "id": "train_bulbasaur_before_brock",
+   "goal_text": "Battle wild Pokemon on Route 2 or in Viridian Forest until Bulbasaur reaches level 12 to ensure victory against Brock",
+   "done_when": {
+    "lead_level": 12
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_pewter",
+   "goal_text": "Heal the party at the Pewter City Pokemon Center before challenging the gym",
+   "done_when": {
+    "area": "PEWTER_POKECENTER|2,3",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Defeat Brock in the Pewter Gym to earn the Boulder Badge",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Travel to Route 2 to begin further training",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "train_to_12_final",
+   "goal_text": "Battle wild Pokemon until every party member is at least level 12",
+   "done_when": {
+    "party_min_level": 12
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

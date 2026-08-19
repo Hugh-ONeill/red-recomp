@@ -1,0 +1,70 @@
+{
+ "goal": "Defeat Brock for the Boulder Badge",
+ "subgoals": [
+  {
+   "id": "deliver_parcel",
+   "goal_text": "Go to Pallet Town and deliver Oak's Parcel to Professor Oak",
+   "done_when": {
+    "flag": "EVENT_GOT_POKEDEX"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_viridian_forest",
+   "goal_text": "Travel to and enter Viridian Forest",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "cross_viridian_forest",
+   "goal_text": "Navigate through Viridian Forest to the north exit",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_pewter_city",
+   "goal_text": "Travel from Route 2 to Pewter City",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_pewter",
+   "goal_text": "Visit the Pewter City Pokemon Center to fully heal the party",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "train_for_brock",
+   "goal_text": "Train Charmander to level 12 to ensure it can handle Brock's Pokemon",
+   "done_when": {
+    "lead_level": 12
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_pewter_gym",
+   "goal_text": "Enter the Pewter City Gym",
+   "done_when": {
+    "map": "PEWTER_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Battle and defeat Gym Leader Brock to earn the Boulder Badge",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 3"
+}

@@ -1,0 +1,129 @@
+{
+  "goal": "Obtain the Silph Scope",
+  "subgoals": [
+    {
+      "id": "exit_pokemon_tower",
+      "goal_text": "Exit the Pokemon Tower to return to Lavender Town",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Obtain the Silph Scope"
+      },
+      "macro": [
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER1",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER2",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER3",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "go_to_mr_fujis_house",
+      "goal_text": "Travel to Mr. Fuji's house in Lavender Town",
+      "done_when": {
+        "map": "MR_FUJIS_HOUSE"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Obtain the Silph Scope"
+      },
+      "macro": [
+        {
+          "op": "interact",
+          "name": "TEXT_LAVENDERTOWN_POKEMON_HOUSE_SIGN",
+          "answer": "yes",
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "LAVENDERTOWN_SUPER_NERD",
+          "answer": "yes",
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 7,
+          "y": 9,
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3,
+        "carried_from_rewrite": true
+      }
+    },
+    {
+      "id": "clear_ghosts",
+      "goal_text": "Use the Poke Flute to clear the ghosts and defeat the tower boss",
+      "done_when": {
+        "flag": "EVENT_BEAT_GHOST_MAROWAK"
+      },
+      "escalation_rounds": 4,
+      "carried_forward": 1
+    },
+    {
+      "id": "talk_to_mr_fuji",
+      "goal_text": "Talk to Mr. Fuji to receive the Silph Scope",
+      "done_when": {
+        "has_item": {
+          "SILPH_SCOPE": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Obtain the Silph Scope"
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

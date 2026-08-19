@@ -1,0 +1,47 @@
+{
+  "goal": "a party Pokemon knows SURF",
+  "subgoals": [
+    {
+      "id": "teach_surf_to_blastoise",
+      "goal_text": "Teach HM SURF to Blastoise",
+      "done_when": {
+        "knows_move": {
+          "move": "SURF",
+          "slot": 4
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_item",
+          "item": "HM_SURF",
+          "slot": 4,
+          "forget": "TAIL_WHIP",
+          "when": {
+            "map": "WARDENS_HOUSE"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "use_item",
+          "item": "HM_SURF",
+          "slot": 4,
+          "forget": "TAIL_WHIP"
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

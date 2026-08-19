@@ -1,0 +1,32 @@
+{
+ "goal": "the party holds 2 or more Pokemon",
+ "subgoals": [
+  {
+   "id": "buy_more_poke_balls",
+   "goal_text": "Buy more Poke Balls at the Viridian City Mart to ensure enough are available for catching.",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 5
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_1",
+   "goal_text": "Travel to Route 1 to find wild Pokemon.",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_wild_pokemon",
+   "goal_text": "Catch a wild Pokemon on Route 1 to increase party size.",
+   "done_when": {
+    "party_size": 2
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

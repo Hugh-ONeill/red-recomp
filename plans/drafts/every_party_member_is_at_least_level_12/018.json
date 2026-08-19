@@ -1,0 +1,42 @@
+{
+ "goal": "every party member is at least level 12",
+ "subgoals": [
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Viridian City Pokemon Center",
+   "done_when": {
+    "area": "VIRIDIAN_POKECENTER|0,3",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_1",
+   "goal_text": "Travel to Route 1",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "level_up_pidgey_slot1",
+   "goal_text": "Train the level 2 Pidgey in slot 1 to level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "verify_all_level_12",
+   "goal_text": "Ensure every party member is at least level 12",
+   "done_when": {
+    "party_min_level": 12
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,48 @@
+{
+ "goal": "every party member is at least level 25",
+ "subgoals": [
+  {
+   "id": "train_spearow_to_25",
+   "goal_text": "Battle wild Pokemon on Route 6 or Route 11 until Spearow reaches level 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Visit the Pokemon Center in Vermilion City to restore the party's health.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "verify_party_levels",
+   "goal_text": "Ensure all party members (Spearow, Pidgeotto, Farfetch'd, Wartortle) are at least level 25.",
+   "done_when": {
+    "party_min_level": 25
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

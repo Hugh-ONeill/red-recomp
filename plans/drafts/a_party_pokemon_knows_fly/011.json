@@ -1,0 +1,98 @@
+{
+ "goal": "a party Pokemon knows FLY",
+ "subgoals": [
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_dept_store",
+   "goal_text": "Enter the Celadon Department Store",
+   "done_when": {
+    "map": "CELADON_MART_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "buy_silph_scope",
+   "goal_text": "Buy a Silph Scope from the Department Store",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_rocket_hideout",
+   "goal_text": "Find and enter the Rocket Hideout in Celadon City",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_rocket_boss",
+   "goal_text": "Fight through the Rocket Hideout to reach the bottom floor",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni in the Rocket Hideout",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Travel to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_silph_co_top",
+   "goal_text": "Navigate to the top floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_fly_hm",
+   "goal_text": "Defeat the rescuers and receive HM02 (Fly) from the president",
+   "done_when": {
+    "has_item": {
+     "HM_FLY": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "teach_fly",
+   "goal_text": "Teach the move Fly to a compatible Pokemon in the party",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,149 @@
+{
+  "goal": "Retrieve the S.S. Ticket from Bill",
+  "subgoals": [
+    {
+      "id": "go_to_cerulean_city",
+      "goal_text": "Travel to Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_24",
+      "goal_text": "Travel north from Cerulean City to Route 24",
+      "done_when": {
+        "map": "ROUTE_24"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_route_25",
+      "goal_text": "Continue east to Route 25",
+      "done_when": {
+        "map": "ROUTE_25"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_24"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_24"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "enter_bills_house",
+      "goal_text": "Enter Bill's House on Route 25",
+      "done_when": {
+        "map": "BILLS_HOUSE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 45,
+          "y": 3,
+          "when": {
+            "map": "ROUTE_25"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "talk_to_bill",
+      "goal_text": "Talk to Bill to receive the S.S. Ticket",
+      "done_when": {
+        "has_item": {
+          "S_S_TICKET": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "BILLSHOUSE_BILL_POKEMON",
+          "answer": "yes",
+          "when": {
+            "map": "BILLS_HOUSE"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "interact",
+          "name": "CELL_SEPARATION_SYSTEM",
+          "answer": "yes",
+          "when": {
+            "map": "BILLS_HOUSE"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "BILLSHOUSE_BILL1",
+          "answer": "yes",
+          "when": {
+            "map": "BILLS_HOUSE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

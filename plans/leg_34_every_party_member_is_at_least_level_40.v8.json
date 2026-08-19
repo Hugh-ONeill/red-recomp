@@ -1,0 +1,78 @@
+{
+  "goal": "every party member is at least level 40",
+  "subgoals": [
+    {
+      "id": "heal_at_fuchsia",
+      "goal_text": "Go to the Fuchsia City Pokemon Center and heal the party.",
+      "done_when": {
+        "party_healthy": true,
+        "map": "FUCHSIA_POKECENTER"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_up_venonat",
+      "goal_text": "Battle wild Pokemon on Route 15 until Venonat reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 3,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_up_nidoran",
+      "goal_text": "Battle wild Pokemon on Route 15 until Nidoran_M reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 5,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_up_pidgeotto",
+      "goal_text": "Battle wild Pokemon on Route 15 until Pidgeotto reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 6,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_up_farfetchd",
+      "goal_text": "Battle wild Pokemon on Route 15 until Farfetchd reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 1,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_up_fearow",
+      "goal_text": "Battle wild Pokemon on Route 15 until Fearow reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 2,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "final_check",
+      "goal_text": "Ensure all party members have reached level 40.",
+      "done_when": {
+        "party_min_level": 40
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

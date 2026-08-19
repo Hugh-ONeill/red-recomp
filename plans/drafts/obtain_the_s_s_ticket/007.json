@@ -1,0 +1,48 @@
+{
+ "goal": "Obtain the S.S. Ticket",
+ "subgoals": [
+  {
+   "id": "travel_to_vermilion",
+   "goal_text": "Travel from Cerulean City to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_ss_anne",
+   "goal_text": "Board the S.S. Anne",
+   "done_when": {
+    "map": "SS_ANNE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_anne_upper_deck",
+   "goal_text": "Navigate the S.S. Anne to reach the upper deck",
+   "done_when": {
+    "map": "SS_ANNE_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_captain_room",
+   "goal_text": "Navigate to the Captain's room",
+   "done_when": {
+    "map": "SS_ANNE_CAPTAINS_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_ss_ticket",
+   "goal_text": "Speak with the Captain to obtain the S.S. Ticket",
+   "done_when": {
+    "has_item": {
+     "S_S_TICKET": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

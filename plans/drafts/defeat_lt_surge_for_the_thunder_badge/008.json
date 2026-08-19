@@ -1,0 +1,63 @@
+{
+ "goal": "Defeat Lt. Surge for the Thunder Badge",
+ "subgoals": [
+  {
+   "id": "go_to_route_5",
+   "goal_text": "Travel from Cerulean City to Route 5.",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_saffron_city",
+   "goal_text": "Travel from Route 5 to Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_6",
+   "goal_text": "Travel from Saffron City to Route 6.",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_vermilion_city",
+   "goal_text": "Travel from Route 6 to Vermilion City.",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Vermilion City Pokemon Center.",
+   "done_when": {
+    "map": "VERMILION_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_vermilion_gym",
+   "goal_text": "Enter the Vermilion City Gym.",
+   "done_when": {
+    "map": "VERMILION_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_lt_surge",
+   "goal_text": "Defeat Lt. Surge in battle to earn the Thunder Badge.",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

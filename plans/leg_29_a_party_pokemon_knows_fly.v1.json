@@ -1,0 +1,95 @@
+{
+  "goal": "a party Pokemon knows FLY",
+  "subgoals": [
+    {
+      "id": "exit_safari_zone",
+      "goal_text": "Leave the Safari Zone and return to Fuchsia City",
+      "done_when": {
+        "map": "FUCHSIA_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 0,
+          "y": 22,
+          "when": {
+            "map": "SAFARI_ZONE_EAST"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 19,
+          "when": {
+            "map": "SAFARI_ZONE_CENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 7,
+          "when": {
+            "map": "SAFARI_ZONE_CENTER_REST_HOUSE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 14,
+          "y": 25,
+          "when": {
+            "map": "SAFARI_ZONE_CENTER"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "travel_to_route_16",
+      "goal_text": "Travel from Fuchsia City to Route 16",
+      "done_when": {
+        "map": "ROUTE_16"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_fly_house",
+      "goal_text": "Enter the house on Route 16 where the FLY HM is given",
+      "done_when": {
+        "map": "ROUTE_16_FLY_HOUSE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "obtain_hm_fly",
+      "goal_text": "Talk to the man in the house to receive HM02 (FLY)",
+      "done_when": {
+        "has_item": {
+          "HM_FLY": 1
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "teach_fly",
+      "goal_text": "Teach the move FLY to a compatible Pokemon in the party",
+      "done_when": {
+        "knows_move": "FLY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

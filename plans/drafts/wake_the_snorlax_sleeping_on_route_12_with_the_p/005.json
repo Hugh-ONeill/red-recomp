@@ -1,0 +1,58 @@
+{
+ "goal": "Wake the Snorlax sleeping on Route 12 with the Poke Flute",
+ "subgoals": [
+  {
+   "id": "exit_department_store",
+   "goal_text": "Exit the Celadon Department Store and return to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Wake the Snorlax sleeping on Route 12 with the Poke Flute"
+   }
+  },
+  {
+   "id": "travel_to_lavender_town",
+   "goal_text": "Travel from Celadon City to Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Wake the Snorlax sleeping on Route 12 with the Poke Flute"
+   }
+  },
+  {
+   "id": "travel_to_route_12",
+   "goal_text": "Travel south from Lavender Town to Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Wake the Snorlax sleeping on Route 12 with the Poke Flute"
+   }
+  },
+  {
+   "id": "wake_snorlax_route_12",
+   "goal_text": "Use the Poke Flute to wake the Snorlax blocking the path on Route 12",
+   "done_when": {
+    "flag": "EVENT_BEAT_ROUTE12_SNORLAX"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Wake the Snorlax sleeping on Route 12 with the Poke Flute"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

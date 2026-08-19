@@ -1,0 +1,62 @@
+{
+ "goal": "Reach Vermilion City",
+ "subgoals": [
+  {
+   "id": "travel_to_cerulean",
+   "goal_text": "Travel north from Route 5 to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_9",
+   "goal_text": "Travel east from Cerulean City to Route 9",
+   "done_when": {
+    "map": "ROUTE_9"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_10",
+   "goal_text": "Travel east from Route 9 to Route 10",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_lavender_town",
+   "goal_text": "Travel south from Route 10 to Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_12",
+   "goal_text": "Travel south from Lavender Town to Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_11",
+   "goal_text": "Travel west from Route 12 to Route 11",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_vermilion",
+   "goal_text": "Travel west from Route 11 to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

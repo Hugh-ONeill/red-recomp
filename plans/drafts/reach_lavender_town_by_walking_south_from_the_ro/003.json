@@ -1,0 +1,48 @@
+{
+ "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth",
+ "subgoals": [
+  {
+   "id": "exit_route_11_gate",
+   "goal_text": "Exit the Route 11 Gate to enter Route 11",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_12",
+   "goal_text": "Walk east from Route 11 to reach Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_poke_flute",
+   "goal_text": "Travel to Route 10 and obtain the POKE_FLUTE from the NPC",
+   "done_when": {
+    "has_item": {
+     "POKE_FLUTE": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_12_again",
+   "goal_text": "Return to Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Walk north from Route 12 to enter Lavender Town, using the POKE_FLUTE to wake Snorlax",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

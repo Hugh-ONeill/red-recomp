@@ -1,0 +1,22 @@
+{
+  "goal": "a party Pokemon knows CUT",
+  "subgoals": [
+    {
+      "id": "teach_cut_to_wartortle",
+      "goal_text": "Use HM01 (Cut) to teach the move to Wartortle.",
+      "done_when": {
+        "knows_move": {
+          "move": "CUT",
+          "slot": 2
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "a party Pokemon knows CUT"
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

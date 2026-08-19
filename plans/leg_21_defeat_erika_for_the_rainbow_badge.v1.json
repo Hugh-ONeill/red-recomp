@@ -1,0 +1,271 @@
+{
+  "goal": "Defeat Erika for the Rainbow Badge",
+  "subgoals": [
+    {
+      "id": "enter_rocket_hideout",
+      "goal_text": "Find the secret switch in the Game Corner and enter the Rocket Hideout",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "reach_rocket_boss",
+      "goal_text": "Navigate through the Rocket Hideout to reach the boss's office",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B4F"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "defeat_giovanni",
+      "goal_text": "Defeat Giovanni to retrieve the Silph Scope",
+      "done_when": {
+        "has_item": {
+          "SILPH_SCOPE": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "exit_hideout",
+      "goal_text": "Leave the Rocket Hideout and return to Celadon City",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "go_to_dept_store",
+      "goal_text": "Enter the Celadon Department Store",
+      "done_when": {
+        "map": "CELADON_MART_1F"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 10,
+          "y": 13,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "buy_drink",
+      "goal_text": "Go to the 5th floor and buy a Fresh Water",
+      "done_when": {
+        "has_item": {
+          "FRESH_WATER": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "reach_saffron_guard",
+      "goal_text": "Travel to Saffron City and approach the guard blocking the way",
+      "done_when": {
+        "map": "SAFFRON_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "give_water_to_guard",
+      "goal_text": "Give the Fresh Water to the guard to gain access to the city",
+      "done_when": {
+        "flag": "EVENT_GOT_STARTER"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "return_to_celadon",
+      "goal_text": "Return to Celadon City to challenge the gym",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 1,
+          "when": {
+            "map": "CELADON_MART_2F"
+          }
+        },
+        {
+          "op": "elevator",
+          "floor": "1F",
+          "when": {
+            "map": "CELADON_MART_ELEVATOR"
+          }
+        },
+        {
+          "op": "tap",
+          "btn": "b"
+        },
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 3,
+          "when": {
+            "map": "CELADON_MART_ELEVATOR"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "enter_celadon_gym",
+      "goal_text": "Enter the Celadon Gym",
+      "done_when": {
+        "map": "CELADON_GYM"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      }
+    },
+    {
+      "id": "defeat_erika",
+      "goal_text": "Defeat Erika in battle to earn the Rainbow Badge",
+      "done_when": {
+        "badge": "RAINBOWBADGE"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Defeat Erika for the Rainbow Badge"
+      },
+      "macro": [
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 47,
+          "y": 20,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 35,
+          "y": 32,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 27,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 2,
+          "y": 4,
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_BEAUTY2",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_BEAUTY3",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "CELADONGYM_ERIKA",
+          "answer": "yes",
+          "when": {
+            "map": "CELADON_GYM"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 7
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

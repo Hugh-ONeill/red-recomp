@@ -1,0 +1,45 @@
+{
+ "goal": "Obtain a WATER or GRASS type Pokemon",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel from Route 24 back to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Return to Route 24 to encounter wild Pokemon",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_or_grass",
+   "goal_text": "Catch a Water or Grass type Pokemon (such as Oddish or Poliwag) in the wild",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_grass_alternative",
+   "goal_text": "Catch a Grass type Pokemon if a Water type is not found",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "WATER"
+     },
+     {
+      "party_type": "GRASS"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

@@ -1308,7 +1308,17 @@ local function landing_ok(G, dir, x, y)
   return res and true or false
 end
 
-local function bfs_to_edge(G, dir)
+-- `skip` takes the Nth walkable cell of that seam instead of the nearest.
+-- A SEAM IS A ROW, NOT A DOOR. Route 13's west edge is 27 cells long and
+-- this BFS always returned the nearest one, so the crossing landed on the
+-- same Route 14 cell every time -- row 6, a one-tile corridor with a STAY
+-- trainer parked at 15,6 four cells along it. Ignoring people that map is
+-- ONE 486-cell area; with him standing there the landing is a four-cell
+-- pocket whose only way on is back the way you came, and 93 visits later
+-- the run still re-crossed into it. Rows 4 and 8 are open the whole way.
+-- Which cell of a seam to walk to is pathfinding, same as the route to it;
+-- the direction stays the model's.
+local function bfs_to_edge(G, dir, skip)
   local Collision = require("src.world.Collision")
   local ow = G.overworld
   local p = ow.player
@@ -1321,8 +1331,18 @@ local function bfs_to_edge(G, dir)
   }
   local hit = on_edge[dir]
   if not hit then return nil end
+  local skipn = tonumber(skip) or 0
+  local nfound = 0
+  -- the (skip+1)-th qualifying cell; BFS order means "farther along" is
+  -- also "farther to walk", which is the right order to try them in
+  local function take(x, y)
+    nfound = nfound + 1
+    if nfound > skipn then return x, y end
+    return nil
+  end
   if hit(p.cellX, p.cellY) and landing_ok(G, dir, p.cellX, p.cellY) then
-    return p.cellX, p.cellY
+    local rx, ry = take(p.cellX, p.cellY)
+    if rx then return rx, ry end
   end
   local key = function(x, y) return x .. "," .. y end
   local wblock = warp_block(G, -1, -1)   -- edge walks never end on a warp
@@ -1427,15 +1447,20 @@ local function bfs_to_edge(G, dir)
               nspin = nspin + 1
               note(sx, sy)
               if hit(sx, sy) and landing_ok(G, dir, sx, sy) then
-                return sx, sy
+                local rx, ry = take(sx, sy)
+                if rx then return rx, ry end
               end
               queue[#queue + 1] = { x = sx, y = sy }
             end
           else
             note(nx, ny)
             if hit(nx, ny) then
-              if landing_ok(G, dir, nx, ny) then return nx, ny end
-              edge_rejected = edge_rejected + 1
+              if landing_ok(G, dir, nx, ny) then
+                local rx, ry = take(nx, ny)
+                if rx then return rx, ry end
+              else
+                edge_rejected = edge_rejected + 1
+              end
             end
             queue[#queue + 1] = { x = nx, y = ny }
           end
@@ -1454,8 +1479,12 @@ local function bfs_to_edge(G, dir)
             -- can only reject seams that genuinely have nothing behind
             -- them.
             if hit(lx, ly) then
-              if landing_ok(G, dir, lx, ly) then return lx, ly end
-              edge_rejected = edge_rejected + 1
+              if landing_ok(G, dir, lx, ly) then
+                local rx, ry = take(lx, ly)
+                if rx then return rx, ry end
+              else
+                edge_rejected = edge_rejected + 1
+              end
             end
             queue[#queue + 1] = { x = lx, y = ly }
           end
@@ -2016,7 +2045,8 @@ function OPS.cross(G, c)
   local ex, ey, bfs_why, stallx, stally
   local seen_cells, nseen_cells
   for round = 1, 4 do
-    ex, ey, bfs_why, stallx, stally, seen_cells, nseen_cells = bfs_to_edge(G, dir)
+    ex, ey, bfs_why, stallx, stally, seen_cells, nseen_cells =
+      bfs_to_edge(G, dir, c.skip)
     if ex then break end
     U.wait(40)
     if G.stack:top() ~= ow then
@@ -2162,8 +2192,16 @@ function OPS.cross(G, c)
           fence[#fence + 1] = ("%s at %d,%d"):format(
             tostring((npc.def or {}).name or "someone"), nx, ny)
         elseif by_stall or near_seam(nx, ny) then
+          -- ...AND SAY WHICH KIND OF PERSON. Every sprite was labelled
+          -- "who moves", which for a STAY trainer is a lie the model can
+          -- act on: it waits for someone to wander off who never will.
+          -- The engine keeps the movement in the object data and the
+          -- reach fill already reads it.
+          local _mv = ((npc.def or {}).movement) or "STAY"
           add(tostring((npc.def or {}).name or "someone")
-              .. " (a person, who moves)", nx, ny)
+              .. (_mv == "WALK" and " (a person, who wanders)"
+                  or " (a person, standing still — they do not wander)"),
+              nx, ny)
         end
       end
     end

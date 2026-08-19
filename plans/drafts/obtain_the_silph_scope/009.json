@@ -1,0 +1,153 @@
+{
+ "goal": "Obtain the Silph Scope",
+ "subgoals": [
+  {
+   "id": "go_to_fuji_house",
+   "goal_text": "Travel to Mr. Fuji's house in Lavender Town",
+   "done_when": {
+    "map": "MR_FUJIS_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "get_poke_flute",
+   "goal_text": "Speak with Mr. Fuji to obtain the Poke Flute",
+   "done_when": {
+    "has_item": {
+     "POKE_FLUTE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "go_to_poke_tower",
+   "goal_text": "Enter the Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "clear_poke_tower",
+   "goal_text": "Reach the top of the Pokemon Tower and defeat the Rival",
+   "done_when": {
+    "flag": "EVENT_BEAT_POKEMON_TOWER_RIVAL"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "go_to_celadon_gym",
+   "goal_text": "Enter the Celadon Gym",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Defeat Erika to earn the Rainbow Badge",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Travel to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "reach_silph_co_boss",
+   "goal_text": "Navigate through Silph Co. to the 11th floor to reach the President",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Defeat the Team Rocket executive and obtain the Silph Scope",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

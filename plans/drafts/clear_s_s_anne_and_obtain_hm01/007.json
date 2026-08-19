@@ -1,0 +1,72 @@
+{
+ "goal": "Clear S.S. Anne and obtain HM01",
+ "subgoals": [
+  {
+   "id": "travel_to_vermilion",
+   "goal_text": "Travel from Route 24 to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_ss_anne",
+   "goal_text": "Board the S.S. Anne",
+   "done_when": {
+    "map": "SS_ANNE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_1f",
+   "goal_text": "Defeat the trainers on the first floor of the S.S. Anne",
+   "done_when": {
+    "map": "SS_ANNE_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_2f",
+   "goal_text": "Defeat the trainers on the second floor of the S.S. Anne",
+   "done_when": {
+    "map": "SS_ANNE_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_b1f",
+   "goal_text": "Defeat the trainers in the basement of the S.S. Anne",
+   "done_when": {
+    "map": "SS_ANNE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_captains_room",
+   "goal_text": "Navigate to the Captain's quarters",
+   "done_when": {
+    "map": "SS_ANNE_CAPTAINS_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_hm01",
+   "goal_text": "Speak with the Captain to receive HM01 (Cut)",
+   "done_when": {
+    "has_item": {
+     "HM_CUT": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_ss_anne",
+   "goal_text": "Disembark from the S.S. Anne and return to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

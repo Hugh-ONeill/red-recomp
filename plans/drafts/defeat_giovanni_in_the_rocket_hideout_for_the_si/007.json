@@ -1,0 +1,49 @@
+{
+ "goal": "Defeat Giovanni in the Rocket Hideout for the Silph Scope",
+ "subgoals": [
+  {
+   "id": "clear_bag_space",
+   "goal_text": "The bag is full. Sell or discard an item to make room for the Silph Scope.",
+   "done_when": {
+    "any_of": [
+     {
+      "has_item": {
+       "SILPH_SCOPE": 1
+      }
+     },
+     {
+      "screen": "ShopMenu"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "use_elevator_to_b4f",
+   "goal_text": "Use the elevator to descend to the bottom floor of the Rocket Hideout.",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Locate and defeat Giovanni in battle.",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "obtain_silph_scope",
+   "goal_text": "Interact with Giovanni to receive the Silph Scope.",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

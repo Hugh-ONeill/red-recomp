@@ -1,0 +1,46 @@
+{
+ "goal": "Exit Mt. Moon",
+ "subgoals": [
+  {
+   "id": "enter_mt_moon",
+   "goal_text": "Enter Mt. Moon from Route 4",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b1f",
+   "goal_text": "Find the stairs and descend to the first basement level",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Find the stairs and descend to the second basement level",
+   "done_when": {
+    "area": "MT_MOON_B2F|20,5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "ascend_to_b1f",
+   "goal_text": "Find the stairs to return to the first basement level",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_mt_moon_east",
+   "goal_text": "Navigate through the basement and exit Mt. Moon to the east",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

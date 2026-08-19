@@ -1,0 +1,58 @@
+{
+ "goal": "Reach Pewter City",
+ "subgoals": [
+  {
+   "id": "go_to_viridian_poke_center",
+   "goal_text": "Go to the Pokemon Center in Viridian City to heal Charmander.",
+   "done_when": {
+    "map": "VIRIDIAN_POKECENTER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Pewter City"
+   }
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Pewter City"
+   }
+  },
+  {
+   "id": "enter_viridian_forest",
+   "goal_text": "Travel north from Viridian City and enter Viridian Forest.",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Pewter City"
+   }
+  },
+  {
+   "id": "traverse_viridian_forest",
+   "goal_text": "Navigate through Viridian Forest to reach the northern exit.",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Pewter City"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

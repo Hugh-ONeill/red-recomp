@@ -1,0 +1,46 @@
+{
+ "goal": "Reach Pewter City",
+ "subgoals": [
+  {
+   "id": "heal_at_viridian_center",
+   "goal_text": "Heal the party at the Pokemon Center in Viridian City before entering the forest",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "arrive_at_forest_south_gate",
+   "goal_text": "Travel to the south entrance of Viridian Forest",
+   "done_when": {
+    "area": "VIRIDIAN_FOREST_SOUTH_GATE|5,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_forest",
+   "goal_text": "Enter the Viridian Forest",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_viridian_forest",
+   "goal_text": "Navigate through the forest and exit to the north",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_pewter_city",
+   "goal_text": "Travel from Route 2 into Pewter City",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,136 @@
+{
+  "goal": "Defeat Erika for the Rainbow Badge",
+  "subgoals": [
+    {
+      "id": "heal_at_vermilion",
+      "goal_text": "Heal the party at the Vermilion Pokemon Center before heading north.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 27,
+          "when": {
+            "map": "ROUTE_5"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 4,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_5"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 41,
+          "when": {
+            "map": "UNDERGROUND_PATH_NORTH_SOUTH"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_6"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_6"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 7
+      }
+    },
+    {
+      "id": "go_to_celadon_city",
+      "goal_text": "Travel to Celadon City.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_celadon_dept_store",
+      "goal_text": "Enter the Celadon Department Store.",
+      "done_when": {
+        "map": "CELADON_MART_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_dept_store_roof",
+      "goal_text": "Go to the roof of the department store.",
+      "done_when": {
+        "map": "CELADON_MART_ROOF"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "buy_silph_scope",
+      "goal_text": "Buy the Silph Scope from the clerk on the roof.",
+      "done_when": {
+        "has_item": {
+          "SILPH_SCOPE": 1
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_dept_store",
+      "goal_text": "Leave the department store and return to the city.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_celadon_gym",
+      "goal_text": "Enter the Celadon Gym.",
+      "done_when": {
+        "map": "CELADON_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_erika",
+      "goal_text": "Defeat Gym Leader Erika in battle.",
+      "done_when": {
+        "badge": "RAINBOWBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

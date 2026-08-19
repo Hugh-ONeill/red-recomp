@@ -1,0 +1,177 @@
+{
+ "goal": "every party member is at least level 12",
+ "subgoals": [
+  {
+   "id": "grind_charmander_12",
+   "goal_text": "Battle wild Pokemon on Route 2 or Route 22 until Charmander reaches level 12",
+   "done_when": {
+    "lead_level": 12
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "catch_member_2",
+   "goal_text": "Catch a second Pokemon on Route 2 or Route 22",
+   "done_when": {
+    "party_size": 2
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "grind_member_2_12",
+   "goal_text": "Battle wild Pokemon until the second party member reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "catch_member_3",
+   "goal_text": "Catch a third Pokemon on Route 2 or Route 22",
+   "done_when": {
+    "party_size": 3
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "grind_member_3_12",
+   "goal_text": "Battle wild Pokemon until the third party member reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 3,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "catch_member_4",
+   "goal_text": "Catch a fourth Pokemon on Route 2 or Route 22",
+   "done_when": {
+    "party_size": 4
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "grind_member_4_12",
+   "goal_text": "Battle wild Pokemon until the fourth party member reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 4,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "catch_member_5",
+   "goal_text": "Catch a fifth Pokemon on Route 2 or Route 22",
+   "done_when": {
+    "party_size": 5
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "grind_member_5_12",
+   "goal_text": "Battle wild Pokemon until the fifth party member reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 5,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "catch_member_6",
+   "goal_text": "Catch a sixth Pokemon on Route 2 or Route 22",
+   "done_when": {
+    "party_size": 6
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "grind_member_6_12",
+   "goal_text": "Battle wild Pokemon until the sixth party member reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 6,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "final_check_level_12",
+   "goal_text": "Ensure all party members are at least level 12",
+   "done_when": {
+    "party_min_level": 12
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

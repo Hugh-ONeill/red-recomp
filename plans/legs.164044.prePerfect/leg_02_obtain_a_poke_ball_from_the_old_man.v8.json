@@ -1,0 +1,32 @@
+{
+  "goal": "Obtain a Poke Ball from the old man",
+  "subgoals": [
+    {
+      "id": "go_to_viridian_city",
+      "goal_text": "Travel from Route 2 back to Viridian City",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_1",
+      "goal_text": "Travel from Viridian City to Route 1",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "talk_to_old_man",
+      "goal_text": "Talk to the old man on Route 1 to receive a Poke Ball",
+      "done_when": {
+        "has_item": {
+          "POKE_BALL": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

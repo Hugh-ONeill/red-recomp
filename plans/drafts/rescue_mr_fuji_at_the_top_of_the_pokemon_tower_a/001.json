@@ -1,0 +1,58 @@
+{
+ "goal": "Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute",
+ "subgoals": [
+  {
+   "id": "go_to_lavender_town",
+   "goal_text": "Travel to Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute"
+   }
+  },
+  {
+   "id": "enter_pokemon_tower",
+   "goal_text": "Enter the Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute"
+   }
+  },
+  {
+   "id": "climb_to_top",
+   "goal_text": "Climb the Pokemon Tower to the top floor",
+   "done_when": {
+    "map": "POKEMON_TOWER_7F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute"
+   }
+  },
+  {
+   "id": "rescue_mr_fuji",
+   "goal_text": "Interact with Mr. Fuji to rescue him from the tower",
+   "done_when": {
+    "flag": "EVENT_GOT_POKE_FLUTE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

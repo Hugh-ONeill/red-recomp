@@ -1,0 +1,146 @@
+{
+  "goal": "Defeat Giovanni in the Rocket Hideout for the Silph Scope",
+  "subgoals": [
+    {
+      "id": "use_elevator_to_b1f",
+      "goal_text": "Use the elevator to go from B4F to B1F",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_hideout_to_celadon",
+      "goal_text": "Exit the Rocket Hideout and return to Celadon City",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_pokemon_center",
+      "goal_text": "Go to the Celadon Pokemon Center and fully heal the party",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 10,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 25,
+          "y": 6,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B3F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 27,
+          "y": 8,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 21,
+          "y": 2,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 4,
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 21,
+          "y": 2,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 15,
+          "y": 17,
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 41,
+          "y": 9,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "CELADON_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 9
+      }
+    },
+    {
+      "id": "return_to_hideout_entrance",
+      "goal_text": "Return to the entrance of the Rocket Hideout",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b4f",
+      "goal_text": "Use the elevator to return to the bottom floor (B4F) of the Rocket Hideout",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B4F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_giovanni_2",
+      "goal_text": "Locate and defeat Giovanni in battle.",
+      "done_when": {
+        "flag": "EVENT_BEAT_GIOVANNI"
+      },
+      "escalation_rounds": 4,
+      "carried_forward": 1
+    },
+    {
+      "id": "defeat_giovanni",
+      "goal_text": "Locate and defeat Giovanni in battle",
+      "done_when": {
+        "has_item": {
+          "SILPH_SCOPE": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

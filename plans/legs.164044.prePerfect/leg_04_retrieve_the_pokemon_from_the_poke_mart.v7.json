@@ -1,0 +1,22 @@
+{
+  "goal": "Retrieve the Pokemon from the Poke Mart",
+  "subgoals": [
+    {
+      "id": "talk_to_clerk",
+      "goal_text": "Talk to the clerk at the Viridian Mart counter to receive the Poke Balls.",
+      "done_when": {
+        "flag": "EVENT_GOT_POKEBALLS_FROM_OAK"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "retrieve_pokemon",
+      "goal_text": "Interact with the clerk to receive the Pokemon held at the mart.",
+      "done_when": {
+        "party_size": 2
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,93 @@
+{
+ "goal": "every party member is at least level 25",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Vermilion City Pokemon Center to ensure they are healthy for training.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "travel_to_route_11",
+   "goal_text": "Travel to Route 11 to begin grinding levels.",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "level_up_spearow",
+   "goal_text": "Battle wild Pokemon on Route 11 until Spearow reaches level 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 4,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "level_up_farfetchd",
+   "goal_text": "Battle wild Pokemon on Route 11 until Farfetch'd reaches level 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 3,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "level_up_pidgey",
+   "goal_text": "Battle wild Pokemon on Route 11 until Pidgey reaches level 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "final_check_levels",
+   "goal_text": "Ensure every party member has reached at least level 25.",
+   "done_when": {
+    "party_min_level": 25
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

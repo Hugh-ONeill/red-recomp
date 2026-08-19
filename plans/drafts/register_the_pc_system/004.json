@@ -1,0 +1,34 @@
+{
+ "goal": "Register the PC system",
+ "subgoals": [
+  {
+   "id": "go_to_pallet_town",
+   "goal_text": "Travel back to Pallet Town",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Enter Professor Oak's laboratory",
+   "done_when": {
+    "map": "OAKS_LAB"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "interact_with_pc",
+   "goal_text": "Access the PC in the lab to register the system",
+   "done_when": {
+    "player_at": {
+     "x": 4,
+     "y": 11,
+     "radius": 2
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

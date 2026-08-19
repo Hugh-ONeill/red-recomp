@@ -1,0 +1,21 @@
+{
+ "goal": "Obtain the Silph Scope from Mr. Fuji",
+ "subgoals": [
+  {
+   "id": "talk_to_mr_fuji",
+   "goal_text": "Talk to Mr. Fuji in his house to receive the Silph Scope.",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope from Mr. Fuji"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

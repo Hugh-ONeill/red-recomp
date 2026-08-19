@@ -1,0 +1,79 @@
+{
+ "goal": "every party member is at least level 25",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Go to the Vermilion City Pokemon Center and heal the party.",
+   "done_when": {
+    "map": "VERMILION_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_11",
+   "goal_text": "Travel to Route 11 to begin training.",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "grind_spearow_level",
+   "goal_text": "Battle wild Pokemon on Route 11 to raise Spearow's level to 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_after_spearow",
+   "goal_text": "Return to the Vermilion City Pokemon Center to heal.",
+   "done_when": {
+    "map": "VERMILION_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_11_again",
+   "goal_text": "Return to Route 11 to continue training.",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "grind_pidgeotto_level",
+   "goal_text": "Battle wild Pokemon on Route 11 to raise Pidgeotto's level to 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "final_heal",
+   "goal_text": "Return to the Vermilion City Pokemon Center to heal.",
+   "done_when": {
+    "map": "VERMILION_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "verify_all_level_25",
+   "goal_text": "Ensure all party members have reached at least level 25.",
+   "done_when": {
+    "party_min_level": 25
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

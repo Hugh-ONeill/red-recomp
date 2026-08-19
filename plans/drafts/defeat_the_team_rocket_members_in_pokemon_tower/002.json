@@ -1,0 +1,55 @@
+{
+ "goal": "Defeat the Team Rocket members in Pokemon Tower",
+ "subgoals": [
+  {
+   "id": "clear_6f_rocket",
+   "goal_text": "Defeat all Team Rocket members on the 6th floor of Pokemon Tower",
+   "done_when": {
+    "any_of": [
+     {
+      "flag": "EVENT_BEAT_POKEMONTOWER_6_TRAINER_0"
+     },
+     {
+      "flag": "EVENT_BEAT_POKEMONTOWER_6_TRAINER_1"
+     },
+     {
+      "flag": "EVENT_BEAT_POKEMONTOWER_6_TRAINER_2"
+     }
+    ]
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat the Team Rocket members in Pokemon Tower"
+   }
+  },
+  {
+   "id": "reach_7f",
+   "goal_text": "Ascend to the 7th floor of Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_7F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat the Team Rocket members in Pokemon Tower"
+   }
+  },
+  {
+   "id": "clear_7f_rocket",
+   "goal_text": "Defeat the Team Rocket members on the 7th floor of Pokemon Tower",
+   "done_when": {
+    "flag": "EVENT_BEAT_POKEMONTOWER_7_TRAINER_0"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat the Team Rocket members in Pokemon Tower"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

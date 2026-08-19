@@ -1,0 +1,44 @@
+Obtain a starter Pokemon
+Reach Viridian City
+Deliver the parcel to Professor Oak
+Retrieve the Pokemon from the Poke Mart
+Reach Pewter City
+the party holds a WATER or GRASS type
+Defeat Misty for the Cascade Badge
+Retrieve the S.S. Ticket from Bill
+Reach Vermilion City
+Retrieve the HM01 from the S.S. Anne
+a party Pokemon knows SURF
+every party member is at least level 21
+Defeat Lt. Surge for the Thunder Badge
+Cross the bridge to Rock Tunnel
+the party holds a GROUND type
+a party Pokemon knows FLASH
+a party Pokemon knows STRENGTH
+Reach Lavender Town
+Retrieve the Pokemon Flute from Mr. Fuji
+Clear the Pokemon Tower
+Reach Celadon City
+Defeat Erika for the Rainbow Badge
+Retrieve the Silph Scope from the Rocket Hideout
+Reach Saffron City
+Remove the Team Rocket blockade in Saffron City
+every party member is at least level 30
+Defeat Sabrina for the Marsh Badge
+Reach Fuchsia City
+Retrieve the HM03 from the Safari Zone
+Retrieve the Secret Key from the Game Corner
+Defeat Koga for the Soul Badge
+Reach Cinnabar Island
+Clear the Pokemon Mansion
+Defeat Blaine for the Volcano Badge
+Reach Viridian City Gym
+Defeat Giovanni for the Earth Badge
+Obtain the Snorlax-blocking Poke Flute
+Wake Snorlax to clear the path
+every party member is at least level 45
+Pass through the Victory Road
+Reach the Indigo Plateau
+every party member is at least level 55
+Defeat the Elite Four
+Defeat the Champion

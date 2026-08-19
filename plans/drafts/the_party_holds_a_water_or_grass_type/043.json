@@ -1,0 +1,52 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "go_to_route_25",
+   "goal_text": "Travel to Route 25 to find wild Water or Grass type Pokemon.",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a WATER or GRASS type"
+   }
+  },
+  {
+   "id": "catch_water_or_grass",
+   "goal_text": "Catch a Water or Grass type Pokemon in the wild.",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a WATER or GRASS type"
+   }
+  },
+  {
+   "id": "catch_grass_alternative",
+   "goal_text": "Alternatively, catch a Grass type Pokemon if no Water types appear.",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "WATER"
+     },
+     {
+      "party_type": "GRASS"
+     }
+    ]
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a WATER or GRASS type"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

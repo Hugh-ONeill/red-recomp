@@ -1,0 +1,54 @@
+{
+ "goal": "Reach Vermilion City",
+ "subgoals": [
+  {
+   "id": "exit_cerulean_gym",
+   "goal_text": "Leave the Cerulean Gym and enter Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_cerulean",
+   "goal_text": "Visit the Cerulean Pokemon Center to heal the party",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_5",
+   "goal_text": "Travel south from Cerulean City to Route 5",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_saffron_city",
+   "goal_text": "Continue south through Route 5 to enter Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_6",
+   "goal_text": "Travel south from Saffron City to Route 6",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_vermilion_city",
+   "goal_text": "Continue south through Route 6 to reach Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

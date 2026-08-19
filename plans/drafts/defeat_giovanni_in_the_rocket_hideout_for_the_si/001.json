@@ -1,0 +1,60 @@
+{
+ "goal": "Defeat Giovanni in the Rocket Hideout for the Silph Scope",
+ "subgoals": [
+  {
+   "id": "enter_rocket_hideout",
+   "goal_text": "Enter the Rocket Hideout in Celadon City",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Giovanni in the Rocket Hideout for the Silph Scope"
+   }
+  },
+  {
+   "id": "use_elevator_to_b4f",
+   "goal_text": "Use the elevator to descend to the lowest floor of the hideout",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Giovanni in the Rocket Hideout for the Silph Scope"
+   }
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni in battle",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Giovanni in the Rocket Hideout for the Silph Scope"
+   }
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Obtain the Silph Scope from Giovanni",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Giovanni in the Rocket Hideout for the Silph Scope"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

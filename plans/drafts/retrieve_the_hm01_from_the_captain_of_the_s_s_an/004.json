@@ -1,0 +1,34 @@
+{
+ "goal": "Retrieve the HM01 from the captain of the S.S. Anne",
+ "subgoals": [
+  {
+   "id": "go_to_captain_room",
+   "goal_text": "Navigate from the rooms on the second floor to the Captain's Room.",
+   "done_when": {
+    "map": "SS_ANNE_CAPTAINS_ROOM"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM01 from the captain of the S.S. Anne"
+   }
+  },
+  {
+   "id": "talk_to_captain",
+   "goal_text": "Speak with the Captain to receive HM01.",
+   "done_when": {
+    "has_item": {
+     "HM_CUT": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM01 from the captain of the S.S. Anne"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

@@ -1,0 +1,22 @@
+{
+ "goal": "Access the PC for the first time",
+ "subgoals": [
+  {
+   "id": "enter_viridian_pokecenter",
+   "goal_text": "Enter the Pokemon Center in Viridian City",
+   "done_when": {
+    "area": "VIRIDIAN_POKECENTER|0,3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "interact_with_pc",
+   "goal_text": "Interact with the PC terminal inside the Pokemon Center",
+   "done_when": {
+    "mode": "pc"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,85 @@
+{
+ "goal": "every party member is at least level 12",
+ "subgoals": [
+  {
+   "id": "heal_at_pewter",
+   "goal_text": "Go to the Pewter City Pokemon Center and heal the party",
+   "done_when": {
+    "map": "PEWTER_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Enter the Pewter Gym and defeat Brock to earn the Boulder Badge",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "reach_route_2",
+   "goal_text": "Travel to Route 2",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "catch_companion",
+   "goal_text": "Catch a wild Pokemon on Route 2 to expand the party",
+   "done_when": {
+    "party_size": 2
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "grind_bulbasaur_12",
+   "goal_text": "Battle wild Pokemon on Route 2 until Bulbasaur reaches level 12",
+   "done_when": {
+    "lead_level": 12
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "grind_companion_12",
+   "goal_text": "Battle wild Pokemon on Route 2 until the second party member reaches level 12",
+   "done_when": {
+    "party_min_level": 12
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

@@ -1,0 +1,29 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Walk east from Route 4 to enter Cerulean City. If the east exit is blocked, explore alternative routes to the city.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_grass_pokemon",
+   "goal_text": "Catch a Water or Grass type Pokemon in the wild areas of Cerulean City or surrounding routes.",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "WATER"
+     },
+     {
+      "party_type": "GRASS"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

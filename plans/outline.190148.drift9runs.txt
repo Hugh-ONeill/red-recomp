@@ -1,0 +1,46 @@
+Obtain a starter Pokemon
+Reach Viridian City
+Register the PC system
+Retrieve the Pokemon from the Poke Mart
+Reach Pewter City
+Exit Mt. Moon
+every party member is at least level 12
+Defeat Brock for the Boulder Badge
+Reach Cerulean City
+every party member is at least level 20
+Defeat Misty for the Cascade Badge
+Exit Rock Tunnel
+Reach Vermilion City
+Retrieve the S.S. Ticket from Bill
+Retrieve the HM01 from the S.S. Anne
+every party member is at least level 30
+the party holds a GROUND type
+a party Pokemon knows CUT
+Defeat Lt. Surge for the Thunder Badge
+Reach Celadon City
+every party member is at least level 40
+the party holds a FIRE or ICE type
+Defeat Erika for the Rainbow Badge
+Retrieve the Silph Scope
+Reach Saffron City
+a party Pokemon knows FLASH
+the party holds a PSYCHIC type
+Defeat Sabrina for the Marsh Badge
+Retrieve the Secret Key from the Rocket Hideout
+Retrieve the Master Ball from Team Rocket
+Reach Lavender Town
+Clear the Pokemon Tower
+Retrieve the Pokemon Flute from Mr. Fuji
+Reach Fuchsia City
+every party member is at least level 50
+Defeat Koga for the Soul Badge
+Retrieve the HM04 Strength from the Safari Zone
+Wake Snorlax to clear the path
+Reach Cinnabar Island
+Defeat Blaine for the Volcano Badge
+Reach Viridian City Gym
+Defeat Giovanni for the Earth Badge
+Navigate the Victory Road
+Reach the Indigo Plateau
+Defeat the Elite Four
+Defeat the Champion

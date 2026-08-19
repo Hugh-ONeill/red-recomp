@@ -1,0 +1,19 @@
+{
+ "goal": "the party holds a WATER or ELECTRIC type",
+ "subgoals": [
+  {
+   "id": "catch_water_pokemon",
+   "goal_text": "Catch a Water-type Pokemon in the waters of Route 24 or 25",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a WATER or ELECTRIC type"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

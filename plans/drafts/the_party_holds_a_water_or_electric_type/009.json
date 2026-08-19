@@ -1,0 +1,38 @@
+{
+ "goal": "the party holds a WATER or ELECTRIC type",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_pokecenter",
+   "goal_text": "Go to the Cerulean City Pokemon Center to heal the party.",
+   "done_when": {
+    "area": "CERULEAN_POKECENTER|0,3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Travel north from Cerulean City to Route 24.",
+   "done_when": {
+    "area": "ROUTE_24|4,4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_pokemon",
+   "goal_text": "Catch a Water-type Pokemon in the wild on Route 24.",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

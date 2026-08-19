@@ -1,0 +1,52 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "go_to_viridian_forest",
+   "goal_text": "Travel to Viridian Forest to search for Grass-type Pokemon.",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_grass_type",
+   "goal_text": "Catch a Grass-type Pokemon (such as Oddish or Bellsprout, though unlikely here, or more commonly Caterpie/Weedle which are Bug but often associated with early Grass needs; however, the goal specifically asks for WATER or GRASS). In Viridian Forest, the goal is to find a Grass type if available, otherwise proceed to water sources.",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "GRASS"
+     },
+     {
+      "party_type": "WATER"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel to Cerulean City to access water sources.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_type",
+   "goal_text": "Catch a Water-type Pokemon in the water surrounding Cerulean City.",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "GRASS"
+     },
+     {
+      "party_type": "WATER"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

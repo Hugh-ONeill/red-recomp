@@ -1,0 +1,165 @@
+{
+ "goal": "a party Pokemon knows the move FLY",
+ "subgoals": [
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Vermilion City Pokemon Center",
+   "done_when": {
+    "map": "VERMILION_POKECENTER",
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_dept_store",
+   "goal_text": "Enter the Celadon Department Store",
+   "done_when": {
+    "map": "CELADON_MART_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "buy_silph_scope",
+   "goal_text": "Purchase the SILPH_SCOPE from the store",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Travel to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "reach_silph_ceo",
+   "goal_text": "Navigate through Silph Co. to reach the President",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "defeat_rival_silph",
+   "goal_text": "Defeat the Rival at Silph Co. to receive the Master Ball",
+   "done_when": {
+    "flag": "EVENT_GOT_MASTER_BALL"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "exit_silph_co",
+   "goal_text": "Exit the Silph Co. building",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_route_16",
+   "goal_text": "Travel to Route 16",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "enter_fly_house",
+   "goal_text": "Enter the house where the player can learn FLY",
+   "done_when": {
+    "map": "ROUTE_16_FLY_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "learn_fly",
+   "goal_text": "Talk to the NPC to teach a Pokemon the move FLY",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

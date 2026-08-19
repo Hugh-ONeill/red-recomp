@@ -1,0 +1,30 @@
+{
+  "goal": "Defeat Erika for the Rainbow Badge",
+  "subgoals": [
+    {
+      "id": "travel_to_celadon",
+      "goal_text": "Travel from Vermilion City to Celadon City. Note: The paths north from Route 5 and Route 6 are blocked by guards; the player must find an alternative route or resolve the blockage.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_celadon_gym",
+      "goal_text": "Enter the Celadon Gym.",
+      "done_when": {
+        "map": "CELADON_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_erika",
+      "goal_text": "Defeat Gym Leader Erika in battle.",
+      "done_when": {
+        "badge": "RAINBOWBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

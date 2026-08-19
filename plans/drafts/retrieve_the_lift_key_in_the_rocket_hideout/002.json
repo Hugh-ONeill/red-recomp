@@ -1,0 +1,67 @@
+{
+ "goal": "Retrieve the Lift Key in the Rocket Hideout",
+ "subgoals": [
+  {
+   "id": "clear_bag_space",
+   "goal_text": "Sell or discard an item to make room in the bag, as it is currently full and the Lift Key cannot be picked up.",
+   "done_when": {
+    "any_of": [
+     {
+      "has_item": {
+       "TOWN_MAP": 0
+      }
+     },
+     {
+      "has_item": {
+       "DOME_FOSSIL": 0
+      }
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_rocket_hideout",
+   "goal_text": "Enter the Rocket Hideout from the Celadon Game Corner",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Navigate through the hideout to reach the second basement level",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b3f",
+   "goal_text": "Navigate through the hideout to reach the third basement level",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b4f",
+   "goal_text": "Navigate through the hideout to reach the fourth basement level",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "find_lift_key",
+   "goal_text": "Locate and pick up the Lift Key from the item ball in the hideout",
+   "done_when": {
+    "has_item": {
+     "LIFT_KEY": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

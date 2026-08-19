@@ -1,0 +1,86 @@
+{
+ "goal": "a party Pokemon knows FLY",
+ "subgoals": [
+  {
+   "id": "go_to_vermilion",
+   "goal_text": "Travel to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY (a doubt you recorded when outlining: FLY cannot be obtained until after the 5th gym (Erika) or via trading; it is listed before Lt. Surge.)"
+   }
+  },
+  {
+   "id": "defeat_lt_surge",
+   "goal_text": "Defeat Lt. Surge at the Vermilion Gym to earn the Thunder Badge",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY (a doubt you recorded when outlining: FLY cannot be obtained until after the 5th gym (Erika) or via trading; it is listed before Lt. Surge.)"
+   }
+  },
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY (a doubt you recorded when outlining: FLY cannot be obtained until after the 5th gym (Erika) or via trading; it is listed before Lt. Surge.)"
+   }
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Defeat Erika at the Celadon Gym to earn the Rainbow Badge",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY (a doubt you recorded when outlining: FLY cannot be obtained until after the 5th gym (Erika) or via trading; it is listed before Lt. Surge.)"
+   }
+  },
+  {
+   "id": "get_fly_hm",
+   "goal_text": "Obtain HM02 (FLY) from the NPC in Celadon City",
+   "done_when": {
+    "has_item": {
+     "HM_FLY": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY (a doubt you recorded when outlining: FLY cannot be obtained until after the 5th gym (Erika) or via trading; it is listed before Lt. Surge.)"
+   }
+  },
+  {
+   "id": "teach_fly",
+   "goal_text": "Teach the move FLY to a compatible Pokemon in the party",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY (a doubt you recorded when outlining: FLY cannot be obtained until after the 5th gym (Erika) or via trading; it is listed before Lt. Surge.)"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

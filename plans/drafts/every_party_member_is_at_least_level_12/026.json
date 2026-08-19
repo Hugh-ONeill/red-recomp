@@ -1,0 +1,78 @@
+{
+ "goal": "every party member is at least level 12",
+ "subgoals": [
+  {
+   "id": "heal_at_pewter",
+   "goal_text": "Heal the party at the Pewter City Pokemon Center",
+   "done_when": {
+    "party_healthy": true,
+    "map": "PEWTER_POKECENTER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Defeat Brock in the Pewter Gym to earn the Boulder Badge",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "level_up_squirtle",
+   "goal_text": "Battle wild Pokemon or trainers until Squirtle reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "level_up_pidgey",
+   "goal_text": "Battle wild Pokemon or trainers until Pidgey reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "verify_party_levels",
+   "goal_text": "Ensure all party members are at least level 12",
+   "done_when": {
+    "party_min_level": 12
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

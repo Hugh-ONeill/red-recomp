@@ -1,0 +1,32 @@
+{
+  "goal": "a party Pokemon knows CUT",
+  "subgoals": [
+    {
+      "id": "catch_cut_compatible_pokemon",
+      "goal_text": "Catch a Pokemon that can learn CUT (such as Rattata, Spearow, or Mankey) in the grass near Vermilion City.",
+      "done_when": {
+        "any_of": [
+          {
+            "has_species": "RATTATA"
+          },
+          {
+            "has_species": "SPEAROW"
+          },
+          {
+            "has_species": "MANKEY"
+          }
+        ]
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "teach_cut",
+      "goal_text": "Use HM01 (CUT) from the bag to teach the move to a compatible Pokemon in the party.",
+      "done_when": {
+        "knows_move": "CUT"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

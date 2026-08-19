@@ -1,0 +1,33 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "teach_water_gun",
+   "goal_text": "Teach Water Gun to Charmeleon to provide coverage for the journey to Cerulean City",
+   "done_when": {
+    "knows_move": {
+     "move": "WATER_GUN",
+     "slot": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_pokemon",
+   "goal_text": "Catch a Water-type Pokemon in the water surrounding Cerulean City",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

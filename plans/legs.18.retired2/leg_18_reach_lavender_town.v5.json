@@ -1,0 +1,30 @@
+{
+  "goal": "Reach Lavender Town",
+  "subgoals": [
+    {
+      "id": "heal_at_vermilion",
+      "goal_text": "Travel to Vermilion City and heal the party at the Pokemon Center",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_route_12",
+      "goal_text": "Travel east through Route 11 to reach Route 12",
+      "done_when": {
+        "map": "ROUTE_12"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_lavender_town_via_route_12",
+      "goal_text": "Travel north from Route 12 to enter Lavender Town",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

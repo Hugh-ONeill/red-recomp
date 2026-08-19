@@ -1,0 +1,38 @@
+{
+ "goal": "Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house",
+ "subgoals": [
+  {
+   "id": "go_to_vermilion_city",
+   "goal_text": "Travel to Vermilion City.",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Vermilion City Pokemon Center to ensure the trade partner is not blocked by party health issues.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_vermilion_trade_house",
+   "goal_text": "Enter the trade house in Vermilion City.",
+   "done_when": {
+    "map": "VERMILION_TRADE_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "trade_spearow_for_farfetchd",
+   "goal_text": "Interact with the trade partner to trade Spearow for Farfetch'd.",
+   "done_when": {
+    "has_species": "FARFETCHD"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

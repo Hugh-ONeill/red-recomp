@@ -1,0 +1,113 @@
+{
+ "goal": "every party member is at least level 40",
+ "subgoals": [
+  {
+   "id": "heal_at_fuchsia",
+   "goal_text": "Go to the Fuchsia City Pokemon Center and heal the party.",
+   "done_when": {
+    "party_healthy": true,
+    "map": "FUCHSIA_POKECENTER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "grind_venonat_40",
+   "goal_text": "Battle wild Pokemon on Route 13 or 14 until Venonat reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 3,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "grind_nidoran_40",
+   "goal_text": "Battle wild Pokemon until Nidoran_M reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 5,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "grind_pidgeotto_40",
+   "goal_text": "Battle wild Pokemon until Pidgeotto reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 6,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "grind_farfetchd_40",
+   "goal_text": "Battle wild Pokemon until Farfetchd reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "grind_fearow_40",
+   "goal_text": "Battle wild Pokemon until Fearow reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "final_check_levels",
+   "goal_text": "Ensure all party members have reached at least level 40.",
+   "done_when": {
+    "party_min_level": 40
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

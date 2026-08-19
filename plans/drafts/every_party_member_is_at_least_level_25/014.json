@@ -1,0 +1,41 @@
+{
+ "goal": "every party member is at least level 25",
+ "subgoals": [
+  {
+   "id": "grind_spearow_to_25",
+   "goal_text": "Battle wild Pokemon on Route 11 until Spearow reaches level 25",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_vermilion_center",
+   "goal_text": "Travel to the Vermilion City Pokemon Center",
+   "done_when": {
+    "area": "VERMILION_POKECENTER|0,3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Pokemon Center",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "verify_all_level_25",
+   "goal_text": "Ensure every party member is at least level 25",
+   "done_when": {
+    "party_min_level": 25
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

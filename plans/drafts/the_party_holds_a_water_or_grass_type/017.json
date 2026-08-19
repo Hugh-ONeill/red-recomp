@@ -1,0 +1,54 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "reach_route_4",
+   "goal_text": "Travel north from Route 3 to reach Route 4.",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_mt_moon",
+   "goal_text": "Enter Mt. Moon.",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "traverse_mt_moon",
+   "goal_text": "Navigate through the basement levels of Mt. Moon to reach the exit.",
+   "done_when": {
+    "map": "MT_MOON_B2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Exit Mt. Moon and arrive back on Route 4.",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel east from Route 4 to enter Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_pokemon",
+   "goal_text": "Catch a Water-type Pokemon in the water surrounding Cerulean City (e.g., Staryu or Slowpoke).",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

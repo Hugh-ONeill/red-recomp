@@ -1,0 +1,166 @@
+{
+ "goal": "a party Pokemon knows the move FLY",
+ "subgoals": [
+  {
+   "id": "defeat_lt_surge",
+   "goal_text": "Defeat Lt. Surge in the Vermilion Gym to earn the Thunder Badge",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_lavender_town",
+   "goal_text": "Travel from Vermilion City to Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "enter_pokemon_tower",
+   "goal_text": "Enter the Pokemon Tower in Lavender Town",
+   "done_when": {
+    "map": "POKEMON_TOWER_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "reach_mr_fuji",
+   "goal_text": "Navigate the Pokemon Tower to reach Mr. Fuji",
+   "done_when": {
+    "flag": "EVENT_GOT_POKE_FLUTE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_celadon_city",
+   "goal_text": "Travel from Lavender Town to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "get_s_s_ticket_ready",
+   "goal_text": "Ensure the S.S. Ticket is in the bag (already present in starting state)",
+   "done_when": {
+    "has_item": {
+     "S_S_TICKET": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_game_corner",
+   "goal_text": "Enter the Celadon Game Corner",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "buy_poke_flute_if_needed",
+   "goal_text": "Since the player already has the ticket and is heading for Fly, the priority is the Gym or the Ticket exchange, but the goal is FLY. The Fly HM is obtained from the Bird Keeper in Route 16.",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_route_16",
+   "goal_text": "Travel from Celadon City to Route 16",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "enter_fly_house",
+   "goal_text": "Enter the house on Route 16 to speak with the Bird Keeper",
+   "done_when": {
+    "map": "ROUTE_16_FLY_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "obtain_hm_fly",
+   "goal_text": "Receive HM02 (FLY) from the Bird Keeper",
+   "done_when": {
+    "has_item": {
+     "HM_FLY": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "teach_fly",
+   "goal_text": "Teach the move FLY to a compatible Pokemon in the party",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

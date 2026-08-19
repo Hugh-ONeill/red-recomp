@@ -1,0 +1,30 @@
+{
+  "goal": "Learn how to catch Pokemon from the old man",
+  "subgoals": [
+    {
+      "id": "exit_viridian_pokecenter",
+      "goal_text": "Leave the Viridian Pokemon Center to enter the city.",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "approach_old_man",
+      "goal_text": "Walk to the old man in Viridian City and speak with him to trigger the tutorial.",
+      "done_when": {
+        "mode": "dialog"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "finish_tutorial_dialog",
+      "goal_text": "Complete the conversation with the old man about catching Pokemon.",
+      "done_when": {
+        "mode": "overworld"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

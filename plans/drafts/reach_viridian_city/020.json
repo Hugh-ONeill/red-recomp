@@ -1,0 +1,14 @@
+{
+ "goal": "Reach Viridian City",
+ "subgoals": [
+  {
+   "id": "already_in_viridian",
+   "goal_text": "The player is already in Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

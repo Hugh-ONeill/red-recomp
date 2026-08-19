@@ -1,0 +1,45 @@
+{
+ "goal": "Register the PC system",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel to Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Register the PC system"
+   }
+  },
+  {
+   "id": "go_to_bill_house",
+   "goal_text": "Travel to Bill's House on Route 25.",
+   "done_when": {
+    "map": "BILLS_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Register the PC system"
+   }
+  },
+  {
+   "id": "talk_to_bill",
+   "goal_text": "Talk to Bill inside his house to trigger the PC registration event.",
+   "done_when": {
+    "flag": "EVENT_MET_BILL"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Register the PC system"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

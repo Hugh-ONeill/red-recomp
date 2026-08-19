@@ -1,0 +1,41 @@
+{
+ "goal": "Obtain a WATER or GRASS type Pokemon",
+ "subgoals": [
+  {
+   "id": "go_to_route_4",
+   "goal_text": "Travel to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_mt_moon",
+   "goal_text": "Enter Mt. Moon",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel through Mt. Moon and arrive in Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_grass_pokemon",
+   "goal_text": "Catch a Water or Grass type Pokemon in the wild near Cerulean City",
+   "done_when": {
+    "party_type": [
+     "WATER",
+     "GRASS"
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

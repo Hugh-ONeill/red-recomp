@@ -1,0 +1,48 @@
+{
+ "goal": "every party member is at least level 12",
+ "subgoals": [
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Viridian Pokemon Center",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Travel to Route 2 to find wild Pokemon for experience",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "level_up_pidgey",
+   "goal_text": "Battle wild Pokemon on Route 2 until Pidgey reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

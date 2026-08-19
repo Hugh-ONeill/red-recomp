@@ -1,0 +1,96 @@
+{
+ "goal": "Retrieve the Master Ball from the Game Corner",
+ "subgoals": [
+  {
+   "id": "reach_pewter_city",
+   "goal_text": "Travel to Pewter City",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Defeat Brock at the Pewter Gym to earn the Boulder Badge",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_misty",
+   "goal_text": "Defeat Misty at the Cerulean Gym to earn the Cascade Badge",
+   "done_when": {
+    "badge": "CASCADEBADGE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_vermilion_city",
+   "goal_text": "Travel to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_lt_surge",
+   "goal_text": "Defeat Lt. Surge at the Vermilion Gym to earn the Thunder Badge",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_celadon_city",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_game_corner",
+   "goal_text": "Enter the Celadon Game Corner",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "accumulate_coins",
+   "goal_text": "Play the slot machines until enough coins are accumulated to buy the Master Ball",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_prize_room",
+   "goal_text": "Enter the Game Corner Prize Room",
+   "done_when": {
+    "map": "GAME_CORNER_PRIZE_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "buy_master_ball",
+   "goal_text": "Purchase the Master Ball from the prize clerk",
+   "done_when": {
+    "has_item": {
+     "MASTER_BALL": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

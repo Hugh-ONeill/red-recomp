@@ -1,0 +1,73 @@
+{
+ "goal": "a party Pokemon knows FLY",
+ "subgoals": [
+  {
+   "id": "exit_safari_zone",
+   "goal_text": "Leave the Safari Zone and return to Fuchsia City",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "travel_to_route_16",
+   "goal_text": "Travel from Fuchsia City to Route 16",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "enter_fly_house",
+   "goal_text": "Enter the house on Route 16 where the FLY HM is given",
+   "done_when": {
+    "map": "ROUTE_16_FLY_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "obtain_hm_fly",
+   "goal_text": "Talk to the man in the house to receive HM02 (FLY)",
+   "done_when": {
+    "has_item": {
+     "HM_FLY": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "teach_fly",
+   "goal_text": "Teach the move FLY to a compatible Pokemon in the party",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

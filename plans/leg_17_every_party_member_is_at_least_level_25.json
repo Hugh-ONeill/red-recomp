@@ -1,0 +1,220 @@
+{
+  "goal": "every party member is at least level 25",
+  "subgoals": [
+    {
+      "id": "heal_at_vermilion",
+      "goal_text": "Heal the party at the Vermilion City Pokemon Center to ensure they are healthy for training.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 17,
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TEXT_VERMILIONCITY_GYM_SIGN",
+          "answer": "yes",
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 15,
+          "y": 18,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 6
+      }
+    },
+    {
+      "id": "travel_to_route_11",
+      "goal_text": "Travel to Route 11 to begin grinding levels.",
+      "done_when": {
+        "map": "ROUTE_11"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "level_up_spearow",
+      "goal_text": "Battle wild Pokemon on Route 11 until Spearow reaches level 25.",
+      "done_when": {
+        "slot_level": {
+          "slot": 4,
+          "min": 25
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "party_swap",
+          "a": 1,
+          "b": 4,
+          "when": {
+            "map": "ROUTE_11"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "level_up_farfetchd",
+      "goal_text": "Battle wild Pokemon on Route 11 until Farfetch'd reaches level 25.",
+      "done_when": {
+        "slot_level": {
+          "slot": 3,
+          "min": 25
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "ROUTE_11"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "intent": "train",
+          "when": {
+            "map": "ROUTE_11"
+          }
+        },
+        {
+          "op": "party_swap",
+          "a": 1,
+          "b": 3,
+          "when": {
+            "map": "ROUTE_11"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 7
+      }
+    },
+    {
+      "id": "level_up_pidgey",
+      "goal_text": "Battle wild Pokemon on Route 11 until Pidgey reaches level 25.",
+      "done_when": {
+        "slot_level": {
+          "slot": 2,
+          "min": 25
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "final_check_levels",
+      "goal_text": "Ensure every party member has reached at least level 25.",
+      "done_when": {
+        "party_min_level": 25
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

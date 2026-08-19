@@ -1,0 +1,73 @@
+{
+ "goal": "Defeat Erika for the Rainbow Badge",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Vermilion City Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "travel_to_celadon",
+   "goal_text": "Travel from Vermilion City to Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "buy_potions",
+   "goal_text": "Go to the Celadon Mart and buy Potions to ensure the party can survive the gym.",
+   "done_when": {
+    "has_item": {
+     "POTION": 5
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "enter_celadon_gym",
+   "goal_text": "Enter the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Defeat the Gym Leader Erika in battle.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

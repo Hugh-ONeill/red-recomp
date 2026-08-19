@@ -1,0 +1,34 @@
+{
+  "goal": "Obtain a Poke Ball from the old man",
+  "subgoals": [
+    {
+      "id": "go_to_route_1",
+      "goal_text": "Travel to Route 1",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Obtain a Poke Ball from the old man"
+      }
+    },
+    {
+      "id": "talk_to_old_man",
+      "goal_text": "Talk to the old man on Route 1 to receive a Poke Ball",
+      "done_when": {
+        "has_item": {
+          "POKE_BALL": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Obtain a Poke Ball from the old man"
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

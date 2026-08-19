@@ -1,0 +1,21 @@
+{
+ "goal": "Obtain a WATER or GRASS type Pokemon",
+ "subgoals": [
+  {
+   "id": "catch_water_or_grass",
+   "goal_text": "Catch a Water or Grass type Pokemon (such as Poliwag) in the wild on Route 24",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "WATER"
+     },
+     {
+      "party_type": "GRASS"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

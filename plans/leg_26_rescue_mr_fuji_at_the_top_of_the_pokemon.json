@@ -1,0 +1,135 @@
+{
+  "goal": "Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute",
+  "subgoals": [
+    {
+      "id": "go_to_lavender_town",
+      "goal_text": "Travel to Lavender Town",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_lavender_center",
+      "goal_text": "Heal the party at the Lavender Town Pokemon Center before entering the tower",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_pokemon_tower",
+      "goal_text": "Enter the Pokemon Tower",
+      "done_when": {
+        "map": "POKEMON_TOWER_1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "store_item",
+          "item": "NUGGET",
+          "count": 1,
+          "when": {
+            "map": "CELADON_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "CELADON_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 13,
+          "when": {
+            "map": "ROUTE_7"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 4,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_7"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 47,
+          "y": 2,
+          "when": {
+            "map": "UNDERGROUND_PATH_WEST_EAST"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_8"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_8"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TEXT_LAVENDERTOWN_POKEMON_TOWER_SIGN",
+          "answer": "yes",
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 14,
+          "y": 5,
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 10
+      }
+    },
+    {
+      "id": "climb_to_top",
+      "goal_text": "Climb the Pokemon Tower to the top floor",
+      "done_when": {
+        "map": "POKEMON_TOWER_7F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "rescue_mr_fuji",
+      "goal_text": "Interact with Mr. Fuji to rescue him from the tower",
+      "done_when": {
+        "flag": "EVENT_GOT_POKE_FLUTE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

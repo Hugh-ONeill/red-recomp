@@ -1,0 +1,46 @@
+{
+ "goal": "Reach Lavender Town",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Since the party has fainted members (Oddish and Diglett), return to Vermilion City and heal at the Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_rock_tunnel",
+   "goal_text": "Enter the Rock Tunnel from Vermilion City.",
+   "done_when": {
+    "map": "ROCK_TUNNEL_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_rock_tunnel_east",
+   "goal_text": "Traverse the Rock Tunnel and exit on the east side to Route 10.",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_12",
+   "goal_text": "Travel from Route 10 to Route 12. Note: Saffron City is blocked, so the path must go around via Route 11 and 12.",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Travel north from Route 12 to reach Lavender Town.",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,58 @@
+{
+ "goal": "Defeat Koga for the Soul Badge",
+ "subgoals": [
+  {
+   "id": "go_to_fuchsia_city",
+   "goal_text": "Travel to Fuchsia City",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Koga for the Soul Badge"
+   }
+  },
+  {
+   "id": "heal_at_fuchsia_center",
+   "goal_text": "Heal the party at the Pokemon Center in Fuchsia City",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Koga for the Soul Badge"
+   }
+  },
+  {
+   "id": "enter_fuchsia_gym",
+   "goal_text": "Enter the Fuchsia City Gym",
+   "done_when": {
+    "map": "FUCHSIA_GYM"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Koga for the Soul Badge"
+   }
+  },
+  {
+   "id": "defeat_koga",
+   "goal_text": "Defeat Gym Leader Koga in battle",
+   "done_when": {
+    "badge": "SOULBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Koga for the Soul Badge"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

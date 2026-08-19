@@ -1,0 +1,60 @@
+{
+ "goal": "Retrieve the Pokemon from the Poke Mart",
+ "subgoals": [
+  {
+   "id": "leave_oaks_lab",
+   "goal_text": "Exit Professor Oak's Lab and enter Pallet Town",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Pokemon from the Poke Mart"
+   }
+  },
+  {
+   "id": "go_to_viridian_city",
+   "goal_text": "Travel from Pallet Town to Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Pokemon from the Poke Mart"
+   }
+  },
+  {
+   "id": "enter_viridian_mart",
+   "goal_text": "Enter the Poke Mart in Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_MART"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Pokemon from the Poke Mart"
+   }
+  },
+  {
+   "id": "talk_to_clerk",
+   "goal_text": "Talk to the clerk to retrieve the Poke Balls",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 5
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Pokemon from the Poke Mart"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

@@ -1,0 +1,74 @@
+{
+  "goal": "Reach Lavender Town",
+  "subgoals": [
+    {
+      "id": "heal_at_vermilion",
+      "goal_text": "Heal the party at the Vermilion City Pokemon Center to ensure they are healthy for the journey.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "travel_to_route_11",
+      "goal_text": "Travel east from Vermilion City to Route 11.",
+      "done_when": {
+        "map": "ROUTE_11"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_digletts_cave",
+      "goal_text": "Enter Diglett's Cave on Route 11.",
+      "done_when": {
+        "map": "DIGLETTS_CAVE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_digletts_cave_east",
+      "goal_text": "Navigate through Diglett's Cave and exit on the east side to Route 12.",
+      "done_when": {
+        "map": "ROUTE_12"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_poke_flute",
+      "goal_text": "Obtain the POKE_FLUTE from the NPC on Route 12 to wake Snorlax.",
+      "done_when": {
+        "has_item": {
+          "POKE_FLUTE": 1
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_lavender_town",
+      "goal_text": "Travel north from Route 12 to enter Lavender Town.",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,75 @@
+{
+ "goal": "Obtain the Silph Scope",
+ "subgoals": [
+  {
+   "id": "go_to_fuji_house",
+   "goal_text": "Travel to Mr. Fuji's house in Lavender Town",
+   "done_when": {
+    "map": "MR_FUJIS_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "get_poke_flute",
+   "goal_text": "Talk to Mr. Fuji to receive the Poke Flute",
+   "done_when": {
+    "has_item": {
+     "POKE_FLUTE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "enter_pokemon_tower",
+   "goal_text": "Enter the Pokemon Tower in Lavender Town",
+   "done_when": {
+    "map": "POKEMON_TOWER_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "clear_tower_to_top",
+   "goal_text": "Ascend the Pokemon Tower to the top floor",
+   "done_when": {
+    "map": "POKEMON_TOWER_7F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Obtain the Silph Scope from the top of the Pokemon Tower",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

@@ -1,0 +1,38 @@
+{
+ "goal": "Retrieve the Pokemon from the Poke Mart",
+ "subgoals": [
+  {
+   "id": "leave_oaks_lab",
+   "goal_text": "Exit Professor Oak's laboratory and enter Pallet Town.",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_viridian_city",
+   "goal_text": "Travel from Pallet Town to Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_mart",
+   "goal_text": "Enter the Poke Mart in Viridian City.",
+   "done_when": {
+    "area": "VIRIDIAN_MART|0,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "talk_to_clerk",
+   "goal_text": "Talk to the clerk to retrieve the items/Pokemon.",
+   "done_when": {
+    "flag": "EVENT_GOT_POKEBALLS_FROM_OAK"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

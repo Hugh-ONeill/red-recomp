@@ -1,0 +1,81 @@
+{
+ "goal": "Retrieve the Pokemon from the Poke Mart",
+ "subgoals": [
+  {
+   "id": "deliver_parcel",
+   "goal_text": "Talk to Professor Oak to deliver the parcel.",
+   "done_when": {
+    "flag": "EVENT_OAK_GOT_PARCEL"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 3,
+     "y": 7,
+     "when": {
+      "map": "VIRIDIAN_MART"
+     }
+    },
+    {
+     "op": "cross",
+     "dir": "south",
+     "when": {
+      "map": "VIRIDIAN_CITY"
+     }
+    },
+    {
+     "op": "cross",
+     "dir": "south",
+     "when": {
+      "map": "ROUTE_1"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 12,
+     "y": 11,
+     "when": {
+      "map": "PALLET_TOWN"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "OAKSLAB_OAK1",
+     "answer": "yes",
+     "when": {
+      "map": "OAKS_LAB"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign2",
+    "via": "escalation",
+    "n_ops": 5
+   },
+   "carried_forward": 2
+  },
+  {
+   "id": "receive_pokedex",
+   "goal_text": "Talk to Professor Oak again to receive the Pokedex.",
+   "done_when": {
+    "flag": "EVENT_GOT_POKEDEX"
+   },
+   "escalation_rounds": 4,
+   "carried_forward": 2
+  },
+  {
+   "id": "talk_to_clerk",
+   "goal_text": "Talk to the clerk in the Viridian Mart to retrieve the Pokemon.",
+   "done_when": {
+    "party_size": 2
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

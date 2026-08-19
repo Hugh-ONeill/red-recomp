@@ -3790,6 +3790,77 @@ class Executor:
         self._faint_at = None
         return None
 
+    def _uncork_seam(self, obs, sg, dirname):
+        """A SEAM IS A ROW, NOT A DOOR: try another cell of the one we came
+        in by.
+
+        Crossing puts you on ONE cell of the far map's edge, and which cell
+        decides what you can reach from it. Route 13's west crossing always
+        landed on Route 14 row 6 — a one-tile corridor with a trainer whose
+        movement is STAY parked four cells along it — so the reachable
+        ground was four cells and the only way on was back the way we came.
+        Ignoring people that map is one 486-cell area, and rows 4 and 8 of
+        that same seam are open end to end. The run re-crossed into the
+        pocket 93 times and read it as "the south is unreachable without
+        FLY".
+
+        Nothing here picks a destination. The direction stays the model's;
+        which cell of a seam to walk to is pathfinding, like the route to
+        it. Only fires from a pocket: one walked way out, and it is not the
+        way the model asked to go.
+        """
+        _OPP = {"north": "south", "south": "north",
+                "east": "west", "west": "east"}
+        here = self._where(obs)
+        mymap = here.split("|")[0]
+        if getattr(self, "_uncorking", False):
+            return None
+        key = (here, dirname)
+        if key in getattr(self, "_uncorked", set()):
+            return None
+        ways = {k: v for k, v in (self.explored.get(here) or {}).items()
+                if (v or {}).get("to") and not (v or {}).get("shut")}
+        if len(ways) != 1:
+            return None
+        back = next(iter(ways))
+        if back not in _OPP or back == dirname:
+            return None
+        self._uncorked = getattr(self, "_uncorked", set()) | {key}
+        self._uncorking = True
+        final = obs
+        try:
+            for skip in (1, 2, 3):
+                cur = self.b.obs() or final
+                if self._where(cur) != here:
+                    break
+                try:
+                    o = self.b.send("cross", dir=back)
+                except TimeoutError:
+                    o = self.b.obs()
+                o = self.settle() or o
+                self.note_transition(cur, {"dir": back}, o, reason="uncork")
+                final = o
+                if self._where(o) == here:
+                    break                      # could not even step out
+                try:
+                    o2 = self.b.send("cross", dir=_OPP[back], skip=skip)
+                except TimeoutError:
+                    o2 = self.b.obs()
+                o2 = self.settle() or o2
+                self.note_transition(o, {"dir": _OPP[back]}, o2,
+                                     reason="uncork")
+                final = o2
+                land = self._where(o2)
+                self.log("seam_cell_retried", frm=here, back=back, skip=skip,
+                         landed=land, asked=dirname)
+                if land.split("|")[0] != mymap:
+                    break                      # the way back did not take
+                if land != here:
+                    return o2                  # a different landing: free
+        finally:
+            self._uncorking = False
+        return final if self._where(final) != here else None
+
     def _route_to_frontier(self, obs, sg, patient: bool = False):
         """Walk back to the NEAREST region that still has exits never taken.
 
@@ -7201,6 +7272,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if (op == "cross" and not _rr.get("ok")
                         and "cannot be walked to" in str(_rr.get("detail"))):
                     _alt = self._cross_by_recall(obs, sg, step.get("dir"))
+                    if _alt is None:
+                        _alt = self._uncork_seam(obs, sg, step.get("dir"))
                     if _alt is not None:
                         obs = _alt
                 if obs and obs.get("mode") == "battle":
@@ -9500,6 +9573,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     if (op == "cross" and not r.get("ok")
                             and "cannot be walked to" in str(r.get("detail"))):
                         _re_obs = self._cross_by_recall(obs, sg,
+                                                        step.get("dir"))
+                        if _re_obs is None:
+                            _re_obs = self._uncork_seam(obs, sg,
                                                         step.get("dir"))
                         if _re_obs is not None:
                             obs = _re_obs

@@ -1,0 +1,64 @@
+{
+ "goal": "a party Pokemon knows SURF",
+ "subgoals": [
+  {
+   "id": "exit_ss_anne",
+   "goal_text": "Leave the S.S. Anne and return to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Pokemon Center",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_fuchsia_city",
+   "goal_text": "Travel to Fuchsia City",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_safari_zone",
+   "goal_text": "Enter the Safari Zone",
+   "done_when": {
+    "map": "SAFARI_ZONE_CENTER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_safari_secret_house",
+   "goal_text": "Navigate the Safari Zone to reach the Secret House",
+   "done_when": {
+    "map": "SAFARI_ZONE_SECRET_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_surf_hm",
+   "goal_text": "Obtain HM03 (SURF) from the Warden in the Secret House",
+   "done_when": {
+    "has_item": {
+     "HM_SURF": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "teach_surf",
+   "goal_text": "Teach SURF to a compatible Pokemon in the party",
+   "done_when": {
+    "knows_move": "SURF"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 3"
+}

@@ -1,0 +1,92 @@
+{
+ "goal": "the party holds a FLYING type",
+ "subgoals": [
+  {
+   "id": "heal_at_viridian",
+   "goal_text": "Go to the Viridian City Pokemon Center and heal the party to ensure they can survive wild encounters.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 12,
+     "y": 9,
+     "when": {
+      "map": "ROUTE_2"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 4,
+     "y": 4,
+     "when": {
+      "map": "DIGLETTS_CAVE_ROUTE_2"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 37,
+     "y": 31,
+     "when": {
+      "map": "DIGLETTS_CAVE"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 2,
+     "y": 7,
+     "when": {
+      "map": "DIGLETTS_CAVE_ROUTE_11"
+     }
+    },
+    {
+     "op": "cross",
+     "dir": "west",
+     "when": {
+      "map": "ROUTE_11"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 11,
+     "y": 3,
+     "when": {
+      "map": "VERMILION_CITY"
+     }
+    },
+    {
+     "op": "heal",
+     "when": {
+      "map": "VERMILION_POKECENTER"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign3",
+    "via": "escalation",
+    "n_ops": 7,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "go_to_route_1",
+   "goal_text": "Travel to Route 1 where Flying-type Pokemon like Pidgey and Spearow are found.",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_flying_pokemon",
+   "goal_text": "Catch a Flying-type Pokemon in the wild.",
+   "done_when": {
+    "party_type": "FLYING"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

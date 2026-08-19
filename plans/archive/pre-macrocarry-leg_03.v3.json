@@ -1,0 +1,127 @@
+{
+  "goal": "Defeat Brock for the Boulder Badge",
+  "subgoals": [
+    {
+      "id": "go_to_pallet_town",
+      "goal_text": "Travel back to Pallet Town to deliver Oak's Parcel.",
+      "done_when": {
+        "map": "PALLET_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_oaks_lab",
+      "goal_text": "Enter Professor Oak's lab.",
+      "done_when": {
+        "area": "OAKS_LAB|4,1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "deliver_parcel",
+      "goal_text": "Give Professor Oak the parcel to receive the Pokedex.",
+      "done_when": {
+        "flag": "EVENT_GOT_POKEDEX"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_1"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 11,
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_OAK1",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "reach_viridian_city",
+      "goal_text": "Travel back to Viridian City.",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_viridian_forest",
+      "goal_text": "Travel north and enter Viridian Forest.",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "train_in_forest",
+      "goal_text": "Battle wild Pokemon in Viridian Forest to raise Charmander's level to 12.",
+      "done_when": {
+        "lead_level": 12
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_pewter_city",
+      "goal_text": "Exit Viridian Forest and enter Pewter City.",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_pewter_center",
+      "goal_text": "Visit the Pewter City Pokemon Center to fully heal the party.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_pewter_gym",
+      "goal_text": "Enter the Pewter City Gym to challenge the leader.",
+      "done_when": {
+        "map": "PEWTER_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Defeat Brock in battle to earn the Boulder Badge.",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,14 @@
+{
+ "goal": "Reach Viridian City",
+ "subgoals": [
+  {
+   "id": "exit_viridian_mart",
+   "goal_text": "Leave the Viridian Mart to enter the city.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

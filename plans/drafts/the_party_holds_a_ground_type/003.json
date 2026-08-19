@@ -1,0 +1,30 @@
+{
+ "goal": "the party holds a GROUND type",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Vermilion City Pokemon Center to ensure they have full HP and PP before heading to the cave.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_digletts_cave",
+   "goal_text": "Travel to Diglett's Cave.",
+   "done_when": {
+    "map": "DIGLETTS_CAVE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_ground_type",
+   "goal_text": "Catch a Ground-type Pokemon (Diglett or Dugtrio) in the cave.",
+   "done_when": {
+    "party_type": "GROUND"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

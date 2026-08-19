@@ -1,0 +1,32 @@
+{
+ "goal": "Retrieve the HM01 from the captain of the S.S. Anne",
+ "subgoals": [
+  {
+   "id": "reach_anne_upper_deck",
+   "goal_text": "Navigate from the second floor rooms to the third floor of the S.S. Anne.",
+   "done_when": {
+    "map": "SS_ANNE_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_captains_room",
+   "goal_text": "Find and enter the Captain's Room on the third floor.",
+   "done_when": {
+    "map": "SS_ANNE_CAPTAINS_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_hm01",
+   "goal_text": "Speak with the Captain to obtain HM01 (CUT).",
+   "done_when": {
+    "has_item": {
+     "HM_CUT": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

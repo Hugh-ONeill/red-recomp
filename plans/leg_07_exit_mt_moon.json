@@ -1,0 +1,203 @@
+{
+  "goal": "Exit Mt. Moon",
+  "subgoals": [
+    {
+      "id": "reach_viridian_city",
+      "goal_text": "Travel from Route 22 to Viridian City",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_route_2",
+      "goal_text": "Travel from Viridian City to Route 2",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_viridian_forest",
+      "goal_text": "Enter Viridian Forest from Route 2",
+      "done_when": {
+        "map": "VIRIDIAN_FOREST"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "cross_viridian_forest",
+      "goal_text": "Travel through Viridian Forest to reach the north exit",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_pewter_city",
+      "goal_text": "Travel from Route 2 to Pewter City",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_route_3",
+      "goal_text": "Travel from Pewter City to Route 3",
+      "done_when": {
+        "map": "ROUTE_3"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "reach_route_4",
+      "goal_text": "Travel from Route 3 to Route 4",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "ROUTE_3"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "enter_mt_moon",
+      "goal_text": "Enter Mt. Moon from Route 4",
+      "done_when": {
+        "map": "MT_MOON_1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "TEXT_ROUTE4_MT_MOON_SIGN",
+          "answer": "yes",
+          "when": {
+            "map": "ROUTE_4"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 5,
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 5,
+          "when": {
+            "map": "ROUTE_4"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "descend_to_b1f",
+      "goal_text": "Navigate Mt. Moon 1F and descend to the basement (B1F)",
+      "done_when": {
+        "map": "MT_MOON_B1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 5,
+          "when": {
+            "map": "MT_MOON_1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Navigate Mt. Moon B1F and descend to the lowest level (B2F)",
+      "done_when": {
+        "map": "MT_MOON_B2F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 21,
+          "y": 17,
+          "when": {
+            "map": "MT_MOON_B1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "exit_mt_moon",
+      "goal_text": "Navigate through Mt. Moon B2F and exit the cave to the north",
+      "done_when": {
+        "map": "ROUTE_25"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

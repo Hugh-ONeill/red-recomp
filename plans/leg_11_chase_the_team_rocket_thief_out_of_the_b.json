@@ -1,0 +1,106 @@
+{
+  "goal": "Chase the Team Rocket thief out of the burgled house in Cerulean City",
+  "subgoals": [
+    {
+      "id": "heal_party",
+      "goal_text": "Heal the party at the Cerulean City Pokemon Center before confronting the thief.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 13,
+          "when": {
+            "map": "CERULEAN_GYM"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 17,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "CERULEAN_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "exit_gym",
+      "goal_text": "Leave the Cerulean Gym and enter Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_burgled_house",
+      "goal_text": "Enter the house in Cerulean City where the Team Rocket thief is located",
+      "done_when": {
+        "map": "CERULEAN_TRASHED_HOUSE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 9,
+          "y": 11,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 7,
+          "when": {
+            "map": "CERULEAN_BADGE_HOUSE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 27,
+          "y": 11,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "confront_thief",
+      "goal_text": "Interact with the Team Rocket thief to trigger the chase, causing him to flee back into Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

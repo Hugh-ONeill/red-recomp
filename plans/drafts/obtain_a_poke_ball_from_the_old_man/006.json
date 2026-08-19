@@ -1,0 +1,40 @@
+{
+ "goal": "Obtain a Poke Ball from the old man",
+ "subgoals": [
+  {
+   "id": "exit_viridian_pokecenter",
+   "goal_text": "Exit the Viridian Pokemon Center to enter Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "train_charmander",
+   "goal_text": "Battle wild Pokemon on Route 1 to increase Charmander's level and strength before talking to the old man.",
+   "done_when": {
+    "lead_level": 8
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "return_to_viridian_city",
+   "goal_text": "Return to Viridian City from Route 1.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "talk_to_old_man",
+   "goal_text": "Find and speak with the old man in Viridian City to receive a Poke Ball.",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

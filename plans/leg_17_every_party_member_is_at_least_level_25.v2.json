@@ -1,0 +1,57 @@
+{
+ "goal": "every party member is at least level 25",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Vermilion Pokemon Center to ensure Spearow can survive training.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_11",
+   "goal_text": "Travel to Route 11 to find wild Pokemon for training.",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "cross",
+     "dir": "east",
+     "when": {
+      "map": "VERMILION_CITY"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "train_spearow_to_25",
+   "goal_text": "Battle wild Pokemon on Route 11 until Spearow reaches level 25. Ensure Spearow is in the lead slot.",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "verify_party_levels",
+   "goal_text": "Verify that all party members, including Spearow, are now at least level 25.",
+   "done_when": {
+    "party_min_level": 25
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

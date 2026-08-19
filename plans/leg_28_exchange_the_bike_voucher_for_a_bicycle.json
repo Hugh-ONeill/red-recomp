@@ -1,0 +1,47 @@
+{
+  "goal": "Exchange the BIKE_VOUCHER for a BICYCLE at the bike shop in Cerulean City",
+  "subgoals": [
+    {
+      "id": "travel_to_cerulean",
+      "goal_text": "Travel to Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Exchange the BIKE_VOUCHER for a BICYCLE at the bike shop in Cerulean City"
+      }
+    },
+    {
+      "id": "enter_bike_shop",
+      "goal_text": "Enter the Bike Shop in Cerulean City",
+      "done_when": {
+        "map": "BIKE_SHOP"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Exchange the BIKE_VOUCHER for a BICYCLE at the bike shop in Cerulean City"
+      }
+    },
+    {
+      "id": "exchange_voucher",
+      "goal_text": "Talk to the shop clerk to exchange the Bike Voucher for the Bicycle",
+      "done_when": {
+        "has_item": {
+          "BICYCLE": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Exchange the BIKE_VOUCHER for a BICYCLE at the bike shop in Cerulean City"
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

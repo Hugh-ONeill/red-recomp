@@ -1,0 +1,40 @@
+{
+ "goal": "Defeat Giovanni in the Rocket Hideout for the Silph Scope",
+ "subgoals": [
+  {
+   "id": "reach_elevator",
+   "goal_text": "Navigate through the Rocket Hideout B2F to reach the elevator.",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_ELEVATOR"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "use_elevator_to_b4f",
+   "goal_text": "Use the elevator to descend to the lowest floor (B4F).",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Locate and defeat Giovanni in battle on B4F.",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Interact with Giovanni to receive the Silph Scope.",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

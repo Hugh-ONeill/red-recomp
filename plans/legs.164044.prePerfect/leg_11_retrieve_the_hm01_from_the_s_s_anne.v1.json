@@ -1,0 +1,177 @@
+{
+  "goal": "Retrieve the HM01 from the S.S. Anne",
+  "subgoals": [
+    {
+      "id": "go_to_ss_anne_1f",
+      "goal_text": "Go down to the first floor of the S.S. Anne",
+      "done_when": {
+        "map": "SS_ANNE_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_ss_anne_b1f",
+      "goal_text": "Go down to the basement of the S.S. Anne",
+      "done_when": {
+        "map": "SS_ANNE_B1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 20,
+          "y": 10,
+          "when": {
+            "map": "SS_ANNE_1F_ROOMS"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 37,
+          "y": 15,
+          "when": {
+            "map": "SS_ANNE_1F"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2,
+        "carried_from_rewrite": true
+      }
+    },
+    {
+      "id": "go_to_ss_anne_b1f_rooms",
+      "goal_text": "Enter the basement cabin area",
+      "done_when": {
+        "area": "SS_ANNE_B1F_ROOMS|12,1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_ss_anne_1f_rooms",
+      "goal_text": "Return to the first floor and enter the cabin area",
+      "done_when": {
+        "map": "SS_ANNE_1F_ROOMS"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 31,
+          "y": 8,
+          "when": {
+            "map": "SS_ANNE_1F"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1,
+        "carried_from_rewrite": true
+      }
+    },
+    {
+      "id": "go_to_ss_anne_2f_rooms",
+      "goal_text": "Go up to the second floor cabin area",
+      "done_when": {
+        "map": "SS_ANNE_2F_ROOMS"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 9,
+          "y": 11,
+          "when": {
+            "map": "SS_ANNE_2F"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1,
+        "carried_from_rewrite": true
+      }
+    },
+    {
+      "id": "go_to_captains_room",
+      "goal_text": "Enter the Captain's room",
+      "done_when": {
+        "map": "SS_ANNE_CAPTAINS_ROOM"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 5,
+          "when": {
+            "map": "SS_ANNE_2F_ROOMS"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 36,
+          "y": 4,
+          "when": {
+            "map": "SS_ANNE_2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "get_hm01",
+      "goal_text": "Talk to the Captain to receive HM01",
+      "done_when": {
+        "has_item": {
+          "HM_CUT": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "SSANNECAPTAINSROOM_CAPTAIN",
+          "answer": "yes",
+          "when": {
+            "map": "SS_ANNE_CAPTAINS_ROOM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SSANNECAPTAINSROOM_CAPTAIN",
+          "answer": "yes",
+          "when": {
+            "map": "SS_ANNE_CAPTAINS_ROOM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

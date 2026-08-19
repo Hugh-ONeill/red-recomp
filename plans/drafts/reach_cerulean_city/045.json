@@ -1,0 +1,45 @@
+{
+ "goal": "Reach Cerulean City",
+ "subgoals": [
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Exit Mt. Moon to the east to reach Route 3",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Cerulean City"
+   }
+  },
+  {
+   "id": "cross_route_3",
+   "goal_text": "Travel east across Route 3 to reach the gate to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Cerulean City"
+   }
+  },
+  {
+   "id": "cross_route_4",
+   "goal_text": "Travel east across Route 4 to reach Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Cerulean City"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

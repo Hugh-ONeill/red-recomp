@@ -1,0 +1,36 @@
+Obtain a starter Pokemon
+Reach Viridian City
+Retrieve the Pokemon from the Poke Mart
+Reach Pewter City
+Defeat the Mt. Moon boss
+Obtain a WATER or GRASS type Pokemon
+Defeat Misty for the Cascade Badge
+Retrieve the HM01 from the S.S. Anne
+Reach Vermilion City
+the party holds a GROUND type
+Reach Lavender Town
+Retrieve the Pokemon Flute from Mr. Fuji
+Clear the Pokemon Tower
+Reach Celadon City
+a party Pokemon knows the move FLY
+Defeat Erika for the Rainbow Badge
+Retrieve the Secret Key from the Game Corner
+Reach Saffron City
+Defeat the Saffron City guards/Enter the city
+Retrieve the Silph Scope from Silph Co.
+Defeat Sabrina for the Marsh Badge
+Reach Fuchsia City
+Retrieve the HM04 from the Safari Zone
+a party Pokemon knows the move STRENGTH
+a party Pokemon knows the move SURF
+Defeat Koga for the Soul Badge
+Reach Cinnabar Island
+Clear the Pokemon Mansion
+Defeat Blaine for the Volcano Badge
+Reach Viridian City Gym
+Defeat Giovanni for the Earth Badge
+Reach the Indigo Plateau
+Navigate the Victory Road
+every party member is at least level 50
+Defeat the Elite Four
+Defeat the Champion

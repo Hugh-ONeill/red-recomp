@@ -1,0 +1,54 @@
+{
+ "goal": "Reach Pewter City",
+ "subgoals": [
+  {
+   "id": "go_to_viridian_poke_center",
+   "goal_text": "Go to the Pokemon Center in Viridian City to heal Charmander.",
+   "done_when": {
+    "map": "VIRIDIAN_POKECENTER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "deliver_oaks_parcel",
+   "goal_text": "Return to Pallet Town and deliver the parcel to Professor Oak.",
+   "done_when": {
+    "flag": "EVENT_OAK_GOT_PARCEL"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "return_to_viridian",
+   "goal_text": "Travel back to Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_forest",
+   "goal_text": "Travel north from Viridian City and enter Viridian Forest.",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "traverse_viridian_forest",
+   "goal_text": "Navigate through Viridian Forest to reach the northern exit.",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

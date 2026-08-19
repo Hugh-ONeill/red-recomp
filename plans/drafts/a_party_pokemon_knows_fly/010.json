@@ -1,0 +1,140 @@
+{
+ "goal": "a party Pokemon knows FLY",
+ "subgoals": [
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "buy_silph_scope",
+   "goal_text": "Go to the Celadon Department Store and buy a Silph Scope",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "enter_rocket_hideout",
+   "goal_text": "Find and enter the Rocket Hideout in Celadon City",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "defeat_rocket_grunts",
+   "goal_text": "Fight through the Rocket Hideout to reach the boss",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni to obtain the Silph Scope (if not already bought) or clear the hideout",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Travel to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "reach_silph_co_top",
+   "goal_text": "Navigate to the top floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "get_fly_hm",
+   "goal_text": "Defeat the president's rescuers and receive HM02 (Fly)",
+   "done_when": {
+    "has_item": {
+     "HM_FLY": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "teach_fly",
+   "goal_text": "Teach the move Fly to a compatible Pokemon in the party",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

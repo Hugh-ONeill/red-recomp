@@ -1,0 +1,48 @@
+{
+ "goal": "the party holds a FIGHTING or WATER type",
+ "subgoals": [
+  {
+   "id": "reach_pewter_city",
+   "goal_text": "Travel to Pewter City",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "buy_pokeballs",
+   "goal_text": "Go to the Pewter City Mart and buy Poke Balls",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 5
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Defeat Brock in the Pewter Gym to earn the Boulder Badge",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_type",
+   "goal_text": "Catch a Water-type Pokemon in the water near Cerulean City",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

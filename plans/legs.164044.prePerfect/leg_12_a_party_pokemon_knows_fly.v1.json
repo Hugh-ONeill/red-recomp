@@ -1,0 +1,74 @@
+{
+ "goal": "a party Pokemon knows FLY",
+ "subgoals": [
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Travel to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_silph_co_boss",
+   "goal_text": "Navigate through Silph Co. to reach the president's office",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni to rescue the president",
+   "done_when": {
+    "flag": "EVENT_GOT_HM02"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_lt_surge",
+   "goal_text": "Defeat Lt. Surge at the Vermilion Gym to earn the Thunder Badge",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4,
+   "carried_forward": 1
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Defeat Erika at the Celadon Gym to earn the Rainbow Badge",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4,
+   "carried_forward": 1
+  },
+  {
+   "id": "get_fly_hm",
+   "goal_text": "Receive the HM for FLY from the president of Silph Co.",
+   "done_when": {
+    "has_item": {
+     "HM_FLY": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "teach_fly",
+   "goal_text": "Teach the move FLY to a compatible Pokemon in the party",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

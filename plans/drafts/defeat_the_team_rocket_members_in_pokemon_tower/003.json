@@ -1,0 +1,73 @@
+{
+ "goal": "Defeat the Team Rocket members in Pokemon Tower",
+ "subgoals": [
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Obtain the SILPH SCOPE from Mr. Fuji in his house",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_pokemon_tower",
+   "goal_text": "Enter the Pokemon Tower from Lavender Town",
+   "done_when": {
+    "map": "POKEMON_TOWER_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "climb_to_6f",
+   "goal_text": "Ascend the Pokemon Tower to the 6th floor",
+   "done_when": {
+    "map": "POKEMON_TOWER_6F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_6f_rocket",
+   "goal_text": "Defeat the Team Rocket members on the 6th floor of Pokemon Tower",
+   "done_when": {
+    "any_of": [
+     {
+      "flag": "EVENT_BEAT_POKEMONTOWER_6_TRAINER_0"
+     },
+     {
+      "flag": "EVENT_BEAT_POKEMONTOWER_6_TRAINER_1"
+     },
+     {
+      "flag": "EVENT_BEAT_POKEMONTOWER_6_TRAINER_2"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_7f",
+   "goal_text": "Ascend to the 7th floor of Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_7F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_7f_rocket",
+   "goal_text": "Defeat the Team Rocket members on the 7th floor of Pokemon Tower",
+   "done_when": {
+    "any_of": [
+     {
+      "flag": "EVENT_BEAT_POKEMONTOWER_7_TRAINER_0"
+     },
+     {
+      "flag": "EVENT_BEAT_POKEMONTOWER_7_TRAINER_1"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,21 @@
+{
+  "goal": "the party holds a WATER or GRASS type",
+  "subgoals": [
+    {
+      "id": "catch_water_pokemon",
+      "goal_text": "Catch a Water-type Pokemon (such as Psyduck or Goldeen) on Route 24.",
+      "done_when": {
+        "any_of": [
+          {
+            "party_type": "WATER"
+          },
+          {
+            "party_type": "GRASS"
+          }
+        ]
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

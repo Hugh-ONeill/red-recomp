@@ -1,0 +1,58 @@
+{
+ "goal": "a party Pokemon knows FLY",
+ "subgoals": [
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "go_to_department_store",
+   "goal_text": "Enter the Celadon Department Store",
+   "done_when": {
+    "map": "CELADON_MART_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "go_to_top_floor",
+   "goal_text": "Go to the roof of the Department Store",
+   "done_when": {
+    "map": "CELADON_MART_ROOF"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  },
+  {
+   "id": "trade_for_fly",
+   "goal_text": "Trade a Pokemon for the Pokemon that knows FLY",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows FLY"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

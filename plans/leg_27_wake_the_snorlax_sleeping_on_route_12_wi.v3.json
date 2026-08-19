@@ -1,0 +1,22 @@
+{
+  "goal": "Wake the Snorlax sleeping on Route 12 with the Poke Flute",
+  "subgoals": [
+    {
+      "id": "travel_to_route_12",
+      "goal_text": "Travel to Route 12",
+      "done_when": {
+        "map": "ROUTE_12"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "wake_snorlax_route_12",
+      "goal_text": "Use the Poke Flute to wake the Snorlax blocking the path on Route 12",
+      "done_when": {
+        "flag": "EVENT_BEAT_ROUTE12_SNORLAX"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

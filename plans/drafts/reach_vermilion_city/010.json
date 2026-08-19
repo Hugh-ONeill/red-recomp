@@ -1,0 +1,38 @@
+{
+ "goal": "Reach Vermilion City",
+ "subgoals": [
+  {
+   "id": "travel_to_route_5",
+   "goal_text": "Travel south from Cerulean City to enter Route 5",
+   "done_when": {
+    "map": "ROUTE_5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_saffron",
+   "goal_text": "Continue south through Route 5 to reach Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_6",
+   "goal_text": "Travel south from Saffron City to enter Route 6",
+   "done_when": {
+    "map": "ROUTE_6"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_vermilion_city",
+   "goal_text": "Continue south through Route 6 to reach Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

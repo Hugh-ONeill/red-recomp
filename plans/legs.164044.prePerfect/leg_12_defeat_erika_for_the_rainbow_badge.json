@@ -1,0 +1,89 @@
+{
+  "goal": "Defeat Erika for the Rainbow Badge",
+  "subgoals": [
+    {
+      "id": "heal_at_vermilion",
+      "goal_text": "Heal the party at the Vermilion City Pokemon Center.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "travel_to_celadon",
+      "goal_text": "Travel from Vermilion City to Celadon City.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "visit_celadon_mart",
+      "goal_text": "Enter the Celadon Mart.",
+      "done_when": {
+        "map": "CELADON_MART_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "buy_potions",
+      "goal_text": "Buy Potions at the Celadon Mart to ensure the party can survive the gym.",
+      "done_when": {
+        "has_item": {
+          "POTION": 5
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_celadon_mart",
+      "goal_text": "Exit the Celadon Mart back into the city.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_celadon_gym",
+      "goal_text": "Enter the Celadon Gym.",
+      "done_when": {
+        "map": "CELADON_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_erika",
+      "goal_text": "Defeat the Gym Leader Erika in battle.",
+      "done_when": {
+        "badge": "RAINBOWBADGE"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

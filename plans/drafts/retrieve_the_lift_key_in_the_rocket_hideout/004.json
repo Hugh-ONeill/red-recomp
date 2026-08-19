@@ -1,0 +1,99 @@
+{
+ "goal": "Retrieve the Lift Key in the Rocket Hideout",
+ "subgoals": [
+  {
+   "id": "heal_at_center",
+   "goal_text": "Go to the Celadon Pokemon Center and heal the party.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Lift Key in the Rocket Hideout"
+   }
+  },
+  {
+   "id": "enter_game_corner",
+   "goal_text": "Enter the Celadon Game Corner.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Lift Key in the Rocket Hideout"
+   }
+  },
+  {
+   "id": "enter_rocket_hideout",
+   "goal_text": "Enter the Rocket Hideout via the secret switch in the Game Corner.",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Lift Key in the Rocket Hideout"
+   }
+  },
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Take the elevator down to the second basement level.",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B2F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Lift Key in the Rocket Hideout"
+   }
+  },
+  {
+   "id": "descend_to_b3f",
+   "goal_text": "Take the elevator down to the third basement level.",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B3F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Lift Key in the Rocket Hideout"
+   }
+  },
+  {
+   "id": "descend_to_b4f",
+   "goal_text": "Take the elevator down to the fourth basement level.",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Lift Key in the Rocket Hideout"
+   }
+  },
+  {
+   "id": "find_lift_key",
+   "goal_text": "Locate and pick up the Lift Key from the item ball in the Rocket Hideout B4F.",
+   "done_when": {
+    "has_item": {
+     "LIFT_KEY": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Lift Key in the Rocket Hideout"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

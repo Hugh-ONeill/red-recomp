@@ -1,0 +1,48 @@
+{
+ "goal": "Obtain a WATER or GRASS type Pokemon",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel from Route 24 back to Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Visit the Pokemon Center in Cerulean City to heal the party.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "buy_poke_balls",
+   "goal_text": "Go to the Cerulean Mart and buy more Poke Balls to ensure enough for catching.",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 10
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_24_water",
+   "goal_text": "Return to Route 24 to find a Water type Pokemon in the water.",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_or_grass",
+   "goal_text": "Catch a Water or Grass type Pokemon in the wild.",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

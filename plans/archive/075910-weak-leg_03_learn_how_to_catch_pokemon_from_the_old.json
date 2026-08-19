@@ -1,0 +1,48 @@
+{
+  "goal": "Learn how to catch Pokemon from the old man",
+  "subgoals": [
+    {
+      "id": "go_to_viridian_city",
+      "goal_text": "Travel from Route 2 back to Viridian City",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_2"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_route_1",
+      "goal_text": "Travel from Viridian City to Route 1",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "talk_to_old_man",
+      "goal_text": "Interact with the old man on Route 1 to trigger the tutorial on catching Pokemon",
+      "done_when": {
+        "mode": "dialog"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,34 @@
+{
+ "goal": "Retrieve the Pokemon Flute from Mr. Fuji",
+ "subgoals": [
+  {
+   "id": "go_to_fuji_house",
+   "goal_text": "Travel to Mr. Fuji's house in Lavender Town.",
+   "done_when": {
+    "map": "MR_FUJIS_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Pokemon Flute from Mr. Fuji"
+   }
+  },
+  {
+   "id": "talk_to_fuji",
+   "goal_text": "Speak with Mr. Fuji to receive the Pokemon Flute.",
+   "done_when": {
+    "has_item": {
+     "POKE_FLUTE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Pokemon Flute from Mr. Fuji"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

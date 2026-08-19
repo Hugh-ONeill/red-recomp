@@ -1,0 +1,32 @@
+{
+ "goal": "Reach Lavender Town",
+ "subgoals": [
+  {
+   "id": "move_to_route_12",
+   "goal_text": "Travel east from Route 11 to Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Travel north from Route 12 to enter Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

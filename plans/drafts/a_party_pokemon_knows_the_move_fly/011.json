@@ -1,0 +1,112 @@
+{
+ "goal": "a party Pokemon knows the move FLY",
+ "subgoals": [
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_celadon_dept_store",
+   "goal_text": "Enter the Celadon Department Store",
+   "done_when": {
+    "map": "CELADON_MART_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "buy_silph_scope",
+   "goal_text": "Buy a SILPH_SCOPE from the store",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_lavender",
+   "goal_text": "Travel to Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_pokemon_tower",
+   "goal_text": "Enter the Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_mr_fuji",
+   "goal_text": "Navigate the Pokemon Tower to reach Mr. Fuji and obtain the Poke Flute",
+   "done_when": {
+    "flag": "EVENT_GOT_POKE_FLUTE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Travel to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_silph_co_top",
+   "goal_text": "Reach the top floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni at the top of Silph Co.",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_16",
+   "goal_text": "Travel to Route 16",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_fly_house",
+   "goal_text": "Enter the house on Route 16 that teaches Fly",
+   "done_when": {
+    "map": "ROUTE_16_FLY_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "learn_fly",
+   "goal_text": "Talk to the NPC in the house to teach a Pokemon the move FLY",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

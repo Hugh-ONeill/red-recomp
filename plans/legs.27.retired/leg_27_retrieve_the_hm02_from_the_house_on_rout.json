@@ -1,0 +1,123 @@
+{
+  "goal": "Retrieve the HM02 from the house on Route 16",
+  "subgoals": [
+    {
+      "id": "clear_bag_space",
+      "goal_text": "The bag is full (20/20). Sell or discard an item to make room for HM02.",
+      "done_when": {
+        "any_of": [
+          {
+            "has_item": {
+              "HP_UP": 1
+            }
+          },
+          {
+            "has_item": {
+              "RARE_CANDY": 1
+            }
+          }
+        ]
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_16",
+      "goal_text": "Travel to Route 16.",
+      "done_when": {
+        "map": "ROUTE_16"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 7,
+          "when": {
+            "map": "MR_FUJIS_HOUSE"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 3,
+          "when": {
+            "map": "ROUTE_8"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 4,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_8"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 5,
+          "when": {
+            "map": "UNDERGROUND_PATH_WEST_EAST"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_7"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "ROUTE_7"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 8
+      }
+    },
+    {
+      "id": "enter_fly_house",
+      "goal_text": "Enter the house on Route 16 (the Fly house).",
+      "done_when": {
+        "map": "ROUTE_16_FLY_HOUSE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_hm02",
+      "goal_text": "Talk to the man in the house to receive HM02.",
+      "done_when": {
+        "has_item": {
+          "HM_FLY": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

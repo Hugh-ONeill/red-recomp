@@ -1,0 +1,62 @@
+{
+ "goal": "Reach Pewter City",
+ "subgoals": [
+  {
+   "id": "go_to_viridian_city",
+   "goal_text": "Travel from Route 22 to Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_viridian_center",
+   "goal_text": "Visit the Pokemon Center in Viridian City to fully heal the party",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "train_for_forest",
+   "goal_text": "Battle in the grass on Route 1 or Route 22 to raise the lead Pokemon's level to 10 to ensure survival in the forest",
+   "done_when": {
+    "lead_level": 10
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Travel north from Viridian City to Route 2",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_forest",
+   "goal_text": "Enter the Viridian Forest",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_viridian_forest",
+   "goal_text": "Navigate through Viridian Forest to the north exit and return to Route 2",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_pewter_city",
+   "goal_text": "Travel north from Route 2 to enter Pewter City",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

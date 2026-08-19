@@ -1,0 +1,80 @@
+{
+ "goal": "Retrieve the Pokemon from the Poke Mart",
+ "subgoals": [
+  {
+   "id": "give_parcel_to_oak",
+   "goal_text": "Talk to Professor Oak to deliver the parcel.",
+   "done_when": {
+    "flag": "EVENT_OAK_GOT_PARCEL"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 3,
+     "y": 7,
+     "when": {
+      "map": "VIRIDIAN_MART"
+     }
+    },
+    {
+     "op": "cross",
+     "dir": "south",
+     "when": {
+      "map": "VIRIDIAN_CITY"
+     }
+    },
+    {
+     "op": "cross",
+     "dir": "south",
+     "when": {
+      "map": "ROUTE_1"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 12,
+     "y": 11,
+     "when": {
+      "map": "PALLET_TOWN"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "OAKSLAB_OAK1",
+     "answer": "yes",
+     "when": {
+      "map": "OAKS_LAB"
+     }
+    }
+   ],
+   "subgoal_provenance": {
+    "authored_by": "unknown (pre-audit)"
+   },
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign2",
+    "via": "escalation",
+    "n_ops": 5
+   },
+   "carried_forward": 1
+  },
+  {
+   "id": "go_to_viridian_mart",
+   "goal_text": "Travel to the Poke Mart in Viridian City",
+   "done_when": {
+    "area": "VIRIDIAN_MART|0,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "retrieve_pokemon",
+   "goal_text": "Interact with the clerk to retrieve the Pokemon left for deposit",
+   "done_when": {
+    "party_size": 2
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

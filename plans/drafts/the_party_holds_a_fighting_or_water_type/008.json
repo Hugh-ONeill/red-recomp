@@ -1,0 +1,45 @@
+{
+ "goal": "the party holds a FIGHTING or WATER type",
+ "subgoals": [
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Exit Mt. Moon to reach the surface.",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a FIGHTING or WATER type"
+   }
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel from Route 3 to Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a FIGHTING or WATER type"
+   }
+  },
+  {
+   "id": "catch_water_type",
+   "goal_text": "Catch a Water-type Pokemon in the water surrounding Cerulean City.",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a FIGHTING or WATER type"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

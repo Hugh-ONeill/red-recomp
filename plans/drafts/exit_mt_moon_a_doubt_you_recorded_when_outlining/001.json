@@ -1,0 +1,71 @@
+{
+ "goal": "Exit Mt. Moon",
+ "subgoals": [
+  {
+   "id": "reach_pewter_city",
+   "goal_text": "Travel to Pewter City",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Exit Mt. Moon (a doubt you recorded when outlining: also written as 'Reach Mt. Moon' when the outline was drafted; the two were judged the same objective)"
+   }
+  },
+  {
+   "id": "reach_mt_moon",
+   "goal_text": "Travel to the entrance of Mt. Moon",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Exit Mt. Moon (a doubt you recorded when outlining: also written as 'Reach Mt. Moon' when the outline was drafted; the two were judged the same objective)"
+   }
+  },
+  {
+   "id": "descend_to_b1f",
+   "goal_text": "Find the stairs and descend to the first basement level of Mt. Moon",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Exit Mt. Moon (a doubt you recorded when outlining: also written as 'Reach Mt. Moon' when the outline was drafted; the two were judged the same objective)"
+   }
+  },
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Find the stairs and descend to the second basement level of Mt. Moon",
+   "done_when": {
+    "map": "MT_MOON_B2F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Exit Mt. Moon (a doubt you recorded when outlining: also written as 'Reach Mt. Moon' when the outline was drafted; the two were judged the same objective)"
+   }
+  },
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Navigate through the basement and exit Mt. Moon on the far side",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Exit Mt. Moon (a doubt you recorded when outlining: also written as 'Reach Mt. Moon' when the outline was drafted; the two were judged the same objective)"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

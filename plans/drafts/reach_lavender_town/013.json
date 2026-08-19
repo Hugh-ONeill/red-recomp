@@ -1,0 +1,22 @@
+{
+ "goal": "Reach Lavender Town",
+ "subgoals": [
+  {
+   "id": "go_to_route_12",
+   "goal_text": "Travel east from Vermilion City through Route 11 to reach Route 12.",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Travel north from Route 12 to reach Lavender Town.",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

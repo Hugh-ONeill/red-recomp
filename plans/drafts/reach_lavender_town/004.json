@@ -1,0 +1,97 @@
+{
+ "goal": "Reach Lavender Town",
+ "subgoals": [
+  {
+   "id": "exit_rock_tunnel",
+   "goal_text": "Exit the Rock Tunnel to the east",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_route_11",
+   "goal_text": "Travel east from Route 10 to Route 11",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_route_12",
+   "goal_text": "Pass through the Route 11 gate and enter Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_route_13",
+   "goal_text": "Pass through the Route 12 gate and enter Route 13",
+   "done_when": {
+    "map": "ROUTE_13"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_route_14",
+   "goal_text": "Travel north from Route 13 to Route 14",
+   "done_when": {
+    "map": "ROUTE_14"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_route_15",
+   "goal_text": "Travel west from Route 14 to Route 15",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Travel north from Route 15 to enter Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

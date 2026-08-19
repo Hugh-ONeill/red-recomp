@@ -1,0 +1,60 @@
+{
+ "goal": "Retrieve the S.S. Ticket from Bill",
+ "subgoals": [
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Cerulean City Pokemon Center to ensure Charmeleon is usable.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the S.S. Ticket from Bill"
+   }
+  },
+  {
+   "id": "go_to_vermilion",
+   "goal_text": "Travel to Vermilion City.",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the S.S. Ticket from Bill"
+   }
+  },
+  {
+   "id": "go_to_bills_house",
+   "goal_text": "Travel to Bill's House on Route 25, north of Cerulean City.",
+   "done_when": {
+    "map": "BILLS_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the S.S. Ticket from Bill"
+   }
+  },
+  {
+   "id": "talk_to_bill",
+   "goal_text": "Speak with Bill inside his house to receive the S.S. Ticket.",
+   "done_when": {
+    "has_item": {
+     "S_S_TICKET": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the S.S. Ticket from Bill"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

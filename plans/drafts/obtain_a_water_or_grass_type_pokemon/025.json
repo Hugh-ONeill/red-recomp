@@ -1,0 +1,53 @@
+{
+ "goal": "Obtain a WATER or GRASS type Pokemon",
+ "subgoals": [
+  {
+   "id": "exit_bike_shop",
+   "goal_text": "Leave the bike shop and enter Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_cerulean",
+   "goal_text": "Travel back to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_cerulean",
+   "goal_text": "Heal the party at the Cerulean Pokemon Center",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_24",
+   "goal_text": "Go to Route 24 to find water-type Pokemon",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_grass_pokemon",
+   "goal_text": "Catch a Water or Grass type Pokemon in the wild",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "WATER"
+     },
+     {
+      "party_type": "GRASS"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

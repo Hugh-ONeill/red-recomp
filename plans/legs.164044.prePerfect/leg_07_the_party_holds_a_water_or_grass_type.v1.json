@@ -1,0 +1,63 @@
+{
+  "goal": "the party holds a WATER or GRASS type",
+  "subgoals": [
+    {
+      "id": "go_to_route_4",
+      "goal_text": "Travel from Pewter City to Route 4",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_cerulean_city",
+      "goal_text": "Travel from Route 4 to Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_24",
+      "goal_text": "Travel from Cerulean City north to Route 24",
+      "done_when": {
+        "map": "ROUTE_24"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "catch_water_or_grass",
+      "goal_text": "Catch a Water or Grass type Pokemon on Route 24",
+      "done_when": {
+        "any_of": [
+          {
+            "party_type": "WATER"
+          },
+          {
+            "party_type": "GRASS"
+          }
+        ]
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

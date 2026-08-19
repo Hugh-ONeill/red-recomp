@@ -1,0 +1,38 @@
+{
+ "goal": "Obtain a starter Pokemon",
+ "subgoals": [
+  {
+   "id": "exit_house_2f",
+   "goal_text": "Go downstairs from the second floor of the house.",
+   "done_when": {
+    "map": "REDS_HOUSE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_house_1f",
+   "goal_text": "Leave the house and enter Pallet Town.",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Go to Professor Oak's Lab.",
+   "done_when": {
+    "map": "OAKS_LAB"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "pick_starter",
+   "goal_text": "Interact with the Poke Ball on the table to choose a starter Pokemon.",
+   "done_when": {
+    "party_nonempty": true
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

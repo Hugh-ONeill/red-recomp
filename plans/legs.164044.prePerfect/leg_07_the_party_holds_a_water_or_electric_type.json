@@ -1,0 +1,118 @@
+{
+  "goal": "the party holds a WATER or ELECTRIC type",
+  "subgoals": [
+    {
+      "id": "go_to_cerulean_city",
+      "goal_text": "Travel back to Cerulean City from Route 24",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_24"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_cerulean_mart",
+      "goal_text": "Enter the Cerulean City Poke Mart to buy Poke Balls",
+      "done_when": {
+        "map": "CERULEAN_MART"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "buy_poke_balls",
+      "goal_text": "Purchase a sufficient quantity of Poke Balls",
+      "done_when": {
+        "has_item": {
+          "POKE_BALL": 5
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "buy",
+          "item": "POKE_BALL",
+          "count": 5,
+          "when": {
+            "map": "CERULEAN_MART"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "go_to_route_25",
+      "goal_text": "Travel to Route 25 to find Water-type Pokemon",
+      "done_when": {
+        "map": "ROUTE_25"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "CERULEAN_MART"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_24"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "catch_water_pokemon",
+      "goal_text": "Catch a Water-type Pokemon (such as Magikarp or Goldeen) in the wild",
+      "done_when": {
+        "party_type": "WATER"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

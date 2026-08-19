@@ -1,0 +1,140 @@
+{
+ "goal": "a party Pokemon knows the move FLY",
+ "subgoals": [
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_dept_store",
+   "goal_text": "Enter the Celadon Department Store",
+   "done_when": {
+    "map": "CELADON_MART_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "buy_silph_scope",
+   "goal_text": "Purchase the SILPH_SCOPE from the store",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_game_corner",
+   "goal_text": "Go to the Game Corner",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "get_pocketbike",
+   "goal_text": "Obtain the Pocketbike from the Game Corner",
+   "done_when": {
+    "has_item": {
+     "BICYCLE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_rocket_hideout",
+   "goal_text": "Enter the Rocket Hideout in Celadon City",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "defeat_rocket_boss",
+   "goal_text": "Defeat the Rocket Boss to obtain the S.S. Ticket",
+   "done_when": {
+    "flag": "EVENT_FOUND_ROCKET_HIDEOUT"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_route_16",
+   "goal_text": "Travel to Route 16",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "enter_fly_house",
+   "goal_text": "Enter the house where the player can learn FLY",
+   "done_when": {
+    "map": "ROUTE_16_FLY_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "learn_fly",
+   "goal_text": "Talk to the NPC to teach a Pokemon the move FLY",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

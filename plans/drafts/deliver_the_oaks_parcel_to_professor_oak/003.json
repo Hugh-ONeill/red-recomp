@@ -1,0 +1,73 @@
+{
+ "goal": "Deliver the OAKS_PARCEL to Professor Oak",
+ "subgoals": [
+  {
+   "id": "go_to_viridian_city",
+   "goal_text": "Travel from Pallet Town to Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Deliver the OAKS_PARCEL to Professor Oak"
+   }
+  },
+  {
+   "id": "talk_to_oak_in_viridian",
+   "goal_text": "Speak with Professor Oak in Viridian City to receive the OAKS_PARCEL.",
+   "done_when": {
+    "has_item": {
+     "OAKS_PARCEL": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Deliver the OAKS_PARCEL to Professor Oak"
+   }
+  },
+  {
+   "id": "return_to_pallet_town",
+   "goal_text": "Travel back to Pallet Town to deliver the parcel.",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Deliver the OAKS_PARCEL to Professor Oak"
+   }
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Enter Professor Oak's laboratory in Pallet Town.",
+   "done_when": {
+    "map": "OAKS_LAB"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Deliver the OAKS_PARCEL to Professor Oak"
+   }
+  },
+  {
+   "id": "deliver_parcel_to_oak",
+   "goal_text": "Speak with Professor Oak to give him the OAKS_PARCEL.",
+   "done_when": {
+    "flag": "EVENT_GOT_POKEDEX"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Deliver the OAKS_PARCEL to Professor Oak"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

@@ -1,0 +1,104 @@
+{
+ "goal": "Retrieve the HM01 from the S.S. Anne",
+ "subgoals": [
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Cerulean City Pokemon Center before traveling south.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_vermilion_city",
+   "goal_text": "Travel to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "board_ss_anne",
+   "goal_text": "Board the S.S. Anne using the S.S. Ticket",
+   "done_when": {
+    "map": "SS_ANNE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_ss_anne_1f_rooms",
+   "goal_text": "Enter the cabin area of the first floor",
+   "done_when": {
+    "map": "SS_ANNE_1F_ROOMS"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_ss_anne_2f",
+   "goal_text": "Go up to the second floor",
+   "done_when": {
+    "map": "SS_ANNE_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_ss_anne_2f_rooms",
+   "goal_text": "Enter the cabin area of the second floor",
+   "done_when": {
+    "map": "SS_ANNE_2F_ROOMS"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_ss_anne_1f",
+   "goal_text": "Return to the first floor",
+   "done_when": {
+    "map": "SS_ANNE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_ss_anne_1f_rooms_again",
+   "goal_text": "Enter the first floor cabin area again to reach the lower deck",
+   "done_when": {
+    "map": "SS_ANNE_1F_ROOMS"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_ss_anne_b1f",
+   "goal_text": "Descend to the basement (B1F)",
+   "done_when": {
+    "map": "SS_ANNE_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_ss_anne_b1f_rooms",
+   "goal_text": "Enter the basement cabin area",
+   "done_when": {
+    "map": "SS_ANNE_B1F_ROOMS"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_captains_room",
+   "goal_text": "Enter the Captain's Room",
+   "done_when": {
+    "map": "SS_ANNE_CAPTAINS_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_hm01",
+   "goal_text": "Talk to the Captain to receive HM01",
+   "done_when": {
+    "has_item": {
+     "HM_CUT": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

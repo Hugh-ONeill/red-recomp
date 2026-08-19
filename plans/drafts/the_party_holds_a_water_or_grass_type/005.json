@@ -1,0 +1,38 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Travel to Route 2",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "arrive_at_forest_gate",
+   "goal_text": "Reach the south gate of Viridian Forest",
+   "done_when": {
+    "area": "VIRIDIAN_FOREST_SOUTH_GATE|5,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_forest",
+   "goal_text": "Enter Viridian Forest",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_grass_type",
+   "goal_text": "Catch a Grass-type Pokemon in Viridian Forest",
+   "done_when": {
+    "party_type": "GRASS"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

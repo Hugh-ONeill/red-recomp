@@ -1,0 +1,58 @@
+{
+ "goal": "Retrieve the Pokemon from the Poke Mart",
+ "subgoals": [
+  {
+   "id": "exit_viridian_mart",
+   "goal_text": "Exit the Viridian City Poke Mart to return to the overworld.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Pokemon from the Poke Mart"
+   }
+  },
+  {
+   "id": "travel_to_pallet_town",
+   "goal_text": "Travel from Viridian City back to Pallet Town.",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Pokemon from the Poke Mart"
+   }
+  },
+  {
+   "id": "travel_to_oaks_lab",
+   "goal_text": "Enter Professor Oak's Lab in Pallet Town.",
+   "done_when": {
+    "map": "OAKS_LAB"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Pokemon from the Poke Mart"
+   }
+  },
+  {
+   "id": "deliver_parcel",
+   "goal_text": "Talk to Professor Oak to deliver the parcel.",
+   "done_when": {
+    "flag": "EVENT_OAK_GOT_PARCEL"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the Pokemon from the Poke Mart"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

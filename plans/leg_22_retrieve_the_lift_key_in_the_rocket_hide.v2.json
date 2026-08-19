@@ -1,0 +1,89 @@
+{
+  "goal": "Retrieve the Lift Key in the Rocket Hideout",
+  "subgoals": [
+    {
+      "id": "heal_before_descent",
+      "goal_text": "Heal the party at the Celadon Pokemon Center before entering the hideout",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 15,
+          "y": 17,
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 41,
+          "y": 9,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "CELADON_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "enter_rocket_hideout",
+      "goal_text": "Enter the Rocket Hideout from the Game Corner",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Navigate through the hideout to reach the second basement level",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B2F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b3f",
+      "goal_text": "Navigate through the hideout to reach the third basement level",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B3F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b4f",
+      "goal_text": "Navigate through the hideout to reach the fourth basement level",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B4F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "find_lift_key",
+      "goal_text": "Locate and pick up the Lift Key from the item ball in the hideout",
+      "done_when": {
+        "has_item": {
+          "LIFT_KEY": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

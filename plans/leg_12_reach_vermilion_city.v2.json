@@ -1,0 +1,138 @@
+{
+  "goal": "Reach Vermilion City",
+  "subgoals": [
+    {
+      "id": "go_to_saffron",
+      "goal_text": "Travel south from Route 5 to Saffron City",
+      "done_when": {
+        "map": "SAFFRON_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Reach Vermilion City"
+      }
+    },
+    {
+      "id": "go_to_route_6",
+      "goal_text": "Travel south from Saffron City to Route 6",
+      "done_when": {
+        "map": "ROUTE_6"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Reach Vermilion City"
+      },
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 5,
+          "when": {
+            "map": "ROUTE_6_GATE"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "reach_vermilion",
+      "goal_text": "Travel south from Route 6 to Vermilion City",
+      "done_when": {
+        "map": "VERMILION_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Reach Vermilion City"
+      },
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_6"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 25,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 7,
+          "when": {
+            "map": "BIKE_SHOP"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 27,
+          "when": {
+            "map": "ROUTE_5"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 4,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_5"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 41,
+          "when": {
+            "map": "UNDERGROUND_PATH_NORTH_SOUTH"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_6"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_6"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 9
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

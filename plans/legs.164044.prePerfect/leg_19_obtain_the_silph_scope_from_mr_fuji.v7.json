@@ -1,0 +1,137 @@
+{
+  "goal": "Obtain the Silph Scope from Mr. Fuji",
+  "subgoals": [
+    {
+      "id": "exit_pokemon_tower",
+      "goal_text": "Leave the Pokemon Tower and return to Lavender Town",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER1",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER2",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER3",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 9,
+          "y": 16,
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER1",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER2",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER3",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER1",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 10
+      }
+    },
+    {
+      "id": "go_to_fuji_house",
+      "goal_text": "Travel to Mr. Fuji's house in the north of Lavender Town",
+      "done_when": {
+        "map": "MR_FUJIS_HOUSE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "talk_to_fuji",
+      "goal_text": "Speak with Mr. Fuji to trigger the event and be transported to the Pokemon Tower",
+      "done_when": {
+        "map": "POKEMON_TOWER_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_fuji_tower_top",
+      "goal_text": "Climb the Pokemon Tower to reach the top floor where Mr. Fuji is waiting",
+      "done_when": {
+        "map": "POKEMON_TOWER_7F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "receive_silph_scope",
+      "goal_text": "Talk to Mr. Fuji on the 7th floor to receive the Silph Scope",
+      "done_when": {
+        "has_item": {
+          "SILPH_SCOPE": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

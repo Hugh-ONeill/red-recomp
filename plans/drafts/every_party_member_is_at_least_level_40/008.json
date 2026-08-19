@@ -1,0 +1,112 @@
+{
+ "goal": "every party member is at least level 40",
+ "subgoals": [
+  {
+   "id": "heal_party",
+   "goal_text": "Go to a Pokemon Center and heal the party to full health.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "train_nidoran",
+   "goal_text": "Battle wild Pokemon on Route 13 until Nidoran_M reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "train_venonat",
+   "goal_text": "Battle wild Pokemon on Route 13 until Venonat reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 3,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "train_pidgeotto",
+   "goal_text": "Battle wild Pokemon on Route 13 until Pidgeotto reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 5,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "train_farfetchd",
+   "goal_text": "Battle wild Pokemon on Route 13 until Farfetchd reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 6,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "train_fearow",
+   "goal_text": "Battle wild Pokemon on Route 13 until Fearow reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "final_check",
+   "goal_text": "Ensure all party members have reached at least level 40.",
+   "done_when": {
+    "party_min_level": 40
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

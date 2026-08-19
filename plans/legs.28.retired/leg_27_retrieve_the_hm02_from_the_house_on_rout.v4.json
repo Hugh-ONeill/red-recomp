@@ -1,0 +1,67 @@
+{
+  "goal": "Retrieve the HM02 from the house on Route 16",
+  "subgoals": [
+    {
+      "id": "heal_at_celadon_center",
+      "goal_text": "Heal the party at the Celadon City Pokemon Center before heading west",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_16",
+      "goal_text": "Travel from Celadon City to Route 16",
+      "done_when": {
+        "map": "ROUTE_16"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 7,
+          "y": 7,
+          "when": {
+            "map": "ROUTE_16_GATE_2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 7,
+          "y": 8,
+          "when": {
+            "map": "ROUTE_16_GATE_1F"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      },
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      }
+    },
+    {
+      "id": "enter_fly_house",
+      "goal_text": "Enter the house on Route 16",
+      "done_when": {
+        "map": "ROUTE_16_FLY_HOUSE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_hm02",
+      "goal_text": "Talk to the man in the house to receive HM02",
+      "done_when": {
+        "has_item": {
+          "HM_FLY": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

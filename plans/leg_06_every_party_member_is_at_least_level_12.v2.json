@@ -1,0 +1,164 @@
+{
+  "goal": "every party member is at least level 12",
+  "subgoals": [
+    {
+      "id": "heal_at_viridian",
+      "goal_text": "Go to the Viridian City Pokemon Center and heal the party.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 25,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "travel_to_route_22",
+      "goal_text": "Travel to Route 22 to grind levels for Pidgey.",
+      "done_when": {
+        "map": "ROUTE_22"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_pidgey_route22",
+      "goal_text": "Battle wild Pokemon on Route 22 until Pidgey reaches level 12.",
+      "done_when": {
+        "slot_level": {
+          "slot": 2,
+          "min": 12
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "party_swap",
+          "a": 1,
+          "b": 2,
+          "when": {
+            "map": "ROUTE_22"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1,
+        "carried_from_rewrite": true
+      }
+    },
+    {
+      "id": "defeat_brock",
+      "goal_text": "Defeat Brock in the Pewter City Gym to earn the Boulder Badge",
+      "done_when": {
+        "badge": "BOULDERBADGE"
+      },
+      "escalation_rounds": 4,
+      "carried_forward": 1,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 13,
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 13,
+          "y": 25,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "PEWTER_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 16,
+          "y": 17,
+          "when": {
+            "map": "PEWTER_CITY"
+          }
+        },
+        {
+          "op": "party_swap",
+          "a": 1,
+          "b": 2,
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "PEWTERGYM_BROCK",
+          "answer": "yes",
+          "when": {
+            "map": "PEWTER_GYM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 7
+      }
+    },
+    {
+      "id": "verify_party_levels",
+      "goal_text": "Ensure all party members are at least level 12.",
+      "done_when": {
+        "party_min_level": 12
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

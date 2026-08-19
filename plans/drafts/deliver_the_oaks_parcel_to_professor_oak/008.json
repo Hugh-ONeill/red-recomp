@@ -1,0 +1,72 @@
+{
+ "goal": "Deliver the OAKS_PARCEL to Professor Oak",
+ "subgoals": [
+  {
+   "id": "enter_reds_house",
+   "goal_text": "Enter Red's house in Pallet Town.",
+   "done_when": {
+    "area": "REDS_HOUSE_1F|2,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "receive_oaks_parcel",
+   "goal_text": "Talk to Mom to receive the OAKS_PARCEL.",
+   "done_when": {
+    "has_item": {
+     "OAKS_PARCEL": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_reds_house",
+   "goal_text": "Leave Red's house and return to Pallet Town.",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_viridian_city",
+   "goal_text": "Travel north through Route 1 to reach Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "talk_to_oak_in_viridian",
+   "goal_text": "Talk to Professor Oak in Viridian City to trigger the parcel event.",
+   "done_when": {
+    "flag": "EVENT_OAK_GOT_PARCEL"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_back_to_pallet_town",
+   "goal_text": "Return to Pallet Town.",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Enter Professor Oak's Lab.",
+   "done_when": {
+    "area": "OAKS_LAB|4,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "deliver_parcel_to_oak",
+   "goal_text": "Talk to Professor Oak to deliver the OAKS_PARCEL.",
+   "done_when": {
+    "flag": "EVENT_GOT_POKEDEX"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

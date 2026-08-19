@@ -1,0 +1,156 @@
+{
+  "goal": "Retrieve the Lift Key in the Rocket Hideout",
+  "subgoals": [
+    {
+      "id": "enter_rocket_hideout",
+      "goal_text": "Enter the Rocket Hideout via the Celadon Game Corner",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Navigate through the hideout to reach the second basement level",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B2F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 4,
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 2,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "descend_to_b3f",
+      "goal_text": "Navigate through the hideout to reach the third basement level",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B3F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 21,
+          "y": 8,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "descend_to_b4f",
+      "goal_text": "Navigate through the hideout to reach the fourth basement level",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B4F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 18,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B3F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "find_lift_key",
+      "goal_text": "Locate and pick up the Lift Key from the item ball in the hideout",
+      "done_when": {
+        "has_item": {
+          "LIFT_KEY": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "ITEM_9_4",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ITEM_10_12",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB4F_ROCKET3",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ITEM_10_2",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

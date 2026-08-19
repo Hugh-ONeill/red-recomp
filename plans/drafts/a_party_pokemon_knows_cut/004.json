@@ -1,0 +1,14 @@
+{
+ "goal": "a party Pokemon knows CUT",
+ "subgoals": [
+  {
+   "id": "teach_cut",
+   "goal_text": "Teach HM_CUT to a compatible Pokemon in the party",
+   "done_when": {
+    "knows_move": "CUT"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,64 @@
+{
+ "goal": "a party Pokemon knows SURF",
+ "subgoals": [
+  {
+   "id": "exit_ss_anne",
+   "goal_text": "Leave the S.S. Anne and return to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel back to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_24",
+   "goal_text": "Go north from Cerulean City to Route 24",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_25",
+   "goal_text": "Continue east to Route 25",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "visit_bills_house",
+   "goal_text": "Enter Bill's House on Route 25",
+   "done_when": {
+    "map": "BILLS_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_surf_hm",
+   "goal_text": "Talk to Bill to receive HM03 (SURF)",
+   "done_when": {
+    "has_item": {
+     "HM_SURF": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "teach_surf",
+   "goal_text": "Teach SURF to a compatible Pokemon in the party",
+   "done_when": {
+    "knows_move": "SURF"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

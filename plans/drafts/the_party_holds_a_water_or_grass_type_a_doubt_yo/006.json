@@ -1,0 +1,37 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "heal_at_viridian_center",
+   "goal_text": "Heal the party at the Viridian City Pokemon Center before heading north.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Travel to Route 2.",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_grass_type",
+   "goal_text": "Catch a Grass-type Pokemon in the grass of Route 2.",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "GRASS"
+     },
+     {
+      "party_type": "WATER"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

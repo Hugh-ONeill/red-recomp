@@ -1,0 +1,162 @@
+{
+ "goal": "Reach Lavender Town",
+ "subgoals": [
+  {
+   "id": "go_to_vermilion_city",
+   "goal_text": "Travel to Vermilion City to ensure a starting point.",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Pokemon Center in Vermilion City.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "enter_rock_tunnel",
+   "goal_text": "Enter the Rock Tunnel to travel east.",
+   "done_when": {
+    "map": "ROCK_TUNNEL_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "exit_rock_tunnel",
+   "goal_text": "Navigate through the Rock Tunnel and exit on the east side.",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_route_12",
+   "goal_text": "Travel south through Route 10 and Route 11 to reach Route 12.",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_route_15",
+   "goal_text": "Travel south through Route 13 and Route 14 to reach Route 15.",
+   "done_when": {
+    "map": "ROUTE_15"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_fuchsia_city",
+   "goal_text": "Enter Fuchsia City from Route 15.",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_route_17",
+   "goal_text": "Travel north from Fuchsia City to reach Route 17 (Cycling Road).",
+   "done_when": {
+    "map": "ROUTE_17"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_route_16",
+   "goal_text": "Travel west along Route 17 to reach Route 16.",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_celadon_city",
+   "goal_text": "Travel east from Route 16 to reach Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_route_7",
+   "goal_text": "Travel east from Celadon City to reach Route 7.",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Travel north from Route 7 to enter Lavender Town.",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

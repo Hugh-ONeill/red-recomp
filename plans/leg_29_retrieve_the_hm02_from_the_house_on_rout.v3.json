@@ -1,0 +1,79 @@
+{
+ "goal": "Retrieve the HM02 from the house on Route 16",
+ "subgoals": [
+  {
+   "id": "exit_department_store",
+   "goal_text": "Exit the Celadon Department Store to return to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_16",
+   "goal_text": "Travel west from Celadon City to Route 16",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "cross",
+     "dir": "north",
+     "when": {
+      "map": "ROUTE_5"
+     }
+    },
+    {
+     "op": "cross",
+     "dir": "east",
+     "when": {
+      "map": "CERULEAN_CITY"
+     }
+    },
+    {
+     "op": "field_move",
+     "move": "CUT",
+     "x": 5,
+     "y": 8,
+     "when": {
+      "map": "ROUTE_9"
+     }
+    },
+    {
+     "op": "cross",
+     "dir": "east",
+     "when": {
+      "map": "ROUTE_9"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign2",
+    "via": "escalation",
+    "n_ops": 4,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "enter_fly_house",
+   "goal_text": "Enter the house on Route 16 (the Fly house)",
+   "done_when": {
+    "map": "ROUTE_16_FLY_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_hm02",
+   "goal_text": "Talk to the man in the house to receive HM02",
+   "done_when": {
+    "has_item": {
+     "HM_FLY": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

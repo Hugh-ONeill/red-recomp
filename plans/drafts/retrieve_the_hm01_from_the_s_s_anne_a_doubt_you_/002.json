@@ -1,0 +1,72 @@
+{
+ "goal": "Retrieve the HM01 from the S.S. Anne",
+ "subgoals": [
+  {
+   "id": "enter_ss_anne",
+   "goal_text": "Board the S.S. Anne using the S.S. Ticket",
+   "done_when": {
+    "map": "SS_ANNE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_anne_2f",
+   "goal_text": "Go up to the second floor of the S.S. Anne",
+   "done_when": {
+    "map": "SS_ANNE_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_anne_1f_rooms",
+   "goal_text": "Return to the first floor and enter the cabin rooms",
+   "done_when": {
+    "map": "SS_ANNE_1F_ROOMS"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_anne_b1f",
+   "goal_text": "Descend to the basement of the S.S. Anne",
+   "done_when": {
+    "map": "SS_ANNE_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_anne_b1f_rooms",
+   "goal_text": "Enter the basement cabin rooms",
+   "done_when": {
+    "map": "SS_ANNE_B1F_ROOMS"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_anne_2f_rooms",
+   "goal_text": "Go back up to the second floor cabin rooms",
+   "done_when": {
+    "map": "SS_ANNE_2F_ROOMS"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_captains_room",
+   "goal_text": "Find and enter the Captain's Room",
+   "done_when": {
+    "map": "SS_ANNE_CAPTAINS_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_hm01",
+   "goal_text": "Speak to the Captain to receive HM01",
+   "done_when": {
+    "has_item": {
+     "HM_CUT": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

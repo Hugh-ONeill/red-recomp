@@ -1,0 +1,47 @@
+{
+ "goal": "Obtain the Silph Scope from Mr. Fuji",
+ "subgoals": [
+  {
+   "id": "exit_pokemon_tower",
+   "goal_text": "Exit the Pokemon Tower to return to Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope from Mr. Fuji"
+   }
+  },
+  {
+   "id": "go_to_fuji_house",
+   "goal_text": "Travel to Mr. Fuji's house in the north of Lavender Town",
+   "done_when": {
+    "map": "MR_FUJIS_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope from Mr. Fuji"
+   }
+  },
+  {
+   "id": "talk_to_fuji",
+   "goal_text": "Speak with Mr. Fuji to receive the Silph Scope",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope from Mr. Fuji"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

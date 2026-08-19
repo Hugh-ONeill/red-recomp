@@ -1,0 +1,88 @@
+{
+ "goal": "a party Pokemon knows SURF",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Go to the Vermilion City Pokemon Center and heal the party.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_saffron",
+   "goal_text": "Travel north from Vermilion City to Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel west from Saffron City to Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_celadon_gym",
+   "goal_text": "Enter the Celadon Gym.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Defeat Erika to earn the Rainbow Badge.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_fuchsia",
+   "goal_text": "Travel to Fuchsia City.",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_safari_zone",
+   "goal_text": "Enter the Safari Zone.",
+   "done_when": {
+    "map": "SAFARI_ZONE_CENTER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_safari_secret_house",
+   "goal_text": "Navigate the Safari Zone to reach the Secret House.",
+   "done_when": {
+    "map": "SAFARI_ZONE_SECRET_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_surf_hm",
+   "goal_text": "Interact with the Warden in the Secret House to receive HM03 (SURF).",
+   "done_when": {
+    "has_item": {
+     "HM_SURF": 1
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "teach_surf",
+   "goal_text": "Teach SURF to a compatible Pokemon in the party.",
+   "done_when": {
+    "knows_move": "SURF"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

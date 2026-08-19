@@ -1,0 +1,32 @@
+{
+ "goal": "Access the PC for the first time",
+ "subgoals": [
+  {
+   "id": "enter_viridian_poke_center",
+   "goal_text": "Enter the Pokemon Center in Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_POKECENTER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Access the PC for the first time"
+   }
+  },
+  {
+   "id": "use_pc",
+   "goal_text": "Interact with the PC in the Viridian City Pokemon Center",
+   "done_when": {
+    "mode": "pc"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Access the PC for the first time"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

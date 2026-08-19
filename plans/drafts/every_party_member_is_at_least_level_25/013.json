@@ -1,0 +1,96 @@
+{
+ "goal": "every party member is at least level 25",
+ "subgoals": [
+  {
+   "id": "level_up_spearow_1",
+   "goal_text": "Battle wild Pokemon on Route 11 to raise Spearow's level.",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Go to the Vermilion City Pokemon Center to heal the party.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "level_up_pidgeotto",
+   "goal_text": "Battle wild Pokemon on Route 11 to raise Pidgeotto's level.",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "level_up_farfetchd",
+   "goal_text": "Battle wild Pokemon on Route 11 to raise Farfetch'd's level.",
+   "done_when": {
+    "slot_level": {
+     "slot": 3,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "level_up_wartortle",
+   "goal_text": "Battle wild Pokemon on Route 11 to raise Wartortle's level.",
+   "done_when": {
+    "slot_level": {
+     "slot": 4,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "final_check",
+   "goal_text": "Ensure all party members have reached at least level 25.",
+   "done_when": {
+    "party_min_level": 25
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

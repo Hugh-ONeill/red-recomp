@@ -1,0 +1,106 @@
+{
+ "goal": "every party member is at least level 40",
+ "subgoals": [
+  {
+   "id": "heal_at_celadon",
+   "goal_text": "Heal the party at the Pokemon Center in Celadon City to establish a safe wake-up point.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "level_up_pidgeotto",
+   "goal_text": "Battle wild Pokemon or trainers until Pidgeotto reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "heal_after_pidgeotto",
+   "goal_text": "Heal the party at the Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "level_up_fearow",
+   "goal_text": "Battle wild Pokemon or trainers until Fearow reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "heal_after_fearow",
+   "goal_text": "Heal the party at the Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "level_up_farfetchd",
+   "goal_text": "Battle wild Pokemon or trainers until Farfetchd reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 3,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "final_check",
+   "goal_text": "Ensure all party members have reached level 40.",
+   "done_when": {
+    "party_min_level": 40
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

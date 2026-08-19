@@ -1,0 +1,46 @@
+{
+  "goal": "Reach Celadon City",
+  "subgoals": [
+    {
+      "id": "go_to_lavender_town",
+      "goal_text": "Travel to Lavender Town. Since Route 12 is blocked by Snorlax, use the path from Rock Tunnel south to Lavender Town.",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_8",
+      "goal_text": "Leave Lavender Town and head west onto Route 8.",
+      "done_when": {
+        "map": "ROUTE_8"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_saffron_city",
+      "goal_text": "Travel west from Route 8 to enter Saffron City.",
+      "done_when": {
+        "map": "SAFFRON_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_route_7",
+      "goal_text": "Leave Saffron City and head west onto Route 7.",
+      "done_when": {
+        "map": "ROUTE_7"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_celadon_city",
+      "goal_text": "Continue west from Route 7 to enter Celadon City.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

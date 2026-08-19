@@ -1,0 +1,72 @@
+{
+  "goal": "Retrieve the Pokemon from the Poke Mart",
+  "subgoals": [
+    {
+      "id": "heal_at_center",
+      "goal_text": "Heal Charmander at the Viridian Pokemon Center to ensure full HP before interacting with the clerk.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 25,
+          "when": {
+            "map": "VIRIDIAN_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VIRIDIAN_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "enter_viridian_mart",
+      "goal_text": "Enter the Viridian Mart from Viridian City.",
+      "done_when": {
+        "area": "VIRIDIAN_MART|0,2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "talk_to_clerk_2",
+      "goal_text": "Talk to the clerk to retrieve the Poke Balls",
+      "done_when": {
+        "flag": "EVENT_GOT_POKEBALLS_FROM_OAK"
+      },
+      "escalation_rounds": 4,
+      "carried_forward": 1
+    },
+    {
+      "id": "talk_to_clerk",
+      "goal_text": "Talk to the clerk at the Viridian Mart counter to retrieve the Pokemon.",
+      "done_when": {
+        "party_size": 2
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

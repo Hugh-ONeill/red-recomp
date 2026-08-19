@@ -1,0 +1,54 @@
+{
+ "goal": "Reach Lavender Town",
+ "subgoals": [
+  {
+   "id": "go_to_route_11",
+   "goal_text": "Travel east from Vermilion City to Route 11",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_digletts_cave",
+   "goal_text": "Enter Diglett's Cave on Route 11",
+   "done_when": {
+    "map": "DIGLETTS_CAVE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_digletts_cave_east",
+   "goal_text": "Traverse Diglett's Cave and exit on the east side to Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_9",
+   "goal_text": "Travel west from Route 12, back through Diglett's Cave and Vermilion City, to reach Route 9",
+   "done_when": {
+    "map": "ROUTE_9"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_10",
+   "goal_text": "Travel east from Route 9 to reach Route 10",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Travel south from Route 10 to reach Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,104 @@
+{
+  "goal": "Reach Vermilion City",
+  "subgoals": [
+    {
+      "id": "heal_at_cerulean",
+      "goal_text": "Heal the party at the Cerulean City Pokemon Center to ensure they are ready for travel.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_route_9",
+      "goal_text": "Travel east from Cerulean City to Route 9. The southern exit to Route 5 is blocked by a tree and requires CUT, which the player does not yet have.",
+      "done_when": {
+        "map": "ROUTE_9"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 7,
+          "when": {
+            "map": "CERULEAN_BADGE_HOUSE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 27,
+          "y": 11,
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 0,
+          "when": {
+            "map": "CERULEAN_TRASHED_HOUSE"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "CERULEAN_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "travel_to_route_10",
+      "goal_text": "Travel east from Route 9 to Route 10.",
+      "done_when": {
+        "map": "ROUTE_10"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_lavender_town",
+      "goal_text": "Travel south from Route 10 to Lavender Town.",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_route_12",
+      "goal_text": "Travel south from Lavender Town to Route 12.",
+      "done_when": {
+        "map": "ROUTE_12"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_route_11",
+      "goal_text": "Travel west from Route 12 to Route 11.",
+      "done_when": {
+        "map": "ROUTE_11"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_vermilion",
+      "goal_text": "Travel west from Route 11 to reach Vermilion City.",
+      "done_when": {
+        "map": "VERMILION_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

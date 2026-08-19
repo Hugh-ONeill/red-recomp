@@ -1,0 +1,32 @@
+{
+ "goal": "Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house",
+ "subgoals": [
+  {
+   "id": "go_to_vermilion_trade_house",
+   "goal_text": "Travel to the trade house in Vermilion City.",
+   "done_when": {
+    "map": "VERMILION_TRADE_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house"
+   }
+  },
+  {
+   "id": "trade_spearow_for_farfetchd",
+   "goal_text": "Interact with the trade partner to trade Spearow for Farfetch'd.",
+   "done_when": {
+    "has_species": "FARFETCHD"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

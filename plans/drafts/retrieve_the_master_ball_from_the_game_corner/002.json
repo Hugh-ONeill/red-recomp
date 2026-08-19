@@ -1,0 +1,72 @@
+{
+ "goal": "Retrieve the Master Ball from the Game Corner",
+ "subgoals": [
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Exit Mt. Moon to reach the surface.",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel from Mt. Moon to Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_saffron_city",
+   "goal_text": "Travel from Cerulean City to Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_celadon_city",
+   "goal_text": "Travel from Saffron City to Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_game_corner",
+   "goal_text": "Enter the Game Corner building.",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "play_slots",
+   "goal_text": "Play the slot machines until enough coins are accumulated to buy the Master Ball.",
+   "done_when": {
+    "flag": "EVENT_GOT_MASTER_BALL"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_prize_room",
+   "goal_text": "Enter the Game Corner Prize Room to redeem the Master Ball.",
+   "done_when": {
+    "map": "GAME_CORNER_PRIZE_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "redeem_master_ball",
+   "goal_text": "Exchange coins for the Master Ball at the prize counter.",
+   "done_when": {
+    "has_item": {
+     "MASTER_BALL": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

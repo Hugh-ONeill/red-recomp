@@ -1,0 +1,45 @@
+{
+ "goal": "Reach Celadon City",
+ "subgoals": [
+  {
+   "id": "go_to_saffron_city",
+   "goal_text": "Travel from Lavender Town to Saffron City via Route 8.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Celadon City"
+   }
+  },
+  {
+   "id": "go_to_route_7",
+   "goal_text": "Leave Saffron City and head west onto Route 7.",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Celadon City"
+   }
+  },
+  {
+   "id": "reach_celadon_city",
+   "goal_text": "Continue west from Route 7 to enter Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Celadon City"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

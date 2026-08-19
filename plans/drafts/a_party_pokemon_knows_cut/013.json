@@ -1,0 +1,48 @@
+{
+ "goal": "a party Pokemon knows CUT",
+ "subgoals": [
+  {
+   "id": "go_to_vermilion_city",
+   "goal_text": "Travel to Vermilion City to access the Pokemon Center and wild areas.",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Vermilion Pokemon Center to ensure survival during catching.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_cut_compatible_pokemon",
+   "goal_text": "Catch a Pokemon compatible with HM Cut (such as Rattata or Spearow) in the grass of Route 21 or Route 22.",
+   "done_when": {
+    "any_of": [
+     {
+      "has_species": "RATTATA"
+     },
+     {
+      "has_species": "SPEAROW"
+     },
+     {
+      "has_species": "MANKEY"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "teach_cut",
+   "goal_text": "Teach HM Cut to the compatible Pokemon from the bag.",
+   "done_when": {
+    "knows_move": "CUT"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,46 @@
+{
+ "goal": "the party holds a FLYING type",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Vermilion City Pokemon Center to restore HP and PP before traveling.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_digletts_cave_vermilion",
+   "goal_text": "Enter Diglett's Cave from the Route 11 side.",
+   "done_when": {
+    "area": "DIGLETTS_CAVE|4,4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_digletts_cave_route_2",
+   "goal_text": "Traverse Diglett's Cave and exit onto Route 2.",
+   "done_when": {
+    "area": "DIGLETTS_CAVE_ROUTE_2|1,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_1",
+   "goal_text": "Travel from Route 2 to Route 1.",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_flying_type",
+   "goal_text": "Catch a Flying-type Pokemon in the wild on Route 1.",
+   "done_when": {
+    "party_type": "FLYING"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

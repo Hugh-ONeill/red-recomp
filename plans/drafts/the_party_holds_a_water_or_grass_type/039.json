@@ -1,0 +1,61 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "heal_at_viridian",
+   "goal_text": "Heal the party at the Viridian Pokemon Center before continuing",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_viridian_forest",
+   "goal_text": "Travel through Viridian Forest to reach the north exit",
+   "done_when": {
+    "area": "VIRIDIAN_FOREST_NORTH_GATE|5,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_pewter_city",
+   "goal_text": "Travel from the forest north gate to Pewter City",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel from Pewter City to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_24",
+   "goal_text": "Travel north from Cerulean City to Route 24",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_or_grass",
+   "goal_text": "Catch a Water or Grass type Pokemon",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "WATER"
+     },
+     {
+      "party_type": "GRASS"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

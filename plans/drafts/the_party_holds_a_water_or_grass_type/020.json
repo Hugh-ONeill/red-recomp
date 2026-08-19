@@ -1,0 +1,22 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel to Cerulean City. Note: The direct path from Route 4 has been proven uncrossable in previous runs; if blocked, explore alternative routes from Route 3 or Route 5.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_pokemon",
+   "goal_text": "Catch a Water-type Pokemon in the water surrounding Cerulean City",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,104 @@
+{
+  "goal": "a party Pokemon knows CUT",
+  "subgoals": [
+    {
+      "id": "heal_at_vermilion",
+      "goal_text": "Go to the Vermilion City Pokemon Center and heal the party to ensure they are fit to learn moves and battle.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "west",
+          "when": {
+            "map": "ROUTE_11"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "catch_cut_compatible_pokemon",
+      "goal_text": "Catch a Pokemon compatible with HM_CUT. Neither Pidgey nor Wartortle can learn it; a new Pokemon is needed.",
+      "done_when": {
+        "any_of": [
+          {
+            "has_species": "RATTATA"
+          },
+          {
+            "has_species": "SPEAROW"
+          },
+          {
+            "has_species": "MANKEY"
+          }
+        ]
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "grind",
+          "when": {
+            "map": "ROUTE_11"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "teach_cut",
+      "goal_text": "Use HM_CUT from the bag to teach the move Cut to the newly caught compatible Pokemon.",
+      "done_when": {
+        "knows_move": "CUT"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

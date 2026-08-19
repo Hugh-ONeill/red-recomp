@@ -1,0 +1,48 @@
+{
+ "goal": "Obtain the Silph Scope from Mr. Fuji",
+ "subgoals": [
+  {
+   "id": "go_to_lavender_town",
+   "goal_text": "Travel to Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_pokemon_tower",
+   "goal_text": "Enter the Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "climb_to_tower_6f",
+   "goal_text": "Reach the 6th floor of the Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_6F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "rescue_mr_fuji",
+   "goal_text": "Talk to Mr. Fuji on the 6th floor to be warped out",
+   "done_when": {
+    "map": "MR_FUJIS_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "talk_to_fuji",
+   "goal_text": "Talk to Mr. Fuji in his house to receive the Silph Scope",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

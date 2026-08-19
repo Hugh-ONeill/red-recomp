@@ -1,0 +1,45 @@
+{
+ "goal": "Register the PC system",
+ "subgoals": [
+  {
+   "id": "go_to_viridian_city",
+   "goal_text": "Travel from Route 22 to Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Register the PC system"
+   }
+  },
+  {
+   "id": "enter_viridian_pokecenter",
+   "goal_text": "Enter the Viridian City Pokemon Center",
+   "done_when": {
+    "map": "VIRIDIAN_POKECENTER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Register the PC system"
+   }
+  },
+  {
+   "id": "interact_with_pc",
+   "goal_text": "Access the PC for the first time to register the system",
+   "done_when": {
+    "flag": "EVENT_GOT_POKEDEX"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Register the PC system"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

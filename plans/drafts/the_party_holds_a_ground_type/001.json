@@ -1,0 +1,32 @@
+{
+ "goal": "the party holds a GROUND type",
+ "subgoals": [
+  {
+   "id": "enter_digletts_cave",
+   "goal_text": "Enter Diglett's Cave from Route 10",
+   "done_when": {
+    "map": "DIGLETTS_CAVE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a GROUND type"
+   }
+  },
+  {
+   "id": "catch_ground_type",
+   "goal_text": "Catch a Ground-type Pokemon (Diglett or Dugtrio) in the cave",
+   "done_when": {
+    "party_type": "GROUND"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a GROUND type"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

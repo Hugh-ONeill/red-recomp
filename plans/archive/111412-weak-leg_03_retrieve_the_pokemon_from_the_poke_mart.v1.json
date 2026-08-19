@@ -1,0 +1,56 @@
+{
+  "goal": "Retrieve the Pokemon from the Poke Mart",
+  "subgoals": [
+    {
+      "id": "enter_viridian_city",
+      "goal_text": "Walk from the Route 22 Gate into Viridian City",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "ROUTE_22_GATE"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_22"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "enter_viridian_mart",
+      "goal_text": "Enter the Viridian City Poke Mart",
+      "done_when": {
+        "area": "VIRIDIAN_MART|0,2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "retrieve_pokemon",
+      "goal_text": "Talk to the clerk to retrieve the Pokemon left for the player",
+      "done_when": {
+        "party_size": 2
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

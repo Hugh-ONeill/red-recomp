@@ -1,0 +1,67 @@
+{
+ "goal": "every party member is at least level 12",
+ "subgoals": [
+  {
+   "id": "level_up_pidgey_1",
+   "goal_text": "Train the Pidgey in slot 1 until it reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "level_up_pidgey_2",
+   "goal_text": "Train the Pidgey in slot 2 until it reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "level_up_pidgey_3",
+   "goal_text": "Train the Pidgey in slot 4 until it reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 4,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  },
+  {
+   "id": "verify_all_level_12",
+   "goal_text": "Ensure every party member has reached at least level 12",
+   "done_when": {
+    "party_min_level": 12
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 12"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

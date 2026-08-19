@@ -1,0 +1,56 @@
+{
+  "goal": "a party Pokemon knows FLY",
+  "subgoals": [
+    {
+      "id": "heal_at_fuchsia",
+      "goal_text": "Heal the party at the Pokemon Center in Fuchsia City to ensure they are ready for travel.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_route_17",
+      "goal_text": "Travel from Fuchsia City to Route 17.",
+      "done_when": {
+        "map": "ROUTE_17"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_route_16",
+      "goal_text": "Travel north from Route 17 to Route 16.",
+      "done_when": {
+        "map": "ROUTE_16"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_fly_house",
+      "goal_text": "Enter the house on Route 16 where the FLY HM is given.",
+      "done_when": {
+        "map": "ROUTE_16_FLY_HOUSE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_hm_fly",
+      "goal_text": "Talk to the man in the house to receive HM02 (FLY).",
+      "done_when": {
+        "has_item": {
+          "HM_FLY": 1
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "teach_fly",
+      "goal_text": "Teach the move FLY to a compatible Pokemon in the party (e.g., Fearow or Pidgeotto).",
+      "done_when": {
+        "knows_move": "FLY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

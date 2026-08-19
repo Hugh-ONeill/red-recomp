@@ -1,0 +1,55 @@
+{
+ "goal": "Obtain a WATER or GRASS type Pokemon",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel from Route 24 back to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Pokemon Center",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "buy_poke_balls",
+   "goal_text": "Buy Poke Balls at the Cerulean Mart to ensure enough for catching",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 20
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Return to Route 24 to hunt for a Water or Grass type Pokemon",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_or_grass",
+   "goal_text": "Catch a Water or Grass type Pokemon (e.g., Oddish or Poliwag on Route 24)",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "WATER"
+     },
+     {
+      "party_type": "GRASS"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,151 @@
+{
+ "goal": "a party Pokemon knows the move FLY",
+ "subgoals": [
+  {
+   "id": "go_to_saffron_city",
+   "goal_text": "Travel to Saffron City",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "enter_silph_co",
+   "goal_text": "Enter the Silph Co. building",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "reach_silph_co_top",
+   "goal_text": "Navigate through Silph Co. to the top floor",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni at the top of Silph Co.",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "get_master_ball",
+   "goal_text": "Retrieve the Master Ball from the president",
+   "done_when": {
+    "has_item": {
+     "MASTER_BALL": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_celadon_city",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Defeat Erika in the Celadon Gym",
+   "done_when": {
+    "flag": "EVENT_BEAT_ERIKA"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "get_rainbow_badge",
+   "goal_text": "Obtain the Rainbow Badge",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "go_to_route_16",
+   "goal_text": "Travel to Route 16",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "enter_fly_house",
+   "goal_text": "Enter the house where the player can learn FLY",
+   "done_when": {
+    "map": "ROUTE_16_FLY_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  },
+  {
+   "id": "learn_fly",
+   "goal_text": "Talk to the NPC to teach a Pokemon the move FLY",
+   "done_when": {
+    "knows_move": "FLY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows the move FLY"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

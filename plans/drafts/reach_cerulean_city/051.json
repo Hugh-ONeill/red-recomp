@@ -1,0 +1,30 @@
+{
+ "goal": "Reach Cerulean City",
+ "subgoals": [
+  {
+   "id": "heal_at_mt_moon_center",
+   "goal_text": "Visit the Mt. Moon Pokemon Center to heal the party before attempting to exit",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_mt_moon_to_route_4",
+   "goal_text": "Navigate through Mt. Moon and exit to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel east from Route 4 to enter Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

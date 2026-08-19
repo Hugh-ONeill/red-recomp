@@ -1,0 +1,42 @@
+{
+ "goal": "the party holds a FIGHTING or WATER type",
+ "subgoals": [
+  {
+   "id": "heal_at_mt_moon_center",
+   "goal_text": "Heal the party at the Mt. Moon Pokemon Center before attempting to reach Cerulean City",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_4_east",
+   "goal_text": "Travel to the eastern edge of Route 4",
+   "done_when": {
+    "player_at": {
+     "x": 24,
+     "y": 5,
+     "radius": 2
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_cerulean_city",
+   "goal_text": "Cross from Route 4 into Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_pokemon",
+   "goal_text": "Catch a Water-type Pokemon in the water surrounding Cerulean City",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

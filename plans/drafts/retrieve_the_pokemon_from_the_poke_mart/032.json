@@ -1,0 +1,22 @@
+{
+ "goal": "Retrieve the Pokemon from the Poke Mart",
+ "subgoals": [
+  {
+   "id": "go_to_viridian_mart",
+   "goal_text": "Travel to the Viridian City Poke Mart",
+   "done_when": {
+    "area": "VIRIDIAN_MART|0,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "talk_to_clerk",
+   "goal_text": "Interact with the clerk to retrieve the Pokemon",
+   "done_when": {
+    "party_size": 3
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,70 @@
+{
+ "goal": "Retrieve the Pokemon from the Poke Mart",
+ "subgoals": [
+  {
+   "id": "exit_viridian_mart",
+   "goal_text": "Leave the Viridian City Poke Mart and enter the city.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_pallet_town",
+   "goal_text": "Travel from Viridian City back to Pallet Town.",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Enter Professor Oak's laboratory.",
+   "done_when": {
+    "area": "OAKS_LAB|4,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "deliver_parcel",
+   "goal_text": "Talk to Professor Oak to deliver the parcel.",
+   "done_when": {
+    "flag": "EVENT_OAK_GOT_PARCEL"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "receive_pokedex",
+   "goal_text": "Talk to Professor Oak again to receive the Pokedex.",
+   "done_when": {
+    "flag": "EVENT_GOT_POKEDEX"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_viridian_city",
+   "goal_text": "Travel back to Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_mart",
+   "goal_text": "Enter the Viridian City Poke Mart.",
+   "done_when": {
+    "area": "VIRIDIAN_MART|0,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "retrieve_pokemon",
+   "goal_text": "Talk to the clerk to retrieve the Pokemon left at the mart.",
+   "done_when": {
+    "party_size": 2
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

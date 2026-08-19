@@ -1,0 +1,69 @@
+{
+ "goal": "every party member is at least level 12",
+ "subgoals": [
+  {
+   "id": "travel_to_route_22",
+   "goal_text": "Travel to Route 22 to grind levels before facing Brock",
+   "done_when": {
+    "map": "ROUTE_22"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "grind_squirtle_12_route22",
+   "goal_text": "Battle wild Pokemon on Route 22 until Squirtle reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "grind_pidgey_12_route22",
+   "goal_text": "Battle wild Pokemon on Route 22 until Pidgey reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_at_pewter",
+   "goal_text": "Heal the party at the Pewter City Pokemon Center",
+   "done_when": {
+    "party_healthy": true,
+    "area": "PEWTER_POKECENTER|2,3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Defeat Brock in the Pewter City Gym to earn the Boulder Badge",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_3",
+   "goal_text": "Travel to Route 3",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "verify_party_level",
+   "goal_text": "Ensure all party members are at least level 12",
+   "done_when": {
+    "party_min_level": 12
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

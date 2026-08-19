@@ -1,0 +1,195 @@
+{
+ "goal": "Obtain the Silph Scope",
+ "subgoals": [
+  {
+   "id": "go_to_fuji",
+   "goal_text": "Travel to Mr. Fuji's house in Lavender Town",
+   "done_when": {
+    "map": "MR_FUJIS_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   },
+   "macro": [
+    {
+     "op": "interact",
+     "name": "TEXT_LAVENDERTOWN_POKEMON_HOUSE_SIGN",
+     "answer": "yes",
+     "when": {
+      "map": "LAVENDER_TOWN"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "LAVENDERTOWN_SUPER_NERD",
+     "answer": "yes",
+     "when": {
+      "map": "LAVENDER_TOWN"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 7,
+     "y": 9,
+     "when": {
+      "map": "LAVENDER_TOWN"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "clear_ghosts",
+   "goal_text": "Use the Poke Flute to clear the ghosts and defeat the tower boss",
+   "done_when": {
+    "flag": "EVENT_BEAT_GHOST_MAROWAK"
+   },
+   "escalation_rounds": 4,
+   "carried_forward": 2
+  },
+  {
+   "id": "get_flute",
+   "goal_text": "Speak with Mr. Fuji to receive the Poke Flute",
+   "done_when": {
+    "has_item": {
+     "POKE_FLUTE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "enter_tower",
+   "goal_text": "Enter the Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "wake_ghost",
+   "goal_text": "Use the Poke Flute to wake the sleeping Pokemon",
+   "done_when": {
+    "flag": "EVENT_BEAT_POKEMON_TOWER_RIVAL"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "reach_tower_top",
+   "goal_text": "Climb to the top floor of the Pokemon Tower",
+   "done_when": {
+    "map": "POKEMON_TOWER_7F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "defeat_tower_rival",
+   "goal_text": "Defeat the rival at the top of the tower",
+   "done_when": {
+    "flag": "EVENT_BEAT_POKEMON_TOWER_RIVAL"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "go_to_celadon",
+   "goal_text": "Travel to Celadon City",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "enter_game_corner",
+   "goal_text": "Enter the Game Corner",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "enter_rocket_hideout",
+   "goal_text": "Find the secret switch and enter the Rocket Hideout",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "descend_hideout",
+   "goal_text": "Descend to the lowest level of the Rocket Hideout",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Retrieve the Silph Scope from the item ball on the desk",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain the Silph Scope"
+   }
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

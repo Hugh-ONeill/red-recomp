@@ -695,6 +695,14 @@ _STATUS_WORDS = {
 }
 
 NOTE_CHARS = 140
+# A FAILURE NOTE IS MOSTLY THE DIAGNOSIS, and the diagnosis lives at the
+# END of it. Route 14 stranded the party in a four-cell pocket for 93
+# rounds while the ledger printed "BFS from 19,6 walked 4 cells …" — the
+# very next clause, cut by the ellipsis, named a person standing in the
+# one-tile gap. The op knew. The prompt hid it. Failure notes get a wider
+# budget, and the sentence naming what stopped the walk is never cut.
+FAIL_CHARS = 460
+_STOP_MARK = "Right where the walk stopped:"
 
 
 def render(cands: list[Candidate], ex, obs: dict, target: str = "",
@@ -789,8 +797,20 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         note = ""
         if c.note:
             n = c.note.strip()
-            if len(n) > NOTE_CHARS:
-                n = n[:NOTE_CHARS - 1] + "…"
+            _cap = (FAIL_CHARS if (_STOP_MARK in n or "FAILED" in words)
+                    else NOTE_CHARS)
+            if len(n) > _cap:
+                if _STOP_MARK in n:
+                    _head, _stop = n.split(_STOP_MARK, 1)
+                    # what stopped you, whole; the crowd standing near the
+                    # edge but not in the way can go
+                    _stop = _stop.split("Also near", 1)[0].strip(" .;")
+                    _head = _head.strip()
+                    if len(_head) > _cap // 2:
+                        _head = _head[:_cap // 2 - 1] + "…"
+                    n = f"{_head} {_STOP_MARK} {_stop}."
+                else:
+                    n = n[:_cap - 1] + "…"
             note = f" — {n}"
         # what lies beyond is never cut: it is the fact the ideal turns on
         if c.beyond:

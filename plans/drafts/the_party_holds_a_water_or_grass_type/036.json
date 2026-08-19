@@ -1,0 +1,22 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "go_to_viridian_forest",
+   "goal_text": "Travel to Viridian Forest to find Grass-type Pokemon.",
+   "done_when": {
+    "area": "VIRIDIAN_FOREST|1,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_grass_type",
+   "goal_text": "Catch a Grass-type Pokemon in Viridian Forest.",
+   "done_when": {
+    "party_type": "GRASS"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

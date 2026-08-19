@@ -1,0 +1,62 @@
+{
+ "goal": "Defeat the Mt. Moon boss",
+ "subgoals": [
+  {
+   "id": "heal_at_cerulean",
+   "goal_text": "Go to the Cerulean City Pokemon Center and heal the party.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_mt_moon_entrance",
+   "goal_text": "Travel to Route 4 and reach the entrance of Mt. Moon.",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_mt_moon",
+   "goal_text": "Enter Mt. Moon from Route 4.",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b1f",
+   "goal_text": "Navigate through the first floor to reach the first basement (B1F).",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Navigate through the first basement to reach the second basement (B2F).",
+   "done_when": {
+    "map": "MT_MOON_B2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_boss_room",
+   "goal_text": "Locate the Team Rocket boss room in the deepest part of Mt. Moon.",
+   "done_when": {
+    "area": "MT_MOON_B2F|20,5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_mt_moon_boss",
+   "goal_text": "Defeat the Team Rocket boss (Jessie and James).",
+   "done_when": {
+    "flag": "EVENT_BEAT_MT_MOON_3_JESSIE_JAMES"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

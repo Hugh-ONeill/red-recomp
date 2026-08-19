@@ -1,0 +1,129 @@
+{
+ "goal": "Defeat Erika for the Rainbow Badge",
+ "subgoals": [
+  {
+   "id": "find_rocket_hideout",
+   "goal_text": "Enter the Game Corner in Celadon City and find the secret entrance to the Rocket Hideout.",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "retrieve_lift_key",
+   "goal_text": "Navigate the Rocket Hideout and retrieve the Lift Key from a Team Rocket member.",
+   "done_when": {
+    "has_item": {
+     "LIFT_KEY": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni in the Rocket Hideout to obtain the Silph Scope.",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "go_to_dept_store",
+   "goal_text": "Go to the Celadon Department Store to buy a drink.",
+   "done_when": {
+    "map": "CELADON_MART_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "buy_drink",
+   "goal_text": "Purchase a Fresh Water from the store.",
+   "done_when": {
+    "has_item": {
+     "FRESH_WATER": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "give_drink_to_guard",
+   "goal_text": "Travel to the Saffron City gate and give the Fresh Water to the guard to gain entry.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "return_to_celadon",
+   "goal_text": "Return to Celadon City to challenge the Gym.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "enter_erika_gym",
+   "goal_text": "Enter the Celadon Gym and find the secret switch to enter the battle arena.",
+   "done_when": {
+    "map": "CELADON_GYM"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  },
+  {
+   "id": "defeat_erika",
+   "goal_text": "Defeat Erika in battle using Blastoise's water moves.",
+   "done_when": {
+    "badge": "RAINBOWBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Erika for the Rainbow Badge"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

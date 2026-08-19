@@ -1,0 +1,19 @@
+{
+  "goal": "a party Pokemon knows CUT",
+  "subgoals": [
+    {
+      "id": "teach_cut",
+      "goal_text": "Teach HM Cut to a compatible Pokemon in the party using the HM item in the bag.",
+      "done_when": {
+        "knows_move": "CUT"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "a party Pokemon knows CUT"
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

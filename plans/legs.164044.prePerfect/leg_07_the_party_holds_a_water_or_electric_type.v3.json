@@ -1,0 +1,62 @@
+{
+  "goal": "the party holds a WATER or ELECTRIC type",
+  "subgoals": [
+    {
+      "id": "go_to_cerulean_city",
+      "goal_text": "Travel back to Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_mt_moon_pokecenter",
+      "goal_text": "Travel to the Mt. Moon Pokemon Center to buy a Fishing Rod",
+      "done_when": {
+        "area": "MT_MOON_POKECENTER|0,3"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "buy_fishing_rod",
+      "goal_text": "Purchase a Fishing Rod from the Magikarp salesman",
+      "done_when": {
+        "any_of": [
+          {
+            "has_item": {
+              "OLD_ROD": 1
+            }
+          },
+          {
+            "has_item": {
+              "GOOD_ROD": 1
+            }
+          },
+          {
+            "has_item": {
+              "SUPER_ROD": 1
+            }
+          }
+        ]
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "return_to_cerulean_city",
+      "goal_text": "Return to Cerulean City to use the rod",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "catch_water_pokemon",
+      "goal_text": "Use the Fishing Rod in Cerulean City to catch a Water-type Pokemon",
+      "done_when": {
+        "party_type": "WATER"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

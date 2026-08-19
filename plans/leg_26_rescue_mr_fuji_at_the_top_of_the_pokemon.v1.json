@@ -1,0 +1,311 @@
+{
+  "goal": "Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute",
+  "subgoals": [
+    {
+      "id": "go_to_lavender_town",
+      "goal_text": "Travel to Lavender Town",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "heal_at_lavender_center",
+      "goal_text": "Heal the party at the Lavender Town Pokemon Center",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 5,
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "LAVENDER_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    },
+    {
+      "id": "enter_pokemon_tower",
+      "goal_text": "Enter the Pokemon Tower",
+      "done_when": {
+        "map": "POKEMON_TOWER_1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "store_item",
+          "item": "NUGGET",
+          "count": 1,
+          "when": {
+            "map": "CELADON_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "CELADON_POKECENTER"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 13,
+          "when": {
+            "map": "ROUTE_7"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 4,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_7"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 47,
+          "y": 2,
+          "when": {
+            "map": "UNDERGROUND_PATH_WEST_EAST"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 7,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_8"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_8"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "TEXT_LAVENDERTOWN_POKEMON_TOWER_SIGN",
+          "answer": "yes",
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 14,
+          "y": 5,
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 10,
+        "carried_from_rewrite": true
+      }
+    },
+    {
+      "id": "climb_to_top",
+      "goal_text": "Ascend the Pokemon Tower to the highest floor",
+      "done_when": {
+        "map": "POKEMON_TOWER_7F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ITEM_12_1",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_3F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_3F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_4F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 18,
+          "y": 9,
+          "when": {
+            "map": "POKEMON_TOWER_5F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER1",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER2",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER6F_CHANNELER3",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 9,
+          "y": 16,
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 9,
+          "y": 16,
+          "intent": "fight",
+          "when": {
+            "map": "POKEMON_TOWER_6F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 11
+      }
+    },
+    {
+      "id": "rescue_mr_fuji",
+      "goal_text": "Interact with Mr. Fuji to rescue him from the tower",
+      "done_when": {
+        "flag": "EVENT_GOT_POKE_FLUTE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "POKEMONTOWER7F_MR_FUJI",
+          "answer": "yes",
+          "when": {
+            "map": "POKEMON_TOWER_7F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MRFUJISHOUSE_MR_FUJI",
+          "answer": "yes",
+          "when": {
+            "map": "MR_FUJIS_HOUSE"
+          }
+        },
+        {
+          "op": "toss",
+          "item": "TM_THUNDER_WAVE",
+          "count": 1,
+          "when": {
+            "map": "MR_FUJIS_HOUSE"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "MRFUJISHOUSE_MR_FUJI",
+          "answer": "yes",
+          "when": {
+            "map": "MR_FUJIS_HOUSE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "receive_poke_flute",
+      "goal_text": "Receive the Poke Flute from Mr. Fuji",
+      "done_when": {
+        "has_item": {
+          "POKE_FLUTE": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,106 @@
+{
+ "goal": "every party member is at least level 25",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Vermilion City Pokemon Center to ensure everyone is healthy before training.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "train_spearow_level_25",
+   "goal_text": "Battle wild Pokemon on Route 6 or Route 11 until Spearow reaches level 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 4,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "heal_after_spearow",
+   "goal_text": "Return to the Pokemon Center to heal the party.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "train_pidgey_level_25",
+   "goal_text": "Battle wild Pokemon until Pidgey reaches level 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "heal_after_pidgey",
+   "goal_text": "Return to the Pokemon Center to heal the party.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "train_farfetchd_level_25",
+   "goal_text": "Battle wild Pokemon until Farfetch'd reaches level 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 3,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "final_check_levels",
+   "goal_text": "Ensure all party members, including Wartortle, are at least level 25.",
+   "done_when": {
+    "party_min_level": 25
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

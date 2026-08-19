@@ -1,0 +1,96 @@
+{
+  "goal": "every party member is at least level 40",
+  "subgoals": [
+    {
+      "id": "use_rare_candy_pidgeotto",
+      "goal_text": "Use a Rare Candy on Pidgeotto to increase its level.",
+      "done_when": {
+        "slot_level": {
+          "slot": 2,
+          "min": 32
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_item",
+          "item": "RARE_CANDY",
+          "slot": 2,
+          "when": {
+            "map": "CELADON_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "use_rare_candy_pidgeotto_2",
+      "goal_text": "Use the second Rare Candy on Pidgeotto to increase its level.",
+      "done_when": {
+        "slot_level": {
+          "slot": 2,
+          "min": 33
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "travel_to_route_12",
+      "goal_text": "Travel to Route 12 to grind levels via fishing or wild encounters.",
+      "done_when": {
+        "map": "ROUTE_12"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_up_pidgeotto",
+      "goal_text": "Battle wild Pokemon or trainers until Pidgeotto reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 2,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_up_fearow",
+      "goal_text": "Battle wild Pokemon or trainers until Fearow reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 1,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "level_up_farfetchd",
+      "goal_text": "Battle wild Pokemon or trainers until Farfetchd reaches level 40.",
+      "done_when": {
+        "slot_level": {
+          "slot": 3,
+          "min": 40
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "verify_all_level_40",
+      "goal_text": "Ensure all party members have reached at least level 40.",
+      "done_when": {
+        "party_min_level": 40
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

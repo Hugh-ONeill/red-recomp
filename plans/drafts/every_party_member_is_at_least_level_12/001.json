@@ -1,0 +1,71 @@
+{
+ "goal": "every party member is at least level 12",
+ "subgoals": [
+  {
+   "id": "heal_at_pewter",
+   "goal_text": "Go to the Pewter City Pokemon Center and heal the party",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "grind_charmander_12",
+   "goal_text": "Battle wild Pokemon on Route 2 until Charmander reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_after_charmander",
+   "goal_text": "Return to Pewter City Pokemon Center to heal",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "grind_pidgey_12",
+   "goal_text": "Battle wild Pokemon on Route 2 until Pidgey reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_after_pidgey",
+   "goal_text": "Return to Pewter City Pokemon Center to heal",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "grind_rattata_12",
+   "goal_text": "Battle wild Pokemon on Route 2 until Rattata reaches level 12",
+   "done_when": {
+    "slot_level": {
+     "slot": 3,
+     "min": 12
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "final_check",
+   "goal_text": "Ensure all party members are at least level 12",
+   "done_when": {
+    "party_min_level": 12
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

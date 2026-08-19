@@ -1,0 +1,112 @@
+{
+ "goal": "Give a drink from the Celadon Department Store to a thirsty guard of Saffron City",
+ "subgoals": [
+  {
+   "id": "clear_bag_space",
+   "goal_text": "Discard or use an item to make room in the bag, as it is currently full.",
+   "done_when": {
+    "any_of": [
+     {
+      "has_item": {
+       "HP_UP": 1
+      }
+     },
+     {
+      "has_item": {
+       "RARE_CANDY": 0
+      }
+     }
+    ]
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Give a drink from the Celadon Department Store to a thirsty guard of Saffron City"
+   }
+  },
+  {
+   "id": "exit_rocket_hideout",
+   "goal_text": "Leave the Rocket Hideout and return to Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Give a drink from the Celadon Department Store to a thirsty guard of Saffron City"
+   }
+  },
+  {
+   "id": "enter_department_store",
+   "goal_text": "Enter the Celadon Department Store.",
+   "done_when": {
+    "map": "CELADON_MART_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Give a drink from the Celadon Department Store to a thirsty guard of Saffron City"
+   }
+  },
+  {
+   "id": "go_to_fifth_floor",
+   "goal_text": "Use the elevator to reach the 5th floor of the Department Store.",
+   "done_when": {
+    "map": "CELADON_MART_5F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Give a drink from the Celadon Department Store to a thirsty guard of Saffron City"
+   }
+  },
+  {
+   "id": "get_drink",
+   "goal_text": "Talk to the clerk on the 5th floor to receive a drink.",
+   "done_when": {
+    "has_item": {
+     "FRESH_WATER": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Give a drink from the Celadon Department Store to a thirsty guard of Saffron City"
+   }
+  },
+  {
+   "id": "travel_to_saffron_city",
+   "goal_text": "Travel from Celadon City to Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Give a drink from the Celadon Department Store to a thirsty guard of Saffron City"
+   }
+  },
+  {
+   "id": "give_drink_to_guard",
+   "goal_text": "Talk to one of the guards blocking the north, south, east, or west exits of Saffron City to give them the drink.",
+   "done_when": {
+    "has_item": {
+     "FRESH_WATER": 0
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Give a drink from the Celadon Department Store to a thirsty guard of Saffron City"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

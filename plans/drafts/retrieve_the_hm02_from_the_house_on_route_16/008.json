@@ -1,0 +1,60 @@
+{
+ "goal": "Retrieve the HM02 from the house on Route 16",
+ "subgoals": [
+  {
+   "id": "exit_celadon_mart",
+   "goal_text": "Leave the Celadon Department Store and return to the city streets.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM02 from the house on Route 16"
+   }
+  },
+  {
+   "id": "travel_to_route_16",
+   "goal_text": "Travel west from Celadon City to Route 16.",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM02 from the house on Route 16"
+   }
+  },
+  {
+   "id": "enter_fly_house",
+   "goal_text": "Enter the house on Route 16 where the HM02 is located.",
+   "done_when": {
+    "map": "ROUTE_16_FLY_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM02 from the house on Route 16"
+   }
+  },
+  {
+   "id": "get_hm02",
+   "goal_text": "Speak with the man in the house to receive HM02.",
+   "done_when": {
+    "has_item": {
+     "HM_FLY": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM02 from the house on Route 16"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

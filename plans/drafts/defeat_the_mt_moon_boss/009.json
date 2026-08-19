@@ -1,0 +1,46 @@
+{
+ "goal": "Defeat the Mt. Moon boss",
+ "subgoals": [
+  {
+   "id": "go_to_mt_moon",
+   "goal_text": "Travel from Cerulean City to the entrance of Mt. Moon on Route 4.",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b1f",
+   "goal_text": "Navigate through the first floor of Mt. Moon to reach the basement.",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Navigate through the first basement to reach the second basement floor.",
+   "done_when": {
+    "map": "MT_MOON_B2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_boss_room",
+   "goal_text": "Locate the Team Rocket boss in the deepest part of Mt. Moon.",
+   "done_when": {
+    "area": "MT_MOON_B2F|20,5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_mt_moon_boss",
+   "goal_text": "Defeat the Team Rocket boss (Jessie/James) at the end of Mt. Moon.",
+   "done_when": {
+    "flag": "EVENT_BEAT_MT_MOON_3_JESSIE_JAMES"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

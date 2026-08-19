@@ -1,0 +1,58 @@
+{
+ "goal": "Exit Mt. Moon",
+ "subgoals": [
+  {
+   "id": "descend_to_b1f",
+   "goal_text": "Go down to the first basement of Mt. Moon",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Exit Mt. Moon"
+   }
+  },
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Go down to the second basement of Mt. Moon",
+   "done_when": {
+    "map": "MT_MOON_B2F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Exit Mt. Moon"
+   }
+  },
+  {
+   "id": "reach_exit_of_b2f",
+   "goal_text": "Navigate through the second basement to reach the eastern exit",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Exit Mt. Moon"
+   }
+  },
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Walk out of the mountain onto Route 3",
+   "done_when": {
+    "map": "ROUTE_3"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Exit Mt. Moon"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

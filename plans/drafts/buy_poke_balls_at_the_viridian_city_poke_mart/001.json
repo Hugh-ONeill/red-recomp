@@ -1,0 +1,60 @@
+{
+ "goal": "Buy Poke Balls at the Viridian City Poke Mart",
+ "subgoals": [
+  {
+   "id": "travel_to_viridian_city",
+   "goal_text": "Travel from Pallet Town to Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Buy Poke Balls at the Viridian City Poke Mart"
+   }
+  },
+  {
+   "id": "enter_viridian_mart",
+   "goal_text": "Enter the Poke Mart in Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_MART"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Buy Poke Balls at the Viridian City Poke Mart"
+   }
+  },
+  {
+   "id": "open_shop_menu",
+   "goal_text": "Talk to the clerk to open the shop menu",
+   "done_when": {
+    "screen": "ShopMenu"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Buy Poke Balls at the Viridian City Poke Mart"
+   }
+  },
+  {
+   "id": "buy_poke_balls",
+   "goal_text": "Purchase Poke Balls from the shop",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Buy Poke Balls at the Viridian City Poke Mart"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

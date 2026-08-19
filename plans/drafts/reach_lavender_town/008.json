@@ -1,0 +1,46 @@
+{
+ "goal": "Reach Lavender Town",
+ "subgoals": [
+  {
+   "id": "go_to_vermilion_pc",
+   "goal_text": "Go to the Vermilion City Pokemon Center and heal the party to ensure they are ready for the tunnel.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_rock_tunnel",
+   "goal_text": "Enter the Rock Tunnel from Vermilion City.",
+   "done_when": {
+    "map": "ROCK_TUNNEL_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_rock_tunnel_east",
+   "goal_text": "Navigate through Rock Tunnel and exit onto Route 10.",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_12",
+   "goal_text": "Travel from Route 10 to Route 12.",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Travel from Route 12 to Lavender Town.",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

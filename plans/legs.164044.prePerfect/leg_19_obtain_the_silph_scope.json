@@ -1,0 +1,154 @@
+{
+  "goal": "Obtain the Silph Scope",
+  "subgoals": [
+    {
+      "id": "go_to_fuji_house",
+      "goal_text": "Travel to Mr. Fuji's house in Lavender Town",
+      "done_when": {
+        "map": "MR_FUJIS_HOUSE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "TEXT_LAVENDERTOWN_POKEMON_HOUSE_SIGN",
+          "answer": "yes",
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "LAVENDERTOWN_SUPER_NERD",
+          "answer": "yes",
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 7,
+          "y": 9,
+          "when": {
+            "map": "LAVENDER_TOWN"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "get_poke_flute",
+      "goal_text": "Talk to Mr. Fuji to receive the Poke Flute",
+      "done_when": {
+        "has_item": {
+          "POKE_FLUTE": 1
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_poke_tower",
+      "goal_text": "Enter the Pokemon Tower in Lavender Town",
+      "done_when": {
+        "map": "POKEMON_TOWER_1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "tap",
+          "btn": "b"
+        },
+        {
+          "op": "use_warp",
+          "x": 14,
+          "y": 5
+        },
+        {
+          "op": "use_warp",
+          "x": 8,
+          "y": 10,
+          "when": {
+            "map": "ROUTE_8"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROUTE8GATE_GUARD",
+          "answer": "yes",
+          "when": {
+            "map": "ROUTE_8_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 5,
+          "y": 4,
+          "when": {
+            "map": "ROUTE_8_GATE"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 41,
+          "y": 10,
+          "when": {
+            "map": "ROUTE_8"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 29,
+          "y": 12,
+          "when": {
+            "map": "ROUTE_8"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_8"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 8
+      }
+    },
+    {
+      "id": "clear_poke_tower",
+      "goal_text": "Reach the top of the Pokemon Tower",
+      "done_when": {
+        "map": "POKEMON_TOWER_7F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_silph_scope",
+      "goal_text": "Obtain the Silph Scope from the Pokemon Tower",
+      "done_when": {
+        "has_item": {
+          "SILPH_SCOPE": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,30 @@
+{
+ "goal": "the party holds a FIGHTING or WATER type",
+ "subgoals": [
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Exit Mt. Moon to return to Route 4",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel from Route 4 to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_pokemon",
+   "goal_text": "Catch a Water-type Pokemon in the waters surrounding Cerulean City",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

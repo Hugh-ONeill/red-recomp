@@ -1,0 +1,33 @@
+{
+  "goal": "a party Pokemon knows CUT",
+  "subgoals": [
+    {
+      "id": "open_bag",
+      "goal_text": "Open the bag to access the items.",
+      "done_when": {
+        "screen": "BagMenu"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "select_hm_cut",
+      "goal_text": "Select HM01 (CUT) from the bag to teach it to a Pokemon.",
+      "done_when": {
+        "screen": "MoveLearnMenu"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "teach_cut_to_spearow",
+      "goal_text": "Teach CUT to Spearow, as it is the only compatible Pokemon currently in the party.",
+      "done_when": {
+        "knows_move": {
+          "move": "CUT",
+          "slot": 3
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

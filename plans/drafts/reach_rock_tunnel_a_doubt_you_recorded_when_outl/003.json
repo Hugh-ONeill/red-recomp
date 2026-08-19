@@ -1,0 +1,45 @@
+{
+ "goal": "Reach Rock Tunnel",
+ "subgoals": [
+  {
+   "id": "go_to_vermilion_pc",
+   "goal_text": "Go to the Vermilion City Pokemon Center to heal and prepare.",
+   "done_when": {
+    "map": "VERMILION_POKECENTER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Rock Tunnel (a doubt you recorded when outlining: also written as 'Exit Rock Tunnel' when the outline was drafted; the two were judged the same objective)"
+   }
+  },
+  {
+   "id": "heal_party",
+   "goal_text": "Heal the party at the Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Rock Tunnel (a doubt you recorded when outlining: also written as 'Exit Rock Tunnel' when the outline was drafted; the two were judged the same objective)"
+   }
+  },
+  {
+   "id": "travel_to_rock_tunnel_entrance",
+   "goal_text": "Travel east from Vermilion City to the entrance of Rock Tunnel.",
+   "done_when": {
+    "map": "ROCK_TUNNEL_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Rock Tunnel (a doubt you recorded when outlining: also written as 'Exit Rock Tunnel' when the outline was drafted; the two were judged the same objective)"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

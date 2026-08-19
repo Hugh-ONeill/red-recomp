@@ -1,0 +1,40 @@
+{
+  "goal": "Defeat Koga for the Soul Badge",
+  "subgoals": [
+    {
+      "id": "go_to_fuchsia_gym",
+      "goal_text": "Travel to the Fuchsia City Gym",
+      "done_when": {
+        "map": "FUCHSIA_GYM"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_koga",
+      "goal_text": "Defeat Gym Leader Koga in battle",
+      "done_when": {
+        "badge": "SOULBADGE"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "FUCHSIAGYM_KOGA",
+          "when": {
+            "map": "FUCHSIA_GYM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

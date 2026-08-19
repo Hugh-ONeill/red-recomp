@@ -1,0 +1,118 @@
+{
+  "goal": "the party holds a FLYING type",
+  "subgoals": [
+    {
+      "id": "heal_at_vermilion",
+      "goal_text": "Heal the party at the Vermilion City Pokemon Center to restore PP and HP.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 10,
+          "y": 29,
+          "when": {
+            "map": "ROUTE_5"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 5,
+          "when": {
+            "map": "ROUTE_5_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 0,
+          "when": {
+            "map": "ROUTE_5_GATE"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 27,
+          "when": {
+            "map": "ROUTE_5"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 4,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_5"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 41,
+          "when": {
+            "map": "UNDERGROUND_PATH_NORTH_SOUTH"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "UNDERGROUND_PATH_ROUTE_6"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_6"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 10
+      }
+    },
+    {
+      "id": "go_to_route_1",
+      "goal_text": "Travel to Route 1 where Flying-type Pokemon like Pidgey can be found.",
+      "done_when": {
+        "map": "ROUTE_1"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "catch_flying_type",
+      "goal_text": "Catch a Flying-type Pokemon in the wild.",
+      "done_when": {
+        "party_type": "FLYING"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

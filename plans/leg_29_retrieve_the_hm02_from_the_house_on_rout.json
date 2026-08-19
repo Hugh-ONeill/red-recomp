@@ -1,0 +1,32 @@
+{
+  "goal": "Retrieve the HM02 from the house on Route 16",
+  "subgoals": [
+    {
+      "id": "travel_to_route_16",
+      "goal_text": "Travel to Route 16",
+      "done_when": {
+        "map": "ROUTE_16"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_fly_house",
+      "goal_text": "Enter the house on Route 16 (the Fly house)",
+      "done_when": {
+        "map": "ROUTE_16_FLY_HOUSE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_hm02",
+      "goal_text": "Talk to the man in the house to receive HM02",
+      "done_when": {
+        "has_item": {
+          "HM_FLY": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

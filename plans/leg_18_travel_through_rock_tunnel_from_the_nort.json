@@ -1,0 +1,136 @@
+{
+  "goal": "Travel through Rock Tunnel from the north side of Route 10 to its south side",
+  "subgoals": [
+    {
+      "id": "travel_to_route_10_north",
+      "goal_text": "Travel from Vermilion City to the north side of Route 10",
+      "done_when": {
+        "map": "ROUTE_10"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_rock_tunnel",
+      "goal_text": "Enter the Rock Tunnel from Route 10",
+      "done_when": {
+        "map": "ROCK_TUNNEL_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_rock_tunnel_b1f",
+      "goal_text": "Descend to the basement of Rock Tunnel",
+      "done_when": {
+        "map": "ROCK_TUNNEL_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_rock_tunnel_south",
+      "goal_text": "Navigate through the Rock Tunnel and exit from the south side to Lavender Town",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 3,
+          "when": {
+            "map": "ROCK_TUNNEL_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKTUNNELB1F_SUPER_NERD2",
+          "answer": "yes",
+          "when": {
+            "map": "ROCK_TUNNEL_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKTUNNELB1F_HIKER2",
+          "answer": "yes",
+          "when": {
+            "map": "ROCK_TUNNEL_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKTUNNELB1F_COOLTRAINER_F2",
+          "answer": "yes",
+          "when": {
+            "map": "ROCK_TUNNEL_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKTUNNELB1F_HIKER3",
+          "answer": "yes",
+          "when": {
+            "map": "ROCK_TUNNEL_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKTUNNELB1F_SUPER_NERD3",
+          "answer": "yes",
+          "when": {
+            "map": "ROCK_TUNNEL_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 27,
+          "y": 3,
+          "when": {
+            "map": "ROCK_TUNNEL_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 11,
+          "when": {
+            "map": "ROCK_TUNNEL_1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 3,
+          "when": {
+            "map": "ROCK_TUNNEL_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 15,
+          "y": 33,
+          "when": {
+            "map": "ROCK_TUNNEL_1F"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "south",
+          "when": {
+            "map": "ROUTE_10"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 11
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

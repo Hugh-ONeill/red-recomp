@@ -1,0 +1,48 @@
+{
+ "goal": "Obtain the S.S. Ticket",
+ "subgoals": [
+  {
+   "id": "get_cut",
+   "goal_text": "Obtain the HM for CUT from the S.S. Ticket's prerequisite path (usually from the gym or a specific NPC). Since the player is currently blocked by CUT trees in Cerulean City and cannot reach Route 5 or 9, they must first acquire the ability to CUT.",
+   "done_when": {
+    "knows_move": "CUT"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_vermilion",
+   "goal_text": "Travel from Route 25 to Vermilion City. This requires using CUT to clear the path south from Cerulean City to Route 5, then proceeding to Vermilion City.",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_ss_anne",
+   "goal_text": "Enter the S.S. Anne ship.",
+   "done_when": {
+    "map": "SS_ANNE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_captain_room",
+   "goal_text": "Navigate through the S.S. Anne to reach the Captain's room.",
+   "done_when": {
+    "map": "SS_ANNE_CAPTAINS_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_ss_ticket",
+   "goal_text": "Talk to the Captain to receive the S.S. Ticket.",
+   "done_when": {
+    "has_item": {
+     "S_S_TICKET": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

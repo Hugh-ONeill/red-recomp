@@ -1,0 +1,46 @@
+Obtain a starter Pokemon
+Reach Viridian City
+Retrieve the Pokemon from the Poke Mart
+Access the PC for the first time
+Reach Pewter City
+the party holds a TYPE: WATER or GRASS
+Defeat Brock for the Boulder Badge
+Reach Cerulean City
+Cross the bridge to Route 24
+the party holds a TYPE: GRASS or ELECTRIC
+Defeat Misty for the Cascade Badge
+Retrieve the S.S. Ticket from Bill
+Reach Vermilion City
+Retrieve the HM05 from the S.S. Anne
+the party holds a TYPE: GROUND
+Defeat Lt. Surge for the Thunder Badge
+Obtain the move CUT
+Reach Rock Tunnel
+Obtain the move STRENGTH
+Reach Lavender Town
+Retrieve the Gold Teeth from the Pokemon Tower
+Clear the Pokemon Tower
+Reach Celadon City
+Defeat Erika for the Rainbow Badge
+Retrieve the Secret Key from the Game Corner
+Reach Saffron City
+a party Pokemon knows the move FLASH
+Obtain the Silph Scope
+Clear Team Rocket from Silph Co.
+Retrieve the Master Ball
+Defeat Sabrina for the Marsh Badge
+Reach Fuchsia City
+Retrieve the HM04 from the Safari Zone
+Obtain the move SURF
+Defeat Koga for the Soul Badge
+Reach Cinnabar Island
+the party holds a TYPE: WATER or ELECTRIC
+Clear the Pokemon Mansion
+Defeat Blaine for the Volcano Badge
+Reach Viridian City Gym
+Defeat Giovanni for the Earth Badge
+Retrieve the Snorlax Flute
+Reach the Indigo Plateau
+Navigate the Victory Road
+every party member is at least level 50
+Defeat the Elite Four and become the Champion

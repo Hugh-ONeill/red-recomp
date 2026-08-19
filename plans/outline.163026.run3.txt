@@ -1,0 +1,47 @@
+Obtain a starter Pokemon
+Reach Viridian City
+Retrieve the Pokemon from the Poke Mart
+Reach Pewter City
+the party has at least 3 Pokemon
+Exit Mt. Moon
+Reach Cerulean City
+the party holds a FIGHTING or WATER type
+the party holds a GRASS or ELECTRIC type
+Defeat Misty for the Cascade Badge
+Retrieve the S.S. Ticket from Bill (if not already done) or ensure the path to Fuchsia is open
+Reach Bill's House
+Reach Vermilion City
+every party member is at least level 20
+the party holds a GROUND type
+Retrieve the HM01 from the S.S. Anne
+a party Pokemon knows CUT
+Defeat Lt. Surge for the Thunder Badge
+Reach Rock Tunnel
+Reach Lavender Town
+Clear the Pokemon Tower
+Retrieve the Pokemon Flute from Mr. Fuji
+Reach Saffron City to deliver the Pokemon Flute (or use it to wake Snorlax)
+Reach Celadon City
+every party member is at least level 30
+Defeat Erika for the Rainbow Badge
+Retrieve the HM05 from the Game Corner
+Retrieve the Bike from the Cycling Road
+Reach Saffron City
+Defeat Sabrina for the Marsh Badge
+Retrieve the Master Ball from Silph Co.
+Reach Fuchsia City
+the party holds a PSYCHIC or ICE type
+Defeat Koga for the Soul Badge
+Retrieve the HM04 from the Safari Zone
+a party Pokemon knows STRENGTH
+Remove the Snorlax blocking the path
+Reach Cinnabar Island
+the party holds a WATER or ELECTRIC type
+Retrieve the Secret Key from the Pokemon Mansion
+Defeat Blaine for the Volcano Badge
+Reach Viridian City Gym
+Defeat Giovanni for the Earth Badge
+Cross the Victory Road
+Reach the Indigo Plateau
+every party member is at least level 50
+Defeat the Elite Four and become the Champion

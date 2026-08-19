@@ -1,0 +1,140 @@
+{
+  "goal": "Reach Rock Tunnel",
+  "subgoals": [
+    {
+      "id": "go_to_vermilion_pc",
+      "goal_text": "Go to the Vermilion City Pokemon Center to ensure the party is healthy before heading east.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 15,
+          "y": 18,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "travel_to_route_11",
+      "goal_text": "Travel east from Vermilion City to Route 11.",
+      "done_when": {
+        "map": "ROUTE_11"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "enter_digletts_cave",
+      "goal_text": "Enter Diglett's Cave from Route 11 to pass through to the other side.",
+      "done_when": {
+        "map": "DIGLETTS_CAVE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_digletts_cave_east",
+      "goal_text": "Navigate through Diglett's Cave and exit onto the east side (Route 11).",
+      "done_when": {
+        "area": "DIGLETTS_CAVE_ROUTE_11|1,2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_rock_tunnel_entrance",
+      "goal_text": "Travel north from the east side of Diglett's Cave to reach the entrance of Rock Tunnel.",
+      "done_when": {
+        "map": "ROCK_TUNNEL_1F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "cross",
+          "dir": "north",
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "field_move",
+          "move": "CUT",
+          "x": 5,
+          "y": 8,
+          "when": {
+            "map": "ROUTE_9"
+          }
+        },
+        {
+          "op": "cross",
+          "dir": "east",
+          "when": {
+            "map": "ROUTE_9"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

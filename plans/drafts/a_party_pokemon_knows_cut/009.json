@@ -1,0 +1,45 @@
+{
+ "goal": "a party Pokemon knows CUT",
+ "subgoals": [
+  {
+   "id": "open_bag",
+   "goal_text": "Open the bag to access the items.",
+   "done_when": {
+    "screen": "BagMenu"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows CUT"
+   }
+  },
+  {
+   "id": "select_hm_cut",
+   "goal_text": "Select HM01 (CUT) from the bag to teach it to a Pokemon.",
+   "done_when": {
+    "screen": "MoveLearnMenu"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows CUT"
+   }
+  },
+  {
+   "id": "teach_cut",
+   "goal_text": "Teach CUT to a compatible Pokemon in the party.",
+   "done_when": {
+    "knows_move": "CUT"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "a party Pokemon knows CUT"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

@@ -1,0 +1,22 @@
+{
+ "goal": "Reach Viridian City",
+ "subgoals": [
+  {
+   "id": "exit_school_house",
+   "goal_text": "Exit the Viridian School House to enter the overworld.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_viridian_city",
+   "goal_text": "Travel from the current location to Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 3"
+}

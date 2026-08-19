@@ -1,0 +1,119 @@
+{
+  "goal": "Retrieve the HM01 from the captain of the S.S. Anne",
+  "subgoals": [
+    {
+      "id": "reach_anne_upper_deck",
+      "goal_text": "Navigate from the second floor rooms to the third floor of the S.S. Anne.",
+      "done_when": {
+        "map": "SS_ANNE_3F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 36,
+          "y": 4,
+          "when": {
+            "map": "SS_ANNE_2F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SSANNE2F_WAITER",
+          "answer": "yes",
+          "when": {
+            "map": "SS_ANNE_2F"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 2,
+        "carried_from_rewrite": true
+      }
+    },
+    {
+      "id": "enter_captains_room",
+      "goal_text": "Find and enter the Captain's Room on the third floor.",
+      "done_when": {
+        "map": "SS_ANNE_CAPTAINS_ROOM"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 3,
+          "when": {
+            "map": "SS_ANNE_3F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 3,
+          "when": {
+            "map": "SS_ANNE_3F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 36,
+          "y": 4,
+          "when": {
+            "map": "SS_ANNE_2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "get_hm01",
+      "goal_text": "Speak with the Captain to obtain HM01 (CUT).",
+      "done_when": {
+        "has_item": {
+          "HM_CUT": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "SSANNECAPTAINSROOM_CAPTAIN",
+          "answer": "yes",
+          "when": {
+            "map": "SS_ANNE_CAPTAINS_ROOM"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "SSANNECAPTAINSROOM_CAPTAIN",
+          "answer": "yes",
+          "when": {
+            "map": "SS_ANNE_CAPTAINS_ROOM"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 2
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

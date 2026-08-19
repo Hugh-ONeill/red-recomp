@@ -1,0 +1,22 @@
+{
+ "goal": "Reach Viridian City",
+ "subgoals": [
+  {
+   "id": "exit_pallet_town",
+   "goal_text": "Leave Pallet Town and enter Route 1",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_viridian_city",
+   "goal_text": "Travel north through Route 1 to arrive in Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

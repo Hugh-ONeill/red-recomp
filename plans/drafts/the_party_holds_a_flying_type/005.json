@@ -1,0 +1,32 @@
+{
+ "goal": "the party holds a FLYING type",
+ "subgoals": [
+  {
+   "id": "go_to_route_1",
+   "goal_text": "Travel back to Route 1 where Flying-type Pokemon like Pidgey are common.",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a FLYING type"
+   }
+  },
+  {
+   "id": "catch_flying_type",
+   "goal_text": "Catch a Flying-type Pokemon in the wild.",
+   "done_when": {
+    "party_type": "FLYING"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a FLYING type"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

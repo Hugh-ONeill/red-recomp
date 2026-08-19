@@ -1,0 +1,45 @@
+{
+ "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth",
+ "subgoals": [
+  {
+   "id": "exit_rock_tunnel_south",
+   "goal_text": "Exit the Rock Tunnel through the south mouth onto Route 11",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth"
+   }
+  },
+  {
+   "id": "travel_to_route_12",
+   "goal_text": "Walk east from Route 11 to reach Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth"
+   }
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Walk north from Route 12 to enter Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

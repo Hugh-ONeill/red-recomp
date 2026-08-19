@@ -1,0 +1,29 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Travel to Route 2 to find Grass-type Pokemon.",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_grass_type",
+   "goal_text": "Catch a Grass-type Pokemon (such as Oddish or Bellsprout if available, or more commonly in this area, a Pokemon that provides the required coverage).",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "GRASS"
+     },
+     {
+      "party_type": "WATER"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 2"
+}

@@ -1,0 +1,44 @@
+{
+  "goal": "a party Pokemon knows STRENGTH",
+  "subgoals": [
+    {
+      "id": "teach_strength",
+      "goal_text": "Teach the move STRENGTH to a compatible Pokemon in the party using the HM_STRENGTH item.",
+      "done_when": {
+        "knows_move": "STRENGTH"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_item",
+          "item": "HM_STRENGTH",
+          "slot": 4,
+          "forget": "BUBBLE",
+          "when": {
+            "map": "WARDENS_HOUSE"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "use_item",
+          "item": "HM_STRENGTH",
+          "slot": 4,
+          "forget": "BUBBLE"
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

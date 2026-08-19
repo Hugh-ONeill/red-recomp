@@ -1,0 +1,37 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "go_to_route_2",
+   "goal_text": "Travel to Route 2",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_forest",
+   "goal_text": "Enter the Viridian Forest",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_grass_type",
+   "goal_text": "Catch a Grass-type Pokemon (such as Oddish or Bellsprout if available, or more likely a Caterpie/Weedle to evolve or a wild Grass type in the forest/routes)",
+   "done_when": {
+    "any_of": [
+     {
+      "party_type": "GRASS"
+     },
+     {
+      "party_type": "WATER"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "drawn_as": "draw 1"
+}

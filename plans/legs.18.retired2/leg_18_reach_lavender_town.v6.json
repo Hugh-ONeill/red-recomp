@@ -1,0 +1,74 @@
+{
+  "goal": "Reach Lavender Town",
+  "subgoals": [
+    {
+      "id": "heal_at_vermilion",
+      "goal_text": "Heal the party at the Vermilion City Pokemon Center.",
+      "done_when": {
+        "map": "VERMILION_POKECENTER",
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "travel_to_route_11",
+      "goal_text": "Travel east from Vermilion City to Route 11.",
+      "done_when": {
+        "map": "ROUTE_11"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_digletts_cave",
+      "goal_text": "Enter Diglett's Cave on Route 11.",
+      "done_when": {
+        "map": "DIGLETTS_CAVE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "exit_digletts_cave_east",
+      "goal_text": "Navigate through Diglett's Cave and exit on the east side to Route 12.",
+      "done_when": {
+        "map": "ROUTE_12"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_poke_flute",
+      "goal_text": "Travel to Lavender Town via Route 10 to obtain the Poke Flute, as Snorlax blocks the path from Route 12.",
+      "done_when": {
+        "has_item": {
+          "POKE_FLUTE": 1
+        }
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_lavender_town",
+      "goal_text": "Travel north from Route 12 to enter Lavender Town now that Snorlax can be awakened.",
+      "done_when": {
+        "map": "LAVENDER_TOWN"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

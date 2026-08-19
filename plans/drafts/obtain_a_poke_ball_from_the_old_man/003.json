@@ -1,0 +1,34 @@
+{
+ "goal": "Obtain a Poke Ball from the old man",
+ "subgoals": [
+  {
+   "id": "exit_poke_center",
+   "goal_text": "Leave the Viridian Pokemon Center to enter Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain a Poke Ball from the old man"
+   }
+  },
+  {
+   "id": "talk_to_old_man",
+   "goal_text": "Find and speak with the old man in Viridian City to receive a Poke Ball.",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain a Poke Ball from the old man"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

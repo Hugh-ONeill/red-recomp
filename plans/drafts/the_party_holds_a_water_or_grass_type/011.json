@@ -1,0 +1,30 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "heal_at_viridian_center",
+   "goal_text": "Heal the party at the Viridian City Pokemon Center before entering the forest.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_viridian_forest",
+   "goal_text": "Travel to Viridian Forest.",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_grass_type",
+   "goal_text": "Catch a Grass-type Pokemon in Viridian Forest.",
+   "done_when": {
+    "party_type": "GRASS"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

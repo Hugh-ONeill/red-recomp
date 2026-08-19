@@ -1,0 +1,38 @@
+{
+ "goal": "Deliver the OAKS_PARCEL to Professor Oak",
+ "subgoals": [
+  {
+   "id": "exit_viridian_pokecenter",
+   "goal_text": "Leave the Viridian Pokemon Center and enter Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_pallet_town",
+   "goal_text": "Travel from Viridian City back to Pallet Town.",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Enter Professor Oak's laboratory in Pallet Town.",
+   "done_when": {
+    "area": "OAKS_LAB|4,1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "deliver_parcel",
+   "goal_text": "Talk to Professor Oak to deliver the OAKS_PARCEL.",
+   "done_when": {
+    "flag": "EVENT_OAK_GOT_PARCEL"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,102 @@
+{
+  "goal": "Retrieve the Lift Key in the Rocket Hideout",
+  "subgoals": [
+    {
+      "id": "exit_department_store",
+      "goal_text": "Leave the Celadon Department Store and return to the city.",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 1,
+          "when": {
+            "map": "CELADON_MART_2F"
+          }
+        },
+        {
+          "op": "elevator",
+          "floor": "1F",
+          "when": {
+            "map": "CELADON_MART_ELEVATOR"
+          }
+        },
+        {
+          "op": "tap",
+          "btn": "b"
+        },
+        {
+          "op": "use_warp",
+          "x": 1,
+          "y": 3,
+          "when": {
+            "map": "CELADON_MART_ELEVATOR"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "enter_game_corner",
+      "goal_text": "Go to the Game Corner.",
+      "done_when": {
+        "map": "GAME_CORNER"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_rocket_hideout",
+      "goal_text": "Enter the Rocket Hideout via the secret entrance.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Navigate through the hideout to reach the second basement level.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B2F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b3f",
+      "goal_text": "Navigate through the hideout to reach the third basement level.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B3F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b4f",
+      "goal_text": "Navigate through the hideout to reach the fourth basement level.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B4F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "get_lift_key",
+      "goal_text": "Find and pick up the Lift Key from the item ball in the Rocket Hideout.",
+      "done_when": {
+        "has_item": {
+          "LIFT_KEY": 1
+        }
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,46 @@
+{
+ "goal": "the party holds a FIGHTING or WATER type",
+ "subgoals": [
+  {
+   "id": "ascend_to_b1f",
+   "goal_text": "Move from the bottom floor of Mt. Moon to the first basement.",
+   "done_when": {
+    "area": "MT_MOON_B1F|14,8"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "ascend_to_1f",
+   "goal_text": "Move from the first basement of Mt. Moon to the first floor.",
+   "done_when": {
+    "area": "MT_MOON_1F|2,2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_mt_moon",
+   "goal_text": "Exit Mt. Moon to reach Route 4.",
+   "done_when": {
+    "map": "ROUTE_4"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_cerulean_city",
+   "goal_text": "Travel from Route 4 to Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_water_type",
+   "goal_text": "Catch a Water-type Pokemon in the water surrounding Cerulean City.",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

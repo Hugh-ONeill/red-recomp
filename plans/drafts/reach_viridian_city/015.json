@@ -1,0 +1,38 @@
+{
+ "goal": "Reach Viridian City",
+ "subgoals": [
+  {
+   "id": "get_pokedex",
+   "goal_text": "Talk to Professor Oak in the lab to receive the Pokedex.",
+   "done_when": {
+    "flag": "EVENT_GOT_POKEDEX"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_oaks_lab",
+   "goal_text": "Leave Professor Oak's lab and return to Pallet Town.",
+   "done_when": {
+    "area": "PALLET_TOWN|10,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_1",
+   "goal_text": "Walk north from Pallet Town onto Route 1.",
+   "done_when": {
+    "map": "ROUTE_1"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_viridian_city",
+   "goal_text": "Continue north through Route 1 until arriving in Viridian City.",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

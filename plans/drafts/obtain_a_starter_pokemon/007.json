@@ -1,0 +1,58 @@
+{
+ "goal": "Obtain a starter Pokemon",
+ "subgoals": [
+  {
+   "id": "exit_bedroom",
+   "goal_text": "Go downstairs from the bedroom to the first floor of the house.",
+   "done_when": {
+    "map": "REDS_HOUSE_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain a starter Pokemon"
+   }
+  },
+  {
+   "id": "exit_house",
+   "goal_text": "Leave the house and enter Pallet Town.",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain a starter Pokemon"
+   }
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Walk to and enter Professor Oak's laboratory.",
+   "done_when": {
+    "map": "OAKS_LAB"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain a starter Pokemon"
+   }
+  },
+  {
+   "id": "pick_starter",
+   "goal_text": "Interact with the Poke Ball on the table to choose a starter Pokemon.",
+   "done_when": {
+    "party_nonempty": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Obtain a starter Pokemon"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}
