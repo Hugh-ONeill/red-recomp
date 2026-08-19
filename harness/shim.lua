@@ -1601,6 +1601,42 @@ function OPS.walk_to(G, c)
   local ow = G.overworld
   local startMap = ow.map and ow.map.id
   local p = ow.player
+  -- CLIMBING A SLOPE IS ONE LONG PRESS, NOT MANY SHORT ONES. On a slope
+  -- map the game moves you one cell downhill on every poll where no
+  -- direction is held, and walk_to releases the d-pad between every cell
+  -- — so a northward walk gave back what it gained and reported "stuck"
+  -- from the same tile it started on. Hold UP continuously while the
+  -- target is north of us; the ledges on this road are down/left/right
+  -- only, so nothing else forbids the climb.
+  do
+    local slope = false
+    for _, mm in ipairs(((G.data and G.data.field
+                          and G.data.field.forcedMovement) or {}).slopeMaps
+                        or {}) do
+      if mm == startMap then slope = true end
+    end
+    if slope and c.y and c.y < p.cellY then
+      local best, stall = p.cellY, 0
+      G.input.state["up"] = true
+      for _ = 1, (c.max_steps or 200) * 12 do
+        table.insert(G.input.pressQueue, "up")
+        coroutine.yield()
+        if G.stack:top() ~= ow then break end
+        if (ow.map and ow.map.id) ~= startMap then break end
+        if p.cellY <= c.y then break end
+        if p.cellY < best then best, stall = p.cellY, 0
+        else stall = stall + 1 end
+        if stall > 240 then break end     -- genuinely walled, not drifting
+      end
+      G.input.state["up"] = false
+      U.wait(2)
+      if (ow.map and ow.map.id) ~= startMap then
+        return true, "walked off the map while climbing"
+      end
+      if G.stack:top() ~= ow then return true, "battle while climbing" end
+      -- fall through: the ordinary walker finishes the sideways part
+    end
+  end
   for _ = 1, (c.max_steps or 200) do
     if G.stack:top() ~= ow then
       return true, "interrupted (battle or script)"
