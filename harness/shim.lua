@@ -4103,7 +4103,37 @@ function OPS.grind(G, c)
         end
       end
     end
-    if not gx then return false, "no reachable " .. ground .. " on this map" end
+    if not gx then
+      -- "NO REACHABLE GRASS" IS TWO DIFFERENT FACTS. Route 15 has grass
+      -- (Oddish, Ditto, Venonat) and the run was standing in a 14-cell
+      -- pocket west of the gate that has none — the message read as "this
+      -- map has no grass" and sent it back across Kanto for a patch it was
+      -- standing one building away from. Say which it is; the map is on
+      -- screen, the reachable set is ours.
+      local any_ground, any_water = false, false
+      local W2, H2 = map_dims_cells(G)
+      for yy = 0, math.max(0, H2 - 1) do
+        for xx = 0, math.max(0, W2 - 1) do
+          if not any_ground and map:isGrassCell(xx, yy) then any_ground = true end
+          if not any_water and map.isWaterCell and map:isWaterCell(xx, yy) then
+            any_water = true
+          end
+        end
+      end
+      local extra = ""
+      if any_water and encDef.water then
+        extra = " There IS water on this map with its own wild Pokemon: "
+          .. "{\"op\":\"grind\",\"surf\":true} paces it if a party "
+          .. "Pokemon knows SURF."
+      end
+      if any_ground then
+        return false, ("this map HAS " .. ground .. ", but none of it is "
+          .. "reachable from where you stand — the part of the map you are "
+          .. "in has none, so the walking to do is toward the rest of it."
+          .. extra)
+      end
+      return false, "no " .. ground .. " anywhere on this map." .. extra
+    end
     OPS.walk_to(G, { x = gx, y = gy, max_steps = c.max_steps or 200 })
     if G.stack:top() ~= ow then return true, "battle en route to " .. ground end
     if not enc_cell(p.cellX, p.cellY) then
