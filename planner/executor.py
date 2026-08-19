@@ -4684,21 +4684,48 @@ class Executor:
             lines.append(self._respawn_line(obs))
         return "\n".join(lines)
 
-    @staticmethod
-    def _respawn_line(obs) -> str:
+    def _respawn_line(self, obs) -> str:
         """WHERE you wake, and the RULE that moves it. The place was stated
         (training text, the author's start line) and the rule never was —
         so the run walked from Cerulean to Route 24 with Viridian still its
         respawn, wiped, and woke a whole map away. Manual tier: a blackout
-        returns you to the last Pokemon Center you healed at."""
+        returns you to the last Pokemon Center you healed at.
+
+        ...AND WHERE THE NEAR ONES ARE. "The last Center you healed at" was
+        read as "the Center you must heal at": standing on Route 8, a leg
+        from Lavender, the run marched back across Kanto to Vermilion 'to
+        heal'. The Centers this run has walked into are its own history;
+        name them, nearest first by walked legs."""
         rs = (obs or {}).get("respawn") or {}
         if not rs.get("map"):
             return ""
+        here = self._where(obs)
+        cents = []
+        for r in set(self.visits or {}) | set(self.explored or {}):
+            m = r.split("|")[0]
+            if not m.endswith("POKECENTER"):
+                continue
+            p2 = self._route(here, r)
+            if p2 is not None:
+                cents.append((len(p2), m))
+        near = ""
+        if cents:
+            cents.sort()
+            seen, rows = set(), []
+            for n, m in cents:
+                if m in seen:
+                    continue
+                seen.add(m)
+                rows.append(f"{m} ({n} leg(s))" if n else f"{m} (here)")
+            near = (" ANY Center heals; the ones you have walked into, "
+                    "nearest first over walked ground: "
+                    + ", ".join(rows[:3]) + ".")
         return (f"IF THE PARTY FAINTS you wake at {rs['map']} — the last "
-                f"Pokemon Center you HEALED at. Healing at any Center "
-                f"({{\"op\":\"heal\"}}) makes THAT Center the place you "
-                f"wake, so a heal before a hard stretch is also a shorter "
-                f"walk back.")
+                f"Pokemon Center you HEALED at, which is only where you "
+                f"WAKE, not where you must go to heal.{near} Healing at any "
+                f"Center ({{\"op\":\"heal\"}}) makes THAT Center the "
+                f"place you wake, so a heal before a hard stretch is also "
+                f"a shorter walk back.")
 
     def _hunted(self) -> bool:
         """Is the creature this subgoal wants to be CAUGHT, or handed over?
