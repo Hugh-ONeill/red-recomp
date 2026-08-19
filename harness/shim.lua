@@ -1470,6 +1470,28 @@ local function bfs_to_edge(G, dir)
   -- rather than what happens to sit near the edge. Route 2's report named
   -- a CUT_TREE at 5,10 while the walk stopped at 18,2 — thirteen cells
   -- away, across the map, and not the thing in the way.
+  -- ONE-SHOT DIAGNOSTIC (ours, not the model's): when a seam walk ends in
+  -- a small pocket, dump the tile ids on its boundary. Route 14 is stacked
+  -- with ledge rows and the BFS reported ZERO ledge hops, which is either
+  -- "no ledge touches this nook" or "our ledge-tile match is wrong for this
+  -- tileset" — and those need opposite fixes.
+  if nseen <= 24 and ow.map and ow.map.cellTile then
+    local edge_tiles = {}
+    for k in pairs(seen) do
+      local sx, sy = k:match("^(-?%d+),(-?%d+)$")
+      sx, sy = tonumber(sx), tonumber(sy)
+      for dn, d in pairs(DIRS) do
+        local nx2, ny2 = sx + d[1], sy + d[2]
+        if not seen[nx2 .. "," .. ny2] and ow.map:inBounds(nx2, ny2) then
+          edge_tiles[#edge_tiles + 1] = ("%s:%d@%d,%d"):format(
+            dn, ow.map:cellTile(nx2, ny2), nx2, ny2)
+        end
+      end
+    end
+    print(("[pocket] %s %d cells, tileset=%s, boundary tiles: %s"):format(
+      tostring(ow.map.id), nseen, tostring(ow.map.def and ow.map.def.tileset),
+      table.concat(edge_tiles, " ", 1, math.min(#edge_tiles, 24))))
+  end
   return nil, nil, ("BFS from %d,%d walked %d cells (%d ledge hop%s, %d arrow-tile "
     .. "slide%s); closest to "
     .. "the %s edge was %s,%s, still %d cell%s short%s")
