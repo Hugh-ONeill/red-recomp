@@ -5992,6 +5992,20 @@ class Executor:
         """
         self._st.update({k: v for k, v in kw.items() if v is not None})
         st = self._st
+        def _wrap_status(txt: str, width: int = 100, indent: str = " " * 9):
+            """One long sentence over several lines, indented under its
+            label — nothing dropped."""
+            words, out, line = str(txt).split(), [], ""
+            for w in words:
+                if line and len(line) + 1 + len(w) > width:
+                    out.append(line)
+                    line = w
+                else:
+                    line = f"{line} {w}".strip()
+            if line:
+                out.append(line)
+            return ("\n" + indent).join(out) if out else ""
+
         obs = st.get("obs") or {}
         pl = obs.get("player") or {}
         party = ", ".join(
@@ -6003,8 +6017,14 @@ class Executor:
             f"GOAL     {(st.get('goal_text') or '')[:150]}",
             f"DONE_WHEN{json.dumps(st.get('done_when') or {})}",
             # what it is THINKING: its own plan from the last reply (the
-            # plan echo), so the status line shows intent in its words
-            f"THINKS   {(getattr(self, '_plan_said', '') or '')[:220]}",
+            # plan echo), so the status line shows intent in its words.
+            # NOT TRUNCATED (user, 2026-08-19): the cut fell mid-sentence
+            # exactly where the reasoning turns — "…because the path is
+            # blocked by" — and the one line worth reading was the one
+            # being thrown away. Wrapped instead, so a long thought stays
+            # readable in a terminal.
+            "THINKS   " + _wrap_status(
+                getattr(self, "_plan_said", "") or ""),
             f"DOING    {st.get('doing','')}",
             f"LAST     {(st.get('last') or '')[:150]}",
             f"WHERE    {(obs.get('map') or {}).get('id')} "

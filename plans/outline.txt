@@ -27,7 +27,6 @@ Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute
 Wake the Snorlax sleeping on Route 12 with the Poke Flute
 Exchange the BIKE_VOUCHER for a BICYCLE at the bike shop in Cerulean City
 a party Pokemon knows FLY
-Reach Fuchsia City
 Retrieve the HM03 from the Secret House in the Safari Zone
 Retrieve the Gold Teeth from the Safari Zone and return them to the Warden for HM04
 a party Pokemon knows SURF
