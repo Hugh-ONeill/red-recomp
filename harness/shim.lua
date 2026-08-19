@@ -2093,13 +2093,24 @@ ui_back_out = function(G)
     local t = ui_top(G)
     dlg_trace(G, "back_out", i)
     if t == G.overworld or (t and (t.enemy or t.kind)) then return true end
+    -- A SLOT MACHINE MID-SPIN IGNORES B: its spinup/spin/payout/flash
+    -- stages only advance on A (each A stops a wheel), and B exits only
+    -- from the bet / one-more / intro prompts. B-mashing here held the
+    -- run hostage for a whole attempt ("tap(btn=b): NO visible effect"
+    -- x rounds). Ride the spin out with A, then B leaves as normal.
+    if t and t.screenId == "SlotMachine"
+       and t.stage ~= "bet" and t.stage ~= "onemore"
+       and t.stage ~= "intro" then
+      U.tap(G, "a"); U.wait(6)
+    else
+      U.tap(G, "b"); U.wait(6)
+    end
     if t == seen_top and (t and t.pageIndex) == seen_idx then
       stall = stall + 1
       if stall > 100 then return false end
     else
       stall, seen_top, seen_idx = 0, t, (t and t.pageIndex)
     end
-    U.tap(G, "b"); U.wait(6)
   end
   return false
 end
