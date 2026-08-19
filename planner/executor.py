@@ -2406,8 +2406,24 @@ class Executor:
         if not names:
             return
         was = set(self.sightings.get(here) or [])
-        if not set(names).issubset(was):
-            self.sightings[here] = sorted(was | set(names))
+        # A THING THAT IS GONE IS NOT STILL SEEN. Sightings only ever grew,
+        # so a Snorlax woken and walked off, an item picked up, a person
+        # hidden by a script stayed on the record for ever — and the ledger
+        # kept offering the run a thing it could not find, which reads as
+        # the world lying about itself. This map is on screen: anything
+        # recorded HERE that the observation no longer lists is gone. Only
+        # names the ledger itself minted (never the harness's ITEM_x_y,
+        # which are re-minted per position) and only when the observation
+        # is real.
+        live = {o.get("name") for o in (m.get("objects") or []) if o.get("name")}
+        gone = {n for n in was
+                if n not in live and not str(n).startswith("ITEM_")
+                and not str(n).startswith("CUT_TREE")}
+        if gone:
+            self.log("sighting_gone", area=here, names=sorted(gone))
+        keep = (was - gone) | set(names)
+        if keep != was:
+            self.sightings[here] = sorted(keep)
             self._save_memory()
 
     def note_frontier(self, obs):
