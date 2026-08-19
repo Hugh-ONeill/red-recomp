@@ -4213,7 +4213,30 @@ function OPS.interact(G, c)
     -- tile. The map's own object names still resolve below, so a macro
     -- distilled before the rename keeps replaying.
     local ix, iy = tostring(c.name):match("^ITEM_(%d+)_(%d+)$")
-    if ix then tx, ty = tonumber(ix), tonumber(iy) end
+    if ix then
+      tx, ty = tonumber(ix), tonumber(iy)
+      -- ...BUT ONLY ON THE MAP THAT NAME CAME FROM. ITEM_x_y names a ball
+      -- by where it lies, so the same name exists on dozens of floors and
+      -- the op quietly became "press tile (8,3) wherever you happen to be"
+      -- — pressed in Fuchsia City for an item in the Warden's House, and
+      -- answered with a pathing failure that says nothing about the mixup.
+      local here_item = false
+      for _, npc in ipairs(ow.npcs or {}) do
+        local d2 = npc.def or {}
+        if npc.cellX == tx and npc.cellY == ty
+           and ((d2.name or ""):find("POKE_BALL") or d2.item) then
+          here_item = true
+        end
+      end
+      if not here_item then
+        return false, ("no item lies at (%d,%d) on %s — an ITEM_x_y name "
+          .. "means \"the ball at those coordinates on THAT map\", so it "
+          .. "only means something on the map you saw it. Go to that map "
+          .. "first (use_warp/go take map=), or press a tile here with "
+          .. "{\"op\":\"interact\",\"x\":N,\"y\":N}.")
+          :format(tx, ty, tostring((ow.map or {}).id))
+      end
+    end
     for _, npc in ipairs(ow.npcs or {}) do
       if not tx and (npc.def or {}).name == c.name then
         tx, ty = npc.cellX, npc.cellY
