@@ -31,10 +31,10 @@ Retrieve the Gold Teeth from the Safari Zone and return them to the Warden for H
 a party Pokemon knows SURF
 a party Pokemon knows STRENGTH
 Defeat Koga for the Soul Badge
+a party Pokemon knows FLY
 every party member is at least level 40
 Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate
 Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor (its doors on Route 16 are at 24,4 and 24,5)
-a party Pokemon knows FLY
 Rescue the Silph Co. president from Team Rocket
 Defeat Sabrina for the Marsh Badge
 Reach Cinnabar Island

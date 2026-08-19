@@ -6811,6 +6811,66 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         f"op named {_want})")
                     if not ignore_done and pred_holds(done, obs):
                         return True, trace, clean
+            # ...AND THE SAME FOR A FIELD MOVE. CUT/STRENGTH aim at a tile
+            # and the shim walks to it on THIS map only, so a bush whose
+            # component is reachable only by leaving the map and coming
+            # back answered "no reachable tile adjacent" for a whole
+            # attempt (Route 14, across the ledges). Same recall-only hop.
+            if op == "field_move" and step.get("x") is not None:
+                _pre = self.settle() or obs
+                _r0 = (self._send_safe("field_move", **step) or {})
+                _res0 = (_r0.get("result") or {})
+                _d0 = str(_res0.get("detail") or "")
+                if _res0.get("ok"):
+                    obs = self.settle() or _pre
+                    trace.append(f"field_move(move={step.get('move')},"
+                                 f"x={step.get('x')},y={step.get('y')}): ok"
+                                 + (f" — {_d0}" if _d0 else ""))
+                    self._record_outcome(_pre, op, step, f"field_move: {_d0}")
+                    continue
+                if "no reachable tile adjacent" in _d0:
+                    _here = self._where(_pre)
+                    _mid = _here.split("|")[0]
+                    _hopped = 0
+                    for _reg in sorted(set(list(self.explored)
+                                           + list(self.visits))):
+                        if _reg.split("|")[0] != _mid or _reg == _here:
+                            continue
+                        _path = self._route(_here, _reg)
+                        if not _path or _hopped >= 2:
+                            continue
+                        _hopped += 1
+                        self.log("field_move_via_region", subgoal=sg.get("id"),
+                                 to=_reg, legs=len(_path))
+                        self._walk_route(sg, _path)
+                        _cur = self.settle() or _pre
+                        _r1 = (self._send_safe("field_move", **step) or {})
+                        if ((_r1.get("result") or {}).get("ok")):
+                            obs = self.settle() or _cur
+                            trace.append(
+                                f"field_move(move={step.get('move')}): could "
+                                f"not be reached from where you stood, so you "
+                                f"were walked {len(_path)} leg(s) over walked "
+                                f"ground to {_reg} — and from there it worked")
+                            self._record_outcome(_pre, op, step,
+                                                 "field_move: ok via " + _reg)
+                            break
+                    else:
+                        obs = self.settle() or _pre
+                        trace.append(f"field_move(move={step.get('move')}): "
+                                     f"FAILED — {_d0}"
+                                     + (f"; nor from the {_hopped} other "
+                                        f"part(s) of {_mid} you can walk to"
+                                        if _hopped else ""))
+                        self._record_outcome(_pre, op, step,
+                                             f"field_move: FAILED — {_d0}")
+                    continue
+                obs = self.settle() or _pre
+                trace.append(f"field_move(move={step.get('move')}): FAILED "
+                             f"— {_d0}")
+                self._record_outcome(_pre, op, step,
+                                     f"field_move: FAILED — {_d0}")
+                continue
             # ...AND THE SAME FOR A SEAM. `cross` walks to the map's edge
             # from where you stand, so a fence, a building or a river
             # between you and that edge answers "the south seam cannot be
