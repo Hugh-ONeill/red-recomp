@@ -1704,6 +1704,30 @@ function OPS.use_warp(G, c)
       .. ". People who stand in front of doors in this game usually say "
       .. "why; interact with them to hear it."
   end
+  -- NOT A DOOR OF THIS MAP AT ALL. Standing in Vermilion, use_warp(17,13)
+  -- — Route 6's underground-path door — failed as "couldn't reach the
+  -- warp tile (no path)", which reads as a blocked road when the truth is
+  -- a different map's coordinates. Doors are per map; say whose these are
+  -- not, and which doors ARE here.
+  do
+    local md2 = G.data and G.data.maps and G.data.maps[startMap]
+    local is_door = false
+    for _, w in ipairs((md2 and md2.warps) or {}) do
+      if w.x == c.x and w.y == c.y then is_door = true break end
+    end
+    if not is_door then
+      local here = {}
+      for _, w in ipairs((md2 and md2.warps) or {}) do
+        here[#here + 1] = ("(%d,%d)"):format(w.x, w.y)
+      end
+      return false, ("there is no door at (%d,%d) on %s — door coordinates "
+        .. "belong to ONE map, so a door you know from another map must be "
+        .. "used while standing on THAT map (walk or cross there first). "
+        .. "Doors on this map: %s")
+        :format(c.x, c.y, tostring(startMap),
+                #here > 0 and table.concat(here, ", ") or "none")
+    end
+  end
   return false, "couldn't reach the warp tile ("
     .. tostring(walk_why or "no reason recorded") .. ")"
 end
