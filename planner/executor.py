@@ -4137,12 +4137,14 @@ class Executor:
             _last_pos = None
             for _ in range(12):
                 pre = self.b.obs()
+                _sf = bool(getattr(self, "_go_surf", False))
                 if "," in key:
                     x, y = key.split(",")
                     _res = self._send_safe("use_warp", x=int(x), y=int(y))
                     step = {"x": int(x), "y": int(y)}
                 else:
-                    _res = self._send_safe("cross", dir=key)
+                    _res = (self._send_safe("cross", dir=key, surf=True)
+                            if _sf else self._send_safe("cross", dir=key))
                     step = {"dir": key}
                 o = self.settle()
                 # KEEP THE OP'S OWN VERDICT. settle() overwrites result with
@@ -6413,8 +6415,11 @@ nothing about where anything leads. It reports what it did and found. It
 is the right move when the ledger says the area is fully worked and you
 have no better idea of your own; a map-changing op, so it must be the
 LAST op of your macro),
-{"op":"go","to":AREA} (IF YOU HAVE BEEN SOMEWHERE BEFORE, ONE OP TAKES YOU
-BACK: it walks the whole route — every door, seam and lift ride you actually
+{"op":"go","to":AREA} (add "surf":true — like "intent" on grind — to say
+"if the way on is water, get on it"; the harness then finds the water beside
+ground it can reach and uses SURF, and water becomes walkable. Without it,
+water is a wall. walk_to and cross take "surf" the same way.
+IF YOU HAVE BEEN SOMEWHERE BEFORE, ONE OP TAKES YOU BACK: it walks the whole route — every door, seam and lift ride you actually
 used — in a single action, however many legs it is. AREA as the ledger names
 it, e.g. "POKEMON_TOWER_6F|10,2", or a bare map id like "LAVENDER_TOWN" for
 the nearest walked part of it. Walked ground only: it fails plainly if no
@@ -6681,6 +6686,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # round per door: the tower was climbed floor by floor, each
             # floor a full think, six times over.
             if op == "go":
+                self._go_surf = bool(step.get("surf"))
                 _ok, _tr, _cl = self._go_step(sg, obs, step, ignore_done)
                 trace.extend(_tr)
                 clean.extend(_cl)

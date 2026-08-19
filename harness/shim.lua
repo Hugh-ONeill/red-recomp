@@ -1674,7 +1674,57 @@ function OPS.walk_to(G, c)
     if p.cellX == c.x and p.cellY == c.y then return true end
     local dir, why = bfs_dir(G, c.x, c.y)
     if not dir then
-      return why == "arrived", why
+      -- OPT IN TO SWIMMING. `surf=true` says: if the way on is water, get
+      -- on it. The harness does the mechanics (find the water tile beside
+      -- ground we can reach, stand at it, use the move); WHETHER to swim —
+      -- water has its own wild encounters and its own places to be dumped
+      -- — stays the model's, exactly like intent= on grind.
+      if c.surf and not p.surfing then
+        local knows = false
+        for _, mon in ipairs((G.save or {}).party or {}) do
+          for _, mv in ipairs(mon.moves or {}) do
+            if tostring(type(mv) == "table" and mv.id or mv) == "SURF" then
+              knows = true
+            end
+          end
+        end
+        if not knows then
+          return false, "no party Pokemon knows SURF, so water cannot be "
+            .. "crossed (" .. tostring(why) .. ")"
+        end
+        local reach = warp_reach(G) or {}
+        local bx, by, bland, bd
+        for k in pairs(reach) do
+          local sx, sy = k:match("^(-?%d+),(-?%d+)$")
+          sx, sy = tonumber(sx), tonumber(sy)
+          for _, d in pairs(DIRS) do
+            local wx, wy = sx + d[1], sy + d[2]
+            if ow.map.isWaterCell and ow.map:inBounds(wx, wy)
+               and ow.map:isWaterCell(wx, wy) then
+              local dd = math.abs(wx - c.x) + math.abs(wy - c.y)
+              if not bd or dd < bd then
+                bd, bx, by, bland = dd, wx, wy, { sx, sy }
+              end
+            end
+          end
+        end
+        if not bx then
+          return false, "nothing here is water to surf on ("
+            .. tostring(why) .. ")"
+        end
+        OPS.walk_to(G, { x = bland[1], y = bland[2], max_steps = 200 })
+        local ok2, why2 = OPS.field_move(G, { move = "SURF", x = bx, y = by })
+        if not ok2 then
+          return false, "could not get onto the water: " .. tostring(why2)
+        end
+        dir = bfs_dir(G, c.x, c.y)
+        if not dir then
+          return false, "even on the water there is no path to (" .. c.x
+            .. "," .. c.y .. ")"
+        end
+      else
+        return why == "arrived", why
+      end
     end
     local moved
     for attempt = 1, 3 do
@@ -2166,7 +2216,7 @@ function OPS.cross(G, c)
       -- walk reported "stuck" having barely moved. Scale it to the
       -- distance actually being walked (and keep a floor for short hops).
       local _need = math.abs((ex or 0) - p.cellX) + math.abs((ey or 0) - p.cellY)
-      OPS.walk_to(G, { x = ex, y = ey,
+      OPS.walk_to(G, { x = ex, y = ey, surf = c.surf,
                        max_steps = c.max_steps or math.max(200, _need * 3) })
       if (ow.map and ow.map.id) ~= startMap then
         return true, "crossed (mid-walk)"
