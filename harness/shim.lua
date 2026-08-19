@@ -2759,8 +2759,31 @@ function OPS.field_move(G, c)
       local pg = t.pages[t.pageIndex]
       if type(pg) == "table" then said = table.concat(pg, " ")
       else said = tostring(pg or "") end
+      -- THE GAME REFUSED THE MOVE, IN WORDS. "There isn't anything to
+      -- CUT!" drops back into the party menu, where the A-mash below
+      -- opened a mon's SUMMARY and the op returned true, "used CUT" —
+      -- a stuck screen and a lie in one. The sentence on screen is the
+      -- verdict; close everything and hand it over.
+      if said:find("isn't anything") or said:find("can't be used")
+         or said:find("Oak's words") then
+        ui_back_out(G)
+        return false, mv .. " did nothing here — the game says: \""
+          .. said:gsub("\n", " ") .. "\""
+      end
     end
     U.tap(G, "a"); U.wait(5)
+  end
+  -- honest exit: if the screen never returned to the overworld, say so
+  -- (and clean up) instead of reporting the move used
+  if G.stack:top() ~= ow then
+    local t = G.stack:top()
+    if not (t and (t.enemy or t.kind)) then
+      ui_back_out(G)
+      if G.stack:top() ~= ow then
+        return false, mv .. " left a screen up that would not close"
+      end
+      return false, mv .. " did not fire (the menus closed without it)"
+    end
   end
   U.wait(24)   -- the cut animation finishes after the text closes
   return true, "used " .. mv .. (said and (" — " .. said) or "")
