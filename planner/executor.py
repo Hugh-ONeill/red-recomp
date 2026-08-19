@@ -6033,7 +6033,11 @@ class Executor:
             f"WHERE    {(obs.get('map') or {}).get('id')} "
             f"({pl.get('x')},{pl.get('y')}) mode={obs.get('mode')}",
             f"PARTY    {party}",
-            f"MONEY    {obs.get('money')}   BAG {json.dumps(obs.get('bag') or {})}",
+            # the slot count beside the bag: 20/20 has blocked three legs
+            # this run and the number was only ever visible by counting
+            f"MONEY    {obs.get('money')}   "
+            f"BAG {len(obs.get('bag') or {})}/{self.BAG_SLOTS} "
+            f"{json.dumps(obs.get('bag') or {})}",
             f"t+{round(time.time() - self.t0)}s",
         ]
         try:
