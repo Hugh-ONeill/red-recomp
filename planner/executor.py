@@ -4718,6 +4718,33 @@ class Executor:
                 f"{m.get('hp')}/{m.get('max_hp')}hp"
                 + (f" [{m.get('status')}]" if m.get("status") else "")
                 for i, m in enumerate(party, 1)))
+            # WHAT THE CONDITION COUNTS, AND HOW FAR OFF THE WORST IS. The
+            # predicate is the harness's own, so saying what it measures is
+            # not game knowledge: "every party member" counts the SIX in
+            # the party, and a Pokemon in the PC is not in the party. Two
+            # L22 Safari catches turned an upkeep leg into eighteen levels
+            # of grinding, and nothing said which mon the condition was
+            # actually waiting on.
+            _kind = str(kind or "")
+            if _kind in ("party_min_level", "lead_level", "slot_level"):
+                try:
+                    _need = int(dw_val if not isinstance(dw_val, dict)
+                                else dw_val.get("min") or 0)
+                except (TypeError, ValueError):
+                    _need = 0
+                _short = sorted(
+                    ((int(m.get("level") or 0), m.get("species"), i)
+                     for i, m in enumerate(party, 1)
+                     if int(m.get("level") or 0) < _need))
+                if _kind == "party_min_level" and _short:
+                    lines.append(
+                        "WHAT THIS CONDITION COUNTS: every Pokemon IN YOUR "
+                        f"PARTY ({len(party)} of them). Still short of "
+                        f"L{_need}: "
+                        + ", ".join(f"slot {i} {sp} L{lv} (+{_need - lv})"
+                                    for lv, sp, i in _short)
+                        + ". A Pokemon in the PC is not in the party, and "
+                          "one in the party is counted however it got there.")
         else:
             lines.append("YOUR PARTY IS EMPTY.")
         # WHAT SOMEBODY TOLD YOU SOMEWHERE ELSE. exploration_text returns
