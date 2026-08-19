@@ -6534,6 +6534,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             blackout = None
             ghosted = None
             low_hp_flee = ""
+            wild_in_way = ""
             _op_det = ""
             # THE OP MAY SAY WHAT ITS BATTLES ARE FOR. The battle policy is
             # chosen per STEP from the step's predicate, so a knows_move
@@ -6628,6 +6629,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # read "grind: ok (moved, fled)" round after round with
                     # no levels and no word that HP was the reason. The
                     # rule is ours; saying it is not pointing.
+                    # A WILD FLED IN A DOORWAY IS THE DOOR NOT OPENING.
+                    # The tower's Marowak stands ON the stairs: with the
+                    # SILPH SCOPE it is an ordinary wild fight that must be
+                    # WON to pass, and the traversal policy fled it every
+                    # time — "ok (moved, fled)", no word that a battle was
+                    # the thing in the way or that the run chose to flee.
+                    if ((obs.get("battle") or {}).get("kind") == "wild"
+                            and op in ("use_warp", "cross")
+                            and not getattr(self, "_op_intent", None)
+                            and choose_battle_policy(sg)[0] == "traversal"):
+                        wild_in_way = ((obs.get("battle") or {})
+                                       .get("foe") or {}).get("species")
                     _bme = ((obs.get("battle") or {}).get("me") or {})
                     _bkind = (obs.get("battle") or {}).get("kind")
                     _hb = ((ACTIVE_SPEC.get("flee_wild") or {})
@@ -7048,6 +7061,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                          "\"intent\":\"catch\",\"want\":\"SPECIES or TYPE\"} "
                          "(balls thrown at what you name, the rest fled) — "
                          "or \"intent\":\"train\" to fight them")
+            if (wild_in_way and "fled" in note
+                    and before[0] == after[0]):
+                note += (f" — a wild {wild_in_way} was in the way and this "
+                         f"step's battles run the traversal policy, so it "
+                         f"was FLED and the way stayed shut. If that battle "
+                         f"is the thing blocking you, say so on the op — "
+                         f"{{\"op\":\"{op}\",...,\"intent\":\"fight\"}} "
+                         f"— and it will be fought instead")
             if low_hp_flee and "fled" in note:
                 note += (f" — fled because your lead was {low_hp_flee}: "
                          f"under {int(_hb * 100) if _hb else 20}% a wild "
