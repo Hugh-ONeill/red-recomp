@@ -2817,6 +2817,34 @@ class Executor:
                      reason=f"{len(_untried)} exit(s) here never taken: "
                             + ",".join(sorted(_untried)[:6]))
             return
+        # NOR IS A ROOM WITH UNTRIED GROUND ONE DOOR ON. The rule above
+        # asks only about THIS room's exits, so every floor of a department
+        # store gets branded in turn — none of them satisfies the goal, and
+        # each one's exits are all walked — while the roof one door further
+        # holds the only thing that does (user, 2026-08-19: "you could just
+        # as easily say it about every floor of the mart"). A dead end is a
+        # place with nothing untried BEYOND it either, as far as the walked
+        # graph goes.
+        _seen, _q = {region}, [region]
+        while _q:
+            _cur = _q.pop()
+            for _k, _e in (self.explored.get(_cur) or {}).items():
+                _nxt = (_e or {}).get("to")
+                if not _nxt or _nxt in _seen or (_e or {}).get("shut"):
+                    continue
+                _seen.add(_nxt)
+                _left = set(self.frontier.get(_nxt) or ()) - set(
+                    (self.explored.get(_nxt) or {}))
+                _things = [n for n in (self.sightings.get(_nxt) or [])
+                           if n not in (self._tried_objs.get(_nxt) or set())]
+                if _left or _things:
+                    self.log("dead_end_refused", subgoal=sg_id,
+                             region=region,
+                             reason=(f"{_nxt} beyond it still has "
+                                     f"{len(_left)} untried exit(s) and "
+                                     f"{len(_things)} unpressed thing(s)"))
+                    return
+                _q.append(_nxt)
         d = self.dead_ends.setdefault(sg_id, {})
         d[region] = d.get(region, 0) + 1
         self.log("dead_end", subgoal=sg_id, region=region, times=d[region])
