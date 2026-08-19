@@ -5102,12 +5102,27 @@ class Executor:
             # walked part are plain untried doors to go back for; only the
             # rest are on ground never reached.
             _fr = set()
+            _open_dist = None
             for _r2, _keys in (self.frontier or {}).items():
-                if _r2.split("|")[0] == _mid and _r2 in (self.visits or {}):
-                    _fr |= {k for k in _keys if "," in str(k)}
+                if _r2.split("|")[0] != _mid or _r2 not in (self.visits or {}):
+                    continue
+                _mine = {k for k in _keys if "," in str(k)} - _stood
+                if not _mine:
+                    continue
+                _fr |= _mine
+                # DISTANCE TO THE ROOM THAT HOLDS THE DOOR, not to the
+                # nearest room of that floor. The Route 16 gate's upper
+                # corridor was "1 leg away" while reaching it means going
+                # out to Route 16 and back in — two legs — because the
+                # gate's OTHER corridor was the nearest region of the map.
+                _pr = self._route(here, _r2)
+                if _pr is not None and (_open_dist is None
+                                        or len(_pr) < _open_dist):
+                    _open_dist = len(_pr)
             _open = sorted(_left & _fr)
             _far = sorted(_left - _fr)
-            _rows.append((len(_p), _mid, len(_doors), _open, _far))
+            _rows.append((_open_dist if (_open and _open_dist is not None)
+                          else len(_p), _mid, len(_doors), _open, _far))
         if _rows:
             # A FLOOR WITH A DOOR YOU CAN GO BACK AND OPEN OUTRANKS ONE
             # WHOSE UNFINISHED PART IS UNREACHABLE. Sorted by distance
