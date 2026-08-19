@@ -8119,6 +8119,24 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             self._stop_if_asked()
             rnd += 1
             start = self.settle()
+            # NEVER ASK THE MODEL FROM INSIDE A FIGHT. settle() resolves
+            # dialogue but not battles, so a wild that jumped the party at
+            # the end of the last round left mode=="battle" standing here —
+            # and the round built its whole context and asked for a macro
+            # with the battle screen up. Watched live: "I am currently in a
+            # wild battle with an Ekans. I will fight the battle to return
+            # to the map, then..." — the model narrating its way out of a
+            # fight the POLICY exists to handle, one model call per round,
+            # and every op it can propose fails "not in overworld" until
+            # the fight ends. Fights are the policy's; ops are the model's.
+            _fights = 0
+            while start and start.get("mode") == "battle" and _fights < 8:
+                start = self.handle_battle(sg, start)
+                start = self.settle()
+                _fights += 1
+            if _fights:
+                self.log("battle_drained_before_round", subgoal=sg["id"],
+                         round=rnd, fights=_fights)
             # THE WORLD MAY HAVE CAUGHT UP SINCE THE LAST CHECK. A trade's
             # animation outlasted round 2's post-op check, so the party
             # read unchanged then and the model was asked a round 3 it
