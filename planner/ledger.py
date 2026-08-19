@@ -797,8 +797,14 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         note = ""
         if c.note:
             n = c.note.strip()
-            _cap = (FAIL_CHARS if (_STOP_MARK in n or "FAILED" in words)
-                    else NOTE_CHARS)
+            # THE WORD "FAILED" IS IN THE NOTE, NOT IN `words` — keying
+            # the wider budget off `words` meant only notes that happened
+            # to carry the stop-clause escaped the ellipsis, and Route 6's
+            # north seam still rendered as "walked 432…" with every reason
+            # cut off. Any failure note gets the room.
+            _fail = ("FAILED" in n or "cannot be walked to" in n
+                     or "no walkable path" in n or "FAILED" in words)
+            _cap = FAIL_CHARS if (_STOP_MARK in n or _fail) else NOTE_CHARS
             if len(n) > _cap:
                 if _STOP_MARK in n:
                     _head, _stop = n.split(_STOP_MARK, 1)
