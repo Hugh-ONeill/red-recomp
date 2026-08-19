@@ -5185,7 +5185,9 @@ class Executor:
                 route_line = (
                     f"\nTHE KNOWN WAY TO {want_area} FROM HERE: take {step} "
                     f"to {first_dest} — {len(path)} leg(s) over ground you "
-                    f"have already walked. Take it even if you have used it "
+                    f"have already walked ({{\"op\":\"go\",\"to\":"
+                    f"\"{want_area}\"}} walks all of them in one op). Take "
+                    f"it even if you have used it "
                     f"before; an untried exit that leads somewhere else is "
                     f"not progress toward this goal. That area is a SPECIFIC "
                     f"ROOM, not the whole floor; arriving elsewhere on the "
@@ -5205,9 +5207,11 @@ class Executor:
                 route_line = (
                     f"\nTHE KNOWN WAY TO {want_map} FROM HERE: take {step} "
                     f"to {first_dest} — that is the first leg of a route you "
-                    f"have already walked ({len(best)} legs total). Take it "
-                    f"even if you have used it before; an untried exit that "
-                    f"leads somewhere else is not progress toward this goal.")
+                    f"have already walked ({len(best)} legs total), and "
+                    f"{{\"op\":\"go\",\"to\":\"{want_map}\"}} walks the "
+                    f"whole of it for you in one op. Take it even if you have "
+                    f"used it before; an untried exit that leads somewhere "
+                    f"else is not progress toward this goal.")
             else:
                 # NOTHING WALKED IS ON THAT MAP — which is not the same as
                 # "no door you have ever taken leads there", the sentence
