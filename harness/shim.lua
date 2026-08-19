@@ -2095,8 +2095,13 @@ function OPS.cross(G, c)
         and (math.abs(x - stallx) + math.abs(y - stally))
         or seam_dist(x, y)
       if actionable or not stallx or d <= 8 then
+        -- ACTIONABLE IS A TIE-BREAK, NOT A TRUMP. A cuttable bush thirty
+        -- cells away was ranked above the trainer standing ON the cell the
+        -- walk stopped at, so the report opened with three bushes and
+        -- buried the one thing in the way. Nearness first; being
+        -- actionable is worth a couple of cells, not the top of the list.
         blockers[#blockers + 1] = { s = ("%s at %d,%d"):format(tag, x, y),
-                                    d = actionable and -1 or d }
+                                    d = actionable and math.max(0, d - 3) or d }
       elseif #elsewhere < 4 then
         elsewhere[#elsewhere + 1] = ("%s at %d,%d"):format(tag, x, y)
       end
