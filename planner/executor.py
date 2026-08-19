@@ -6014,7 +6014,7 @@ class Executor:
         lines = [
             f"PLAN     {st.get('plan','?')}",
             f"SUBGOAL  {st.get('subgoal','?')}  [{st.get('phase','')}]",
-            f"GOAL     {(st.get('goal_text') or '')[:150]}",
+            "GOAL     " + _wrap_status(st.get("goal_text") or ""),
             f"DONE_WHEN{json.dumps(st.get('done_when') or {})}",
             # what it is THINKING: its own plan from the last reply (the
             # plan echo), so the status line shows intent in its words.
@@ -6026,7 +6026,10 @@ class Executor:
             "THINKS   " + _wrap_status(
                 getattr(self, "_plan_said", "") or ""),
             f"DOING    {st.get('doing','')}",
-            f"LAST     {(st.get('last') or '')[:150]}",
+            # LAST is where the harness's own answer lands — the refusals,
+            # the "the game says:" quotes, the ledge/slope explanations —
+            # and 150 characters cut every one of them mid-reason.
+            "LAST     " + _wrap_status(st.get("last") or ""),
             f"WHERE    {(obs.get('map') or {}).get('id')} "
             f"({pl.get('x')},{pl.get('y')}) mode={obs.get('mode')}",
             f"PARTY    {party}",
