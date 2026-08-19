@@ -4082,6 +4082,15 @@ class Executor:
                         f"the near door and out the other side.")
         return out
 
+    @staticmethod
+    def _knows_move(obs, move: str) -> bool:
+        """Does anyone in the party know that move? (party is on screen)"""
+        for m in (obs or {}).get("party") or []:
+            for mv in (m.get("moves") or []):
+                if str(mv.get("id") if isinstance(mv, dict) else mv) == move:
+                    return True
+        return False
+
     def _walk_route(self, sg, path):
         """Replay a fully-walked route hop by hop (the escort's pattern):
         send the edge, settle, fight through interruptions, record the
@@ -4172,6 +4181,24 @@ class Executor:
                 # Route 5 gate, seven times in a row, from the lane that
                 # cannot reach that tile at all.
                 _det = ((_res or {}).get("result") or {}).get("detail") or ""
+                # A REGROWN BUSH ON A ROAD YOU HAVE WALKED IS NOT A NEW
+                # OBSTACLE. Bushes come back whenever the game reloads, so a
+                # route recorded through one fails on the way back and the
+                # run "abandons" a road it opened itself. Cutting it is
+                # re-opening a walked way — the same class as re-walking a
+                # walked door. An unwalked bush somewhere new is untouched.
+                if ("CUT_TREE" in _det and self._where(o) != nxt
+                        and self._knows_move(o or {}, "CUT")):
+                    _mm = _re.search(r"CUT_TREE[^()]*\((\d+),(\d+)\)", _det)
+                    if _mm:
+                        self.log("route_cut", subgoal=sg.get("id"),
+                                 at=f"{_mm.group(1)},{_mm.group(2)}",
+                                 step=str(key))
+                        self._send_safe("field_move", move="CUT",
+                                        x=int(_mm.group(1)),
+                                        y=int(_mm.group(2)))
+                        o = self.settle() or o
+                        continue
                 if o and pre and ((pre.get("map") or {}).get("id")
                                   != (o.get("map") or {}).get("id")):
                     self.note_transition(pre, step, o, op_detail=_det)
