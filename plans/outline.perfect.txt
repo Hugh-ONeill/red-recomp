@@ -37,6 +37,7 @@ a party Pokemon knows SURF
 a party Pokemon knows STRENGTH
 Defeat Koga for the Soul Badge
 every party member is at least level 40
+Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate
 Rescue the Silph Co. president from Team Rocket
 Defeat Sabrina for the Marsh Badge
 Reach Cinnabar Island
