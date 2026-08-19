@@ -300,6 +300,9 @@ def fully_worked(cands: list) -> bool:
 
 # -------------------------------------------------------------------- build
 
+LAST_PASS_NOTE = ""      # geometry note from the last build(), for render()
+
+
 def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
           want_explore: bool = True) -> list[Candidate]:
     """Every exit and every thing where the party stands, with a status."""
@@ -327,6 +330,31 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         for mon in (obs.get("party") or []))
 
     out: list[Candidate] = []
+    # A ROOM WITH DOORS ON OPPOSITE WALLS IS A CORRIDOR. What a player sees
+    # of a route gate is one small room with a door on each side — it is a
+    # way THROUGH, not a dead room — and the ledger only ever listed the
+    # doors one by one, so a building whose whole purpose is to join two
+    # halves of a route read as four unrelated exits. Geometry of the room
+    # you are standing in: on screen, claimed from nothing else.
+    global LAST_PASS_NOTE
+    LAST_PASS_NOTE = ""
+    _pass = ""
+    try:
+        _w = int((m.get("width") or 0))
+        _xs = [int(w0.get("x") or 0) for w0 in (m.get("warps") or [])]
+        if _w and len(_xs) >= 2:
+            _left = sorted({x for x in _xs if x <= 1})
+            _right = sorted({x for x in _xs if x >= _w - 2})
+            if _left and _right:
+                _pass = ("\nTHIS ROOM HAS DOORS ON BOTH SIDES (x=" 
+                         + ",".join(str(x) for x in _left) + " and x="
+                         + ",".join(str(x) for x in _right)
+                         + "): a room like this is a way THROUGH — going in "
+                           "one side and out the other puts you somewhere "
+                           "the outside of it could not reach.")
+    except (TypeError, ValueError):
+        _pass = ""
+    LAST_PASS_NOTE = _pass
 
     # ---- exits: doors -------------------------------------------------
     for w in (m.get("warps") or []):

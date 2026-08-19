@@ -4946,6 +4946,9 @@ class Executor:
             _cands = ledger.build(self, obs, target,
                                   outcomes=self._outcomes_here(obs))
             ledger_block = ledger.render(_cands, self, obs, target)
+            # the room's own geometry (doors on both sides = a corridor),
+            # set by the build above
+            ledger_block += getattr(ledger, "LAST_PASS_NOTE", "") or ""
         taken = self._taken_here(here)
         m = (obs or {}).get("map") or {}
         # candidates are DOORS *and* MAP EDGES. Listing only warps meant a
