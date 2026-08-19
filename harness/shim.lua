@@ -1308,6 +1308,23 @@ local function bfs_to_edge(G, dir)
   -- hops it used, and whether it TOUCHED the edge and was turned away by
   -- landing_ok — those need opposite fixes and look identical from outside.
   local nseen, nledge, edge_rejected, nspin = 1, 0, 0, 0
+  -- LEDGES ARE ONE-WAY, AND UPHILL THEY ARE A WALL. Cycling Road is a
+  -- ladder of them: the run rode down to Fuchsia and then planned to walk
+  -- back up, which cannot be done — and the failure said only "no walkable
+  -- path", which reads as a pathing problem to solve rather than a rule of
+  -- the world. Count the ledge tiles standing between the ground you can
+  -- reach and the edge you asked for, and say what a ledge is.
+  local ledge_tiles = {}
+  do
+    local ts = ow.map and ow.map.def and ow.map.def.tileset
+    for _, lg in ipairs((G.data and G.data.field and G.data.field.ledges)
+                        or {}) do
+      if (lg.tileset or "OVERWORLD") == ts and lg.input == dir then
+        ledge_tiles[lg.ledgeTile] = true
+      end
+    end
+  end
+  local nwall_ledge = 0
   local best, bestx, besty = 1e9, nil, nil
   local function dist(x, y)
     if dir == "up" then return y end
@@ -1317,6 +1334,15 @@ local function bfs_to_edge(G, dir)
   end
   local function note(x, y)
     nseen = nseen + 1
+    -- does the cell one step toward the wanted edge hold a ledge? then a
+    -- ledge is what stands between this ground and that edge
+    do
+      local d2 = DIRS[dir]
+      if d2 and ow.map and ow.map.cellTile then
+        local t2 = ow.map:cellTile(x + d2[1], y + d2[2])
+        if ledge_tiles[t2] then nwall_ledge = nwall_ledge + 1 end
+      end
+    end
     local dd = dist(x, y)
     if dd < best then best, bestx, besty = dd, x, y end
   end
@@ -1397,7 +1423,13 @@ local function bfs_to_edge(G, dir)
             edge_rejected > 0
               and ("; it DID reach the edge " .. edge_rejected
                    .. "x but the landing on the far side was refused")
-              or ""), bestx, besty, seen, nseen
+              or "")
+    .. (nwall_ledge > 0
+        and (". " .. nwall_ledge .. " LEDGE tile(s) stand between the "
+             .. "ground you can reach and that edge — a ledge is a ONE-WAY "
+             .. "drop: it can be hopped DOWN and never climbed, so this "
+             .. "direction is not a way back")
+        or ""), bestx, besty, seen, nseen
 end
 
 local OPS = {}
