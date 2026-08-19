@@ -4711,6 +4711,34 @@ function OPS.interact(G, c)
       .. "here can be pressed from beside it. This floor is crossed by "
       .. "RIDING the arrows: step on one and see where it puts you."
   end
+  -- WHO IS STANDING WHERE YOU WOULD HAVE TO STAND. "No reachable tile
+  -- adjacent" is true and says nothing: the Warden's House RARE_CANDY has
+  -- a BOULDER parked on the one approach, which is on screen and was never
+  -- mentioned, so the run read a pathing failure and tried again. Name
+  -- whatever occupies the four tiles around it; what to do about a boulder
+  -- (or a person, or a bush) stays the model's.
+  do
+    local around = {}
+    for _, a in ipairs({ {tx, ty + 1}, {tx, ty - 1},
+                         {tx - 1, ty}, {tx + 1, ty} }) do
+      for _, npc in ipairs(ow.npcs or {}) do
+        if npc.cellX == a[1] and npc.cellY == a[2] then
+          around[#around + 1] = ("%s at (%d,%d)"):format(
+            tostring((npc.def or {}).name or "something"), a[1], a[2])
+        end
+      end
+      for _, f in ipairs(map_fixtures(G, ((ow.map or {}).id)) or {}) do
+        if f.x == a[1] and f.y == a[2] then
+          around[#around + 1] = ("%s at (%d,%d)"):format(
+            tostring(f.name or "something"), a[1], a[2])
+        end
+      end
+    end
+    if #around > 0 then
+      return false, "no reachable tile adjacent to target — standing on "
+        .. "the tiles you would press from: " .. table.concat(around, ", ")
+    end
+  end
   return false, "no reachable tile adjacent to target"
 end
 
