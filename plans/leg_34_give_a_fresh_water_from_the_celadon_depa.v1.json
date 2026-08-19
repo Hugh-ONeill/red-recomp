@@ -1,0 +1,99 @@
+{
+  "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate",
+  "subgoals": [
+    {
+      "id": "go_to_celadon",
+      "goal_text": "Travel to Celadon City",
+      "done_when": {
+        "map": "CELADON_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      }
+    },
+    {
+      "id": "enter_dept_store",
+      "goal_text": "Enter the Celadon Department Store",
+      "done_when": {
+        "map": "CELADON_MART_1F"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      }
+    },
+    {
+      "id": "go_to_roof",
+      "goal_text": "Go to the roof of the Department Store",
+      "done_when": {
+        "map": "CELADON_MART_ROOF"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      }
+    },
+    {
+      "id": "get_fresh_water",
+      "goal_text": "Interact with the drink machine on the roof to get FRESH WATER",
+      "done_when": {
+        "has_item": {
+          "FRESH_WATER": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      }
+    },
+    {
+      "id": "go_to_saffron",
+      "goal_text": "Travel to Saffron City",
+      "done_when": {
+        "map": "SAFFRON_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      }
+    },
+    {
+      "id": "give_water_to_guard",
+      "goal_text": "Give the FRESH WATER to the thirsty guard at one of the city gates",
+      "done_when": {
+        "any_of": [
+          {
+            "map": "ROUTE_5_GATE"
+          },
+          {
+            "map": "ROUTE_6_GATE"
+          },
+          {
+            "map": "ROUTE_7_GATE"
+          },
+          {
+            "map": "ROUTE_8_GATE"
+          }
+        ]
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate"
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

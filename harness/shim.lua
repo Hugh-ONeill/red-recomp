@@ -1044,6 +1044,53 @@ end
 -- trainers is strategy, and strategy belongs to the model.
 local DIRS = { up = {0,-1}, down = {0,1}, left = {-1,0}, right = {1,0} }
 
+-- A BUSH IS TERRAIN, NOT AN OBJECT, so the "who is standing where you
+-- would have to stand" reports never saw one: a CUT_TREE across the only
+-- approach to an item read as a bare "no reachable tile adjacent to
+-- target" and the run pressed at it again and again with CUT in the bag
+-- and taught. Same tile test cross() uses for its seam report.
+local function cut_bush_at(G, x, y)
+  local lm = G.overworld and G.overworld.map
+  local ts = lm and lm.def and lm.def.tileset
+  local want = (ts == "OVERWORLD" and 0x3d) or (ts == "GYM" and 0x50) or nil
+  if not (lm and want and lm.cellTile) then return false end
+  return lm:cellTile(x, y) == want and not lm:isWalkableCell(x, y)
+end
+-- ...AND A BUSH IN THE MIDDLE OF THE WAY, not just against the target.
+-- Route 12's ITEM_5_89 sits past a CUT_TREE that is nowhere near the item
+-- itself, so naming only the four approach tiles still said nothing. Walk
+-- the map for bushes that touch ground you CAN reach -- those are the ones
+-- standing between you and everything behind them -- and name the few
+-- closest to what you were reaching for. Which to cut, or whether to go
+-- round, stays the model's.
+local function bushes_blocking(G, tx, ty, reach)
+  local out = {}
+  local lm = G.overworld and G.overworld.map
+  local W, H = (lm and lm.widthCells) or 0, (lm and lm.heightCells) or 0
+  for cy = 0, math.min(H - 1, 127) do
+    for cx = 0, math.min(W - 1, 127) do
+      if cut_bush_at(G, cx, cy) then
+        local touches = false
+        for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
+          if reach[(cx + d[1]) .. "," .. (cy + d[2])] then touches = true end
+        end
+        if touches then
+          out[#out + 1] = { x = cx, y = cy,
+                            d = math.abs(cx - tx) + math.abs(cy - ty) }
+        end
+      end
+    end
+  end
+  table.sort(out, function(a, b) return a.d < b.d end)
+  local txt = {}
+  for i = 1, math.min(#out, 3) do
+    txt[i] = ("CUT_TREE (a bush CUT clears) at (%d,%d)")
+      :format(out[i].x, out[i].y)
+  end
+  return txt
+end
+
+
 -- One-way ledge hop landing from (x,y) pressing dirname, or nil. Ledges
 -- are walls to canMove (the engine hops via checkLedgeHop BEFORE tryMove),
 -- so a ledge-blind BFS called Route 4's descent to Cerulean unreachable
@@ -3132,15 +3179,26 @@ function OPS.field_move(G, c)
       for _, a in ipairs(adj) do
         if reach[a[1] .. "," .. a[2]] then any_side = true end
       end
+      for _, a in ipairs(adj) do
+        if cut_bush_at(G, a[1], a[2]) then
+          occ[#occ + 1] = ("CUT_TREE (a bush CUT clears) at (%d,%d)")
+            :format(a[1], a[2])
+        end
+      end
       if #occ > 0 then
         return false, "no reachable tile adjacent to the target — standing "
           .. "on the tiles you would use it from: " .. table.concat(occ, ", ")
       end
       if not any_side then
+        local _b = bushes_blocking(G, c.x, c.y, reach)
         return false, ("no reachable tile adjacent to the target — none of "
           .. "the four tiles around (%d,%d) is ground you can walk to from "
           .. "where you stand, so that %s is in a part of this map you "
-          .. "cannot reach from here"):format(c.x, c.y, tostring(mv))
+          .. "cannot reach from here.%s"):format(
+            c.x, c.y, tostring(mv),
+            #_b > 0 and (" Standing between the ground you can reach and "
+              .. "the rest of this map: " .. table.concat(_b, ", ") .. ".")
+              or "")
       end
       return false, "no reachable tile adjacent to the target"
     end
@@ -4993,10 +5051,22 @@ function OPS.interact(G, c)
             tostring(f.name or "something"), a[1], a[2])
         end
       end
+      if cut_bush_at(G, a[1], a[2]) then
+        around[#around + 1] = ("CUT_TREE (a bush CUT clears) at (%d,%d)")
+          :format(a[1], a[2])
+      end
     end
     if #around > 0 then
       return false, "no reachable tile adjacent to target — standing on "
         .. "the tiles you would press from: " .. table.concat(around, ", ")
+    end
+  end
+  do
+    local _b = bushes_blocking(G, tx, ty, warp_reach(G) or {})
+    if #_b > 0 then
+      return false, "no reachable tile adjacent to target — standing "
+        .. "between the ground you can reach and the rest of this map: "
+        .. table.concat(_b, ", ")
     end
   end
   return false, "no reachable tile adjacent to target"
