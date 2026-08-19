@@ -3383,13 +3383,34 @@ class Executor:
         if old and old.get("to") == src and dst != src:
             old = None
             node.pop(key, None)
+        # A BLACKOUT IS NOT A CROSSING. Fainting teleports the party to a
+        # Pokemon Center, and if that lands while a walk is in flight the
+        # transition reads "ROUTE_17 south -> CELADON_CITY" — nonsense that
+        # then DELETED the true edge as a conflict. Route 17 was left with
+        # no exits at all, so every route through Cycling Road failed and
+        # `go` answered "no walked way" for a road the run had walked twice.
+        # A destination that is a Pokemon Center the party did not walk to,
+        # with the party freshly healed, is a respawn.
+        if (self._faint_at is not None
+                and str(dst).split("|")[0].endswith("POKECENTER")):
+            self.log("transition_ignored_blackout", frm=src, via=str(key),
+                     to=dst)
+            return
         if old and old.get("to") not in (dst,) \
                 and dst not in AREA_ALIASES.get(old.get("to"), ()):
-            self.log("edge_conflict", frm=src, via=str(key),
-                     was=old.get("to"), now=dst)
-            del node[key]
-            self._save_memory()
-            return
+            # ...and two anchors of ONE MAP are not a contradiction. A wide
+            # seam lands wherever the walk happened to reach it, so the same
+            # crossing can arrive at ROUTE_18|6,0 one time and |40,8 the
+            # next; deleting the edge threw away a road that plainly exists.
+            if str(old.get("to") or "").split("|")[0] == str(dst).split("|")[0]:
+                self.log("edge_widened", frm=src, via=str(key),
+                         was=old.get("to"), now=dst)
+            else:
+                self.log("edge_conflict", frm=src, via=str(key),
+                         was=old.get("to"), now=dst)
+                del node[key]
+                self._save_memory()
+                return
         for k in [key] + self._twin_keys(before_obs, step):
             e = node.setdefault(k, {"n": 0, "to": dst})
             e["n"] += 1
