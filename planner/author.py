@@ -777,6 +777,31 @@ def validate(plan: dict) -> list:
                 f"Standing somewhere is not the deed done: end on what the "
                 f"deed leaves behind — an event flag, an item gained, a "
                 f"badge, a party change.")
+    # ...AND A PLAN MAY SIMPLY END. Watched live: the drink leg oscillated
+    # between the only three shapes its last subgoal could take — a guessed
+    # EVENT_GAVE_* flag, any_of the four gate buildings, has_item count 0 —
+    # and every one is refused, correctly, by a different rule. Its FOURTH
+    # subgoal already ended on SAFFRON_CITY, a city you can only stand in
+    # BY giving the drink, so there was nothing left for a fifth to say and
+    # the chain died twice on "author failed to produce a valid plan". When
+    # the only broken subgoal is the last one and the one before it already
+    # ends somewhere this run has never reached, say that deleting it is
+    # allowed. Nothing here names an event or a place: it is a fact about
+    # plan shape.
+    if probs and len(subs) >= 2:
+        _lastn = len(subs) - 1
+        if all(f"subgoal[{_lastn}]" in p0 for p0 in probs):
+            _prev = subs[-2] if isinstance(subs[-2], dict) else {}
+            _pp = _place_names(_prev.get("done_when") or {})
+            _vis = visited_maps()
+            if _pp and _vis and not (_pp & _vis):
+                probs.append(
+                    f"subgoal[{_lastn}] ({(subs[-1] or {}).get('id')}) — the "
+                    f"subgoal BEFORE it already ends on "
+                    f"{'/'.join(sorted(_pp))}, which this run has never "
+                    f"reached, so that step already witnesses this "
+                    f"objective. DELETE this last subgoal and let the plan "
+                    f"end there; a plan does not need a final step.")
     return probs
 
 

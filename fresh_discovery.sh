@@ -230,7 +230,27 @@ while :; do
       [ -s run/explored.json ] && aargs+=(--observed run/explored.json)
       [ -s run/executor_log.jsonl ] && aargs+=(--journal run/executor_log.jsonl)
     fi
-    python planner/author.py "${aargs[@]}"
+    # AN UNAUTHORABLE LEG MUST NOT KILL THE RUN. author.py exits non-zero
+    # when no draft validates, and under `set -e` that took the whole chain
+    # down — twice in one session on the drink leg, whose last subgoal had
+    # no legal shape left (see validate()'s "a plan may simply end"). A leg
+    # nobody can write a plan for is exactly what the later rung is for:
+    # push it and carry on, the same answer the ladder gives for a leg that
+    # is right but not yet.
+    if ! python planner/author.py "${aargs[@]}"; then
+      echo "!! authoring failed for leg $i ($goal) — pushing it later"
+      _after=$(( i + 2 ))
+      [ "$_after" -gt "${#LEGS[@]}" ] && _after=${#LEGS[@]}
+      if python planner/push_leg.py "$i" "$_after"; then
+        continue
+      fi
+      # push refused (already deferred twice): leave the order alone and
+      # step over this one rather than stopping everything.
+      echo "!! could not push leg $i — skipping it for now"
+      echo "$i" >> run/outline_unauthored
+      echo "$i" > "$PROGRESS"
+      continue
+    fi
   fi
 
   # WHAT THIS LEG GAINS IS THE EVIDENCE FOR WHETHER IT IS DONE. Snapshot
