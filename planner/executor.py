@@ -5029,10 +5029,28 @@ class Executor:
             if reg.split("|")[0] == mid:
                 ever |= set(ex.keys())
         allw = {f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])}
-        unseen = allw - here_keys - ever
+        # DOORS YOU HAVE STOOD BESIDE BUT NEVER OPENED ARE NOT "PARTS YOU
+        # HAVE NEVER STOOD ON". A region's frontier holds the doors seen
+        # from ground actually walked, so the Route 16 gate's upper
+        # corridor — walked once, its two west doors never taken, the only
+        # way to the Fly house — was reported as unreachable ground whose
+        # "way there is not known" while it was a room the run had been in.
+        _stood_keys = set()
+        for reg2, fr2 in (self.frontier or {}).items():
+            if reg2.split("|")[0] == mid and reg2 in (self.visits or {}):
+                _stood_keys |= {k for k in fr2 if "," in str(k)}
+        open_here = (allw & _stood_keys) - here_keys - ever
+        unseen = allw - here_keys - ever - _stood_keys
         floor_note = ""
+        if open_here:
+            floor_note += (
+                f"\nDOORS ON THIS FLOOR YOU HAVE STOOD BESIDE AND NEVER "
+                f"OPENED: {', '.join(sorted(open_here))} — in a part of "
+                f"{mid} you have already walked, just not reachable from "
+                f"the spot you are on now. Going back to that part and "
+                f"taking one is walking, not searching.")
         if unseen:
-            floor_note = (
+            floor_note += (
                 f"\nTHIS FLOOR IS NOT FINISHED. {mid} has {len(allw)} "
                 f"doorway(s) in total and {len(unseen)} of them "
                 f"({', '.join(sorted(unseen))}) are on part of it you have "
