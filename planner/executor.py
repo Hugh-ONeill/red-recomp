@@ -3558,6 +3558,9 @@ class Executor:
         from collections import deque
         if frm == to:
             return []
+        _OPP = {"north": "south", "south": "north",
+                "east": "west", "west": "east"}
+
         def edges(region):
             # An area's walked edges are split across its fingerprints: the
             # same Mt Moon 1F room is 2,2 before a blocker moves and 3,2
@@ -3569,6 +3572,21 @@ class Executor:
             for alias in AREA_ALIASES.get(region, ()):
                 for k, v in (self.explored.get(alias) or {}).items():
                     out.setdefault(k, v)
+            # A SEAM CROSSED ONE WAY IS THE SAME SEAM. The graph records a
+            # crossing from the side it was walked, so a run that travelled
+            # Fuchsia -> east all the way had no westward edge anywhere and
+            # `go` refused to take it home — while "I walked east from A
+            # into B" plainly means B's west side touches A, which is what
+            # the printed map says too. Offered as a hop only; if the way
+            # back is blocked (a ledge, a slope), the crossing fails and
+            # _walk_route records that like any other.
+            for _r2, _es in (self.explored or {}).items():
+                for _k2, _e2 in (_es or {}).items():
+                    if _k2 not in _OPP or (_e2 or {}).get("to") != region:
+                        continue
+                    _back = _OPP[_k2]
+                    if _back not in out:
+                        out[_back] = {"n": 0, "to": _r2, "inferred": True}
             return out
 
         _now = getattr(self, "_mark_now", None)
