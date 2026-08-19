@@ -676,8 +676,16 @@ local function observe(G, seq, result)
     for _, sg in ipairs((md and md.signs) or {}) do
       local nm = sg.name or sg.text or ("SIGN_" .. tostring(sg.x) .. "_"
                                         .. tostring(sg.y))
+      -- A VENDING MACHINE IS A MACHINE, NOT A NOTICE BOARD. It rides in
+      -- md.signs because that is how the ROM stores it, but pressing it
+      -- opens a purchase list and hands over an item, which is the whole
+      -- of what a fixture is here. Filed as a sign, it sorted with the
+      -- floor plaques: on the Celadon roof, with the subgoal has_item
+      -- FRESH_WATER, an NPC outranked three untouched drink machines.
+      -- The name is the game's own label, already printed to the model.
+      local kind = nm:find("VENDING_MACHINE") and "fixture" or "sign"
       o.map.objects[#o.map.objects + 1] = {
-        x = sg.x, y = sg.y, kind = "sign", name = nm,
+        x = sg.x, y = sg.y, kind = kind, name = nm,
         reachable = adjacent_reachable(sg.x, sg.y, false),
       }
     end
