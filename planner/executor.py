@@ -982,6 +982,7 @@ class Executor:
         self._faint_at = None               # region we were in when wiped
         self._ui_pending = 0                # rounds a prompt has sat open
         self._dead_ops: dict = {}           # (target, op, arg) -> failures
+        self._dead_at: dict = {}            # ...and the world mark they are OF
         self._ferried: dict = {}            # target -> {region: untried set}
         self.map_doors: dict = {}           # map id -> every doorway seen
         self.save_each = False              # in-game SAVE after each subgoal
@@ -6623,7 +6624,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _why = self._dead_why.get(sig) or ""
                 trace.append(f"{op}({_args}): REFUSED — this exact action "
                              "has already failed 3 times in this subgoal "
-                             "from this area"
+                             "from this area, with nothing about you "
+                             "changed since"
                              + (f", each time: {_why}" if _why else "")
                              + "; it cannot work from here as things stand. "
                              "Whatever stopped it is what has to change.")
@@ -6942,6 +6944,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     and op == "interact" and step.get("name")):
                 self._retract_touch(self._where(pre_obs), step["name"])
             if not r.get("ok"):
+                # THREE FAILURES ARE THREE FAILURES IN ONE WORLD. The
+                # refusal below is absolute and never expired, so an op
+                # that could not work before CUT was learned, before a
+                # guard moved, before a key was in the bag stayed refused
+                # for the rest of the subgoal — the same over-claim the
+                # dead-end brand made one layer up. Stamp the world mark
+                # with the count and start again when the world moves.
+                _mk = getattr(self, "_mark_now", None)
+                if self._dead_at.get(sig) != _mk:
+                    self._dead_ops[sig] = 0
+                    self._dead_at[sig] = _mk
                 self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
                 self._dead_why[sig] = str(r.get("detail") or "")[:160]
                 note += f": FAILED — {r.get('detail')}"
