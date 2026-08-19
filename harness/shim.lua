@@ -990,8 +990,24 @@ local function walk(G, dir, steps)
       coroutine.yield()
       if p.cellX ~= sx or p.cellY ~= sy then moved = true break end
     end
-    G.input.state[dir] = false
-    U.wait(4)                  -- settle into the cell
+    -- ON A SLOPE THE RELEASE IS THE COST. Route 17 moves you one cell
+    -- SOUTH on any idle poll while on the bike, so the four settle frames
+    -- between steps give the road a free push back: a northward walk_to
+    -- lost a cell for every cell it made and read as "no path". Hold the
+    -- direction across the settle when the slope is against us.
+    local _slope = false
+    for _, mm in ipairs(((G.data and G.data.field
+                          and G.data.field.forcedMovement) or {}).slopeMaps
+                        or {}) do
+      if mm == (ow.map and ow.map.id) then _slope = true end
+    end
+    if _slope and dir == "up" and (G.save or {}).onBike then
+      U.wait(4)                -- settle with the direction still held
+      G.input.state[dir] = false
+    else
+      G.input.state[dir] = false
+      U.wait(4)                -- settle into the cell
+    end
     if moved and ow.map and ow.map.id == map_before then
       local top = G.stack:top()
       if top and top ~= ow and not (top.enemy or top.kind)
@@ -1437,11 +1453,12 @@ local function bfs_to_edge(G, dir)
                    .. "x but the landing on the far side was refused")
               or "")
     .. ((on_slope and (dir == "up" or dir == "north"))
-        and (". THIS MAP IS A SLOPE: while you are on the bike here the "
-             .. "game pushes you one cell SOUTH every moment you are not "
-             .. "holding a direction, so northward progress is undone as "
-             .. "fast as it is made — this map is ridden DOWNHILL, and the "
-             .. "way back is another road")
+        and (". THIS MAP IS A SLOPE: on the bike here the game moves you "
+             .. "one cell SOUTH whenever no direction is being held. "
+             .. "Walking north still works while you keep walking — the "
+             .. "drift only takes back the ground you stop on, so a walk "
+             .. "up costs more steps than a walk down, and pausing loses "
+             .. "some of it")
         or "")
     .. (nwall_ledge > 0
         and (". " .. nwall_ledge .. " LEDGE tile(s) stand between the "
