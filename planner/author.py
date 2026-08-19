@@ -777,14 +777,26 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                 # that exist); event names are what the game contains.
                 # Suggest only from what this run has already watched
                 # fire; otherwise say to condition on something visible.
-                near = difflib.get_close_matches(v, fired_flags(),
-                                                 n=3, cutoff=0.6)
-                hint = (f" — did you mean {', '.join(near)}?" if near else
-                        " — if you cannot spell the event, condition on "
-                        "something you can see instead: a map, an item, a "
-                        "badge, or a party change")
-                probs.append(f"{tag} ({sid}) flag '{v}' is not an event this "
-                             f"game defines{hint}")
+                # ...AND NO SUGGESTION AT ALL FOR A FLAG. Suggesting from
+                # fired_flags() is wrong BY CONSTRUCTION: a flag that has
+                # already fired is exactly what the rule below rejects as a
+                # finish line, so every id this could offer is one the next
+                # round refuses. Worse, the retry prompt says "where a
+                # problem offers a 'did you mean' suggestion, use that
+                # exact id verbatim" — so the drink leg was told to end on
+                # EVENT_GOT_STARTER or EVENT_GAVE_GOLD_TEETH, sensibly
+                # refused, kept its own invented EVENT_GAVE_FRESH_WATER,
+                # and burned all five rounds; the chain stopped there.
+                # Say the name is not real, say guessing again will not
+                # help, and name the doors that ARE open.
+                probs.append(
+                    f"{tag} ({sid}) flag '{v}' is not an event this game "
+                    f"defines. You cannot look event names up and another "
+                    f"guess will fail the same way — do not spell a "
+                    f"different one. Finish this subgoal on something you "
+                    f"can SEE instead: a map you could not stand in before, "
+                    f"an item the act leaves you holding, a badge, or a "
+                    f"party change.")
             elif k == "badge" and v not in BADGES:
                 probs.append(f"{tag} ({sid}) badge '{v}' unknown")
             elif k == "has_species" and ENGINE_SPECIES:
@@ -984,7 +996,9 @@ def author(goal: str, model: str, rounds: int = 5,
         user = build_prompt(goal, start) + (
             f"\n\nFIX THESE PROBLEMS from your last attempt — where a "
             f"problem offers a 'did you mean' suggestion, use that exact "
-            f"id verbatim, and change NOTHING else about your plan:\n{fb}"
+            f"id verbatim; where it tells you a name cannot be looked up, "
+            f"do not guess another one, change the CONDITION. Change "
+            f"nothing else about your plan:\n{fb}"
             if fb else "")
         reply = brock_probe.chat(
             [{"role": "system", "content": SYS},
