@@ -1241,9 +1241,37 @@ class Executor:
             self._save_memory()
         return out
 
+    def _sweep_blockers(self, obs) -> None:
+        """A fence that is no longer there is no longer a blocker.
+
+        The Snorlax on Route 16 was woken and walked off; its entry stayed
+        on the list saying the way was fenced by it. What the harness
+        RECORDED was "these things stood across the walk" — so when none of
+        the named things is on the map any more, the record has expired.
+        Only entries whose text names things (the fenced class) are swept;
+        a door that refused you is not disproved by anybody moving.
+        """
+        here = self._where(obs)
+        names = {str(o.get("name") or "")
+                 for o in ((obs.get("map") or {}).get("objects") or [])}
+        for bk, b in (self.blockers or {}).items():
+            if b.get("cleared") or b.get("where") != here:
+                continue
+            what = str(b.get("what") or "")
+            if "the walk was fenced" not in what:
+                continue
+            named = _re.findall(r"([A-Z][A-Z0-9_]{3,})", what)
+            named = [n for n in named if n not in ("CUT",)]
+            if named and not any(n in names for n in named):
+                b["cleared"] = True
+                b["cleared_how"] = "what fenced it is no longer on this map"
+                self.log("blocker_cleared", where=b.get("where"),
+                         key=b.get("key"), how="fence gone")
+
     def blockers_text(self, obs, cap: int = 4) -> str:
         """WAYS THAT TURNED YOU BACK, nearest first, with the model's own
         lifting condition and whether it holds now. Empty when none."""
+        self._sweep_blockers(obs)
         here = self._where(obs)
         rows = []
         for bk, b in self.blockers.items():
@@ -5619,10 +5647,17 @@ class Executor:
             _rs_line = self._respawn_line(obs)
             # (the blockers list rides here too — it had been appended
             # only to the legacy renderer's return, i.e. never shown)
+            # DOORS ON THIS MAP NEVER OPENED. The ledger lists them, but a
+            # door you cannot walk to from this pocket reads as dead ("you
+            # cannot walk to it from where you stand") and the one line
+            # that says the map still HAS unopened ways — shut_line — was
+            # built and then dropped on this path. Route 16 sat on three
+            # never-opened doors for an attempt with nothing saying so.
             return (move_head + warned + "\n" + ledger_block + pp_line
                     + lift_line
                     + ("\n" + _rs_line if _rs_line else "")
                     + floor_note + floor_away + route_line + _remote_worked
+                    + shut_line
                     + hint_line + remote_line + _elsewhere_str
                     + self.blockers_text(obs))
         loot_line += remote_line
