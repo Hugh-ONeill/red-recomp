@@ -1990,6 +1990,27 @@ function OPS.cross(G, c)
     if said == "" then
       said = " Nothing this map lists sits against that edge."
     end
+    -- ...AND WHAT *IS* REACHABLE FROM WHERE YOU STAND. A seam that cannot
+    -- be walked to ended the report there, so a run that had just CUT its
+    -- way onto new ground read "no path" and gave the map up — while the
+    -- doors it could walk to sat unmentioned three lines from the failure.
+    -- The executor's ledger says which have been TAKEN; the shim can at
+    -- least say which exist and are reachable right now.
+    do
+      local md3 = G.data and G.data.maps and G.data.maps[startMap]
+      local reach = warp_reach(G) or {}
+      local open_doors = {}
+      for _, w in ipairs((md3 and md3.warps) or {}) do
+        local k = w.x .. "," .. w.y
+        if reach[k] then open_doors[#open_doors + 1] = ("(%d,%d)"):format(w.x, w.y) end
+      end
+      if #open_doors > 0 then
+        said = said .. (" You are not shut in: %d door(s) on this map CAN "
+          .. "be walked to from where you stand — %s. The ledger says which "
+          .. "of them you have already opened."):format(
+            #open_doors, table.concat(open_doors, ", "))
+      end
+    end
     return false, ("the %s seam of %s (to %s) cannot be walked to from "
       .. "here — no walkable path reaches it."):format(
         cmap[dir], tostring(startMap), tostring(dest and dest.map or "?"))
