@@ -676,6 +676,23 @@ def validate(plan: dict) -> list:
     # objective's own verb is a deed, its LAST subgoal must end on what the
     # deed leaves behind — a flag, an item, a badge, a party change — not
     # on standing somewhere.
+    # has_item COUNT 0 IS NOT A CONDITION. It reads "the bag holds at
+    # least zero of that", which is true of every bag ever — leg 25 ended
+    # on {"has_item":{"FRESH_WATER":0}} meaning "I gave it away" and the
+    # whole leg completed in seconds without buying a drink. There is no
+    # not-holding predicate; end on what the deed LEAVES (a flag, a place
+    # you could not stand before).
+    for i, s0 in enumerate(subs or []):
+        if not isinstance(s0, dict):
+            continue
+        _hw = (s0.get("done_when") or {}).get("has_item")
+        if isinstance(_hw, dict) and any(str(v) == "0" for v in _hw.values()):
+            probs.append(
+                f"subgoal[{i}] ({s0.get('id')}) uses has_item with a count "
+                f"of 0, which is TRUE OF EVERY BAG — it cannot express "
+                f"giving something away or using it up. Condition on what "
+                f"the act leaves behind instead (an event flag, a map you "
+                f"could not reach before).")
     # A FINAL FLAG THAT HAS ALREADY FIRED can witness nothing: the inserted
     # "Defeat the Team Rocket Admin" leg ended on EVENT_GOT_TM34 — Brock's
     # TM, fired hours before — so the plan completed in seconds twice and
