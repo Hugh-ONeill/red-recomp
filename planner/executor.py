@@ -6329,7 +6329,10 @@ or it is backed out of, which the game takes as a no), {"op":"menu","index":N}
 (1-based: 1=YES/first, 2=NO/second), {"op":"grind"} (pace this map's wild
 ground — tall grass outdoors, ANY floor tile in a cave or tower; each battle
 is fought and the op repeats until the subgoal's DONE_WHEN is met, whatever
-it is — levels, or party size. What the battles are FOR follows the step's
+it is — levels, or party size. Add "surf":true to pace the WATER instead of
+the land — water has its own encounter table and its own species, and the
+harness gets you onto it (SURF must be known).
+What the battles are FOR follows the step's
 condition (a level → fight; a catch → balls; anything else → wilds are
 fled) unless the op says otherwise: "intent":"catch" with "want":"ODDISH"
 or a type like "GRASS" or a list (balls thrown at what you name, the rest

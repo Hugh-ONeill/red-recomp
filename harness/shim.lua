@@ -4016,6 +4016,50 @@ function OPS.grind(G, c)
     and md.index >= indoor.firstIndoorMap
     and md.tileset ~= indoor.excludedTileset
   local afloat = p.surfing and encDef and encDef.water and map.isWaterCell
+  -- GRIND ON THE WATER, OPT-IN. Water holds its own encounter table
+  -- (encDef.water) and its own species — the point of pacing a lake
+  -- rather than the grass beside it — but you have to be ON it, and
+  -- getting on it is a decision (different wilds, a different place to be
+  -- dumped). `surf=true` says do it; the mount is walk_to's mechanic.
+  if c.surf and not p.surfing and encDef and encDef.water then
+    local knows = false
+    for _, mon in ipairs((G.save or {}).party or {}) do
+      for _, mv in ipairs(mon.moves or {}) do
+        if tostring(type(mv) == "table" and mv.id or mv) == "SURF" then
+          knows = true
+        end
+      end
+    end
+    if not knows then
+      return false, "no party Pokemon knows SURF, so the water here cannot "
+        .. "be paced"
+    end
+    local reach = warp_reach(G) or {}
+    local bx, by, bland, bd
+    for k in pairs(reach) do
+      local sx, sy = k:match("^(-?%d+),(-?%d+)$")
+      sx, sy = tonumber(sx), tonumber(sy)
+      for _, d in pairs(DIRS) do
+        local wx, wy = sx + d[1], sy + d[2]
+        if map.isWaterCell and map:inBounds(wx, wy)
+           and map:isWaterCell(wx, wy) then
+          local dd = math.abs(wx - p.cellX) + math.abs(wy - p.cellY)
+          if not bd or dd < bd then
+            bd, bx, by, bland = dd, wx, wy, { sx, sy }
+          end
+        end
+      end
+    end
+    if not bx then
+      return false, "there is no water on this map to pace"
+    end
+    OPS.walk_to(G, { x = bland[1], y = bland[2], max_steps = 200 })
+    local ok2, why2 = OPS.field_move(G, { move = "SURF", x = bx, y = by })
+    if not ok2 then
+      return false, "could not get onto the water: " .. tostring(why2)
+    end
+    afloat = p.surfing and encDef.water and map.isWaterCell
+  end
   -- (never onto a warp tile: a cave's ladders and mouths are floor too, and
   -- pacing across one would leave the map mid-grind)
   local warp_at = {}
