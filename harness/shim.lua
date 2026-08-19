@@ -3470,7 +3470,10 @@ function OPS.elevator(G, c)
     end
   end
   if not px then
-    return false, "no elevator panel visible on this map"
+    return false, "no elevator panel on this map — an elevator is a small "
+      .. "ROOM of its own: walk in through its door first (the car is "
+      .. "behind a door like any other), then send elevator floor=... "
+      .. "from inside it"
   end
   local ok, why = OPS.interact(G, { x = px, y = py, floor = want })
   if not ok then return false, why or "could not reach the panel" end
