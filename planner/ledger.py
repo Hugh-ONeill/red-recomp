@@ -199,6 +199,33 @@ def _left_parts(ex, region: str) -> list:
     return parts
 
 
+def something_beyond(ex, dest: str, here: str | None = None):
+    """The nearest region reachable THROUGH `dest` over walked edges that
+    still has an untried exit or an unpressed thing — (region, legs, parts)
+    or None. One walk, used by the beyond clause and by the dead-end brand,
+    because both were asking a one-hop question of a multi-hop world (the
+    department store: every floor spent, the roof two legs on holding the
+    only thing that mattered)."""
+    from collections import deque
+    parts0 = _left_parts(ex, dest)
+    if parts0:
+        return (dest, 0, parts0)
+    seen = {dest} | ({here} if here else set())
+    q = deque([(dest, 0)])
+    while q:
+        cur, n = q.popleft()
+        for _k, e in (ex.explored.get(cur) or {}).items():
+            nxt = (e or {}).get("to")
+            if not nxt or nxt in seen or (e or {}).get("shut"):
+                continue
+            seen.add(nxt)
+            p2 = _left_parts(ex, nxt)
+            if p2:
+                return (nxt, n + 1, p2)
+            q.append((nxt, n + 1))
+    return None
+
+
 def beyond(ex, dest: str, target: str, here: str | None = None) -> str:
     """What lies past a walked exit, in one clause: how much is still
     untried there, or — when the area itself is worked — the nearest ground
@@ -346,9 +373,9 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             # evidence), drop the verdict when the far side demonstrably
             # still has something.
             _dest = rec.get("to") or ""
-            _left = ex._frontier_left(_dest) if _dest else []
-            _things = untouched_in(ex, _dest) if _dest else []
-            if bad and (_left or _things):
+            # transitive: the roof is two legs beyond the stairs
+            _bey = something_beyond(ex, _dest, here) if _dest else None
+            if bad and _bey:
                 c.status = "taken"
                 c.note = _join(c.note, f"this goal has failed beyond it "
                                        f"{bad}x — but that is where the "
@@ -398,8 +425,7 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         elif d in taken:
             bad = ex.dead_for(target, rec.get("to") or "") if target else 0
             _dest2 = rec.get("to") or ""
-            if bad and (ex._frontier_left(_dest2) if _dest2 else []) + (
-                    untouched_in(ex, _dest2) if _dest2 else []):
+            if bad and (something_beyond(ex, _dest2, here) if _dest2 else None):
                 c.status = "taken"
                 c.note = _join(c.note, f"this goal has failed beyond it "
                                        f"{bad}x — that is where the attempt "
