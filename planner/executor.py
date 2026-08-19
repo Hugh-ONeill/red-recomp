@@ -4379,6 +4379,23 @@ class Executor:
                         del self.explored[frm][key]
                         self.log("edge_voided", frm=frm, via=key, to=nxt)
                 elif not rec:
+                    # ...BUT FIRST, TRY ANOTHER CELL OF THAT SEAM. Landing
+                    # on the wrong pocket of the right map is the seam-row
+                    # problem, not a false connection: Route 11's east
+                    # crossing lands in ROUTE_12|0,61, a pocket whose only
+                    # exit is back west, while the component that reaches
+                    # Lavender and everything past it is further along the
+                    # same edge. Step back out and re-cross elsewhere; only
+                    # if that finds nothing is the inference itself wrong.
+                    _un = self._uncork_seam(o, sg,
+                                            str(key).split("#", 1)[0])
+                    if _un is not None and _replans < 1:
+                        _rest2 = self._route(self._where(_un), _final)
+                        if _rest2:
+                            self.log("route_after_uncork",
+                                     subgoal=sg.get("id"),
+                                     frm=self._where(_un), legs=len(_rest2))
+                            return self._walk_route(sg, _rest2, _replans + 1)
                     # AN INFERENCE THE WORLD JUST REFUTED. Reverse-seam and
                     # wide-seam alternates are SYNTHESIZED in _route.edges()
                     # on every call, so there is no record here to void —
