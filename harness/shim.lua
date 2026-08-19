@@ -3027,6 +3027,36 @@ function OPS.field_move(G, c)
       end
     end
     if not placed then
+      -- SAY WHAT IS IN THE WAY, and whether the tree is even on ground we
+      -- can reach. "No reachable tile adjacent" is the same sentence for
+      -- "somebody is standing there", "it is across a fence" and "it is in
+      -- another part of this map" — three different problems, and the run
+      -- re-pressed CUT at a tree on the far side of Route 14's ledges for
+      -- a whole attempt.
+      local occ = {}
+      for _, a in ipairs(adj) do
+        for _, npc in ipairs(ow.npcs or {}) do
+          if npc.cellX == a[1] and npc.cellY == a[2] then
+            occ[#occ + 1] = ("%s at (%d,%d)"):format(
+              tostring((npc.def or {}).name or "someone"), a[1], a[2])
+          end
+        end
+      end
+      local reach = warp_reach(G) or {}
+      local any_side = false
+      for _, a in ipairs(adj) do
+        if reach[a[1] .. "," .. a[2]] then any_side = true end
+      end
+      if #occ > 0 then
+        return false, "no reachable tile adjacent to the target — standing "
+          .. "on the tiles you would use it from: " .. table.concat(occ, ", ")
+      end
+      if not any_side then
+        return false, ("no reachable tile adjacent to the target — none of "
+          .. "the four tiles around (%d,%d) is ground you can walk to from "
+          .. "where you stand, so that %s is in a part of this map you "
+          .. "cannot reach from here"):format(c.x, c.y, tostring(mv))
+      end
       return false, "no reachable tile adjacent to the target"
     end
     if p.facing ~= placed[3] then U.tap(G, placed[3]); U.wait(4) end
