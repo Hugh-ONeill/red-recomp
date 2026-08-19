@@ -7190,8 +7190,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # the model still chooses.
                     name = step["name"]
                     here_now = self._where(obs)
+                    # A POSITION-MINTED NAME IS NOT UNIQUE ACROSS MAPS. Items
+                    # are named ITEM_x_y (contents are not ours to say), and
+                    # (8,3) exists on dozens of floors — so the Warden's
+                    # House item was "SEEN, reachable, in OAKS_LAB" and the
+                    # run was sent across Kanto for a different ball. Match
+                    # such names only within the SAME MAP.
+                    _pos_named = str(name).startswith("ITEM_")
+                    _here_map = here_now.split("|")[0]
                     seen_in = [reg for reg, objs in self.sightings.items()
-                               if name in objs and reg != here_now]
+                               if name in objs and reg != here_now
+                               and (not _pos_named
+                                    or reg.split("|")[0] == _here_map)]
                     routed = False
                     for reg in seen_in:
                         path = self._route(here_now, reg)

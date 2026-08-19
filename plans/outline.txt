@@ -26,7 +26,6 @@ Give a drink from the Celadon Department Store to a thirsty guard of Saffron Cit
 Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute
 Wake the Snorlax sleeping on Route 12 with the Poke Flute
 Exchange the BIKE_VOUCHER for a BICYCLE at the bike shop in Cerulean City
-Retrieve the HM02 from the house on Route 16
 a party Pokemon knows FLY
 Reach Fuchsia City
 Retrieve the HM03 from the Secret House in the Safari Zone
@@ -36,6 +35,7 @@ a party Pokemon knows STRENGTH
 Defeat Koga for the Soul Badge
 every party member is at least level 40
 Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate
+Retrieve the HM02 from the house on Route 16
 Rescue the Silph Co. president from Team Rocket
 Defeat Sabrina for the Marsh Badge
 Reach Cinnabar Island
