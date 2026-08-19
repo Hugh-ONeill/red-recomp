@@ -2106,7 +2106,17 @@ def author_best_of(goal: str, model: str, draws: int = 3,
     for k, n in seen.items():
         if n > 1:
             print(f"[draws] one shape was written {n}x")
-    return pick_plan(goal, plans, model, start=start)
+    # THE WINNER MUST BE VALID. Each DRAFT is validated inside author(),
+    # but a draft that survived five feedback rounds still fails when a new
+    # rule lands mid-run: leg 25's redo was picked with a has_item count of
+    # 0 in its last step (the rule had been added four minutes earlier) and
+    # the leg completed without buying a drink. Drop invalid drafts here;
+    # if every one is invalid, say so and hand back the least-bad, which is
+    # what happened before this check existed.
+    good = [p2 for p2 in plans if not validate(p2)]
+    if good and len(good) < len(plans):
+        print(f"[draws] {len(plans) - len(good)} draft(s) dropped as invalid")
+    return pick_plan(goal, good or plans, model, start=start)
 
 
 # How many subgoals one review round may INVENT. Gap-filling is a step or
