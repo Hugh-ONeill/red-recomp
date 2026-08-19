@@ -4116,7 +4116,7 @@ class Executor:
                     return True
         return False
 
-    def _walk_route(self, sg, path):
+    def _walk_route(self, sg, path, _replans=0):
         """Replay a fully-walked route hop by hop (the escort's pattern):
         send the edge, settle, fight through interruptions, record the
         transition. Returns where the walk ended."""
@@ -4126,7 +4126,6 @@ class Executor:
         # expected. Keep the destination and re-plan from where we actually
         # are rather than declaring the road lost.
         _final = path[-1][1] if path else None
-        _replans = 0
         # A ROUTE STEP BELONGS TO THE PLACE IT WAS COMPUTED FROM. `pre` is
         # re-read every hop, so it always says where the party ACTUALLY is,
         # while `key` still names a tile from where the party WAS — and
@@ -4259,13 +4258,19 @@ class Executor:
             if (self._where(o) != nxt and _final and _replans < 2
                     and str(nxt).split("|")[0]
                     == str(self._where(o)).split("|")[0]):
+                # ...ONCE, AND NEVER BACK INTO THE SAME HOP. The budget
+                # has to travel with the recursion or the walk ping-pongs
+                # (983 re-plans in one leg: mislanded, re-planned, drew the
+                # same route, mislanded again). A re-plan whose first hop is
+                # the one that just mislanded from here is the loop itself.
                 _rest = self._route(self._where(o), _final)
-                if _rest:
-                    _replans += 1
+                if (_rest and _replans < 1
+                        and not (self._where(o) == self._where(pre)
+                                 and _rest[0][0] == key)):
                     self.log("route_replanned", subgoal=sg.get("id"),
                              landed=self._where(o), wanted=nxt,
                              legs=len(_rest))
-                    return self._walk_route(sg, _rest)
+                    return self._walk_route(sg, _rest, _replans + 1)
             if self._where(o) != nxt:
                 # A hop that fails to land even after the passage retry
                 # CONTRADICTS the recorded edge: void it, or the router
