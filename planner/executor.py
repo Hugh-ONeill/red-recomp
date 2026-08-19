@@ -3190,6 +3190,25 @@ class Executor:
         src, dst = self._where(before_obs), self._where(after_obs)
         if "None" in src or "None" in dst:
             return
+        # WHERE THE OP SAYS IT ARRIVED BEATS WHERE WE ENDED UP STANDING.
+        # `dst` is read after settling, so anything that moved the party
+        # between the warp firing and the read is attributed to the DOOR:
+        # ROUTE_7|18,2 --18,9--> SAFFRON_CITY, four times, for a door the
+        # game's own table says opens into ROUTE_7_GATE. That is the door
+        # west through the gate recorded as the way back east, and the
+        # model — correctly reading the ledger — spent three attempts
+        # reaching for the far-side doors it cannot walk to instead. The
+        # op's detail names the map it landed on ("map->ROUTE_7_GATE"); if
+        # that is not where we are now, this observation cannot say what
+        # the door leads to. Honest ignorance beats a wrong edge, which is
+        # the rule the shim already applies at the other end.
+        _arr = _re.search(r"map->([A-Z0-9_]+)", str(op_detail or ""))
+        if _arr and _arr.group(1) != str(dst).split("|")[0]:
+            self.log("transition_dropped_moved_on", frm=src,
+                     via=str((step or {}).get("x", "")) + "," +
+                         str((step or {}).get("y", "")),
+                     arrived=_arr.group(1), settled=dst)
+            return
         # A CROSSING WHOSE DOOR WE CANNOT NAME TEACHES NOTHING ABOUT DOORS.
         # The key here is the tile the walk AIMED at, which is only the
         # right answer when the walk finished and stepped through on

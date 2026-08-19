@@ -32,10 +32,10 @@ a party Pokemon knows SURF
 a party Pokemon knows STRENGTH
 Defeat Koga for the Soul Badge
 Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate
-Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor (its doors on Route 16 are at 24,4 and 24,5)
 a party Pokemon knows FLY
 every party member is at least level 40
 Rescue the Silph Co. president from Team Rocket
+Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor (its doors on Route 16 are at 24,4 and 24,5)
 Defeat Sabrina for the Marsh Badge
 Reach Cinnabar Island
 Retrieve the Secret Key from the Pokemon Mansion
