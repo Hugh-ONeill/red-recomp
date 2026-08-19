@@ -2106,6 +2106,26 @@ function OPS.cross(G, c)
         or pocket[nx .. "," .. (ny + 1)] or pocket[nx .. "," .. (ny - 1)]
     end
     local fence = {}
+    -- ...AND A BUSH IS AS MUCH A FENCE AS A PERSON. Route 14 dropped the
+    -- run into a four-cell nook whose edge is cut trees; the report named
+    -- nobody, because only NPCs were scanned, and read as "no walkable
+    -- path" with no cause at all.
+    if pocket then
+      local ts2 = lm and lm.def and lm.def.tileset
+      local want2 = (ts2 == "OVERWORLD" and 0x3d) or (ts2 == "GYM" and 0x50)
+      if want2 and lm and lm.cellTile then
+        local W3, H3 = map_dims_cells(G)
+        for cy = 0, math.min(H3 - 1, 71) do
+          for cx = 0, math.min(W3 - 1, 71) do
+            if lm:cellTile(cx, cy) == want2 and not lm:isWalkableCell(cx, cy)
+               and fences_pocket(cx, cy) then
+              fence[#fence + 1] = ("CUT_TREE (a bush CUT clears) at (%d,%d)")
+                :format(cx, cy)
+            end
+          end
+        end
+      end
+    end
     for _, npc in ipairs((ow.npcs) or {}) do
       local nx, ny = npc.cellX, npc.cellY
       if nx and ny then
