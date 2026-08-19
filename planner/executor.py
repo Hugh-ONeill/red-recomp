@@ -1337,6 +1337,18 @@ class Executor:
             self._note_blocker(here, key,
                                "door" if op == "use_warp" else "seam",
                                what or "it spoke and did not open")
+        # ...and a seam whose walk was fenced by somebody standing there
+        # (the Snorlax on Route 12, a guard in a corridor) — the diagnostic
+        # names them; keep that as the blocker's words
+        elif op == "cross" and "FAILED" in note and (
+                "standing at its edge:" in note
+                or "Right where the walk stopped:" in note):
+            for tag in ("standing at its edge:", "Right where the walk stopped:"):
+                if tag in note:
+                    clause = note.split(tag, 1)[1].strip().split(".")[0][:160]
+                    self._note_blocker(here, key, "seam",
+                                       f"the walk was fenced — {clause}")
+                    break
 
     def _go_step(self, sg, obs, step, ignore_done=False):
         """Walk to an area this run has walked before, by walked edges only.
