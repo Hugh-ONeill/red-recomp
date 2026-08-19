@@ -2097,7 +2097,14 @@ function OPS.cross(G, c)
   end
   if p.cellX ~= ex or p.cellY ~= ey then
     for round = 1, 3 do
-      OPS.walk_to(G, { x = ex, y = ey, max_steps = c.max_steps or 200 })
+      -- A STEP BUDGET MUST FIT THE MAP. 200 was fine for a town and is
+      -- nothing on Cycling Road: Route 17 is 144 cells tall, so a climb
+      -- from the bottom needs more steps than the budget allowed and the
+      -- walk reported "stuck" having barely moved. Scale it to the
+      -- distance actually being walked (and keep a floor for short hops).
+      local _need = math.abs((ex or 0) - p.cellX) + math.abs((ey or 0) - p.cellY)
+      OPS.walk_to(G, { x = ex, y = ey,
+                       max_steps = c.max_steps or math.max(200, _need * 3) })
       if (ow.map and ow.map.id) ~= startMap then
         return true, "crossed (mid-walk)"
       end
@@ -2113,8 +2120,10 @@ function OPS.cross(G, c)
     end
     if p.cellX ~= ex or p.cellY ~= ey then
       if ride_cutscene() then return true, "crossed (cutscene)" end
-      return false, ("couldn't reach %s edge gap (%d,%d), stuck at (%d,%d)")
-        :format(tostring(c.dir), ex, ey, p.cellX, p.cellY)
+      return false, ("couldn't reach %s edge gap (%d,%d), stuck at (%d,%d) "
+        .. "— %d cell(s) of walking still to do")
+        :format(tostring(c.dir), ex, ey, p.cellX, p.cellY,
+                math.abs(ex - p.cellX) + math.abs(ey - p.cellY))
     end
   end
   -- step off the seam repeatedly until the map changes
