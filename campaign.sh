@@ -65,6 +65,17 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   set -e
   first=0
 
+  # A SIGNAL IS NOT A VERDICT. An executor killed from outside (a stop, an
+  # OOM, a reload of the harness mid-leg) has walked no argument about the
+  # leg, and the evidence it leaves behind is a half-attempt: re-authoring
+  # the plan from it rewrites a leg nobody finished judging. Log it, keep
+  # the plan as written, and let the next attempt run it again.
+  if [ "$rc" -ge 128 ]; then
+    echo "=== attempt $attempt killed by signal (rc=$rc) — not a result, "\
+         "re-running the same plan ===" | tee -a "$LOG"
+    continue
+  fi
+
   if grep -q "RESULT: ALL PLANS COMPLETE" "$LOG"; then
     echo "=== campaign finished on attempt $attempt ===" | tee -a "$LOG"
     exit 0

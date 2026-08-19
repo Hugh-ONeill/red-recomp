@@ -957,6 +957,10 @@ class Executor:
         self.searched: dict = {}    # "*" -> {region: fully worked};
                                     # flag:/item: keys add per-target claims
         self.contested: dict = {}   # target -> {region: a fight ran here}
+        # (region, exit key, dest) triples a WALK has refuted: the
+        # router synthesizes reverse-seam edges every call, so a
+        # false one cannot be voided, only remembered.
+        self._bad_seam: set = set()
         self._arrived = None        # (region, (x,y)) — the door we came in by
         self._came_from = None      # the region we were in a moment ago
         self._reversals = 0
@@ -1830,6 +1834,8 @@ class Executor:
             self.region_anchors = data.get("region_anchors", {}) or {}
             self.searched = data.get("searched", {})
             self.contested = data.get("contested", {})
+            self._bad_seam = {tuple(x) for x in data.get("bad_seam", [])
+                              if len(x) == 3}
             self._battle_regions = set(data.get("battle_regions") or ())
             # Money-dependent proofs do not survive a restart. "Fully
             # worked" recorded in a shop with an empty wallet is a fact
@@ -2245,6 +2251,8 @@ class Executor:
                  "touch_mark": self._touch_mark,
                  "region_anchors": self.region_anchors,
                  "contested": self.contested,
+                 "bad_seam": sorted(list(x) for x in
+                                    getattr(self, "_bad_seam", set())),
                  # A TRAINER FIGHT IN A ROOM OUTLIVES THE PROCESS, same
                  # as `contested` right above it. Without this, a gym
                  # the party lost in stopped being exempt from the
@@ -3600,6 +3608,9 @@ class Executor:
                     # landing was dropped and `go` refused a road the run
                     # had walked. Keep both; the alternative rides under a
                     # suffixed key that _walk_route strips before crossing.
+                    if (region, _back, _r2) in getattr(self, "_bad_seam",
+                                                        ()):
+                        continue           # the walk refuted this one
                     if _back not in out:
                         out[_back] = {"n": 0, "to": _r2, "inferred": True}
                     elif (out[_back] or {}).get("to") != _r2:
@@ -4367,6 +4378,23 @@ class Executor:
                     else:
                         del self.explored[frm][key]
                         self.log("edge_voided", frm=frm, via=key, to=nxt)
+                elif not rec:
+                    # AN INFERENCE THE WORLD JUST REFUTED. Reverse-seam and
+                    # wide-seam alternates are SYNTHESIZED in _route.edges()
+                    # on every call, so there is no record here to void —
+                    # and the router re-minted "cross west from Route 13
+                    # into ROUTE_14|5,4" every round while every walk landed
+                    # in the nook at 16,6 instead. `go` failed identically
+                    # for as long as the leg ran. An inference is a
+                    # conclusion about connectivity, not an observation:
+                    # when the walk contradicts it, drop it for good. The
+                    # crossing itself stays walkable and re-records the
+                    # moment it genuinely lands there.
+                    self._bad_seam.add(
+                        (frm, str(key).split("#", 1)[0], str(nxt)))
+                    self.log("inference_refused", frm=frm, via=key, to=nxt,
+                             landed=self._where(o))
+                    self._save_memory()
                 self.log("route_walk_lost", subgoal=sg["id"], wanted=nxt,
                          got=self._where(o))
                 return self._where(o)
