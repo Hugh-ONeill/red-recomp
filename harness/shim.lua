@@ -1325,6 +1325,18 @@ local function bfs_to_edge(G, dir)
     end
   end
   local nwall_ledge = 0
+  -- ...AND CYCLING ROAD IS NOT LEDGES AT ALL. On a slope map the bike is
+  -- pulled one cell SOUTH on every idle poll (OverworldController:1251,
+  -- Game.data.field.forcedMovement.slopeMaps) unless A or B is held, so a
+  -- northward walk is undone as fast as it is made. Walking is not the
+  -- thing that is failing; the map is.
+  local on_slope = false
+  do
+    local fm = G.data and G.data.field and G.data.field.forcedMovement
+    for _, mm in ipairs((fm and fm.slopeMaps) or {}) do
+      if mm == (ow.map and ow.map.id) then on_slope = true end
+    end
+  end
   local best, bestx, besty = 1e9, nil, nil
   local function dist(x, y)
     if dir == "up" then return y end
@@ -1424,6 +1436,13 @@ local function bfs_to_edge(G, dir)
               and ("; it DID reach the edge " .. edge_rejected
                    .. "x but the landing on the far side was refused")
               or "")
+    .. ((on_slope and (dir == "up" or dir == "north"))
+        and (". THIS MAP IS A SLOPE: while you are on the bike here the "
+             .. "game pushes you one cell SOUTH every moment you are not "
+             .. "holding a direction, so northward progress is undone as "
+             .. "fast as it is made — this map is ridden DOWNHILL, and the "
+             .. "way back is another road")
+        or "")
     .. (nwall_ledge > 0
         and (". " .. nwall_ledge .. " LEDGE tile(s) stand between the "
              .. "ground you can reach and that edge — a ledge is a ONE-WAY "
