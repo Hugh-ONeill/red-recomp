@@ -5463,7 +5463,20 @@ class Executor:
             # handing the identical adjacency over here, at escalation time,
             # would gate one door and leave the other open.
             if self._holding_town_map(obs):
-                route_line += f"\nTHE TOWN MAP: {want_map} attaches to — {att}."
+                # THE WHOLE MAP, NOT THE ONE ENTRY. Printing only the
+                # target's neighbours ("LAVENDER attaches to ROUTE_10,
+                # ROUTE_12, ROUTE_8") was still hiding the map: standing on
+                # Route 11 the run could not see that ROUTE_10 hangs off
+                # ROUTE_9 off CERULEAN, and spent a leg on Snorlax and the
+                # thirsty guard. The Town Map on screen shows every road and
+                # town; say all of it (1.7k chars) — unranked, no route
+                # drawn, which is the line the rule draws.
+                _all = "; ".join(
+                    f"{m}: " + ", ".join(f"{d} {t}" for d, t in sorted(v.items()))
+                    for m, v in sorted(MAP_EDGES.items()))
+                route_line += (f"\nTHE TOWN MAP (every road and town it shows, "
+                               f"and what each touches — caves, tunnels and "
+                               f"buildings are doors, not shown here): {_all}.")
             # AND NOTHING FURTHER. There used to be a TOWN-MAP ITINERARY
             # here: a BFS over the printed adjacencies, from where the party
             # stands to the target, printed as "ROUTE_5 -> SAFFRON_CITY ->
