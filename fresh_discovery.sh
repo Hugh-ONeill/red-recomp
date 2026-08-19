@@ -476,10 +476,18 @@ while :; do
   [ -n "$gained" ] && echo "    gained: $gained"
   redone=0
   grep -Fxq "$leg" run/leg_audit_redo 2>/dev/null && redone=1
-  if [ "$redone" = 0 ] \
-      && ! python planner/author.py --check-done --goal "$goal" \
-          --start "$(python planner/state_text.py)" --gained "$gained" \
-          --observed run/explored.json --model "$MODEL"; then
+  # ASK, EVEN THE SECOND TIME. The `&&` here used to short-circuit on the
+  # redo pass, so a leg that had failed its audit once was counted with the
+  # judge never consulted again — printed as "still unconfirmed" whether or
+  # not it was. The drink leg's second plan SUCCEEDED (Saffron entered,
+  # EVENT_GAVE_GUARDS_DRINK fired, a clean ALL PLANS COMPLETE) and was
+  # filed as unconfirmed anyway; the same path had banked the opposite lie
+  # an hour earlier. One judge call, and the log says which happened.
+  confirmed=1
+  python planner/author.py --check-done --goal "$goal" \
+      --start "$(python planner/state_text.py)" --gained "$gained" \
+      --observed run/explored.json --model "$MODEL" || confirmed=0
+  if [ "$redone" = 0 ] && [ "$confirmed" = 0 ]; then
     printf '%s\n' "$leg" >> run/leg_audit_redo
     echo "=== leg $i: the plan met its conditions but the objective is "
     echo "    NOT confirmed — authoring a new plan and running it once more"
@@ -495,8 +503,17 @@ while :; do
     sweep_ahead "$i"
     continue
   fi
-  [ "$redone" = 1 ] && echo "    (objective still unconfirmed after a "\
-      "second plan — counting it and moving on)"
+  if [ "$redone" = 1 ]; then
+    if [ "$confirmed" = 1 ]; then
+      echo "    (confirmed on the second plan)"
+    else
+      echo "    (objective still unconfirmed after a second plan —" \
+           "counting it and moving on)"
+      # the legs the run walked past without proof, in one place, so
+      # "known-bad in the world" is a list and not a memory
+      printf '%s\n' "$leg" >> run/leg_unconfirmed
+    fi
+  fi
   echo "$i" > "$PROGRESS"
   echo "=== leg $i/${#LEGS[@]} complete: $leg ==="
   sweep_ahead "$i"
