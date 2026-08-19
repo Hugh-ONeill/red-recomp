@@ -6534,6 +6534,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             blackout = None
             ghosted = None
             low_hp_flee = ""
+            _op_det = ""
             # THE OP MAY SAY WHAT ITS BATTLES ARE FOR. The battle policy is
             # chosen per STEP from the step's predicate, so a knows_move
             # step whose model-authored plan was "catch something that can
@@ -6561,6 +6562,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 except TimeoutError:
                     obs = self.b.obs()
                     break
+                # the op's OWN detail, before settle/battles replace it —
+                # note_transition's door-unknown rule reads it
+                _op_det = str(((obs or {}).get("result") or {})
+                              .get("detail") or "") or _op_det
                 # SAME RECALL FALLBACK AS THE MACRO PATH. Ops are dispatched
                 # from two places and this one was missed, so a cross issued
                 # here still died on "no walkable path" with the crossing
@@ -7048,7 +7053,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                          f"respawned at {blackout}, party healed, position "
                          f"progress lost")
             if r.get("ok") and before[0] != after[0] and not blackout:
-                self.note_transition(pre_obs, step, obs)
+                self.note_transition(pre_obs, step, obs, op_detail=_op_det)
                 # RECOGNISE A DEAD END ON ARRIVAL. The exit-level warning
                 # only covers exits already taken FROM here, so an untried
                 # ladder that happens to drop into a known-bad room walked
