@@ -2707,29 +2707,22 @@ function OPS.use_item(G, c)
     end
     return false, "the teach did not go through"
   end
-  -- A FIELD ITEM WORKS ON WHAT YOU ARE STANDING BESIDE. The POKE FLUTE's
-  -- effect (inventory/ItemEffects.lua:166) looks for a sleeping SNORLAX
-  -- ADJACENT to the player; anywhere else it plays the tune and says so
-  -- ("Now, that's a catchy tune!"). The run played it three maps away,
-  -- read "used POKE_FLUTE", and concluded the Snorlax had refused it.
-  -- Say the game's own no-effect line means what it says, and where the
-  -- thing it works on actually is if this map holds one.
+  -- A FIELD ITEM ACTS ON WHAT YOU ARE STANDING BESIDE, and the game says
+  -- so in its own words when there is nothing there ("Now, that's a catchy
+  -- tune!" / "It won't have any effect"). The op reported a flat "used
+  -- POKE_FLUTE" either way, so playing it three maps from the thing it was
+  -- meant for looked exactly like the thing refusing it. Report the
+  -- no-effect as a no-effect and name the rule — WHAT it acts on stays the
+  -- model's knowledge; the harness only says where you were standing.
   do
     local said = tostring(recent_text or last_text or "")
-    if said:find("catchy tune") then
-      local who, wx, wy
-      for _, npc in ipairs((G.overworld.npcs) or {}) do
-        local nm = tostring((npc.def or {}).name or "")
-        if nm:find("SNORLAX") then who, wx, wy = nm, npc.cellX, npc.cellY end
-      end
+    if said:find("catchy tune") or said:find("won't have any effect")
+       or said:find("no effect") then
       local p2 = G.overworld.player
-      return true, ("played the POKE FLUTE and NOTHING WOKE — the game "
-        .. "said \"Now, that's a catchy tune!\", which is its way of "
-        .. "saying there was nothing here for it to work on. It wakes a "
-        .. "sleeping SNORLAX only when you are standing RIGHT NEXT to it")
-        .. (who and (" — the one on this map is %s at (%d,%d) and you are "
-                     .. "at (%d,%d)"):format(who, wx, wy, p2.cellX, p2.cellY)
-            or " — there is none on this map")
+      return true, ("used " .. c.item .. " and NOTHING HAPPENED — the game "
+        .. "said \"" .. said:gsub("\n", " ") .. "\". A field item acts on "
+        .. "what you are standing RIGHT NEXT TO, and from (%d,%d) there was "
+        .. "nothing for it to act on."):format(p2.cellX, p2.cellY)
     end
   end
   return true, "used " .. c.item
