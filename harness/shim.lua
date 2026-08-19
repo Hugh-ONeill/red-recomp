@@ -2120,10 +2120,49 @@ function OPS.cross(G, c)
     end
     if p.cellX ~= ex or p.cellY ~= ey then
       if ride_cutscene() then return true, "crossed (cutscene)" end
+      -- WHY the walk could not start. Two rules of this map can stop it
+      -- and they read identically from outside: LEDGES (one-way drops that
+      -- cannot be climbed) and a SLOPE (the bike is pushed back whenever
+      -- no direction is held). Both are in the engine's own field data.
+      local why2 = ""
+      do
+        local ts = ow.map and ow.map.def and ow.map.def.tileset
+        local lt = {}
+        for _, lg in ipairs((G.data and G.data.field
+                             and G.data.field.ledges) or {}) do
+          if (lg.tileset or "OVERWORLD") == ts then lt[lg.ledgeTile] = true end
+        end
+        local nl = 0
+        if ow.map and ow.map.cellTile then
+          local step = (ey < p.cellY) and -1 or 1
+          for yy = p.cellY, ey, step do
+            if lt[ow.map:cellTile(p.cellX, yy)] then nl = nl + 1 end
+          end
+        end
+        local slope = false
+        for _, mm in ipairs(((G.data and G.data.field
+                              and G.data.field.forcedMovement) or {}).slopeMaps
+                            or {}) do
+          if mm == (ow.map and ow.map.id) then slope = true end
+        end
+        if nl > 0 then
+          why2 = why2 .. (" — %d LEDGE tile(s) lie along that line, and a "
+            .. "ledge is a ONE-WAY drop: it can be hopped down, never "
+            .. "climbed"):format(nl)
+        end
+        if slope then
+          why2 = why2 .. " — and this map is a SLOPE: on the bike the game "
+            .. "moves you one cell downhill whenever no direction is held"
+        end
+        if why2 ~= "" then
+          why2 = why2 .. ". If both halves of that are true of the way you "
+            .. "want, this road runs one way and the way back is another road"
+        end
+      end
       return false, ("couldn't reach %s edge gap (%d,%d), stuck at (%d,%d) "
-        .. "— %d cell(s) of walking still to do")
+        .. "— %d cell(s) of walking still to do%s")
         :format(tostring(c.dir), ex, ey, p.cellX, p.cellY,
-                math.abs(ex - p.cellX) + math.abs(ey - p.cellY))
+                math.abs(ex - p.cellX) + math.abs(ey - p.cellY), why2)
     end
   end
   -- step off the seam repeatedly until the map changes
