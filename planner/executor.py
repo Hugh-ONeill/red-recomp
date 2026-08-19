@@ -7250,6 +7250,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                          proposed=0, distilled=len(progress), verified=False,
                          how="held at the start of the round")
                 return True, progress
+            # ...and the whole PLAN's objective: a wander can stand on it
+            # while a middle step grinds (Lavender, during a heal detour).
+            # Succeeding this subgoal hands control to run_plan, whose
+            # objective check ends the leg.
+            _fin2 = (((self.plan or {}).get("subgoals") or [{}])[-1]
+                     or {}).get("done_when")
+            if (not redo and _fin2 and _fin2 is not done
+                    and sg.get("id") != (((self.plan or {}).get("subgoals")
+                                          or [{}])[-1] or {}).get("id")
+                    and pred_holds(_fin2, start)):
+                self.log("escalate_success", subgoal=sg["id"], round=rnd,
+                         proposed=0, distilled=len(progress), verified=False,
+                         how="the plan's OBJECTIVE holds here")
+                return True, progress
             # A PURCHASE YOU CANNOT AFFORD IS NOT A SEARCH PROBLEM. Once
             # the price is known and the wallet is short, no amount of
             # walking changes it — yet buy_potions burned a whole attempt's
@@ -9028,6 +9042,22 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                       f"it is a DEED and it has not happened)")
                 self.log("subgoal_deed_not_skipped", subgoal=sg["id"],
                          done_when=dw0)
+            # THE OBJECTIVE MET MID-PLAN ENDS THE PLAN. The leg is judged
+            # on its LAST subgoal's condition, and a wander can satisfy it
+            # while some middle step is being ground on: leg 19 stood in
+            # LAVENDER_TOWN — the objective — during a heal detour, walked
+            # out again, and spent the rest of the attempt hunting a flute
+            # for a road it had already used. Only the current subgoal was
+            # ever checked. Transient conditions (a map) must be caught at
+            # the moment; durable ones were already caught at attempt start.
+            _fin = (subgoals[-1] or {}).get("done_when")
+            if idx < len(subgoals) - 1 and _fin \
+                    and pred_holds(_fin, self.settle()):
+                print(f"== the plan's OBJECTIVE ({json.dumps(_fin)}) holds "
+                      f"from where the party stands — the leg's aim is "
+                      f"achieved; skipping the remaining steps")
+                self.log("plan_objective_met_early", skipped_from=sg["id"])
+                return True
             has_macro = bool(sg.get("macro"))
             print(f"== subgoal: {sg['id']}" + ("" if has_macro else " (no macro)"))
             ok = self._attempt(sg)
