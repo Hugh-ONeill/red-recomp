@@ -6983,6 +6983,16 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             self._stop_if_asked()
             rnd += 1
             start = self.settle()
+            # THE WORLD MAY HAVE CAUGHT UP SINCE THE LAST CHECK. A trade's
+            # animation outlasted round 2's post-op check, so the party
+            # read unchanged then and the model was asked a round 3 it
+            # answered with "skip" — filed as the leg failing. Look before
+            # asking: a condition that holds at a round's start is done.
+            if rnd > 1 and not redo and pred_holds(done, start):
+                self.log("escalate_success", subgoal=sg["id"], round=rnd,
+                         proposed=0, distilled=len(progress), verified=False,
+                         how="held at the start of the round")
+                return True, progress
             # A PURCHASE YOU CANNOT AFFORD IS NOT A SEARCH PROBLEM. Once
             # the price is known and the wallet is short, no amount of
             # walking changes it — yet buy_potions burned a whole attempt's
@@ -7222,6 +7232,21 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # and the objective is what the leg is judged on afterwards.
             if any(isinstance(s2, dict) and s2.get("op") == "skip"
                    for s2 in (macro or [])):
+                # A SKIP OF A STEP THAT IS ALREADY TRUE IS SUCCESS. The
+                # trade completed during round 2's animation; the check
+                # after that round saw the party unchanged, the model saw
+                # DUX in the party and said skip — and skip on the last
+                # step was filed as the leg failing, then backtracked to
+                # "redo" the walk into a house it was standing in. Look
+                # again before ruling on the skip.
+                _now = self.settle()
+                if not redo and pred_holds(sg.get("done_when"), _now):
+                    self.log("escalate_success", subgoal=sg["id"], round=rnd,
+                             proposed=0, distilled=0, verified=False,
+                             how="the step's condition held at the skip")
+                    print(f"   (skip asked, but {sg['id']}'s condition "
+                          f"already holds — done)")
+                    return True, []
                 subs = (self.plan or {}).get("subgoals") or []
                 idx = next((i for i, s2 in enumerate(subs)
                             if s2.get("id") == sg.get("id")), None)
