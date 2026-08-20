@@ -728,6 +728,23 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None) -> str:
     if exits:
         return (f"take {exits[0].label()} — untried from here, though it "
                 f"turned you back last time")
+    # WHEN EVERY WAY OUT HAS BEEN TAKEN, TAKE THE LEAST-TAKEN ONE. A door
+    # walked twice has had less of a look than one walked fifty times, and
+    # where a run circles it is usually circling the SAME two exits — Silph
+    # 3F's pads were taken 15 and 31 times while others sat on 1. This does
+    # not claim anything is behind it; it orders what is already here by
+    # how little of it has been used (user's idea, 2026-08-20).
+    _used = sorted((c for c in cands
+                    if c.kind in ("door", "seam") and c.reachable
+                    and c.status in ("taken", "came_in_by")
+                    and not _refused(c)),
+                   key=lambda c: (c.n, c.key))
+    if _used and _used[0].n < (_used[-1].n if len(_used) > 1 else 0):
+        _c = _used[0]
+        return (f"everything here has been taken at least once; the "
+                f"least-used way out is {_c.label()} ({_c.n}x, against "
+                f"{_used[-1].n}x for the most-used) — going back through "
+                f"the one you have leaned on least is how a circuit breaks")
     # nearest area with something never taken OR never pressed, over
     # walked ground — leaving worked ground for ground that still has
     # something is the whole idea, so both kinds of "something" count
