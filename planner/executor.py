@@ -4139,6 +4139,13 @@ class Executor:
         for region, exits in self.frontier.items():
             if region == here:
                 continue
+            # ...AND NEITHER IS A LIFT CAR. Its doorway is one door the
+            # panel re-points, so it always reads as an exit never taken
+            # from wherever you look — and the walk-back would cross the
+            # building to go and "explore" it. Riding is what a car is for,
+            # and that is the elevator op, not a frontier.
+            if str(region).split("|")[0].endswith("_ELEVATOR"):
+                continue
             # A PROVEN SEAM IS NOT FRONTIER. The frontier deliberately
             # keeps a printed road after a failed crossing so one bad proof
             # cannot erode the map, but counting those as "never taken"
@@ -5608,6 +5615,16 @@ class Executor:
         _rows = []
         for _mid, _doors in (self.map_doors or {}).items():
             if _mid == mid or not _doors:
+                continue
+            # A LIFT CAR HAS NO UNFINISHED DOORWAYS. Its exits are one
+            # doorway the panel re-points, so "SILPH_CO_ELEVATOR has 1 exit
+            # never taken" is not unexplored ground — and the run kept
+            # crossing floors to go and take it: "I will leave via the
+            # stairs to the 10th floor and then proceed to the elevator to
+            # explore the remaining untried door at (2,3)". The in-car
+            # ledger already says this (status lift_door); this is the same
+            # fact seen from the rest of the building.
+            if str(_mid).endswith("_ELEVATOR"):
                 continue
             _stood = set()
             for _r2, _e2 in (self.explored or {}).items():
