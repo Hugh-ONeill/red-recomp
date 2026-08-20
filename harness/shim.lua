@@ -4266,6 +4266,11 @@ function OPS.elevator(G, c)
     -- press not landing. Say what is actually on top each pass, then read
     -- it in run/chain.log rather than guessing a fifth time.
     local _t = G.stack:top()
+    print(("[lift] pass %d fade=%s phase=%s frames=%s t=%s map=%s items=%s")
+      :format(_i, tostring(_is_fade(_t)), tostring(_t and _t.phase),
+              tostring(_t and _t.frames), tostring(_t and _t.t),
+              tostring(_t and _t.map ~= nil),
+              tostring(_t and _t.items ~= nil)))
     if _is_fade(_t) then
       U.wait(10)                     -- a fade ends itself; B does nothing
     else
