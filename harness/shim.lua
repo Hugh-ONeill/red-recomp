@@ -4143,9 +4143,18 @@ function OPS.elevator(G, c)
   -- walk-out could only fail with "not in overworld". The model worked it
   -- out and pressed B itself, which is a choice it should never have had
   -- to make — closing a panel after the lift has moved decides nothing.
-  for _ = 1, 4 do
-    if G.stack:top() == G.overworld then break end
-    ui_back_out(G); U.wait(6)
+  -- ...AND THE PANEL COMES BACK AFTER THE RIDE, A BEAT LATE. ui_back_out
+  -- is a 400-tap B-masher, so nothing was refusing to close: the list was
+  -- simply not up YET when the loop looked, it re-rendered a moment after
+  -- the op returned, and the model spent a round pressing B itself. Let
+  -- the car settle first, then close, then make sure it STAYS closed.
+  U.wait(20)
+  for _ = 1, 6 do
+    if G.stack:top() == G.overworld then
+      U.wait(10)
+      if G.stack:top() == G.overworld then break end
+    end
+    ui_back_out(G); U.wait(10)
   end
   local _stuck = (G.stack:top() ~= G.overworld)
   return true, ("rode to %s — you are still IN the car; walk out of its "
