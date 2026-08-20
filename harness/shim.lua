@@ -4194,13 +4194,21 @@ function OPS.elevator(G, c)
   -- works. So the list re-renders after the op has already looked twice.
   -- Watch it for a whole second, closing whatever appears, and only stop
   -- once the overworld has held for a stretch.
-  U.wait(30)
-  for _ = 1, 10 do
+  -- ...AND ui_back_out CANNOT CLOSE THIS. It opens with
+  --     if t == G.overworld or (t and (t.enemy or t.kind)) then return true
+  -- and ListMenu.new sets `kind = opts.kind or title`, so every list menu
+  -- is truthy-kind and the helper returns WITHOUT PRESSING ANYTHING. That
+  -- is why three passes at this bug (wait 20, then wait 30, then watch for
+  -- a second) all failed and a bare tap(b) always worked: nothing was ever
+  -- being pressed. Press B here, and look at the stack rather than
+  -- trusting a helper that treats this screen as none of its business.
+  U.wait(20)
+  for _ = 1, 12 do
     if G.stack:top() == G.overworld then
-      U.wait(15)
+      U.wait(10)
       if G.stack:top() == G.overworld then break end
     end
-    ui_back_out(G); U.wait(15)
+    U.tap(G, "b"); U.wait(10)
   end
   local _stuck = (G.stack:top() ~= G.overworld)
   -- ...AND NAME THE CAR'S OWN DOORS. "Walk out of its door" left the
