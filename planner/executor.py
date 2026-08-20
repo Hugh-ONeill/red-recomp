@@ -4462,13 +4462,20 @@ class Executor:
                     return o if o is not None else _now
                 self._send_safe("elevator", floor=_lab)
                 o = self.settle() or _now
-                # out of the car by whichever of its doors is reachable
-                for _w in ((o.get("map") or {}).get("warps") or []):
-                    if _w.get("reachable"):
-                        self._send_safe("use_warp", x=_w.get("x"),
-                                        y=_w.get("y"))
-                        o = self.settle() or o
-                        break
+                # ...AND THE OP NOW WALKS YOU OUT ITSELF. This used to ride
+                # and leave you in the car, so the hop stepped out through
+                # "whichever of its doors is reachable". Since the lift
+                # became door-to-door that door belongs to the FLOOR we
+                # already arrived on, so the hop warped straight back off
+                # it — and `go` through any lift ended "the lift did not
+                # put us on that floor" while the lift had done its job.
+                if (o.get("map") or {}).get("id") != _want_map:
+                    for _w in ((o.get("map") or {}).get("warps") or []):
+                        if _w.get("reachable"):
+                            self._send_safe("use_warp", x=_w.get("x"),
+                                            y=_w.get("y"))
+                            o = self.settle() or o
+                            break
                 if self._where(o) != nxt and (o.get("map") or {}).get("id") \
                         != _want_map:
                     self.log("route_abandoned", subgoal=sg.get("id"),

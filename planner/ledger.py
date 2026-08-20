@@ -745,6 +745,18 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None) -> str:
                 f"least-used way out is {_c.label()} ({_c.n}x, against "
                 f"{_used[-1].n}x for the most-used) — going back through "
                 f"the one you have leaned on least is how a circuit breaks")
+    # ...AND SAY THE SAME THING THE HEADER SAYS. The header learned that a
+    # floor holding something no walk reaches is not finished; this line,
+    # two lines below it, still announced "THIS AREA IS FULLY WORKED —
+    # nothing new can be found by staying". Same split as the lift car:
+    # header fixed, plan_explore left behind.
+    _stuck = [c for c in cands if c.status == "unreachable"
+              and c.kind not in ("op", "door", "seam")]
+    if _stuck:
+        return ("everything you can REACH here is done, but "
+                + ", ".join(c.key for c in _stuck[:3])
+                + " sits on this floor where no walk from here goes — the "
+                "way in is what is missing, not the thing")
     # nearest area with something never taken OR never pressed, over
     # walked ground — leaving worked ground for ground that still has
     # something is the whole idea, so both kinds of "something" count
@@ -993,8 +1005,13 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
             # to carry the stop-clause escaped the ellipsis, and Route 6's
             # north seam still rendered as "walked 432…" with every reason
             # cut off. Any failure note gets the room.
+            # AN OP EXAMPLE CUT IN HALF IS WORSE THAN NO EXAMPLE. The
+            # lift-car note came through as {"op":"elevator","floor":"5…
+            # — unusable, and it is the one line telling the model it need
+            # not walk in and out of a car by hand.
             _fail = ("FAILED" in n or "cannot be walked to" in n
-                     or "no walkable path" in n or "FAILED" in words)
+                     or "no walkable path" in n or "FAILED" in words
+                     or '{"op"' in n)
             _cap = FAIL_CHARS if (_STOP_MARK in n or _fail) else NOTE_CHARS
             if len(n) > _cap:
                 if _STOP_MARK in n:
