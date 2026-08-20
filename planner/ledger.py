@@ -64,6 +64,7 @@ STATUS_RANK = {
     "unspoken": 0,      # a person here never spoken to (alias of untouched)
     "reopened": 1,      # a shut door, now that the world has moved
     "taken": 2,         # walked before; count and destination known
+    "lift_door": 2,     # a car's doorway: never fresh, never a discovery
     "touched": 2,       # pressed before; count and last words known
     "worth_a_word": 3,  # pressed when the world was different (weak lead:
                         # a sign says the same thing for ever)
@@ -413,7 +414,13 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             # INSIDE A CAR EVERY DOOR IS THE SAME DOOR: the exit warps are
             # rewritten by the panel, so a destination learned last ride is
             # a lie this ride, and picking a different door changes nothing.
-            c.status = "taken" if c.n else "untried"
+            # ...AND IT IS NEVER "UNTRIED". A car's doorway is not a way
+            # you have failed to explore, it is the only way out, and the
+            # panel decides where it lands. Read as untried it drew the run
+            # in every round: warp into the car, warp out onto 10F, back
+            # in, out again — with the ledger calling (2,3) an untried exit
+            # "leading to the 1st floor" while it opened onto the tenth.
+            c.status = "lift_door"
             c.dest = None
             c.note = _join(c.note,
                            "a door of this CAR — it opens onto whichever "
@@ -787,6 +794,8 @@ _STATUS_WORDS = {
     "sealed": "proven uncrossable from this area",
     "dead": "KNOWN DEAD END for this goal",
     "unreachable": "you cannot walk to it from where you stand",
+    "lift_door": "the way out of this car — always open, and where it lets "
+                 "you out is set by the panel, not by which door you pick",
     "untouched": "never pressed",
     "unspoken": "never spoken to",
     "touched": "pressed {n}x",
