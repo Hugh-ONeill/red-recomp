@@ -4478,6 +4478,22 @@ class Executor:
                             break
                 if self._where(o) != nxt and (o.get("map") or {}).get("id") \
                         != _want_map:
+                    # ...AND A LIFT THAT DID NOT DELIVER MUST STOP BEING
+                    # THE SHORTEST ROUTE. A lift hop is one step where the
+                    # stairs are several, so _route picks it every time —
+                    # and a failed hop that is not marked is picked again
+                    # on the next go, and the next. The building has
+                    # stairs; block this edge for the world as it stands
+                    # and the router will use them (user: "it should still
+                    # have the edges via the stairs though"). It is a road
+                    # again the moment anything about the world changes.
+                    _lrec = (self.explored.get(self._where(_now)) or {}).get(
+                        str(key))
+                    if _lrec is not None:
+                        _lrec["blocked_at"] = self._world_mark(o)
+                        self.log("lift_edge_blocked",
+                                 frm=self._where(_now), via=str(key))
+                        self._save_memory()
                     self.log("route_abandoned", subgoal=sg.get("id"),
                              step=str(key), standing=self._where(o),
                              why="the lift did not put us on that floor")
