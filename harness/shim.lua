@@ -4125,10 +4125,23 @@ function OPS.elevator(G, c)
     if G.stack:top() == G.overworld then break end
     U.tap(G, "a"); U.wait(5)
   end
-  ui_back_out(G)
+  -- ...AND PUT THE PANEL AWAY, VERIFIED. One back-out was assumed to be
+  -- enough and was not: the ride ends with the floor list still up, so the
+  -- op returned "rode to 1F" while the game sat in ui mode and the next
+  -- walk-out could only fail with "not in overworld". The model worked it
+  -- out and pressed B itself, which is a choice it should never have had
+  -- to make — closing a panel after the lift has moved decides nothing.
+  for _ = 1, 4 do
+    if G.stack:top() == G.overworld then break end
+    ui_back_out(G); U.wait(6)
+  end
+  local _stuck = (G.stack:top() ~= G.overworld)
   return true, ("rode to %s — you are still IN the car; walk out of its "
-    .. "door to arrive. This panel offers %s")
-    :format(want, table.concat(offer, ", "))
+    .. "door to arrive. This panel offers %s%s")
+    :format(want, table.concat(offer, ", "),
+            _stuck and (". A screen is STILL up that would not close — "
+              .. "{\"op\":\"tap\",\"btn\":\"b\"} before walking out")
+              or "")
 end
 
 -- CHOOSE WHO GOES OUT FIRST. There was no way to. Battles are played by a
