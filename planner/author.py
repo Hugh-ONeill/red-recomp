@@ -788,7 +788,15 @@ def validate(plan: dict) -> list:
     # ends somewhere this run has never reached, say that deleting it is
     # allowed. Nothing here names an event or a place: it is a fact about
     # plan shape.
-    if probs and len(subs) >= 2:
+    # ...BUT NEVER ON A DEED. Standing on SILPH_CO_11F does not witness
+    # rescuing the president, and the deed rule above says so — so offering
+    # "delete the last subgoal and end there" made the Silph leg
+    # unauthorable in a NEW way: add a flag (refused, unguessable), delete
+    # it (refused, a deed cannot end on a place), five rounds, pushed. This
+    # hint is only true where a place ending is legal, which is exactly
+    # where the deed rule does not apply.
+    _deedy = bool(goal) and goal.split()[0].lower().rstrip(",:") in DEED
+    if probs and len(subs) >= 2 and not _deedy:
         _lastn = len(subs) - 1
         if all(f"subgoal[{_lastn}]" in p0 for p0 in probs):
             _prev = subs[-2] if isinstance(subs[-2], dict) else {}

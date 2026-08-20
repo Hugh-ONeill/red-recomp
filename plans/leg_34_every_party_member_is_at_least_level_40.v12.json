@@ -1,0 +1,151 @@
+{
+ "goal": "every party member is at least level 40",
+ "subgoals": [
+  {
+   "id": "heal_at_center",
+   "goal_text": "Go to a Pokemon Center and heal the party to full HP.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 11,
+     "y": 3,
+     "when": {
+      "map": "VERMILION_CITY"
+     }
+    },
+    {
+     "op": "heal",
+     "when": {
+      "map": "VERMILION_POKECENTER"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign4",
+    "via": "escalation",
+    "n_ops": 2,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "level_up_venonat",
+   "goal_text": "Battle wild Pokemon on Route 12 until Venonat reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_after_venonat",
+   "goal_text": "Return to a Pokemon Center to heal the party.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 11,
+     "y": 3,
+     "when": {
+      "map": "VERMILION_CITY"
+     }
+    },
+    {
+     "op": "heal",
+     "when": {
+      "map": "VERMILION_POKECENTER"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign4",
+    "via": "escalation",
+    "n_ops": 2,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "level_up_nidorino",
+   "goal_text": "Battle wild Pokemon on Route 12 until Nidorino reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 3,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "heal_after_nidorino",
+   "goal_text": "Return to a Pokemon Center to heal the party.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 11,
+     "y": 3,
+     "when": {
+      "map": "VERMILION_CITY"
+     }
+    },
+    {
+     "op": "heal",
+     "when": {
+      "map": "VERMILION_POKECENTER"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign4",
+    "via": "escalation",
+    "n_ops": 2,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "level_up_pidgeot",
+   "goal_text": "Battle wild Pokemon on Route 12 until Pidgeot reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 5,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "level_up_farfetchd",
+   "goal_text": "Battle wild Pokemon on Route 12 until Farfetchd reaches level 40.",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "final_check",
+   "goal_text": "Ensure all party members have reached at least level 40.",
+   "done_when": {
+    "party_min_level": 40
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

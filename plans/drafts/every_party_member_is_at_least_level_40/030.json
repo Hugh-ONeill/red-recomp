@@ -1,0 +1,109 @@
+{
+ "goal": "every party member is at least level 40",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Pokemon Center in Vermilion City",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "travel_to_route_12",
+   "goal_text": "Travel to Route 12 to fish for high-level experience",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "level_up_venonat",
+   "goal_text": "Level up Venonat to at least level 40 using the Super Rod",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "level_up_nidorino",
+   "goal_text": "Level up Nidorino to at least level 40 using the Super Rod",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "level_up_pidgeot",
+   "goal_text": "Level up Pidgeot to at least level 40 using the Super Rod",
+   "done_when": {
+    "slot_level": {
+     "slot": 3,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "level_up_farfetchd",
+   "goal_text": "Level up Farfetchd to at least level 40 using the Super Rod",
+   "done_when": {
+    "slot_level": {
+     "slot": 5,
+     "min": 40
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  },
+  {
+   "id": "final_check",
+   "goal_text": "Ensure all party members have reached level 40",
+   "done_when": {
+    "party_min_level": 40
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 40"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}
