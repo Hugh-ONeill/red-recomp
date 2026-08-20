@@ -579,15 +579,45 @@ local function observe(G, seq, result)
           local k = lm:warpPadOrHoleAt(x, y)
           if k then return tostring(k) end     -- "pad" | "hole"
         end
+        -- A LANDING IS NOT A WAY OUT. Some warp entries sit on plain floor:
+        -- they are where something else PUTS you, not something you can
+        -- take. SILPH_CO_1F 16,10 is the ROM's landing for 3F's pad — tile
+        -- 1, no pad and no door drawn on it — and standing on it does
+        -- nothing, which is exactly what the run kept reporting ("stepped
+        -- through but no warp fired") while the ledger offered it as the
+        -- floor's one untried exit. The map's OUTER EDGE is the exception:
+        -- a town door at the bottom row is not a warp tile either and does
+        -- work, because you step off the map there.
+        local edge = (x <= 0 or y <= 0
+                      or (lm and lm.widthCells and x >= lm.widthCells - 1)
+                      or (lm and lm.heightCells and y >= lm.heightCells - 1))
+        if not edge and lm and lm.isWarpTileCell
+           and not lm:isWarpTileCell(x, y) then
+          return "landing"
+        end
         return "stairs"
       end
-      for i, w in ipairs(md.warps) do
-        local dest = w.destMap
-        if dest == "LAST_MAP" and lastOut then dest = lastOut end
-        o.map.warps[i] = { x = w.x, y = w.y, dest = dest,
-                           look = warp_look(w.x, w.y),
-                           reachable = reach[w.x .. "," .. w.y] and true
-                                       or false }
+      -- ...AND A LANDING IS NOT SHOWN AT ALL. It is drawn as ordinary
+      -- floor (user, looking at it: "it looks like an ordinary block not a
+      -- warp"), so a player standing on that tile sees nothing to take —
+      -- and listing it is both misleading and a peek at the warp table
+      -- nobody could have read off the screen. SILPH_CO_1F 16,10 is the
+      -- landing for 3F's pad; offered as this floor's one untried exit it
+      -- drew the run back round after round, each time reporting "stepped
+      -- through but no warp fired". Arrivals still work; you simply are
+      -- not told there is a door where there is no door.
+      local _n = 0
+      for _, w in ipairs(md.warps) do
+        local _look = warp_look(w.x, w.y)
+        if _look ~= "landing" then
+          local dest = w.destMap
+          if dest == "LAST_MAP" and lastOut then dest = lastOut end
+          _n = _n + 1
+          o.map.warps[_n] = { x = w.x, y = w.y, dest = dest,
+                              look = _look,
+                              reachable = reach[w.x .. "," .. w.y] and true
+                                          or false }
+        end
       end
     end
     -- Connections to adjacent maps (the routes/towns you reach by walking off
