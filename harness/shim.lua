@@ -2104,9 +2104,18 @@ function OPS.use_warp(G, c)
          + math.abs((npc.cellY or -99) - t.y) <= 2 then
         local nm = (npc.def or {}).name
         if nm and not blockers[nm] then
-          blockers[#blockers + 1] = ("%s at (%d,%d)")
-            :format(nm, npc.cellX, npc.cellY)
+          -- SAY WHICH KIND OF PERSON, same as the seam report. A posted
+          -- guard and a passer-by both "stand in front of a door", and
+          -- the advice for them is opposite: one has a reason to give,
+          -- the other will have wandered off in a moment. Saffron's
+          -- ROCKET7 is movement=WALK, drifted in front of the Pokemon
+          -- Center, and the run wrote the Center off as blocked.
+          local _mv = ((npc.def or {}).movement) or "STAY"
+          blockers[#blockers + 1] = ("%s at (%d,%d)%s")
+            :format(nm, npc.cellX, npc.cellY,
+                    _mv == "WALK" and " (who wanders)" or "")
           blockers[nm] = true
+          if _mv == "WALK" then blockers.mover = true end
         end
       end
     end
@@ -2114,8 +2123,12 @@ function OPS.use_warp(G, c)
   if #blockers > 0 then
     return false, "couldn't reach the warp tile — somebody is standing by "
       .. "it: " .. table.concat(blockers, ", ")
-      .. ". People who stand in front of doors in this game usually say "
-      .. "why; interact with them to hear it."
+      .. (blockers.mover
+          and ". Someone marked (who wanders) walks a patch of ground and "
+              .. "is not posted there — they move, so the same door often "
+              .. "opens on a later try."
+          or ". People who stand in front of doors in this game usually "
+              .. "say why; interact with them to hear it.")
   end
   -- NOT A DOOR OF THIS MAP AT ALL. Standing in Vermilion, use_warp(17,13)
   -- — Route 6's underground-path door — failed as "couldn't reach the
