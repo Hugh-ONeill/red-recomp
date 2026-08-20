@@ -1,0 +1,32 @@
+{
+ "goal": "Defeat Giovanni on the 11th floor of Silph Co.",
+ "subgoals": [
+  {
+   "id": "go_to_11f",
+   "goal_text": "Use the elevator to go to the 11th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Giovanni on the 11th floor of Silph Co."
+   }
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Locate and defeat Giovanni in battle.",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Giovanni on the 11th floor of Silph Co."
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

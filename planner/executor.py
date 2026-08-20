@@ -961,6 +961,8 @@ class Executor:
         # router synthesizes reverse-seam edges every call, so a
         # false one cannot be voided, only remembered.
         self._bad_seam: set = set()
+        # region -> things seen there that no walk from there could reach
+        self.seen_far: dict = {}
         self._arrived = None        # (region, (x,y)) — the door we came in by
         self._came_from = None      # the region we were in a moment ago
         self._reversals = 0
@@ -1876,6 +1878,7 @@ class Executor:
             self.contested = data.get("contested", {})
             self._bad_seam = {tuple(x) for x in data.get("bad_seam", [])
                               if len(x) == 3}
+            self.seen_far = data.get("seen_far", {}) or {}
             self._battle_regions = set(data.get("battle_regions") or ())
             # Money-dependent proofs do not survive a restart. "Fully
             # worked" recorded in a shop with an empty wallet is a fact
@@ -2306,6 +2309,7 @@ class Executor:
                  # had already been talked to
                  "touched": {r: sorted(s)
                              for r, s in self._tried_objs.items()},
+                 "seen_far": getattr(self, "seen_far", {}),
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
                  "no_cross_at": self._no_cross_at,
@@ -2493,6 +2497,26 @@ class Executor:
         if keep != was:
             self.sightings[here] = sorted(keep)
             self._save_memory()
+        # ...AND WHAT WAS IN PLAIN SIGHT AND OUT OF REACH. `sightings` only
+        # ever records things that were REACHABLE, so a thing you can see
+        # and cannot walk to is written down nowhere — and from any other
+        # floor nothing says that ground still has something on it. Silph
+        # 5F's CARD KEY sat in a pocket like that while the run toured 11F
+        # and 3F for a whole leg. Seeing it is on-screen fact; that no walk
+        # from where you stood reached it is what the walk said.
+        _far = sorted({o.get("name") for o in (m.get("objects") or [])
+                       if o.get("name") and not o.get("reachable")
+                       and o.get("kind") in ("item", "fixture")})
+        if _far:
+            _was_far = set(getattr(self, "seen_far", {}).get(here) or [])
+            if not hasattr(self, "seen_far"):
+                self.seen_far = {}
+            _now_far = (_was_far | set(_far)) - set(
+                self._touched_on_map(here))
+            _now_far = {n for n in _now_far if n in live}
+            if _now_far != _was_far:
+                self.seen_far[here] = sorted(_now_far)
+                self._save_memory()
 
     def note_frontier(self, obs):
         self._last_obs_dormant = ((obs or {}).get("map") or {}).get("dormant")
@@ -6263,6 +6287,31 @@ class Executor:
                           + ". A thing in a passage can BE the blockage — "
                           "going back and pressing A on it can open ground "
                           "no exit reaches.")
+        # ...AND GROUND THAT HELD SOMETHING YOU COULD NOT REACH. Different
+        # fact and a different job: not "go back and press it" but "there
+        # is a way in you have not found". Without it, a floor whose only
+        # unfinished business is out of reach reads as finished from every
+        # other floor, and the run tours the ones it can walk — 11F and 3F
+        # for a whole leg while Silph 5F's CARD KEY sat in a pocket.
+        _far_rooms = []
+        for _r, _names in (getattr(self, "seen_far", {}) or {}).items():
+            _left = [n for n in (_names or [])
+                     if n not in self._touched_on_map(_r)]
+            if not _left or _r == here:
+                continue
+            _p = self._route(here, _r)
+            if _p is None:
+                continue
+            _far_rooms.append((len(_p), f"{_r} ({', '.join(sorted(_left)[:3])}"
+                                        f" — {len(_p)} leg(s) away)"))
+        if _far_rooms:
+            _far_rooms.sort(key=lambda p: p[0])
+            remote_line += ("\nGROUND YOU HAVE STOOD ON THAT STILL HOLDS "
+                            "SOMETHING NO WALK REACHED: "
+                            + "; ".join(t for _, t in _far_rooms[:3])
+                            + ". You saw these and could not walk to them "
+                            "from where you stood — that is a way in you "
+                            "have not found yet, not a thing that is done.")
         # ...AND ROOMS WHOSE PEOPLE ARE WORTH ANOTHER WORD. The re-offer
         # line only ever fired for the room being stood in, which is the
         # half that cannot reach the case it was built for: Daisy is in

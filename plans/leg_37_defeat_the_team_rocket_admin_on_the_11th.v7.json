@@ -1,0 +1,75 @@
+{
+ "goal": "Defeat the Team Rocket Admin on the 11th floor of Silph Co.",
+ "subgoals": [
+  {
+   "id": "reach_6f",
+   "goal_text": "Go to the 6th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_6F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_7f",
+   "goal_text": "Go to the 7th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_7F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "tap",
+     "btn": "b"
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign3",
+    "via": "escalation",
+    "n_ops": 1,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_8f",
+   "goal_text": "Go to the 8th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_8F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_9f",
+   "goal_text": "Go to the 9th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_9F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_10f",
+   "goal_text": "Go to the 10th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_10F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_11f",
+   "goal_text": "Go to the 11th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_rocket_admin",
+   "goal_text": "Defeat the Team Rocket Admin on the 11th floor to receive the Master Ball.",
+   "done_when": {
+    "flag": "EVENT_GOT_MASTER_BALL"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

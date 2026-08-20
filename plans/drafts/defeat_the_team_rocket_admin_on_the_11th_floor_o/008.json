@@ -1,0 +1,84 @@
+{
+ "goal": "Defeat the Team Rocket Admin on the 11th floor of Silph Co.",
+ "subgoals": [
+  {
+   "id": "reach_4f",
+   "goal_text": "Go to the 4th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_4F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat the Team Rocket Admin on the 11th floor of Silph Co."
+   }
+  },
+  {
+   "id": "reach_5f",
+   "goal_text": "Go to the 5th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_5F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat the Team Rocket Admin on the 11th floor of Silph Co."
+   }
+  },
+  {
+   "id": "reach_elevator",
+   "goal_text": "Enter the Silph Co. elevator to ascend.",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat the Team Rocket Admin on the 11th floor of Silph Co."
+   }
+  },
+  {
+   "id": "reach_10f",
+   "goal_text": "Use the elevator to reach the 10th floor.",
+   "done_when": {
+    "map": "SILPH_CO_10F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat the Team Rocket Admin on the 11th floor of Silph Co."
+   }
+  },
+  {
+   "id": "reach_11f",
+   "goal_text": "Go to the 11th floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat the Team Rocket Admin on the 11th floor of Silph Co."
+   }
+  },
+  {
+   "id": "defeat_rocket_admin",
+   "goal_text": "Defeat the Team Rocket Admin on the 11th floor.",
+   "done_when": {
+    "flag": "EVENT_GOT_MASTER_BALL"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat the Team Rocket Admin on the 11th floor of Silph Co."
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

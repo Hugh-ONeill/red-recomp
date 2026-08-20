@@ -1,0 +1,38 @@
+{
+  "goal": "Defeat the Team Rocket Admin on the 11th floor of Silph Co.",
+  "subgoals": [
+    {
+      "id": "go_to_9f",
+      "goal_text": "Travel from the 8th floor to the 9th floor of Silph Co.",
+      "done_when": {
+        "map": "SILPH_CO_9F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_10f",
+      "goal_text": "Travel from the 9th floor to the 10th floor of Silph Co.",
+      "done_when": {
+        "map": "SILPH_CO_10F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "go_to_11f",
+      "goal_text": "Travel from the 10th floor to the 11th floor of Silph Co.",
+      "done_when": {
+        "map": "SILPH_CO_11F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "defeat_rocket_admin",
+      "goal_text": "Defeat the Team Rocket Admin on the 11th floor.",
+      "done_when": {
+        "flag": "EVENT_GOT_MASTER_BALL"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}
