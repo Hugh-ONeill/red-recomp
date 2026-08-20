@@ -1,0 +1,911 @@
+{
+ "goal": "Rescue the Silph Co. president from Team Rocket",
+ "subgoals": [
+  {
+   "id": "reach_silph_co_1f",
+   "goal_text": "Exit the elevator to the first floor of Silph Co.",
+   "done_when": {
+    "map": "SILPH_CO_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "clear_silph_co_1f",
+   "goal_text": "Defeat the Team Rocket members on the first floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 21,
+     "when": {
+      "map": "SAFFRON_CITY"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 10,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_silph_co_2f",
+   "goal_text": "Take the elevator to the second floor",
+   "done_when": {
+    "map": "SILPH_CO_2F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "elevator",
+     "floor": "2F",
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    },
+    {
+     "op": "tap",
+     "btn": "b"
+    },
+    {
+     "op": "use_warp",
+     "x": 2,
+     "y": 3,
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "clear_silph_co_2f",
+   "goal_text": "Defeat the Team Rocket members on the second floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 21,
+     "when": {
+      "map": "SAFFRON_CITY"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 10,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_silph_co_3f",
+   "goal_text": "Take the elevator to the third floor",
+   "done_when": {
+    "map": "SILPH_CO_3F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 24,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_2F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "elevator",
+     "floor": "3F",
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    },
+    {
+     "op": "tap",
+     "btn": "b"
+    },
+    {
+     "op": "use_warp",
+     "x": 2,
+     "y": 3,
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 5,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "clear_silph_co_3f",
+   "goal_text": "Defeat the Team Rocket members on the third floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 21,
+     "when": {
+      "map": "SAFFRON_CITY"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 10,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_silph_co_4f",
+   "goal_text": "Take the elevator to the fourth floor",
+   "done_when": {
+    "map": "SILPH_CO_4F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 26,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_3F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_2F"
+     }
+    },
+    {
+     "op": "elevator",
+     "floor": "4F",
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    },
+    {
+     "op": "tap",
+     "btn": "b"
+    },
+    {
+     "op": "use_warp",
+     "x": 2,
+     "y": 3,
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 5,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "clear_silph_co_4f",
+   "goal_text": "Defeat the Team Rocket members on the fourth floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 21,
+     "when": {
+      "map": "SAFFRON_CITY"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 10,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_silph_co_5f",
+   "goal_text": "Take the elevator to the fifth floor",
+   "done_when": {
+    "map": "SILPH_CO_5F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 24,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_4F"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "ITEM_8_5",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_3F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 23,
+     "y": 11,
+     "when": {
+      "map": "SILPH_CO_3F"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "ITEM_8_5",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_3F"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "SILPHCO3F_ROCKET",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_3F"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "SILPHCO3F_SILPH_WORKER_M",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_3F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 27,
+     "y": 15,
+     "when": {
+      "map": "SILPH_CO_3F"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "ITEM_8_5",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_3F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_3F"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "TEXT_SILPHCOELEVATOR_ELEVATOR",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    },
+    {
+     "op": "elevator",
+     "floor": "5F",
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 2,
+     "y": 3
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 12,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "clear_silph_co_5f",
+   "goal_text": "Defeat the Team Rocket members on the fifth floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 21,
+     "when": {
+      "map": "SAFFRON_CITY"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 10,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_silph_co_6f",
+   "goal_text": "Take the elevator to the sixth floor",
+   "done_when": {
+    "map": "SILPH_CO_6F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 24,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_5F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "clear_silph_co_6f",
+   "goal_text": "Defeat the Team Rocket members on the sixth floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 21,
+     "when": {
+      "map": "SAFFRON_CITY"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 10,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_silph_co_7f",
+   "goal_text": "Take the elevator to the seventh floor",
+   "done_when": {
+    "map": "SILPH_CO_7F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_6F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "clear_silph_co_7f",
+   "goal_text": "Defeat the Team Rocket members on the seventh floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 21,
+     "when": {
+      "map": "SAFFRON_CITY"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 10,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_silph_co_8f",
+   "goal_text": "Take the elevator to the eighth floor",
+   "done_when": {
+    "map": "SILPH_CO_8F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "interact",
+     "name": "ITEM_1_9",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_7F"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "SILPHCO7F_ROCKET1",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_7F"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "SILPHCO7F_ROCKET2",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_7F"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "SILPHCO7F_SCIENTIST",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_7F"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "SILPHCO7F_SILPH_WORKER_M3",
+     "answer": "yes",
+     "when": {
+      "map": "SILPH_CO_7F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_7F"
+     }
+    },
+    {
+     "op": "elevator",
+     "floor": "8F",
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    },
+    {
+     "op": "tap",
+     "btn": "b"
+    },
+    {
+     "op": "use_warp",
+     "x": 2,
+     "y": 3,
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 9,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "clear_silph_co_8f",
+   "goal_text": "Defeat the Team Rocket members on the eighth floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 21,
+     "when": {
+      "map": "SAFFRON_CITY"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 10,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_silph_co_9f",
+   "goal_text": "Take the elevator to the ninth floor",
+   "done_when": {
+    "map": "SILPH_CO_9F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_8F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "clear_silph_co_9f",
+   "goal_text": "Defeat the Team Rocket members on the ninth floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 21,
+     "when": {
+      "map": "SAFFRON_CITY"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 10,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_silph_co_10f",
+   "goal_text": "Take the elevator to the tenth floor",
+   "done_when": {
+    "map": "SILPH_CO_10F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_9F"
+     }
+    },
+    {
+     "op": "elevator",
+     "floor": "10F",
+     "when": {
+      "map": "SILPH_CO_ELEVATOR"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 2,
+     "y": 3
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "clear_silph_co_10f",
+   "goal_text": "Defeat the Team Rocket members on the tenth floor and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 18,
+     "y": 21,
+     "when": {
+      "map": "SAFFRON_CITY"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 16,
+     "y": 10,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 20,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_1F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 3,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_silph_co_11f",
+   "goal_text": "Take the elevator to the eleventh floor",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "use_warp",
+     "x": 10,
+     "y": 0,
+     "when": {
+      "map": "SILPH_CO_10F"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "defeat_giovanni_2",
+   "goal_text": "Defeat Giovanni to rescue the President",
+   "done_when": {
+    "flag": "EVENT_GOT_MASTER_BALL"
+   },
+   "escalation_rounds": 4,
+   "carried_forward": 1
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni to rescue the Silph Co. president",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

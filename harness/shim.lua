@@ -554,7 +554,7 @@ local function observe(G, seq, result)
       -- warpPadOrHoleAt ("pad"/"hole", IsPlayerStandingOnWarpPadOrHole),
       -- and a warp tile that is neither is the stair/ladder case its own
       -- comment names. Says nothing about where any of them GOES.
-      local lm = ow.map
+      local lm = G.overworld and G.overworld.map
       local function warp_look(x, y)
         if lm and lm.isDoorTileCell and lm:isDoorTileCell(x, y) then
           return "door"
