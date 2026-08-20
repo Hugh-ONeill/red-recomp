@@ -2170,8 +2170,15 @@ function OPS.use_warp(G, c)
         -- perfectly — and the ledger wrote them off. Teleported is: no
         -- longer on the tile we stepped onto, and not merely one step from
         -- it either.
-        if math.abs((p.cellX or 0) - x) + math.abs((p.cellY or 0) - y) > 1
-           and not p.moving then
+        -- READ THE PLAYER FRESH. The engine swaps state objects on a map
+        -- load — the lift probe caught exactly that, a stack top whose
+        -- overworld table was a different address from G.overworld — so a
+        -- player captured at op start can go stale the moment a warp
+        -- fires, and a stale cellX/cellY never moves however far you were
+        -- taken.
+        local _pp = (G.overworld and G.overworld.player) or p
+        if math.abs((_pp.cellX or 0) - x) + math.abs((_pp.cellY or 0) - y) > 1
+           and not _pp.moving then
           G.input.state[dir] = false
           U.wait(20)
           return true
@@ -2179,6 +2186,12 @@ function OPS.use_warp(G, c)
       end
       G.input.state[dir] = false
       U.wait(4)
+    end
+    do
+      local _pp = (G.overworld and G.overworld.player) or p
+      print(("[warp] no fire at %d,%d — player now %s,%s map=%s")
+        :format(x, y, tostring(_pp.cellX), tostring(_pp.cellY),
+                tostring((G.overworld.map or {}).id)))
     end
     return false, "no fire"
   end
@@ -2212,8 +2225,9 @@ function OPS.use_warp(G, c)
       -- say WHERE a same-map warp put you; "warped" alone reads like
       -- nothing happened when the map id is unchanged
       if (ow.map and ow.map.id) == startMap then
+        local _pp = (G.overworld and G.overworld.player) or p
         return true, ("warped — same map, you are now at %d,%d")
-          :format(p.cellX or -1, p.cellY or -1)
+          :format(_pp.cellX or -1, _pp.cellY or -1)
       end
       return true, "warped"
     end
