@@ -2161,6 +2161,21 @@ function OPS.use_warp(G, c)
           G.input.state[dir] = false
           return true
         end
+        -- A WARP CAN LAND YOU ON THE SAME MAP. Silph's floors are stitched
+        -- with pad PAIRS that lead back to the floor they sit on:
+        --   warp  3,11 -> SILPH_CO_8F   warp 11,9 -> SILPH_CO_8F
+        -- step on one and you are standing on the other, same map id. The
+        -- fire test only ever asked "did the map change", so every one of
+        -- those reported "stepped through but no warp fired" while firing
+        -- perfectly — and the ledger wrote them off. Teleported is: no
+        -- longer on the tile we stepped onto, and not merely one step from
+        -- it either.
+        if math.abs((p.cellX or 0) - x) + math.abs((p.cellY or 0) - y) > 1
+           and not p.moving then
+          G.input.state[dir] = false
+          U.wait(20)
+          return true
+        end
       end
       G.input.state[dir] = false
       U.wait(4)
@@ -2190,9 +2205,18 @@ function OPS.use_warp(G, c)
     end
   end
   local reached_any = false
+  local _px0, _py0 = p.cellX, p.cellY
   for _, t in ipairs(tiles) do
     local ok, w = attempt(t.x, t.y)
-    if ok or (ow.map and ow.map.id) ~= startMap then return true, "warped" end
+    if ok or (ow.map and ow.map.id) ~= startMap then
+      -- say WHERE a same-map warp put you; "warped" alone reads like
+      -- nothing happened when the map id is unchanged
+      if (ow.map and ow.map.id) == startMap then
+        return true, ("warped — same map, you are now at %d,%d")
+          :format(p.cellX or -1, p.cellY or -1)
+      end
+      return true, "warped"
+    end
     reached_any = reached_any or (w == "no fire")
   end
   if reached_any then
