@@ -326,7 +326,21 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
     taken = ex._taken_here(here)
     spent = ex._spent_exits(here)
     sealed = ex._sealed(here)
-    tried = ex._untaken(m, set(ex._tried_objs.get(here, set()) or set()))
+    # A PERSON YOU HAVE SPOKEN TO ON THIS FLOOR IS SPOKEN TO, WHEREVER YOU
+    # STAND ON IT. Touch records are keyed per REGION, and a floor split
+    # into components by its own walls has several: Silph 2F's worker was
+    # pressed from |1,1 (that is where TM_SELFDESTRUCT came from) and read
+    # "never spoken to" from |20,0 on the other side of the card-key glass,
+    # so explore went on offering someone the run had already emptied and
+    # interact failed five times over. Names are unique per map, so the
+    # union across this map's regions is the honest set — it says the
+    # person was pressed, never that you can reach them from here (the
+    # unreachable branch above still decides that).
+    _same_map = set()
+    for _r, _names in (getattr(ex, "_tried_objs", {}) or {}).items():
+        if str(_r).split("|")[0] == str(mid):
+            _same_map |= set(_names or ())
+    tried = ex._untaken(m, _same_map)
     inert = ex._inert_objs.get(here, {}) if hasattr(ex, "_inert_objs") else {}
     again = set(ex._worth_another_word(here, obs, backfill=False)
                 if hasattr(ex, "_worth_another_word") else [])
