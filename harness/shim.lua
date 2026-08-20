@@ -4171,6 +4171,7 @@ function OPS.elevator(G, c)
     return false, ("no floor called %s — it offers %s")
       :format(want, table.concat(offer, ", "))
   end
+  local _carmap = (G.overworld.map or {}).id
   ui_cursor_to(G, "index", idx)
   U.tap(G, "a"); U.wait(10)
   for _ = 1, 60 do              -- ride the shake out
@@ -4224,6 +4225,26 @@ function OPS.elevator(G, c)
       tostring(_t and _t.kind), tostring(_t and _t.items and #_t.items)))
     U.tap(G, "b"); U.wait(10)
   end
+  -- ...AND THEN WALK OUT, BECAUSE THAT IS THE SAME INTENT. "Rode to 3F —
+  -- you are still IN the car; walk out of its door" made a lift a
+  -- THREE-op sequence (ride, close the panel, warp out), and a macro may
+  -- hold only one map-changing op, so the model could never express it in
+  -- one go and re-derived it every round: bouncing between the car and
+  -- 11F, never completing the trip, and refusing the stairs because they
+  -- go the wrong way. A car has ONE doorway and no choice in it — asking
+  -- for a floor and arriving on it is a single act, the same way use_warp
+  -- walks you to the tile before it opens the door.
+  local _out_why
+  if G.stack:top() == G.overworld then
+    for _, w in ipairs((G.data and G.data.maps
+                        and G.data.maps[(G.overworld.map or {}).id]
+                        and G.data.maps[(G.overworld.map or {}).id].warps)
+                       or {}) do
+      local _ok, _why = OPS.use_warp(G, { x = w.x, y = w.y })
+      _out_why = _why
+      if _ok or (G.overworld.map or {}).id ~= _carmap then break end
+    end
+  end
   local _stuck = (G.stack:top() ~= G.overworld)
   -- ...AND NAME THE CAR'S OWN DOORS. "Walk out of its door" left the
   -- model reaching for the door it came in BY, which belongs to the floor
@@ -4235,6 +4256,13 @@ function OPS.elevator(G, c)
                       and G.data.maps[(G.overworld.map or {}).id]
                       and G.data.maps[(G.overworld.map or {}).id].warps) or {}) do
     _mine[#_mine + 1] = ("(%d,%d)"):format(w.x, w.y)
+  end
+  local _here = (G.overworld.map or {}).id
+  if _here ~= _carmap then
+    return true, ("rode to %s and stepped out — you are on %s now. That "
+      .. "panel offers %s")
+      :format(tostring(offer[idx] or want), tostring(_here),
+              table.concat(offer, ", "))
   end
   return true, ("rode to %s — you are still IN the car; walk out of %s to "
     .. "arrive. This panel offers %s%s")

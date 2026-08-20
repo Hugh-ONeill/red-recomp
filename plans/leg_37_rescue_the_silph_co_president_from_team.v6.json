@@ -1,0 +1,22 @@
+{
+  "goal": "Rescue the Silph Co. president from Team Rocket",
+  "subgoals": [
+    {
+      "id": "defeat_rocket_boss",
+      "goal_text": "Defeat the Team Rocket executive guarding the president on the 11th floor.",
+      "done_when": {
+        "flag": "EVENT_BEAT_GIOVANNI"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "rescue_president",
+      "goal_text": "Talk to the Silph Co. president to complete the rescue and receive the Master Ball.",
+      "done_when": {
+        "flag": "EVENT_GOT_MASTER_BALL"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

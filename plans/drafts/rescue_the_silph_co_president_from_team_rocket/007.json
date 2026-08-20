@@ -1,0 +1,45 @@
+{
+ "goal": "Rescue the Silph Co. president from Team Rocket",
+ "subgoals": [
+  {
+   "id": "reach_president",
+   "goal_text": "Navigate through the Silph Co. building to reach the president on the 11th floor.",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  },
+  {
+   "id": "defeat_rocket_boss",
+   "goal_text": "Defeat the Team Rocket executive guarding the president.",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  },
+  {
+   "id": "rescue_president",
+   "goal_text": "Speak with the Silph Co. president to complete the rescue.",
+   "done_when": {
+    "flag": "EVENT_GOT_MASTER_BALL"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

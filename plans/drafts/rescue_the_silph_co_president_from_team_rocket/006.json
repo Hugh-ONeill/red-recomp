@@ -1,0 +1,49 @@
+{
+ "goal": "Rescue the Silph Co. president from Team Rocket",
+ "subgoals": [
+  {
+   "id": "defeat_rocket_boss",
+   "goal_text": "Defeat the Team Rocket boss on the 11th floor of Silph Co.",
+   "done_when": {
+    "has_item": {
+     "TM_PSYCHIC_M": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  },
+  {
+   "id": "talk_to_president",
+   "goal_text": "Talk to the Silph Co. president to receive the Master Ball.",
+   "done_when": {
+    "has_item": {
+     "MASTER_BALL": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  },
+  {
+   "id": "exit_silph_co",
+   "goal_text": "Leave the Silph Co. building and return to Saffron City.",
+   "done_when": {
+    "flag": "EVENT_GOT_MASTER_BALL"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}
