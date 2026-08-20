@@ -7876,6 +7876,21 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     and "backed out" in str(r.get("detail") or "")
                     and op == "interact" and step.get("name")):
                 self._retract_touch(self._where(pre_obs), step["name"])
+            if r.get("ok"):
+                # AN ACTION THAT JUST WORKED IS NOT A DEAD ACTION. The
+                # count only ever reset when the WORLD MARK moved, so
+                # failures accumulated across successes: walking out of
+                # Silph's lift car failed three times because the floor
+                # panel re-opened behind the op, succeeded twice in
+                # between, and was then refused outright — "already failed
+                # 3 times in this subgoal from this area" — which left the
+                # party sealed in the car with the one way out forbidden.
+                if self._dead_ops.get(sig):
+                    self.log("dead_op_cleared", op=op, sig=str(sig)[:80],
+                             was=self._dead_ops.get(sig))
+                self._dead_ops.pop(sig, None)
+                self._dead_why.pop(sig, None)
+                self._dead_at.pop(sig, None)
             if not r.get("ok"):
                 # THREE FAILURES ARE THREE FAILURES IN ONE WORLD. The
                 # refusal below is absolute and never expired, so an op

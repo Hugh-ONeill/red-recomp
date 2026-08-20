@@ -4148,13 +4148,19 @@ function OPS.elevator(G, c)
   -- simply not up YET when the loop looked, it re-rendered a moment after
   -- the op returned, and the model spent a round pressing B itself. Let
   -- the car settle first, then close, then make sure it STAYS closed.
-  U.wait(20)
-  for _ = 1, 6 do
+  -- ...AND IT COMES BACK LATER THAN 20 FRAMES. Watched again after that
+  -- fix: ride, then use_warp answers "not in overworld (a box was up and
+  -- would not close)", then a bare tap(b) clears it and the same warp
+  -- works. So the list re-renders after the op has already looked twice.
+  -- Watch it for a whole second, closing whatever appears, and only stop
+  -- once the overworld has held for a stretch.
+  U.wait(30)
+  for _ = 1, 10 do
     if G.stack:top() == G.overworld then
-      U.wait(10)
+      U.wait(15)
       if G.stack:top() == G.overworld then break end
     end
-    ui_back_out(G); U.wait(10)
+    ui_back_out(G); U.wait(15)
   end
   local _stuck = (G.stack:top() ~= G.overworld)
   -- ...AND NAME THE CAR'S OWN DOORS. "Walk out of its door" left the
