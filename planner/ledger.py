@@ -567,7 +567,23 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         # beats taken and nothing spent gets promoted: this only orders
         # things that are equally fresh. Which to take is still the
         # model's; this decides what to read first, not what to do.
-        c.rank = (not c.reachable, STATUS_RANK.get(c.status, 9),
+        # A WAY OUT YOU CANNOT REACH YET STILL BEATS A PERSON YOU HAVE
+        # ALREADY SPOKEN TO. Reachability led the tuple, so on Route 16 the
+        # five doors toward the HM02 house — including the house's own door
+        # and both upper-corridor doors — sorted BELOW six bikers the run
+        # had already beaten, at positions 15-19 of the list, while the
+        # only reachable untried exit walked away from the goal. An
+        # unreachable door is still the map telling you where it has not
+        # been; a pressed trainer is finished business. Fresh-and-reachable
+        # first, then a fresh way out you cannot reach yet, then everything
+        # already done (user's call, 2026-08-19).
+        _fresh = STATUS_RANK.get(c.status, 9) <= 1
+        _way = c.kind in ("door", "seam")
+        if c.reachable:
+            _bucket = 0 if _fresh else 2
+        else:
+            _bucket = 1 if (_fresh and _way) else 3
+        c.rank = (_bucket, not c.reachable, STATUS_RANK.get(c.status, 9),
                   1 if _refused(c) else 0,
                   0 if c.kind in _goal_kinds else 1, into_seen,
                   c.n, c.kind, c.key)
