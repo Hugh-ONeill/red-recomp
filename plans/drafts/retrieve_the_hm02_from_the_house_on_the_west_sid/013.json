@@ -1,0 +1,68 @@
+{
+ "goal": "Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor",
+ "subgoals": [
+  {
+   "id": "exit_safari_zone",
+   "goal_text": "Leave the Safari Zone East Rest House and exit the Safari Zone",
+   "done_when": {
+    "map": "FUCHSIA_CITY"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_route_16",
+   "goal_text": "Travel from Fuchsia City to Route 16",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_route_16_gate",
+   "goal_text": "Enter the Route 16 Gate building",
+   "done_when": {
+    "map": "ROUTE_16_GATE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "ascend_to_upper_corridor",
+   "goal_text": "Go up to the second floor of the Route 16 Gate",
+   "done_when": {
+    "map": "ROUTE_16_GATE_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_to_route_16_west",
+   "goal_text": "Exit the gate building to the west side of Route 16",
+   "done_when": {
+    "player_at": {
+     "x": 1,
+     "y": 10,
+     "radius": 5
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_hm02_house",
+   "goal_text": "Enter the house on the west side of Route 16",
+   "done_when": {
+    "map": "ROUTE_16_FLY_HOUSE"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_hm02",
+   "goal_text": "Talk to the man in the house to receive HM02",
+   "done_when": {
+    "has_item": {
+     "HM_FLY": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

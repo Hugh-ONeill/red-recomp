@@ -3202,6 +3202,23 @@ class Executor:
         # that is not where we are now, this observation cannot say what
         # the door leads to. Honest ignorance beats a wrong edge, which is
         # the rule the shim already applies at the other end.
+        # A DOOR YOU NEVER REACHED IS NOT A DOOR YOU WALKED THROUGH. A
+        # failed use_warp leaves the party where it stood; if the map
+        # changes later in the same step (Route 16's south seam drops onto
+        # Cycling Road), the tile the op merely AIMED at collected the
+        # credit — ROUTE_16|1,10 recorded 7,5 (the FLY house), 17,4 and
+        # 24,10 as all leading to ROUTE_17|1,0, while the same 24,10 was
+        # recording correctly 32 times from the regions that can actually
+        # reach it. The op says it failed; that is enough to know the door
+        # taught us nothing.
+        _fd = str(op_detail or "")
+        if (step or {}).get("x") is not None and (
+                "couldn't reach" in _fd or "no path" in _fd
+                or "FAILED" in _fd):
+            self.log("transition_dropped_op_failed", frm=src, to=dst,
+                     via=f"{(step or {}).get('x')},{(step or {}).get('y')}",
+                     detail=_fd[:120])
+            return
         _arr = _re.search(r"map->([A-Z0-9_]+)", str(op_detail or ""))
         if _arr and _arr.group(1) != str(dst).split("|")[0]:
             self.log("transition_dropped_moved_on", frm=src,
