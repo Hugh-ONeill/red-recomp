@@ -3226,6 +3226,20 @@ class Executor:
                          str((step or {}).get("y", "")),
                      arrived=_arr.group(1), settled=dst)
             return
+        # HOW WE GOT IN IS HOW WE GET BACK OUT AND TRY AGAIN. A seam is a
+        # row of cells and the one you cross at decides which part of the
+        # far map you land on — Route 16's house sits on a band the run
+        # never reached because Celadon's west edge was always crossed at
+        # the same cell. Remembering the direction that brought us here
+        # (and where from) is what lets _recross_for_target step back out
+        # and come in somewhere else.
+        _d = (step or {}).get("dir")
+        if _d in ("north", "south", "east", "west"):
+            _OPPD = {"north": "south", "south": "north",
+                     "east": "west", "west": "east"}
+            if not hasattr(self, "_entered_by"):
+                self._entered_by = {}
+            self._entered_by[dst] = (_OPPD[_d], src)
         # A CROSSING WHOSE DOOR WE CANNOT NAME TEACHES NOTHING ABOUT DOORS.
         # The key here is the tile the walk AIMED at, which is only the
         # right answer when the walk finished and stepped through on
@@ -3952,6 +3966,83 @@ class Executor:
                     return o2                  # a different landing: free
         finally:
             self._uncorking = False
+        return final if self._where(final) != here else None
+
+    def _recross_for_target(self, obs, sg, tx, ty):
+        """THE TARGET IS ON THIS MAP AND THIS PART OF IT CANNOT REACH IT.
+
+        The third piece of the seam-landing family, after `skip` and the
+        pocket uncork. A seam is a row of cells and where you cross decides
+        which band of the far map you land on: Route 16's HM02 house sits
+        at 7,5 on the upper band, every region this run ever reached there
+        was y=10, and the walk reported "the ground you can walk from here
+        is 116 cell(s) and the closest it comes to 7,5 is 7,10" — hedges
+        and four stationary bikers between. The band with the house on it
+        is entered by crossing Celadon's west edge further north; the run
+        crossed at the same cell every time. (Watched live 2026-08-19: the
+        USER walked the party onto that band by hand to get the leg moving,
+        which is the clearest statement of the gap there could be.)
+
+        Go back out the way we came in, cross again at another cell, and
+        see whether the target is reachable from the new landing. The
+        model asked to walk to a tile on this map; which cell of a seam to
+        approach it from is pathfinding, the same as the route to it.
+        """
+        _OPP = {"north": "south", "south": "north",
+                "east": "west", "west": "east"}
+        here = self._where(obs)
+        mymap = here.split("|")[0]
+        if getattr(self, "_recrossing", False):
+            return None
+        key = (here, int(tx), int(ty))
+        if key in getattr(self, "_recrossed", set()):
+            return None
+        ent = (getattr(self, "_entered_by", {}) or {}).get(here)
+        if not ent:
+            return None                  # never came in by a seam: nothing
+        back, _from = ent                # to step back out of
+        if back not in _OPP:
+            return None
+        self._recrossed = getattr(self, "_recrossed", set()) | {key}
+        self._recrossing = True
+        final = obs
+        try:
+            for skip in (1, 2, 3):
+                cur = self.b.obs() or final
+                if self._where(cur).split("|")[0] != mymap:
+                    break
+                try:
+                    o = self.b.send("cross", dir=back)
+                except TimeoutError:
+                    o = self.b.obs()
+                o = self.settle() or o
+                self.note_transition(cur, {"dir": back}, o, reason="recross")
+                final = o
+                if self._where(o).split("|")[0] == mymap:
+                    break                # could not step back out at all
+                pre = o
+                try:
+                    o2 = self.b.send("cross", dir=_OPP[back], skip=skip)
+                except TimeoutError:
+                    o2 = self.b.obs()
+                o2 = self.settle() or o2
+                self.note_transition(pre, {"dir": _OPP[back]}, o2,
+                                     reason="recross")
+                final = o2
+                if self._where(o2).split("|")[0] != mymap:
+                    break                # the way back did not take
+                # ...and is the tile reachable from THIS landing?
+                r = (self._send_safe("walk_to", x=int(tx), y=int(ty))
+                     or {}).get("result") or {}
+                o3 = self.settle() or o2
+                final = o3
+                self.log("seam_recrossed", frm=here, back=back, skip=skip,
+                         landed=self._where(o3), target=f"{tx},{ty}",
+                         reached=bool(r.get("ok")))
+                if r.get("ok"):
+                    return o3
+        finally:
+            self._recrossing = False
         return final if self._where(final) != here else None
 
     def _route_to_frontier(self, obs, sg, patient: bool = False):
@@ -7298,7 +7389,32 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                                  "walk_to: ok via " + _reg)
                             break
                     else:
-                        obs = self.settle() or _pre
+                        # ...AND NOT FROM ANY BAND OF THIS MAP WE HAVE
+                        # LANDED ON YET. Every part of the map we HAVE
+                        # walked has now been tried; the last thing left
+                        # that is still pathfinding is to come onto this map
+                        # somewhere else. Route 16's house is the case: the
+                        # run only ever crossed Celadon's west edge at one
+                        # cell and only ever stood on the lower band.
+                        _rx = self._recross_for_target(
+                            self.settle() or _pre, sg,
+                            step.get("x"), step.get("y"))
+                        if _rx is not None:
+                            _r2 = (self._send_safe("walk_to", **step) or {})
+                            if (_r2.get("result") or {}).get("ok"):
+                                obs = self.settle() or _rx
+                                trace.append(
+                                    f"walk_to({step.get('x')},"
+                                    f"{step.get('y')}): no path from where "
+                                    f"you stood, so the seam you came in by "
+                                    f"was crossed again at a different cell "
+                                    f"— and from that landing it worked")
+                                self._record_outcome(
+                                    _pre, op, step, "walk_to: ok via recross")
+                                continue
+                            obs = self.settle() or _rx
+                        else:
+                            obs = self.settle() or _pre
                         trace.append(
                             f"walk_to({step.get('x')},{step.get('y')}): "
                             f"FAILED — {_d0}"

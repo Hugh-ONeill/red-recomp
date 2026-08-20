@@ -1,0 +1,86 @@
+{
+ "goal": "Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor",
+ "subgoals": [
+  {
+   "id": "travel_to_route_16",
+   "goal_text": "Travel from Fuchsia City to Route 16",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor"
+   }
+  },
+  {
+   "id": "enter_route_16_gate",
+   "goal_text": "Enter the Route 16 gate building",
+   "done_when": {
+    "map": "ROUTE_16_GATE_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor"
+   }
+  },
+  {
+   "id": "ascend_to_upper_corridor",
+   "goal_text": "Go up to the second floor of the Route 16 gate",
+   "done_when": {
+    "map": "ROUTE_16_GATE_2F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor"
+   }
+  },
+  {
+   "id": "exit_to_west_route_16",
+   "goal_text": "Exit the gate building to the west side of Route 16",
+   "done_when": {
+    "map": "ROUTE_16"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor"
+   }
+  },
+  {
+   "id": "enter_hm02_house",
+   "goal_text": "Enter the house on the west side of Route 16",
+   "done_when": {
+    "map": "ROUTE_16_FLY_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor"
+   }
+  },
+  {
+   "id": "get_hm02",
+   "goal_text": "Talk to the man in the house to receive HM02",
+   "done_when": {
+    "has_item": {
+     "HM_FLY": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}
