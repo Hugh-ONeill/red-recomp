@@ -617,7 +617,21 @@ local function observe(G, seq, result)
                         and G.data.field.spinners[map.id]) or {}) do
       _spin[e.x .. "," .. e.y] = true
     end
-    local function stand_ok(k) return objreach[k] and not _spin[k] end
+    -- ...AND NEITHER IS A WARP TILE. The arrow-tile rule above is exactly
+    -- the pad's rule too: you arrive and are taken somewhere else, so it
+    -- is not a spot to stand and press from — and warp_block already
+    -- forbids a walk from ever ROUTING over one. Silph's floors are laid
+    -- out around teleport pads, and an item whose only neighbours are pads
+    -- read "reachable" while every walk to it answered no path. Same
+    -- disagreement 9f8e5e9 settled for doors, one level over: what the
+    -- observation calls reachable must be what a walk can actually do.
+    local _warp = {}
+    for _, w in ipairs((md and md.warps) or {}) do
+      _warp[w.x .. "," .. w.y] = true
+    end
+    local function stand_ok(k)
+      return objreach[k] and not _spin[k] and not _warp[k]
+    end
     local function adjacent_reachable(x, y, over_counter)
       if stand_ok((x - 1) .. "," .. y) or stand_ok((x + 1) .. "," .. y)
          or stand_ok(x .. "," .. (y - 1)) or stand_ok(x .. "," .. (y + 1))
