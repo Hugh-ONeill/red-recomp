@@ -1128,6 +1128,30 @@ local DIRS = { up = {0,-1}, down = {0,1}, left = {-1,0}, right = {1,0} }
 -- approach to an item read as a bare "no reachable tile adjacent to
 -- target" and the run pressed at it again and again with CUT in the bag
 -- and taught. Same tile test cross() uses for its seam report.
+-- A SHUTTERED DOOR IS DRAWN ON THE SCREEN. Silph's floors are divided by
+-- card-key shutters (field.cardKeyDoors: doorTiles 24/36, and 11F's own
+-- tile 94), and a walk treats one as plain wall — so every report said
+-- "no path" and named nothing, while a player sees a closed door. Naming
+-- it says only what is on screen; what opens it is nobody's business here.
+local function shut_door_at(G, x, y)
+  local lm = G.overworld and G.overworld.map
+  local ck = G.data and G.data.field and G.data.field.cardKeyDoors
+  if not (lm and ck and lm.cellTile) then return false end
+  local onList = false
+  for _, m in ipairs(ck.maps or {}) do
+    if m == lm.id then onList = true break end
+  end
+  if not onList then return false end
+  local t = lm:cellTile(x, y)
+  if lm.id == "SILPH_CO_11F" then
+    return ck.silphCo11F and t == ck.silphCo11F.doorTile
+  end
+  for _, dt in ipairs(ck.doorTiles or {}) do
+    if t == dt then return true end
+  end
+  return false
+end
+
 local function cut_bush_at(G, x, y)
   local lm = G.overworld and G.overworld.map
   local ts = lm and lm.def and lm.def.tileset
@@ -1148,7 +1172,7 @@ local function bushes_blocking(G, tx, ty, reach)
   local W, H = (lm and lm.widthCells) or 0, (lm and lm.heightCells) or 0
   for cy = 0, math.min(H - 1, 127) do
     for cx = 0, math.min(W - 1, 127) do
-      if cut_bush_at(G, cx, cy) then
+      if cut_bush_at(G, cx, cy) or shut_door_at(G, cx, cy) then
         local touches = false
         for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
           if reach[(cx + d[1]) .. "," .. (cy + d[2])] then touches = true end
@@ -1163,7 +1187,9 @@ local function bushes_blocking(G, tx, ty, reach)
   table.sort(out, function(a, b) return a.d < b.d end)
   local txt = {}
   for i = 1, math.min(#out, 3) do
-    txt[i] = ("CUT_TREE (a bush CUT clears) at (%d,%d)")
+    txt[i] = (shut_door_at(G, out[i].x, out[i].y)
+              and ("a CLOSED DOOR at (%d,%d)")
+              or ("CUT_TREE (a bush CUT clears) at (%d,%d)"))
       :format(out[i].x, out[i].y)
   end
   return txt

@@ -418,6 +418,19 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         c.n = int(oc.get("n") or rec.get("n") or 0)
         if oc.get("last"):
             c.note = str(oc["last"])
+        # A DOOR INTO A LIFT IS A LIFT. The op rides door to door from
+        # where you stand — walks in, presses the floor, walks out — but
+        # nothing outside the car ever said so, so the run kept working
+        # the lift by hand: warp into the car, then try to warp out again
+        # (user: "it didnt use the elevator op, its using it manually").
+        # The destination is already walked knowledge; this only names the
+        # op that uses it.
+        if str(walked or "").split("|")[0].endswith("_ELEVATOR"):
+            c.note = _join(c.note,
+                           "this door is a LIFT CAR — you do not have to "
+                           "walk in and out of it: {\"op\":\"elevator\","
+                           "\"floor\":\"5F\"} from where you stand rides "
+                           "it door to door and leaves you on that floor")
         if in_car:
             # INSIDE A CAR EVERY DOOR IS THE SAME DOOR: the exit warps are
             # rewritten by the panel, so a destination learned last ride is
