@@ -1152,6 +1152,21 @@ local function shut_door_at(G, x, y)
   return false
 end
 
+-- A PAD IS A BLOCKER TOO, AND A DIFFERENT KIND. Silph's floors are cut up
+-- by teleport pads, and a walk will not cross one — correctly: stepping on
+-- it takes you somewhere. So the ground beyond a pad reads "unreachable"
+-- with nothing said, and that reads as impossible rather than as not-on-
+-- foot (user, watching 5F: "it sees from its perspective that its
+-- unreachable because the only way is one tile wide and crosses over a
+-- pad which bfs wont walk over, but it is reachable"). Say what is there.
+-- What to DO about a pad stays the model's: this names the tile, not a
+-- route through it.
+local function pad_at(G, x, y)
+  local lm = G.overworld and G.overworld.map
+  if not (lm and lm.warpPadOrHoleAt) then return nil end
+  return lm:warpPadOrHoleAt(x, y)          -- "pad" | "hole" | nil
+end
+
 local function cut_bush_at(G, x, y)
   local lm = G.overworld and G.overworld.map
   local ts = lm and lm.def and lm.def.tileset
@@ -1172,7 +1187,8 @@ local function bushes_blocking(G, tx, ty, reach)
   local W, H = (lm and lm.widthCells) or 0, (lm and lm.heightCells) or 0
   for cy = 0, math.min(H - 1, 127) do
     for cx = 0, math.min(W - 1, 127) do
-      if cut_bush_at(G, cx, cy) or shut_door_at(G, cx, cy) then
+      if cut_bush_at(G, cx, cy) or shut_door_at(G, cx, cy)
+         or pad_at(G, cx, cy) then
         local touches = false
         for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
           if reach[(cx + d[1]) .. "," .. (cy + d[2])] then touches = true end
@@ -1187,8 +1203,14 @@ local function bushes_blocking(G, tx, ty, reach)
   table.sort(out, function(a, b) return a.d < b.d end)
   local txt = {}
   for i = 1, math.min(#out, 3) do
-    txt[i] = (shut_door_at(G, out[i].x, out[i].y)
-              and ("a CLOSED DOOR at (%d,%d)")
+    local _k = pad_at(G, out[i].x, out[i].y)
+    txt[i] = (_k == "pad"
+                and ("a WARP PAD at (%d,%d) — a walk will not cross one, "
+                     .. "stepping on it takes you somewhere")
+              or _k == "hole"
+                and ("a HOLE at (%d,%d) — stepping on it drops you through")
+              or shut_door_at(G, out[i].x, out[i].y)
+                and ("a CLOSED DOOR at (%d,%d)")
               or ("CUT_TREE (a bush CUT clears) at (%d,%d)"))
       :format(out[i].x, out[i].y)
   end
