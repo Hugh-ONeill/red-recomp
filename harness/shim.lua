@@ -4098,12 +4098,24 @@ function OPS.elevator(G, c)
     return false, "the panel opened no floor menu — the LIFT KEY is what "
       .. "it wants (it says so out loud without one)"
   end
-  local idx, offer = nil, {}
+  -- EXACT FIRST, AND 1F IS NOT 11F. The substring fallback matched on
+  -- every row and the LAST match won, so "1F" found 11F ("11F":find("1F")
+  -- hits at position 2) — the op reported "rode to 1F", the car never
+  -- left the eleventh floor, and walking out put the party back where it
+  -- started. Watched live in Silph: ride 1F, walk out, arrive 11F, repeat.
+  -- Keep the loose match for labels the panel spells differently, but only
+  -- when nothing matches exactly, and take the FIRST such row, not the last.
+  local idx, offer, loose = nil, {}, nil
   for i, it in ipairs(t.items) do
     local lab = tostring(it.label or ""):upper()
     offer[#offer + 1] = lab
-    if lab == want or lab:find(want, 1, true) then idx = i end
+    if lab == want then
+      idx = idx or i
+    elseif not loose and lab:find(want, 1, true) then
+      loose = i
+    end
   end
+  idx = idx or loose
   -- A PANEL IS A DOORWAY THAT DOES NOT LOOK LIKE ONE. The car has two
   -- warp tiles and both of them lead to the floor you are already on,
   -- because gen1 REWRITES an elevator's warp destinations at runtime from
@@ -4138,7 +4150,7 @@ function OPS.elevator(G, c)
   local _stuck = (G.stack:top() ~= G.overworld)
   return true, ("rode to %s — you are still IN the car; walk out of its "
     .. "door to arrive. This panel offers %s%s")
-    :format(want, table.concat(offer, ", "),
+    :format(tostring(offer[idx] or want), table.concat(offer, ", "),
             _stuck and (". A screen is STILL up that would not close — "
               .. "{\"op\":\"tap\",\"btn\":\"b\"} before walking out")
               or "")
