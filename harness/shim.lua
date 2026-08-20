@@ -4202,10 +4202,16 @@ function OPS.elevator(G, c)
   -- a second) all failed and a bare tap(b) always worked: nothing was ever
   -- being pressed. Press B here, and look at the stack rather than
   -- trusting a helper that treats this screen as none of its business.
-  U.wait(20)
+  -- THE PANEL ARRIVES AFTER THE RIDE SETTLES, and every close loop so far
+  -- broke before it got there: the overworld IS on top for a moment, the
+  -- loop sees it, waits its 10 frames, breaks, and the list comes up
+  -- afterwards — which is why the instrumented pass printed NOTHING while
+  -- the very next op still answered "a box was up and would not close".
+  -- Sit out the whole arrival before looking.
+  U.wait(90)
   for _i = 1, 12 do
     if G.stack:top() == G.overworld then
-      U.wait(10)
+      U.wait(25)
       if G.stack:top() == G.overworld then break end
     end
     -- INSTRUMENTED (2026-08-20): four theories about this screen have all
