@@ -4203,11 +4203,19 @@ function OPS.elevator(G, c)
   -- being pressed. Press B here, and look at the stack rather than
   -- trusting a helper that treats this screen as none of its business.
   U.wait(20)
-  for _ = 1, 12 do
+  for _i = 1, 12 do
     if G.stack:top() == G.overworld then
       U.wait(10)
       if G.stack:top() == G.overworld then break end
     end
+    -- INSTRUMENTED (2026-08-20): four theories about this screen have all
+    -- been wrong — too early, too short, ui_back_out not pressing, the
+    -- press not landing. Say what is actually on top each pass, then read
+    -- it in run/chain.log rather than guessing a fifth time.
+    local _t = G.stack:top()
+    print(("[lift] pass %d top=%s kind=%s items=%s"):format(
+      _i, tostring(_t and (_t.screenId or "?")),
+      tostring(_t and _t.kind), tostring(_t and _t.items and #_t.items)))
     U.tap(G, "b"); U.wait(10)
   end
   local _stuck = (G.stack:top() ~= G.overworld)
