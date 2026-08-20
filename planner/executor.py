@@ -7779,14 +7779,32 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         low_hp_flee = (f"{_bme.get('species')} at "
                                        f"{_bme.get('hp')}/{_bme.get('maxhp')} "
                                        f"HP")
+                    _m0 = (obs or {}).get("money")
+                    _hp0 = sum(m.get("hp") or 0
+                               for m in ((obs or {}).get("party") or []))
                     obs = self.handle_battle(sg, obs)
                     obs = self.settle()
                     post_map = ((obs or {}).get("map") or {}).get("id")
-                    # a won battle never changes the map; a party wipe blacks
-                    # out and respawns at home/last Center — silently warping
-                    # the trajectory (brock15 died in the forest and the next
-                    # rounds unknowingly ran from Pallet)
-                    if post_map and pre_map and post_map != pre_map:
+                    # A WON BATTLE NEVER CHANGES THE MAP — BUT THE OP MIGHT.
+                    # This test was the map alone, and the op it runs under
+                    # is often a use_warp or a cross: step on a pad, a
+                    # trainer engages, the fight is WON, and the warp then
+                    # fires — map changed, so the harness called it a wipe,
+                    # counted it, and told the model "your party has been
+                    # WIPED OUT 2x pursuing this goal" while it was winning.
+                    # A gen1 blackout has two signatures this ignored: it
+                    # HALVES YOUR MONEY and it fully heals the party. The
+                    # journal line said "money +840" (user: "a party member
+                    # fainted is what happened").
+                    _mon = (obs or {}).get("party") or []
+                    _healed = bool(_mon) and all(
+                        m.get("max_hp") and m.get("hp") == m["max_hp"]
+                        for m in _mon)
+                    _poorer = (isinstance(_m0, int)
+                               and isinstance((obs or {}).get("money"), int)
+                               and (obs or {}).get("money") < _m0)
+                    if (post_map and pre_map and post_map != pre_map
+                            and _healed and _poorer):
                         blackout = post_map
                         self._faint_at = before[0] and self._where(pre_obs)
                         self.log("faint_marked", subgoal=sg["id"],
