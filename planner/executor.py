@@ -2655,6 +2655,25 @@ class Executor:
                        and (e or {}).get("to") != r2}
         return bool(set(self.map_doors.get(mid, ())) - walked)
 
+    def _touched_on_map(self, region: str) -> set:
+        """Everything pressed anywhere on this MAP.
+
+        Object names are unique per map, and a floor its own walls split
+        into components has several regions — so differencing sightings
+        against the touched set of ONE region calls a person you emptied
+        from the other side "unpressed". That reading drives three things:
+        the dead-end refusal, the walk-back to unfinished ground, and the
+        ranking of which ground to walk back to. Silph 2F's worker, pressed
+        from |1,1 and unreachable from |20,0, kept all three pointing at a
+        floor with nothing left on it.
+        """
+        _map = str(region).split("|")[0]
+        out = set()
+        for _r, _names in (self._tried_objs or {}).items():
+            if str(_r).split("|")[0] == _map:
+                out |= set(_names or ())
+        return out
+
     @staticmethod
     def _untaken(cmap: dict, tried: set) -> set:
         """The touched set, minus items STILL LYING ON THE MAP.
@@ -2891,7 +2910,7 @@ class Executor:
                 _left = set(self.frontier.get(_nxt) or ()) - set(
                     (self.explored.get(_nxt) or {}))
                 _things = [n for n in (self.sightings.get(_nxt) or [])
-                           if n not in (self._tried_objs.get(_nxt) or set())]
+                           if n not in self._touched_on_map(_nxt)]
                 if _left or _things:
                     self.log("dead_end_refused", subgoal=sg_id,
                              region=region,
@@ -4159,7 +4178,7 @@ class Executor:
                 # thing you have seen and not touched is exactly as good a
                 # reason to walk somewhere as a door you have not opened.
                 _seen_objs = set(self.sightings.get(region) or ())
-                _done_objs = set(self._tried_objs.get(region) or ())
+                _done_objs = self._touched_on_map(region)
                 if not (_seen_objs - _done_objs) and not (
                         set(self.map_doors.get(rmap0, ())) - seen_keys):
                     continue
@@ -4219,7 +4238,7 @@ class Executor:
             # every single time. How much is left to do somewhere is a
             # better reason to walk there than how close it is.
             _undone = len(set(self.sightings.get(region) or ())
-                          - set(self._tried_objs.get(region) or ()))
+                          - self._touched_on_map(region))
             rank = (goalward, reach if reach is not None else 99,
                     -_undone, self.visits.get(region, 0), len(path))
             if best is None or rank < best[2]:
