@@ -296,7 +296,23 @@ local ui_back_out           -- ditto; needed by need_overworld above it
 -- decision: it dismisses a screen nobody asked to be in and puts the
 -- player back where the op can run. A BATTLE is never dismissed this way —
 -- that is a real state with real choices, and it is handled elsewhere.
+-- A FADE IS NOT A BOX. Every map change pushes src/render/Transition — a
+-- fade with `phase`/`t`/`frames` and none of a screen's other marks — and
+-- it ends on its own after a few frames. Pressing B at one does nothing,
+-- so "a box was up and would not close" was the wrong sentence for it:
+-- after a lift ride the next op met the tail of the fade, reported a
+-- stuck box, and the model spent a round tapping B at a screen nobody
+-- could have closed. Wait for it instead; that is all it ever needed.
+local function _is_fade(t)
+  return t ~= nil and t.phase ~= nil and t.frames ~= nil
+     and t.map == nil and t.items == nil
+end
 local function need_overworld(G)
+  if G.overworld and G.stack:top() == G.overworld then return true end
+  for _ = 1, 60 do
+    if not _is_fade(G.stack and G.stack:top()) then break end
+    coroutine.yield()
+  end
   if G.overworld and G.stack:top() == G.overworld then return true end
   local t = G.stack and G.stack:top()
   if t and (t.enemy or t.kind) then return false end   -- in battle; leave it
@@ -4220,12 +4236,11 @@ function OPS.elevator(G, c)
     -- press not landing. Say what is actually on top each pass, then read
     -- it in run/chain.log rather than guessing a fifth time.
     local _t = G.stack:top()
-    print(("[lift] pass %d obj=%s isOW=%s hasMap=%s hasPlayer=%s "
-           .. "pages=%s ow=%s"):format(
-      _i, tostring(_t), tostring(_t == G.overworld),
-      tostring(_t and _t.map ~= nil), tostring(_t and _t.player ~= nil),
-      tostring(_t and _t.pages ~= nil), tostring(G.overworld)))
-    U.tap(G, "b"); U.wait(10)
+    if _is_fade(_t) then
+      U.wait(10)                     -- a fade ends itself; B does nothing
+    else
+      U.tap(G, "b"); U.wait(10)
+    end
   end
   -- ...AND THEN WALK OUT, BECAUSE THAT IS THE SAME INTENT. "Rode to 3F —
   -- you are still IN the car; walk out of its door" made a lift a
