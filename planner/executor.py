@@ -5347,7 +5347,37 @@ class Executor:
                   "neither): "
                 + (", ".join(spare[:10]) if spare else "nothing — every "
                    "single thing you carry is a key item")
-                + ".")
+                + "."
+                # ...AND WHICH OF THOSE HAVE A USE. This list is read under
+                # pressure and reads as a scrap heap: on Silph 11F the run
+                # tossed the MOON_STONE to free a slot for two item balls.
+                # Naming the ones the game will let you USE on a party
+                # member says nothing about what any of them does — the
+                # names are the game's own and already printed here — but
+                # it is the difference between spending a thing and
+                # destroying it.
+                + (("\nOF THOSE, these are things this game will let you "
+                    "USE on a party member ({\"op\":\"use_item\","
+                    "\"item\":X,\"slot\":N}) — using one spends it and "
+                    "keeps whatever it is worth, tossing it does not: "
+                    + ", ".join(self._usable_on_a_mon(spare[:10])) + ".")
+                   if self._usable_on_a_mon(spare[:10]) else ""))
+
+    @staticmethod
+    def _usable_on_a_mon(items):
+        """Which of these the game will let you USE on a party member.
+        Mirrors src/inventory/ItemEffects.lua (STONES, VITAMINS, the TM/HM
+        teach flow) by NAME — the names are the game's own and already on
+        screen. Says only THAT a thing has a use, never what the use is."""
+        out = []
+        for i in items or []:
+            i = str(i)
+            if (i.startswith("TM_") or i.startswith("HM_")
+                    or i.endswith("_STONE")
+                    or i in ("HP_UP", "PROTEIN", "IRON", "CARBOS",
+                             "CALCIUM", "RARE_CANDY")):
+                out.append(i)
+        return out
 
     def _respawn_line(self, obs) -> str:
         """WHERE you wake, and the RULE that moves it. The place was stated

@@ -3404,6 +3404,26 @@ end
 -- (its treasure vs its junk); driving the TOSS row and the quantity
 -- wheel is mechanics. Born at the captain's cabin: a 20-of-20 bag ate
 -- HM01 silently.
+-- Items the engine can USE on a party member, from its own tables
+-- (src/inventory/ItemEffects.lua: STONES, VITAMINS, plus the HM/TM teach
+-- flow). Says only THAT an item has a use, never what the use is — what a
+-- stone does to a Pokemon is the model's to know, and the item's own name
+-- is already on screen.
+local function item_has_a_use(id)
+  local ok, IE = pcall(require, "src.inventory.ItemEffects")
+  if not ok or not IE then return false end
+  id = tostring(id or "")
+  if id:match("^TM_") or id:match("^HM_") then return true end
+  for _, tbl in ipairs({ IE.STONES, IE.VITAMINS, IE.stones, IE.vitamins }) do
+    if type(tbl) == "table" and tbl[id] then return true end
+  end
+  -- the tables above are locals in some builds; fall back to the names,
+  -- which are the game's own and already printed to the model
+  return id:match("_STONE$") ~= nil
+      or id == "HP_UP" or id == "PROTEIN" or id == "IRON"
+      or id == "CARBOS" or id == "CALCIUM" or id == "RARE_CANDY"
+end
+
 function OPS.toss(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close)"
@@ -3411,6 +3431,19 @@ function OPS.toss(G, c)
   if not c.item then return false, "toss needs item" end
   local have = bag_count(G, c.item)
   if have < 1 then return false, "no " .. c.item .. " in the bag" end
+  -- THROWING AWAY A THING THAT HAD A USE. The bag pressure line lists
+  -- what can go, and a MOON_STONE sat in it looking like dead weight: on
+  -- Silph 11F the run tossed one to free a slot for two item balls. The
+  -- harness may not say what a stone does, but it can say the item is one
+  -- the game will let you USE on a party member, and that tossing ends
+  -- that. Refused once; re-issue the same toss and it goes.
+  if item_has_a_use(c.item) and not c.confirm then
+    return false, (c.item .. " is something this game will let you USE on "
+      .. "a party member ({\"op\":\"use_item\",\"item\":\"" .. c.item
+      .. "\",\"slot\":N}) — using it spends it and keeps whatever it is "
+      .. "worth, tossing it destroys that. Nothing has been thrown away. "
+      .. "If you meant it, send the same toss again with \"confirm\":true.")
+  end
   -- KEY ITEMS CANNOT BE THROWN AWAY. The game says so itself
   -- ("That's too impor-tant to toss!") and items.lua marks them
   -- keyItem = true, so there is no reason to walk the bag menu and find
