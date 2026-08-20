@@ -703,7 +703,16 @@ local function observe(G, seq, result)
       end
       return nil
     end
+    -- ...EXCEPT THE TILE YOU ARE ON. Excluding pads as stands is right for
+    -- ROUTING — a walk cannot cross one — but it was applied to the cell
+    -- the party is standing on too, so arriving by pad and standing right
+    -- beside a thing reported "not walkable-to right now" about something
+    -- within arm's reach (user, watching 5F: "literally happened to end up
+    -- right next to it the right way and didnt pick it up"). Where you
+    -- already are is always somewhere you can act from.
+    local _here_k = (p and p.cellX and (p.cellX .. "," .. p.cellY)) or nil
     local function stand_ok(k)
+      if _here_k and k == _here_k then return true end
       return objreach[k] and not _spin[k] and not _warp[k]
     end
     local function adjacent_reachable(x, y, over_counter)
@@ -1389,6 +1398,15 @@ function warp_reach(G, no_ledges)
     for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
       THROUGH[key(w.x, w.y)] = true
     end
+    -- ...BUT NOT THE ONE YOU ARE STANDING ON. "A door is an endpoint, not
+    -- a corridor" is about routing THROUGH a warp; the cell under your own
+    -- feet is where you already are, and you can step off it in any
+    -- direction. Applied to the origin it collapsed the whole fill to a
+    -- single tile whenever the party stood on a pad — so on Silph's pads
+    -- everything in the room read "not walkable-to right now" and the
+    -- region fingerprint was minted from one cell (user: "it was on the
+    -- pad, which i think has been conflated with the main area").
+    THROUGH[key(p.cellX, p.cellY)] = nil
   end
   while q[head] do
     local cur = q[head]; head = head + 1
