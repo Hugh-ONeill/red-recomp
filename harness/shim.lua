@@ -3346,6 +3346,26 @@ function OPS.field_move(G, c)
   -- (and clean up) instead of reporting the move used
   if G.stack:top() ~= ow then
     local t = G.stack:top()
+    -- FLY ENDS IN A CHOICE, AND CHOICES ARE THE MODEL'S. Selecting FLY
+    -- opens the destination list (src/ui/FlyMenu.lua: a plain ListMenu of
+    -- the towns the save records as VISITED), and this exit backed out of
+    -- it and reported "FLY did not fire" — so the move was unusable from
+    -- the moment it was taught. Same rule as the vending machine, the PC
+    -- and the elevator panel: leave the list OPEN, number the rows as they
+    -- read on screen, and say how to choose. The harness flies nowhere on
+    -- its own, and the list only ever offers towns already visited.
+    if t and t.items and t.items[1] then
+      local labels = {}
+      for i, r in ipairs(t.items) do
+        labels[#labels + 1] = ("%d=%s"):format(
+          i, tostring(r.label or r.value or "?"))
+      end
+      return true, ("%s opened a list%s: %s. Nothing was chosen and it is "
+        .. "left OPEN. Pick a row with {\"op\":\"menu\",\"index\":N}, "
+        .. "or {\"op\":\"tap\",\"btn\":\"b\"} to leave it."):format(
+          mv, t.title and (" (" .. tostring(t.title) .. ")") or "",
+          table.concat(labels, ", "))
+    end
     if not (t and (t.enemy or t.kind)) then
       ui_back_out(G)
       if G.stack:top() ~= ow then
