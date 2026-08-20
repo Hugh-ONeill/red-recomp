@@ -4220,9 +4220,11 @@ function OPS.elevator(G, c)
     -- press not landing. Say what is actually on top each pass, then read
     -- it in run/chain.log rather than guessing a fifth time.
     local _t = G.stack:top()
-    print(("[lift] pass %d top=%s kind=%s items=%s"):format(
-      _i, tostring(_t and (_t.screenId or "?")),
-      tostring(_t and _t.kind), tostring(_t and _t.items and #_t.items)))
+    print(("[lift] pass %d obj=%s isOW=%s hasMap=%s hasPlayer=%s "
+           .. "pages=%s ow=%s"):format(
+      _i, tostring(_t), tostring(_t == G.overworld),
+      tostring(_t and _t.map ~= nil), tostring(_t and _t.player ~= nil),
+      tostring(_t and _t.pages ~= nil), tostring(G.overworld)))
     U.tap(G, "b"); U.wait(10)
   end
   -- ...AND THEN WALK OUT, BECAUSE THAT IS THE SAME INTENT. "Rode to 3F —
