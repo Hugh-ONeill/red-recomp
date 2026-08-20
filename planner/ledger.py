@@ -626,6 +626,15 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None) -> str:
     still has an exit never taken and take it, else say so."""
     here = ex._where(obs)
     cands = cands if cands is not None else build(ex, obs, want_explore=False)
+    # ...AND A LIFT CAR IS NEVER "FULLY WORKED" HERE EITHER. The header
+    # says so now; this line is item 1, the most prominent thing on the
+    # page, and it was still telling the model to leave a car whose panel
+    # is the only reason to be in it.
+    if (str((obs.get("map") or {}).get("id") or "").endswith("_ELEVATOR")
+            or (obs.get("map") or {}).get("lift_floors")):
+        return ("press the panel and ride: {\"op\":\"elevator\","
+                "\"floor\":\"<a floor as the panel spells it>\"} — the "
+                "car's one door opens onto whichever floor you rode to")
     order = {"item": 0, "fixture": 1, "cut_tree": 1, "npc": 2, "trainer": 2,
              "sign": 3}
     things = sorted((c for c in cands
