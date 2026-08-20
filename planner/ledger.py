@@ -877,6 +877,26 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  "it reads on the panel — 1F, 5F, B4F, ROOF). The door here "
                  "is one doorway; where it opens depends on the floor you "
                  "rode to, so this car is never finished with")
+    elif fully_worked(cands) and [c for c in cands
+                                  if c.status == "unreachable"
+                                  and c.kind not in ("op", "door", "seam")]:
+        # NOT FINISHED WHILE SOMETHING SITS HERE YOU CANNOT REACH. "FULLY
+        # WORKED: nothing here is untried or unpressed" was printed on
+        # Silph 5F with two never-picked-up items on the floor, both marked
+        # "not walkable-to right now" a few lines below it — one of them
+        # the CARD KEY the run had spent the whole leg looking for.
+        # Unreachable is not pressed. A floor with something on it you
+        # cannot get to is not finished; it is a floor you have not found
+        # the way into, which is a different thing to do next. How to get
+        # in stays the model's.
+        _stuck = [c for c in cands if c.status == "unreachable"
+                  and c.kind not in ("op", "door", "seam")]
+        head += (". EVERYTHING YOU CAN REACH HERE IS DONE — but "
+                 + str(len(_stuck)) + " thing(s) sit on this floor that no "
+                 "walk from here reaches ("
+                 + ", ".join(c.key for c in _stuck[:4])
+                 + "), so this is not finished ground, it is ground you "
+                 "have not found the way into")
     elif fully_worked(cands):
         head += (". FULLY WORKED: nothing here is untried or unpressed — "
                  "staying finds nothing new; leaving for ground that still "
