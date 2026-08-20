@@ -99,11 +99,19 @@ class Candidate:
     hops: int | None = None      # exits: legs to the goal over walked ground
     offer: bool = True           # False only for the two hard cases
     rank: tuple = field(default_factory=tuple)
+    look: str = "door"           # door | stairs | pad | hole (warps only)
 
     def label(self) -> str:
         if self.kind == "seam":
             return f"walk {self.key}"
         if self.kind == "door":
+            _l = getattr(self, "look", "door") or "door"
+            if _l == "pad":
+                return f"warp pad ({self.key})"
+            if _l == "hole":
+                return f"hole ({self.key})"
+            if _l == "stairs":
+                return f"stairs/ladder ({self.key})"
             return f"door ({self.key})"
         if self.kind == "op":
             return self.key
@@ -378,6 +386,11 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         walked = ex._walked_dest(mid, key)
         dest_map = w.get("dest")
         c = Candidate(key=key, kind="door", dest=walked)
+        # what it is DRAWN as, straight from the tile under it (shim
+        # warp_look): a door, a stairway, a teleport pad, a hole. A player
+        # tells these apart at a glance and the ledger called them all
+        # "door", so eleven floors of Silph pads read like eleven doors.
+        c.look = str(w.get("look") or "door")
         oc = outcomes.get(key) or {}
         c.n = int(oc.get("n") or rec.get("n") or 0)
         if oc.get("last"):

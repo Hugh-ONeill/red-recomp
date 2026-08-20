@@ -544,10 +544,32 @@ local function observe(G, seq, result)
                        and G.overworld.lastOutdoor.id)
                       or (G.save and G.save.lastOutdoor
                           and G.save.lastOutdoor.id)
+      -- WHAT IT LOOKS LIKE IS ON THE SCREEN. Every way out was reported
+      -- as "door (x,y)" whatever it was drawn as, so a stairwell, a
+      -- ladder, a fall-through hole and Silph's teleport PADS all read
+      -- alike — while a player tells them apart at a glance, and a floor
+      -- littered with pads is a different problem from a floor with one
+      -- staircase. The engine already names them from the tile under the
+      -- cell, the same way pokered does: isDoorTileCell (a door),
+      -- warpPadOrHoleAt ("pad"/"hole", IsPlayerStandingOnWarpPadOrHole),
+      -- and a warp tile that is neither is the stair/ladder case its own
+      -- comment names. Says nothing about where any of them GOES.
+      local lm = ow.map
+      local function warp_look(x, y)
+        if lm and lm.isDoorTileCell and lm:isDoorTileCell(x, y) then
+          return "door"
+        end
+        if lm and lm.warpPadOrHoleAt then
+          local k = lm:warpPadOrHoleAt(x, y)
+          if k then return tostring(k) end     -- "pad" | "hole"
+        end
+        return "stairs"
+      end
       for i, w in ipairs(md.warps) do
         local dest = w.destMap
         if dest == "LAST_MAP" and lastOut then dest = lastOut end
         o.map.warps[i] = { x = w.x, y = w.y, dest = dest,
+                           look = warp_look(w.x, w.y),
                            reachable = reach[w.x .. "," .. w.y] and true
                                        or false }
       end
