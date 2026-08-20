@@ -691,8 +691,14 @@ local function observe(G, seq, result)
                   .. "one, but a pad is a thing you step on, not a wall")
                  :format(x + d[1], y + d[2])
         elseif k == "hole" then
-          return ("a HOLE at %d,%d is beside it — stepping on one drops you "
-                  .. "through"):format(x + d[1], y + d[2])
+          -- A HOLE IS NOT A PAD. You drop through it to the floor below
+          -- and there is no going back up the way you came, so a hole
+          -- beside a thing is not a way IN to that thing the way a pad
+          -- can be (user: "the hole is one-way down, but the warppad is
+          -- both ways").
+          return ("a HOLE at %d,%d is beside it — a hole is a way DOWN "
+                  .. "only: you drop to the floor below and cannot climb "
+                  .. "back up it"):format(x + d[1], y + d[2])
         end
       end
       return nil
@@ -1262,7 +1268,8 @@ local function bushes_blocking(G, tx, ty, reach)
                 and ("a WARP PAD at (%d,%d) — a walk will not cross one, "
                      .. "stepping on it takes you somewhere")
               or _k == "hole"
-                and ("a HOLE at (%d,%d) — stepping on it drops you through")
+                and ("a HOLE at (%d,%d) — a way DOWN only: you drop to the "
+                     .. "floor below and cannot come back up it")
               or shut_door_at(G, out[i].x, out[i].y)
                 and ("a CLOSED DOOR at (%d,%d)")
               or ("CUT_TREE (a bush CUT clears) at (%d,%d)"))
