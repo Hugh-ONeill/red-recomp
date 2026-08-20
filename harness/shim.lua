@@ -705,7 +705,13 @@ local function observe(G, seq, result)
       -- floor plaques: on the Celadon roof, with the subgoal has_item
       -- FRESH_WATER, an NPC outranked three untouched drink machines.
       -- The name is the game's own label, already printed to the model.
-      local kind = nm:find("VENDING_MACHINE") and "fixture" or "sign"
+      -- ...AND AN ELEVATOR PANEL, for the same reason: pressing it opens
+      -- the floor list and rides. Filed as a sign it went "pressed" once
+      -- and the car then read FULLY WORKED, so the one message naming the
+      -- floors and the op scrolled away and Silph's car was entered and
+      -- left 31 times.
+      local kind = (nm:find("VENDING_MACHINE") or nm:find("ELEVATOR"))
+                   and "fixture" or "sign"
       o.map.objects[#o.map.objects + 1] = {
         x = sg.x, y = sg.y, kind = kind, name = nm,
         reachable = adjacent_reachable(sg.x, sg.y, false),

@@ -790,7 +790,23 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     _sh = shelf_of(ex, here)
     if _sh:
         head += f". This mart sells: {', '.join(_sh[:10])}"
-    if fully_worked(cands):
+    # A LIFT CAR IS NEVER FINISHED, AND IT IS NOT A ROOM. Its panel is the
+    # whole point of it: the floors it serves are on the panel, and one of
+    # them is where you want to be. Filed as an ordinary room with a sign
+    # and one door, it read "FULLY WORKED — nothing new can be found by
+    # staying", so the run stepped into Silph's car and straight back out
+    # 31 times while its own plan said "go to the 1st floor via the
+    # elevator and use the PC". Nothing here says which floor to pick.
+    _car = (str((obs.get("map") or {}).get("id") or "").endswith("_ELEVATOR")
+            or bool((obs.get("map") or {}).get("lift_floors")))
+    if _car:
+        head += (". THIS IS A LIFT CAR: the panel on the wall lists the "
+                 "floors this lift serves, and riding is "
+                 "{\"op\":\"elevator\",\"floor\":\"5F\"} (the label as "
+                 "it reads on the panel — 1F, 5F, B4F, ROOF). The door here "
+                 "is one doorway; where it opens depends on the floor you "
+                 "rode to, so this car is never finished with")
+    elif fully_worked(cands):
         head += (". FULLY WORKED: nothing here is untried or unpressed — "
                  "staying finds nothing new; leaving for ground that still "
                  "has something is how the search goes on")

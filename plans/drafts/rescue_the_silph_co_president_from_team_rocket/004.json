@@ -1,0 +1,97 @@
+{
+ "goal": "Rescue the Silph Co. president from Team Rocket",
+ "subgoals": [
+  {
+   "id": "clear_silph_co_1f",
+   "goal_text": "Clear the first floor of Silph Co. and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  },
+  {
+   "id": "clear_silph_co_2f",
+   "goal_text": "Clear the second floor of Silph Co. and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  },
+  {
+   "id": "clear_silph_co_3f",
+   "goal_text": "Clear the third floor of Silph Co. and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  },
+  {
+   "id": "clear_silph_co_4f",
+   "goal_text": "Clear the fourth floor of Silph Co. and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  },
+  {
+   "id": "clear_silph_co_5f",
+   "goal_text": "Clear the fifth floor of Silph Co. and reach the elevator",
+   "done_when": {
+    "map": "SILPH_CO_ELEVATOR"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  },
+  {
+   "id": "reach_silph_co_11f",
+   "goal_text": "Use the elevator to reach the 11th floor",
+   "done_when": {
+    "map": "SILPH_CO_11F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni to rescue the Silph Co. president",
+   "done_when": {
+    "flag": "EVENT_BEAT_GIOVANNI"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Rescue the Silph Co. president from Team Rocket"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}
