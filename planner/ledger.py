@@ -568,6 +568,7 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         # things that are equally fresh. Which to take is still the
         # model's; this decides what to read first, not what to do.
         c.rank = (not c.reachable, STATUS_RANK.get(c.status, 9),
+                  1 if _refused(c) else 0,
                   0 if c.kind in _goal_kinds else 1, into_seen,
                   c.n, c.kind, c.key)
     out.sort(key=lambda c: c.rank)
@@ -577,6 +578,14 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         out.insert(0, Candidate(key="explore", kind="op", status="op",
                                 note=plan_explore(ex, obs, out)))
     return out
+
+
+def _refused(c) -> bool:
+    """Has this candidate turned the run back? The status cannot say: a
+    crossing that failed never completed, so it stays "untried"."""
+    n = str(getattr(c, "note", "") or "")
+    return ("FAILED" in n or "cannot be walked to" in n
+            or "no walkable path" in n)
 
 
 def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None) -> str:
@@ -601,10 +610,21 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None) -> str:
                     f"party Pokemon knows CUT and it is a way on")
         return (f"press {things[0].key} here ({things[0].kind}); "
                 f"{len(things)} thing(s) here are untouched")
+    # A WAY THAT JUST REFUSED YOU IS NOT AN UNTRIED WAY. The crossing stays
+    # "untried" because it never completed, and the refusal lives only in
+    # the note — so explore kept recommending "take walk west" in a
+    # four-cell Route 14 nook whose west seam cannot be reached from it, and
+    # the run stood in that pocket 1181 times. Prefer an exit nothing has
+    # turned us back from; fall back to the refused one only if it is all
+    # there is, since the world does change.
     exits = [c for c in cands if c.status == "untried"
              and c.kind in ("door", "seam")]
+    _fresh = [c for c in exits if not _refused(c)]
+    if _fresh:
+        return f"take {_fresh[0].label()} — untried from here"
     if exits:
-        return f"take {exits[0].label()} — untried from here"
+        return (f"take {exits[0].label()} — untried from here, though it "
+                f"turned you back last time")
     # nearest area with something never taken OR never pressed, over
     # walked ground — leaving worked ground for ground that still has
     # something is the whole idea, so both kinds of "something" count
