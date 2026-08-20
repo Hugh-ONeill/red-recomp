@@ -6227,6 +6227,18 @@ class Executor:
             # that says the map still HAS unopened ways — shut_line — was
             # built and then dropped on this path. Route 16 sat on three
             # never-opened doors for an attempt with nothing saying so.
+        # ...AND THIS RETURN IS THE LEDGER'S, NOT THE SAFARI'S. It sat one
+        # level too deep, inside `if _sf.get("steps") is not None`, so the
+        # whole ledger render — the ranked local block, the refusal notes,
+        # the blockers, everything built above — was returned ONLY while
+        # the Safari game was running. Every other prompt on this path fell
+        # through to the legacy "EXITS FROM HERE" renderer, which knows
+        # nothing of any of it: standing in the Route 14 nook it offered
+        # "UNTRIED (prefer these ...): walk west out of here -> UNKNOWN"
+        # with no hint that the west seam had refused the party a thousand
+        # times. The Safari block above only PREPENDS to _rs_line; it was
+        # never meant to own the return.
+        if USE_LEDGER:
             return (move_head + warned + "\n" + ledger_block + pp_line
                     + lift_line
                     + ("\n" + _rs_line if _rs_line else "")
