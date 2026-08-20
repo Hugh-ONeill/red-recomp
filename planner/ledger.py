@@ -437,6 +437,18 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             c.n = spent[key]
             c.note = c.note or ("reached for and never once got through — "
                                 "something stops you before the doorway")
+        # A DOOR YOU STOOD ON THAT DID NOTHING IS NOT AN UNTRIED DOOR. The
+        # crossing never completes, so nothing marks it and it stays
+        # "never taken from here" for ever — and it is the only untried
+        # exit on the floor, so the run goes back to it every round. Silph
+        # 1F's pad at (16,10): "stepped through but no warp fired", three
+        # attempts, three rounds. What we know is that it was tried and did
+        # not open, which is what `spent` already means.
+        elif "no warp fired" in str(c.note or ""):
+            c.status = "spent"
+            c.note = _join(c.note, "you have stood on this one and it did "
+                                   "not fire; something has to change "
+                                   "before it will")
         elif rec.get("shut"):
             reopened = (now is not None and rec.get("shut_at") != now) or \
                        (w.get("reachable") and not rec.get("shut_reach", True))
