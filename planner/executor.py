@@ -6911,11 +6911,14 @@ one at a time and will not leave you with an empty party. obs.daycare says
 who is in and what taking them back costs),
 {"op":"daycare_withdraw"} (collect the boarded Pokemon and pay the fee;
 needs a free party slot and the money),
-{"op":"elevator","floor":"B4F"} (ride an elevator: presses its panel and
-picks that floor from the list it offers. Some panels want a key and say
-so. After the ride you are STILL INSIDE the car — walk out of its door to
-arrive on that floor. A car's floors are NOT doors you can see from
-inside it: pressing the panel is the only way to learn where it goes),
+{"op":"elevator","floor":"B4F"} (ride a lift DOOR TO DOOR, from wherever
+you stand: if you are outside the car it walks in, then it presses the
+panel, picks that floor from the list it offers, waits out the ride and
+walks you out onto that floor. One op for the whole trip — a car has one
+doorway and no choices in it, and the only decision is which floor. Some
+panels want a key and say so. A car's floors are NOT doors you can see
+from inside it: pressing the panel is the only way to learn where it
+goes),
 {"op":"party_swap","a":1,"b":3} (swap two party slots. SLOT 1 IS WHO GETS
 SENT OUT FIRST, in every battle, so this is how you choose who fights and
 who is protected — and a Pokemon that never gets sent out never gains a

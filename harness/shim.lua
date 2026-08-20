@@ -4107,6 +4107,35 @@ function OPS.elevator(G, c)
     return false, "elevator needs floor=<label>, e.g. floor=\"B4F\""
   end
   local want = tostring(c.floor):upper()
+  -- RIDING IS ONE ACT, DOOR TO DOOR. Standing outside a lift, "take me to
+  -- 3F" meant: warp into the car, press the panel, wait the fade, warp out
+  -- — and a macro may hold only ONE map-changing op, so the model could
+  -- never say it in one go. It re-derived the trip every round and lost
+  -- the thread halfway, bouncing between the car and the floor it started
+  -- on (user, watching Silph, then: "lets just do that"). A car has one
+  -- doorway, one panel, and no choices between them; the only decision is
+  -- WHICH FLOOR, which is the argument. So: if there is no panel where we
+  -- stand, walk into the car first and carry on.
+  do
+    local _ow0 = G.overworld
+    local _md0 = _ow0 and _ow0.map and G.data and G.data.maps
+                 and G.data.maps[_ow0.map.id]
+    local _panel_here = false
+    for _, sg in ipairs((_md0 and _md0.signs) or {}) do
+      if tostring(sg.name or sg.text or ""):upper():find("ELEVATOR") then
+        _panel_here = true
+      end
+    end
+    if not _panel_here then
+      for _, w in ipairs((_md0 and _md0.warps) or {}) do
+        if tostring(w.destMap or ""):upper():find("ELEVATOR") then
+          local _in = (G.overworld.map or {}).id
+          OPS.use_warp(G, { x = w.x, y = w.y })
+          if (G.overworld.map or {}).id ~= _in then break end
+        end
+      end
+    end
+  end
   -- THE PANEL IS A SIGN. data/maps has it as
   -- signs = {{ text = "TEXT_ROCKETHIDEOUTELEVATOR", x = 1, y = 1 }} —
   -- not an object and not a fixture, which is where this looked first and
@@ -4134,10 +4163,11 @@ function OPS.elevator(G, c)
     end
   end
   if not px then
-    return false, "no elevator panel on this map — an elevator is a small "
-      .. "ROOM of its own: walk in through its door first (the car is "
-      .. "behind a door like any other), then send elevator floor=... "
-      .. "from inside it"
+    return false, "no elevator on this map — there is no lift panel where "
+      .. "you stand and no door here leads into a car. This op rides a "
+      .. "lift door to door: from outside it walks in, presses the floor "
+      .. "and walks out onto that floor, so it only needs a lift to be "
+      .. "somewhere on this map"
   end
   local ok, why = OPS.interact(G, { x = px, y = py, floor = want })
   if not ok then return false, why or "could not reach the panel" end
