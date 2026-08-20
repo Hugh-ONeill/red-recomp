@@ -1,0 +1,122 @@
+{
+  "goal": "Buy Poke Balls at the Viridian City Poke Mart",
+  "subgoals": [
+    {
+      "id": "travel_to_viridian_city",
+      "goal_text": "Travel to Viridian City",
+      "done_when": {
+        "map": "VIRIDIAN_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_viridian_mart",
+      "goal_text": "Enter the Viridian City Poke Mart",
+      "done_when": {
+        "area": "VIRIDIAN_MART|0,2"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "open_shop_menu",
+      "goal_text": "Talk to the clerk to open the shop menu",
+      "done_when": {
+        "screen": "ShopMenu"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VIRIDIANMART_CLERK",
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
+        },
+        {
+          "to": "PALLET_TOWN|10,0"
+        },
+        {
+          "op": "use_warp",
+          "x": 12,
+          "y": 11,
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "OAKSLAB_OAK1",
+          "answer": "yes",
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 11,
+          "when": {
+            "map": "OAKS_LAB"
+          }
+        },
+        {
+          "to": "VIRIDIAN_MART"
+        },
+        {
+          "op": "interact",
+          "name": "VIRIDIANMART_CLERK",
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 8
+      }
+    },
+    {
+      "id": "buy_poke_balls",
+      "goal_text": "Purchase Poke Balls from the shop",
+      "done_when": {
+        "has_item": {
+          "POKE_BALL": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "buy",
+          "item": "POKE_BALL",
+          "count": 1,
+          "when": {
+            "map": "VIRIDIAN_MART"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

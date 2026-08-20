@@ -1,0 +1,39 @@
+{
+ "goal": "Catch a NIDORAN on Route 22",
+ "subgoals": [
+  {
+   "id": "buy_more_poke_balls",
+   "goal_text": "Buy more Poke Balls at the Viridian City Mart to ensure enough for catching Nidoran",
+   "done_when": {
+    "has_item": {
+     "POKE_BALL": 5
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_route_22",
+   "goal_text": "Travel to Route 22",
+   "done_when": {
+    "map": "ROUTE_22"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "catch_nidoran",
+   "goal_text": "Catch either a Nidoran female or Nidoran male",
+   "done_when": {
+    "any_of": [
+     {
+      "has_species": "NIDORAN_F"
+     },
+     {
+      "has_species": "NIDORAN_M"
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

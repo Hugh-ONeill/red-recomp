@@ -2,7 +2,7 @@
   "goal": "Obtain a starter Pokemon",
   "subgoals": [
     {
-      "id": "exit_bedroom",
+      "id": "exit_house_upstairs",
       "goal_text": "Leave the second floor of the house",
       "done_when": {
         "map": "REDS_HOUSE_1F"
@@ -29,7 +29,7 @@
       }
     },
     {
-      "id": "exit_house",
+      "id": "exit_house_ground",
       "goal_text": "Leave the house and enter Pallet Town",
       "done_when": {
         "map": "PALLET_TOWN"
@@ -57,12 +57,19 @@
     },
     {
       "id": "enter_oaks_lab",
-      "goal_text": "Go inside Professor Oak's laboratory",
+      "goal_text": "Enter Professor Oak's Laboratory",
       "done_when": {
         "map": "OAKS_LAB"
       },
       "escalation_rounds": 4,
       "macro": [
+        {
+          "op": "interact",
+          "name": "TEXT_PALLETTOWN_OAKSLAB_SIGN",
+          "when": {
+            "map": "PALLET_TOWN"
+          }
+        },
         {
           "op": "use_warp",
           "x": 12,
@@ -79,49 +86,28 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "campaign1",
         "via": "escalation",
-        "n_ops": 1
+        "n_ops": 2
       }
     },
     {
-      "id": "receive_starter",
-      "goal_text": "Interact with the Pokemon and choose a starter",
+      "id": "get_starter",
+      "goal_text": "Talk to Professor Oak and choose a starter Pokemon",
       "done_when": {
         "party_nonempty": true
       },
       "escalation_rounds": 4,
       "macro": [
         {
-          "op": "interact",
-          "name": "PALLETTOWN_GIRL",
+          "op": "cross",
+          "dir": "north",
           "when": {
             "map": "PALLET_TOWN"
           }
         },
         {
           "op": "interact",
-          "name": "TEXT_PALLETTOWN_SIGN",
-          "when": {
-            "map": "PALLET_TOWN"
-          }
-        },
-        {
-          "op": "interact",
-          "name": "TEXT_PALLETTOWN_PLAYERSHOUSE_SIGN",
-          "when": {
-            "map": "PALLET_TOWN"
-          }
-        },
-        {
-          "op": "interact",
-          "name": "TEXT_PALLETTOWN_RIVALSHOUSE_SIGN",
-          "when": {
-            "map": "PALLET_TOWN"
-          }
-        },
-        {
-          "op": "interact",
-          "x": 6,
-          "y": 3,
+          "name": "ITEM_7_3",
+          "answer": "yes",
           "when": {
             "map": "OAKS_LAB"
           }
@@ -138,7 +124,7 @@
         "authored_by": "gemma4:31b-it-q4_K_M",
         "run": "campaign1",
         "via": "escalation",
-        "n_ops": 6
+        "n_ops": 3
       }
     }
   ],

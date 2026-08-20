@@ -1,0 +1,32 @@
+{
+  "goal": "Reach Pewter City",
+  "subgoals": [
+    {
+      "id": "exit_viridian_forest",
+      "goal_text": "Walk through Viridian Forest and exit through the north gate to reach Route 2",
+      "done_when": {
+        "map": "ROUTE_2"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Reach Pewter City"
+      }
+    },
+    {
+      "id": "reach_pewter_city",
+      "goal_text": "Travel north from Route 2 to enter Pewter City",
+      "done_when": {
+        "map": "PEWTER_CITY"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Reach Pewter City"
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,69 @@
+{
+  "goal": "Defeat Giovanni on the 11th floor of Silph Co.",
+  "subgoals": [
+    {
+      "id": "heal_at_saffron_center",
+      "goal_text": "Visit the Saffron City Pokemon Center to fully heal the party before the final confrontation.",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "enter_silph_co",
+      "goal_text": "Enter the Silph Co. building.",
+      "done_when": {
+        "map": "SILPH_CO_1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "reach_elevator",
+      "goal_text": "Navigate to the Silph Co. elevator.",
+      "done_when": {
+        "map": "SILPH_CO_ELEVATOR"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "ride_to_11f",
+      "goal_text": "Use the elevator panel to travel to the 11th floor and exit the elevator.",
+      "done_when": {
+        "map": "SILPH_CO_11F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "tap",
+          "btn": "b"
+        },
+        {
+          "op": "use_warp",
+          "x": 2,
+          "y": 3,
+          "when": {
+            "map": "SILPH_CO_ELEVATOR"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign3",
+        "via": "escalation",
+        "n_ops": 2
+      },
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      }
+    },
+    {
+      "id": "defeat_giovanni",
+      "goal_text": "Locate and defeat Giovanni in battle on the 11th floor.",
+      "done_when": {
+        "flag": "EVENT_BEAT_GIOVANNI"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

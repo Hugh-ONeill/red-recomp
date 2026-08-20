@@ -1,11 +1,12 @@
 Obtain a starter Pokemon
-Deliver the OAKS_PARCEL to Professor Oak
 Buy Poke Balls at the Viridian City Poke Mart
-the party holds 2 or more Pokemon
+Catch a NIDORAN on Route 22
 Reach Pewter City
 every party member is at least level 12
-Exit Mt. Moon
+Defeat Brock for the Boulder Badge
+Take one of the fossils from the deepest floor of Mt. Moon
 Reach Cerulean City
+the party holds a WATER or GRASS type
 Retrieve the S.S. Ticket from Bill
 Defeat Misty for the Cascade Badge
 Chase the Team Rocket thief out of the burgled house in Cerulean City
@@ -19,22 +20,23 @@ Travel through Rock Tunnel from the north side of Route 10 to its south side
 Reach Lavender Town by walking south from the Rock Tunnel's south mouth
 Reach Celadon City
 Defeat Erika for the Rainbow Badge
-Defeat the Team Rocket Admin in the Rocket Hideout
+Find the Rocket Hideout under the Celadon Game Corner
 Retrieve the Lift Key in the Rocket Hideout
 Defeat Giovanni in the Rocket Hideout for the Silph Scope
-Give a drink from the Celadon Department Store to a thirsty guard of Saffron City
+Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate
 Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute
-Wake the Snorlax sleeping on Route 12 with the Poke Flute
+Receive the BIKE_VOUCHER from the Pokemon Fan Club chairman in Vermilion City
 Exchange the BIKE_VOUCHER for a BICYCLE at the bike shop in Cerulean City
+Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor (its doors on Route 16 are at 24,4 and 24,5)
+a party Pokemon knows FLY
+Wake the Snorlax sleeping on Route 12 with the Poke Flute
+Reach Fuchsia City
 Retrieve the HM03 from the Secret House in the Safari Zone
 Retrieve the Gold Teeth from the Safari Zone and return them to the Warden for HM04
 a party Pokemon knows SURF
 a party Pokemon knows STRENGTH
 Defeat Koga for the Soul Badge
-Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate
-Retrieve the HM02 from the house on the west side of Route 16, reached through the Route 16 gate's upper corridor (its doors on Route 16 are at 24,4 and 24,5)
-a party Pokemon knows FLY
-Defeat Giovanni on the 11th floor of Silph Co.
+Retrieve the Card Key inside Silph Co.
 Rescue the Silph Co. president from Team Rocket
 every party member is at least level 40
 Defeat Sabrina for the Marsh Badge

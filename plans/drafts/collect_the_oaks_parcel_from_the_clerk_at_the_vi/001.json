@@ -1,0 +1,86 @@
+{
+ "goal": "Collect the OAKS_PARCEL from the clerk at the Viridian City Poke Mart and deliver it to Professor Oak in his lab in Pallet Town",
+ "subgoals": [
+  {
+   "id": "enter_viridian_mart",
+   "goal_text": "Enter the Poke Mart in Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_MART"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Collect the OAKS_PARCEL from the clerk at the Viridian City Poke Mart and deliver it to Professor Oak in his lab in Pallet Town"
+   }
+  },
+  {
+   "id": "collect_oaks_parcel",
+   "goal_text": "Talk to the clerk to receive the parcel for Professor Oak",
+   "done_when": {
+    "has_item": {
+     "OAKS_PARCEL": 1
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Collect the OAKS_PARCEL from the clerk at the Viridian City Poke Mart and deliver it to Professor Oak in his lab in Pallet Town"
+   }
+  },
+  {
+   "id": "exit_viridian_mart",
+   "goal_text": "Leave the Poke Mart and return to Viridian City",
+   "done_when": {
+    "map": "VIRIDIAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Collect the OAKS_PARCEL from the clerk at the Viridian City Poke Mart and deliver it to Professor Oak in his lab in Pallet Town"
+   }
+  },
+  {
+   "id": "travel_to_pallet_town",
+   "goal_text": "Travel from Viridian City to Pallet Town",
+   "done_when": {
+    "map": "PALLET_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Collect the OAKS_PARCEL from the clerk at the Viridian City Poke Mart and deliver it to Professor Oak in his lab in Pallet Town"
+   }
+  },
+  {
+   "id": "enter_oaks_lab",
+   "goal_text": "Enter Professor Oak's laboratory",
+   "done_when": {
+    "map": "OAKS_LAB"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Collect the OAKS_PARCEL from the clerk at the Viridian City Poke Mart and deliver it to Professor Oak in his lab in Pallet Town"
+   }
+  },
+  {
+   "id": "deliver_parcel",
+   "goal_text": "Talk to Professor Oak to deliver the parcel",
+   "done_when": {
+    "flag": "EVENT_GOT_OAKS_PARCEL"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Collect the OAKS_PARCEL from the clerk at the Viridian City Poke Mart and deliver it to Professor Oak in his lab in Pallet Town"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

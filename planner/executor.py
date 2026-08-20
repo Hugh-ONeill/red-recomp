@@ -8671,13 +8671,34 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if _older:
                     plan_echo += (" (the first ones are from EARLIER ATTEMPTS "
                                   "at this same step)")
+                # A CONCLUSION IS ONLY TRUE WHERE IT WAS DRAWN. Mt Moon's
+                # B2F is three pockets: from |27,5 the run wrote "the
+                # fossils are in a region I cannot reach", which was exactly
+                # right THERE — and then it walked into |20,5, where the
+                # ledger's first three lines are the two fossils and
+                # "explore — press MTMOONB2F_DOME_FOSSIL here", read its own
+                # sentence back twice, and warped out of the room it had
+                # been trying to reach. The echo already says where each
+                # plan was written; it did not say that where you are now
+                # is somewhere else, and what is true here is the list, not
+                # the memory.
+                _here_now = self._where(obs)
                 def _pl(t):
                     _r, _w, _p = t[0], t[1], t[2]
                     _v = t[3] if len(t) > 3 and t[3] else ""
+                    _far = "" if str(_w) == str(_here_now) else \
+                           "  [written somewhere else — you are at "\
+                           f"{_here_now} now]"
                     return (f"  R{_r} (at {_w}): {_p}"
-                            + (f"  → {_v}" if _v else ""))
+                            + (f"  → {_v}" if _v else "") + _far)
                 plan_echo += ":\n" + "\n".join(
                     _pl(t) for t in (_older + list(self._plans_said))) + "\n"
+                if any(str(t[1]) != str(_here_now)
+                       for t in (_older + list(self._plans_said))):
+                    plan_echo += ("Where a plan above was written somewhere "
+                                  "else, what it concluded was about THAT "
+                                  "ground. What is true where you stand now "
+                                  "is the list at the top of this message.\n")
             # ...AND WHAT YOU HAVE DONE FOR THIS STEP, over every attempt:
             # the outcome ledger summed across areas — op, how many times,
             # what happened last. The ledger block shows it per area; this

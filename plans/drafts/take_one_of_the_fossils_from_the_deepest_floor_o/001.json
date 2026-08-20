@@ -1,0 +1,69 @@
+{
+ "goal": "Take one of the fossils from the deepest floor of Mt. Moon",
+ "subgoals": [
+  {
+   "id": "enter_mt_moon",
+   "goal_text": "Enter Mt. Moon from Route 4",
+   "done_when": {
+    "map": "MT_MOON_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Take one of the fossils from the deepest floor of Mt. Moon"
+   }
+  },
+  {
+   "id": "descend_to_b1f",
+   "goal_text": "Navigate through the first floor to reach the basement",
+   "done_when": {
+    "map": "MT_MOON_B1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Take one of the fossils from the deepest floor of Mt. Moon"
+   }
+  },
+  {
+   "id": "descend_to_b2f",
+   "goal_text": "Navigate through the first basement to reach the deepest floor",
+   "done_when": {
+    "map": "MT_MOON_B2F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Take one of the fossils from the deepest floor of Mt. Moon"
+   }
+  },
+  {
+   "id": "collect_fossil",
+   "goal_text": "Find and pick up either the Helix Fossil or the Dome Fossil",
+   "done_when": {
+    "any_of": [
+     {
+      "has_item": {
+       "HELIX_FOSSIL": 1
+      }
+     },
+     {
+      "has_item": {
+       "DOME_FOSSIL": 1
+      }
+     }
+    ]
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Take one of the fossils from the deepest floor of Mt. Moon"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

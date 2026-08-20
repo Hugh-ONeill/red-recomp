@@ -1,0 +1,54 @@
+{
+ "goal": "Reach Pewter City",
+ "subgoals": [
+  {
+   "id": "train_party",
+   "goal_text": "Battle wild Pokemon in Viridian Forest or Route 2 to raise the party's level, as the current level 6 Charmander is too weak for the route.",
+   "done_when": {
+    "lead_level": 9
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_route_2",
+   "goal_text": "Travel north from Viridian City to Route 2",
+   "done_when": {
+    "map": "ROUTE_2"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_forest_gate",
+   "goal_text": "Enter the Viridian Forest south gate building",
+   "done_when": {
+    "area": "VIRIDIAN_FOREST_SOUTH_GATE|5,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_viridian_forest",
+   "goal_text": "Pass through the gate into the Viridian Forest",
+   "done_when": {
+    "map": "VIRIDIAN_FOREST"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_viridian_forest",
+   "goal_text": "Navigate through the Viridian Forest and exit through the north gate",
+   "done_when": {
+    "area": "VIRIDIAN_FOREST_SOUTH_GATE|5,0"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "arrive_pewter_city",
+   "goal_text": "Travel north from Route 2 to enter Pewter City",
+   "done_when": {
+    "map": "PEWTER_CITY"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

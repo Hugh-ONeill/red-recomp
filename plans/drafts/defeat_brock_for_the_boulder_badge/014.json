@@ -1,0 +1,45 @@
+{
+ "goal": "Defeat Brock for the Boulder Badge",
+ "subgoals": [
+  {
+   "id": "heal_at_pewter_center",
+   "goal_text": "Go to the Pewter City Pokemon Center and heal the party",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Brock for the Boulder Badge"
+   }
+  },
+  {
+   "id": "enter_pewter_gym",
+   "goal_text": "Enter the Pewter City Gym",
+   "done_when": {
+    "map": "PEWTER_GYM"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Brock for the Boulder Badge"
+   }
+  },
+  {
+   "id": "defeat_brock",
+   "goal_text": "Battle and defeat the Gym Leader Brock",
+   "done_when": {
+    "badge": "BOULDERBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Brock for the Boulder Badge"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}
