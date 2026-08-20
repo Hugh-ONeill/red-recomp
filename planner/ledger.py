@@ -637,9 +637,15 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None) -> str:
                 "car's one door opens onto whichever floor you rode to")
     order = {"item": 0, "fixture": 1, "cut_tree": 1, "npc": 2, "trainer": 2,
              "sign": 3}
+    # ...AND THE SAME FOR THINGS, WHICH I ONLY FIXED FOR EXITS. A press
+    # that came back "no reachable tile adjacent to target" leaves the
+    # thing "never spoken to", so explore kept offering it: Silph 2F's
+    # worker is behind the card-key glass, the interact failed, and item 1
+    # said "press SILPHCO2F_SILPH_WORKER_F here" with the refusal printed
+    # directly underneath it.
     things = sorted((c for c in cands
                      if c.status in ("untouched", "unspoken", "cuttable")
-                     and c.reachable
+                     and c.reachable and not _refused(c)
                      and c.kind not in ("door", "seam", "op")),
                     key=lambda c: (order.get(c.kind, 4), c.key))
     if things:
