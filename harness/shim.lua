@@ -4194,6 +4194,7 @@ function OPS.elevator(G, c)
   -- doorway, one panel, and no choices between them; the only decision is
   -- WHICH FLOOR, which is the argument. So: if there is no panel where we
   -- stand, walk into the car first and carry on.
+  local _lift_seen, _lift_why
   do
     local _ow0 = G.overworld
     local _md0 = _ow0 and _ow0.map and G.data and G.data.maps
@@ -4208,8 +4209,10 @@ function OPS.elevator(G, c)
       for _, w in ipairs((_md0 and _md0.warps) or {}) do
         if tostring(w.destMap or ""):upper():find("ELEVATOR") then
           local _in = (G.overworld.map or {}).id
-          OPS.use_warp(G, { x = w.x, y = w.y })
+          _lift_seen = ("%d,%d"):format(w.x, w.y)
+          local _ok, _why = OPS.use_warp(G, { x = w.x, y = w.y })
           if (G.overworld.map or {}).id ~= _in then break end
+          _lift_why = _why or _lift_why
         end
       end
     end
@@ -4241,6 +4244,17 @@ function OPS.elevator(G, c)
     end
   end
   if not px then
+    -- A LIFT YOU CANNOT WALK TO IS NOT AN ABSENT LIFT. This said "no
+    -- elevator on this map" on SILPH_CO_5F, which has one at 20,0 — the
+    -- party was in a pocket that cannot reach it, the walk-in failed, and
+    -- the message denied the lift existed. Say which it is.
+    if _lift_seen then
+      return false, ("this map HAS a lift — its door is at %s — but no walk "
+        .. "from where you stand reaches it%s. Get to that door's ground "
+        .. "first; from there this op rides door to door.")
+        :format(_lift_seen, _lift_why and (" (" .. tostring(_lift_why) .. ")")
+                            or "")
+    end
     return false, "no elevator on this map — there is no lift panel where "
       .. "you stand and no door here leads into a car. This op rides a "
       .. "lift door to door: from outside it walks in, presses the floor "
@@ -4333,24 +4347,24 @@ function OPS.elevator(G, c)
   -- afterwards — which is why the instrumented pass printed NOTHING while
   -- the very next op still answered "a box was up and would not close".
   -- Sit out the whole arrival before looking.
-  U.wait(90)
-  for _i = 1, 12 do
-    if G.stack:top() == G.overworld then
-      U.wait(25)
-      if G.stack:top() == G.overworld then break end
-    end
-    -- INSTRUMENTED (2026-08-20): four theories about this screen have all
-    -- been wrong — too early, too short, ui_back_out not pressing, the
-    -- press not landing. Say what is actually on top each pass, then read
-    -- it in run/chain.log rather than guessing a fifth time.
+  -- IT TELLS YOU HOW LONG IT IS. The probe answered at last:
+  --   [lift] pass 5 fade=true phase=pa frames=200 t=nil map=false
+  -- a fade declaring 200 frames, while every budget I guessed came out at
+  -- about that — so it cleared sometimes and not others, which is exactly
+  -- how this behaved across six attempts. Read the number off the object
+  -- rather than inventing one, and leave room after it.
+  U.wait(20)
+  for _i = 1, 40 do
     local _t = G.stack:top()
-    print(("[lift] pass %d fade=%s phase=%s frames=%s t=%s map=%s items=%s")
-      :format(_i, tostring(_is_fade(_t)), tostring(_t and _t.phase),
-              tostring(_t and _t.frames), tostring(_t and _t.t),
-              tostring(_t and _t.map ~= nil),
-              tostring(_t and _t.items ~= nil)))
-    if _is_fade(_t) then
-      U.wait(10)                     -- a fade ends itself; B does nothing
+    if _t == G.overworld then
+      U.wait(20)
+      if G.stack:top() == G.overworld then break end
+    elseif _is_fade(_t) then
+      local _budget = (tonumber(_t.frames) or 120) + 90
+      for _ = 1, math.ceil(_budget / 10) do
+        if not _is_fade(G.stack:top()) then break end
+        U.wait(10)
+      end
     else
       U.tap(G, "b"); U.wait(10)
     end
