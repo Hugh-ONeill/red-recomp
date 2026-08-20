@@ -675,6 +675,28 @@ local function observe(G, seq, result)
     for _, w in ipairs((md and md.warps) or {}) do
       _warp[w.x .. "," .. w.y] = true
     end
+    -- WHY IT CANNOT BE WALKED TO, when the answer is on the tile next to
+    -- it. "not walkable-to right now" reads as impossible; "there is a pad
+    -- beside it" reads as a way in you have not used. Silph's 5F items sit
+    -- past teleport pads, and a pad is a thing you USE, not a wall (user:
+    -- "the item on floor five should read as reachable just with that
+    -- teleport in the way"). Says what is on the tile, never how to use it.
+    local function why_far(x, y)
+      local lm2 = G.overworld and G.overworld.map
+      if not (lm2 and lm2.warpPadOrHoleAt) then return nil end
+      for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
+        local k = lm2:warpPadOrHoleAt(x + d[1], y + d[2])
+        if k == "pad" then
+          return ("a WARP PAD at %d,%d is beside it — a walk cannot cross "
+                  .. "one, but a pad is a thing you step on, not a wall")
+                 :format(x + d[1], y + d[2])
+        elseif k == "hole" then
+          return ("a HOLE at %d,%d is beside it — stepping on one drops you "
+                  .. "through"):format(x + d[1], y + d[2])
+        end
+      end
+      return nil
+    end
     local function stand_ok(k)
       return objreach[k] and not _spin[k] and not _warp[k]
     end
@@ -739,6 +761,8 @@ local function observe(G, seq, result)
         -- arrival; without it the run spends 10 escalation rounds finding
         -- out (user: "the first two ladders lead to dead-end rooms").
         reachable = adjacent_reachable(npc.cellX, npc.cellY),
+        why = (not adjacent_reachable(npc.cellX, npc.cellY))
+              and why_far(npc.cellX, npc.cellY) or nil,
       }
     end
     -- OBJECTS THIS MAP DEFINES THAT ARE NOT PRESENT YET. G.overworld.npcs

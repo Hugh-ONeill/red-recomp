@@ -601,6 +601,10 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                                        "the game reloads; it cuts again")
         elif not o.get("reachable") and kind != "item":
             c.status = "unreachable"
+            # WHY, when the tile beside it says so. "you cannot walk to it"
+            # is a verdict; "a warp pad is beside it" is a way in.
+            if o.get("why"):
+                c.note = _join(c.note, str(o["why"]))
         elif name in inert and snap is not None and inert.get(name) == snap:
             c.status = "inert"
             c.note = c.note or "pressed; the world did not change and has not since"
@@ -611,7 +615,8 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         else:
             c.status = "unspoken" if kind in ("npc", "trainer") else "untouched"
             if not o.get("reachable"):
-                c.note = "an item you cannot walk to right now"
+                c.note = _join("an item you cannot walk to right now",
+                               str(o.get("why") or ""))
         out.append(c)
 
     # ---- rank ---------------------------------------------------------
