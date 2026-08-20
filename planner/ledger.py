@@ -197,6 +197,14 @@ def shelf_of(ex, region_or_map: str) -> list:
 
 
 def _left_parts(ex, region: str) -> list:
+    # A LIFT CAR IS NEVER "STILL HAS EXITS NEVER TAKEN". Its one doorway is
+    # re-pointed by the panel, so it counts as unwalked from every angle —
+    # and this is the line that hangs off a door as "SILPH_CO_ELEVATOR|0,1
+    # still has 1 exit(s) never taken", which is what the run kept crossing
+    # floors to act on after the other two sites were fixed. Third and last
+    # place that arithmetic is done.
+    if str(region).split("|")[0].endswith("_ELEVATOR"):
+        return []
     left = ex._frontier_left(region)
     things = untouched_in(ex, region)
     parts = []
