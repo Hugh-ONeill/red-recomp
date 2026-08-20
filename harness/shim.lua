@@ -4157,9 +4157,23 @@ function OPS.elevator(G, c)
     ui_back_out(G); U.wait(10)
   end
   local _stuck = (G.stack:top() ~= G.overworld)
-  return true, ("rode to %s — you are still IN the car; walk out of its "
-    .. "door to arrive. This panel offers %s%s")
-    :format(tostring(offer[idx] or want), table.concat(offer, ", "),
+  -- ...AND NAME THE CAR'S OWN DOORS. "Walk out of its door" left the
+  -- model reaching for the door it came in BY, which belongs to the floor
+  -- it was standing on, not to the car: use_warp(13,0) on SILPH_CO_ELEVATOR
+  -- with the car's doors at (1,3) and (2,3). Coordinates belong to one map
+  -- and these are the ones on this one.
+  local _mine = {}
+  for _, w in ipairs((G.data and G.data.maps
+                      and G.data.maps[(G.overworld.map or {}).id]
+                      and G.data.maps[(G.overworld.map or {}).id].warps) or {}) do
+    _mine[#_mine + 1] = ("(%d,%d)"):format(w.x, w.y)
+  end
+  return true, ("rode to %s — you are still IN the car; walk out of %s to "
+    .. "arrive. This panel offers %s%s")
+    :format(tostring(offer[idx] or want),
+            #_mine > 0 and ("its door " .. table.concat(_mine, " or "))
+              or "its door",
+            table.concat(offer, ", "),
             _stuck and (". A screen is STILL up that would not close — "
               .. "{\"op\":\"tap\",\"btn\":\"b\"} before walking out")
               or "")
