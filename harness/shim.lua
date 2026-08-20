@@ -642,10 +642,23 @@ local function observe(G, seq, result)
       -- the tile between is another machine, and the engine only reads
       -- the tile the player faces.
       if over_counter == false then return false end
+      -- ...AND THE TILE BETWEEN MUST BE A COUNTER. This reach exists for
+      -- one reason — gen 1 talks ACROSS a counter — but it only ever
+      -- checked that nobody was standing in the middle, so ANY gap of one
+      -- cell qualified: a wall, a desk, or Silph's card-key shutters. Then
+      -- an item locked behind a shutter read "reachable" and every walk to
+      -- it answered no path. The engine names counter tiles itself
+      -- (Map:isCounterCell, the same test that lets you talk to a mart
+      -- clerk), so ask it rather than assuming the gap is friendly.
       local over = { { x, y + 2, x, y + 1 }, { x, y - 2, x, y - 1 },
                      { x - 2, y, x - 1, y }, { x + 2, y, x + 1, y } }
       for _, o in ipairs(over) do
-        if stand_ok(o[1] .. "," .. o[2]) and not occupied_cell(o[3], o[4]) then
+        local mid_ok = true
+        if map and map.isCounterCell then
+          mid_ok = map:isCounterCell(o[3], o[4])
+        end
+        if stand_ok(o[1] .. "," .. o[2]) and mid_ok
+           and not occupied_cell(o[3], o[4]) then
           return true
         end
       end
