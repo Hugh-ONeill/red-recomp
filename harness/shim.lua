@@ -2823,6 +2823,30 @@ function OPS.cross(G, c)
     end
     if p.cellX ~= ex or p.cellY ~= ey then
       if ride_cutscene() then return true, "crossed (cutscene)" end
+      -- A FIGHT IS NOT A WALL, AND IT MUST NOT BE DESCRIBED AS ONE. The
+      -- terrain verdict below is built from where the walk STOPPED, and a
+      -- walk stops for two quite different reasons: the way is shut, or
+      -- something jumped you on it. On Route 10's southern half the party
+      -- was walking to Lavender, was engaged eight cells short of the
+      -- edge, and lost — and this op reported "couldn't reach south edge
+      -- gap (9,71), stuck at (10,64) ... 2 LEDGE tile(s) lie along that
+      -- line". The party then blacked out. Rounds later the model was
+      -- still reasoning "I have already tried the south exit of Route 10
+      -- and was blocked by ledges" and hunting an imaginary other way out
+      -- of Rock Tunnel, while a plain walk south with one ledge hop would
+      -- have finished the leg (user: "its blaming the ledges").
+      -- Say what stopped it. The theory is for a walk nothing interrupted.
+      do
+        local t = G.stack and G.stack:top()
+        if t and (t.enemy or t.kind) then
+          return false, ("a fight started %d cell(s) short of the %s edge "
+            .. "gap (%d,%d) — the walk stopped at (%d,%d) because of the "
+            .. "battle, not because of the ground. Nothing has been "
+            .. "learned about whether this way is open"):format(
+              math.abs(ex - p.cellX) + math.abs(ey - p.cellY),
+              tostring(c.dir), ex, ey, p.cellX, p.cellY)
+        end
+      end
       -- WHY the walk could not start. Two rules of this map can stop it
       -- and they read identically from outside: LEDGES (one-way drops that
       -- cannot be climbed) and a SLOPE (the bike is pushed back whenever

@@ -1868,8 +1868,71 @@ class Executor:
         self.visits[region] = self.visits.get(region, 0) + 1
         self._last_visit_region = region
 
+    def _watch_for_a_wipe(self, obs) -> str | None:
+        """Did the party black out since the last look? Say so, always.
+
+        There WAS a wipe detector and it lived on the battle-resume path
+        inside run_op, so it only ever fired when the op handed back a
+        battle it could read. On Route 10 the walk south to Lavender was
+        engaged eight cells from the edge, the party lost, and the op came
+        back with a terrain theory while the settle that followed found no
+        map at all (the blackout sequence is not the overworld) — so
+        post_map was None, the guard fell through, and nothing was
+        recorded. The model spent the next fourteen rounds reasoning "I
+        have already tried the south exit of Route 10 and was blocked by
+        ledges", hunting an imaginary other way out of Rock Tunnel.
+
+        A knockout is the loudest thing that can happen to a run and it is
+        not the property of whichever op was in flight. Watch the state
+        instead: gen1 blacks you out by HALVING your money to the exact
+        rupee, fully healing the party, and putting you at the Center you
+        last healed at. All three together, and nothing else in the game
+        does all three."""
+        o = obs or {}
+        prev = getattr(self, "_wipe_watch", None)
+        mons = o.get("party") or []
+        money = o.get("money")
+        mid = (o.get("map") or {}).get("id")
+        here = ((money, mid, self._where(o))
+                if isinstance(money, int) and mid else None)
+        if here:
+            self._wipe_watch = here
+        if not (prev and here and mons):
+            return None
+        was_money, was_map, was_region = prev
+        if mid == was_map or was_money <= 0:
+            return None
+        if money != was_money // 2:
+            return None
+        if not all(m.get("max_hp") and m.get("hp") == m["max_hp"]
+                   for m in mons):
+            return None
+        self.log("wipe_seen", frm=was_region, woke=mid,
+                 money=f"{was_money}->{money}")
+        # the walk-back exists and is well travelled; it was only ever
+        # armed by the detector that could not see this one
+        if not self._faint_at:
+            self._faint_at = was_region
+            self.log("faint_marked", subgoal="(state watch)", at=was_region)
+        if self._cur_target:
+            self._blackouts[self._cur_target] = \
+                self._blackouts.get(self._cur_target, 0) + 1
+            self._blackout_lead[self._cur_target] = \
+                (mons[0] or {}).get("level")
+        self._wipe_note = (
+            f"YOUR PARTY FAINTED. Every one of them was knocked out on "
+            f"{was_map}, you blacked out, and you woke at {mid} with the "
+            f"party healed and half your money gone ({was_money} -> "
+            f"{money}). WHATEVER THE LAST OP SAID ABOUT WHY IT STOPPED, "
+            f"the fight is why — a walk that was interrupted proves "
+            f"nothing about whether the way it was walking is open. "
+            f"Whatever you were doing on {was_map} is still to do, and "
+            f"you are no longer standing there.")
+        return self._wipe_note
+
     def _note(self, obs):
         self._mark_now = self._world_mark(obs)
+        self._watch_for_a_wipe(obs)
         if (obs or {}).get("mode") == "overworld" and \
                 ((obs or {}).get("map") or {}).get("id"):
             self._last_overworld_map = obs["map"]["id"]
@@ -9329,6 +9392,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             else:
                 self._ui_pending = 0
             stuck_note = ""      # per-round; the walk-back note appends below
+            # SAID ONCE, WHEREVER IT WAS NOTICED. The walk-back note below
+            # only speaks when a route home exists; the knockout itself has
+            # to be said either way, because the op that was in flight has
+            # already told the model something else.
+            _wn = getattr(self, "_wipe_note", None)
+            if _wn:
+                stuck_note += "\n" + _wn
+                self._wipe_note = None
             if self._faint_at and cur.get("mode") == "overworld":
                 back = self._return_from_blackout(cur, sg)
                 if back:
