@@ -96,24 +96,41 @@ check("the Vermilion pier is not among them",
 check("nor the gangway onto the ship",
       not inl(landings, "VERMILION_DOCK 14,2 -> SS_ANNE_1F"))
 
--- The leftovers: warp tiles the ROM's door list omits, which used to be
--- called "stairs" wholesale. Every one was rendered from the tileset PNG
--- in its own map to see what is drawn there; ten are staircases or
--- ladders and SHIP 74 is a doorway with a mat in it (the S.S. Anne
--- cabins). If a new tile joins this set, it needs the same look before it
--- gets a name.
-local LEFTOVERS = {
-  ["CAVERN:24"] = "stairs", ["CAVERN:26"] = "stairs",
-  ["DOJO:74"] = "stairs",          -- same tile NUMBER as the S.S. Anne
-                                   -- cabin door, drawn as a staircase in
-                                   -- Lance's room: the table is keyed by
-                                   -- tileset for exactly this reason
-  ["CEMETERY:19"] = "stairs", ["CEMETERY:27"] = "stairs",
-  ["FACILITY:19"] = "stairs", ["GATE:26"] = "stairs",
-  ["GATE:28"] = "stairs", ["SHIP:55"] = "stairs",
-  ["SHIP:57"] = "stairs", ["UNDERGROUND:19"] = "stairs",
-  ["SHIP:74"] = "door",
+-- WHICH WARP TILES ARE STAIRS. Every tileset:tile pair that reaches the
+-- shim's catch-all — 55 of them — was rendered from its tileset PNG in a
+-- map that uses it, and fifteen are staircases or ladders. Everything else
+-- is a doorway, an exit mat or a cave mouth: the way out of every house,
+-- Center, Mart and gym, the gate doorways, the S.S. Anne cabins, the
+-- Vermilion pier. A tile that joins this set gets looked at before it gets
+-- a name.
+local STAIRS = {
+  ["CAVERN:24"] = true, ["CAVERN:26"] = true,
+  ["CEMETERY:19"] = true, ["CEMETERY:27"] = true,
+  ["DOJO:74"] = true,              -- same tile NUMBER as the S.S. Anne
+                                   -- cabin door and drawn as a staircase
+                                   -- in Lance's room: keyed by tileset
+                                   -- for exactly this reason
+  ["FACILITY:19"] = true,
+  ["GATE:26"] = true, ["GATE:28"] = true,
+  ["MUSEUM:26"] = true, ["MUSEUM:28"] = true,
+  ["REDS_HOUSE_1:28"] = true, ["REDS_HOUSE_2:26"] = true,
+  ["SHIP:55"] = true, ["SHIP:57"] = true,
+  ["UNDERGROUND:19"] = true,
 }
+local LOOKED_AT = {}
+for k in pairs(STAIRS) do LOOKED_AT[k] = true end
+for _, k in ipairs({
+  "CAVERN:20", "CAVERN:28", "CAVERN:33", "CAVERN:5", "CEMETERY:1",
+  "CLUB:26", "DOJO:17", "DOJO:22", "FACILITY:1", "FACILITY:66",
+  "FACILITY:82", "FOREST:48", "FOREST:81", "FOREST:82",
+  "FOREST_GATE:20", "FOREST_GATE:74", "GATE:20", "GATE:55", "GATE:56",
+  "GATE:74", "GATE:94", "GYM:17", "GYM:22", "GYM:48", "HOUSE:20",
+  "INTERIOR:21", "INTERIOR:4", "INTERIOR:71", "LAB:55", "LOBBY:20",
+  "MANSION:20", "MART:28", "MUSEUM:20", "POKECENTER:28",
+  "REDS_HOUSE_1:20", "SHIP:35", "SHIP:4", "SHIP:52", "SHIP:74",
+  "SHIP_PORT:50",
+}) do LOOKED_AT[k] = true end
+
 local PADS = { FACILITY = {[0x20]=1, [0x11]=1}, CAVERN = {[0x22]=1},
                INTERIOR = {[0x55]=1} }
 local found = {}
@@ -135,7 +152,7 @@ for id, m in pairs(maps) do
     for _, w in ipairs(m.warps or {}) do
       local t = cellTile(w.x, w.y)
       local edge = (w.x <= 0 or w.y <= 0 or w.x >= W - 1 or w.y >= H - 1)
-      if not edge and not doors[t] and wt[t] and not (PADS[m.tileset] or {})[t] then
+      if not doors[t] and not (PADS[m.tileset] or {})[t] and (wt[t] or edge) then
         found[m.tileset .. ":" .. t] = true
       end
     end
@@ -143,12 +160,18 @@ for id, m in pairs(maps) do
 end
 print("\nwarp tiles the ROM's door list leaves out:")
 local extra = {}
-for k in pairs(found) do if not LEFTOVERS[k] then extra[#extra + 1] = k end end
+for k in pairs(found) do if not LOOKED_AT[k] then extra[#extra + 1] = k end end
 table.sort(extra)
 check("no unlooked-at tile has been given a name",
       #extra == 0, table.concat(extra, " "))
-check("the S.S. Anne cabin doorway is a door, not a staircase",
-      LEFTOVERS["SHIP:74"] == "door" and found["SHIP:74"])
+local nst = 0
+for k in pairs(STAIRS) do if found[k] then nst = nst + 1 end end
+check("fifteen of them are staircases", nst == 15, nst)
+check("the S.S. Anne cabin doorways are not among them",
+      not STAIRS["SHIP:74"] and not STAIRS["SHIP:52"]
+      and found["SHIP:74"] and found["SHIP:52"])
+check("nor is the exit mat of a Pokemon Center",
+      not STAIRS["POKECENTER:28"] and found["POKECENTER:28"])
 
 print(("\n%s"):format(("-"):rep(60)))
 if fails > 0 then

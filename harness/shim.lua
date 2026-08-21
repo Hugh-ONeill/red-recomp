@@ -593,30 +593,39 @@ local function observe(G, seq, result)
       -- and a warp tile that is neither is the stair/ladder case its own
       -- comment names. Says nothing about where any of them GOES.
       local lm = G.overworld and G.overworld.map
-      -- WARP TILES THE ROM'S DOOR LIST LEAVES OUT, THAT ARE STILL DOORS.
+      -- WHAT IS DRAWN ON A WARP TILE, SETTLED BY LOOKING AT IT.
       -- data/tilesets/door_tile_ids.asm is the list of tiles that get the
       -- opening-door ANIMATION, not the list of tiles drawn as a door, so
-      -- everything else fell through to "stairs" -- and the six S.S. Anne
-      -- cabin doorways and the kitchen door were offered to the model as
-      -- "stairs/ladder", six fake staircases drowning the one real
-      -- staircase on that deck while the leg was hunting the way up
-      -- (user, watching it: "the warp-doors to the ss anne rooms are being
-      -- registered as stairs for some reason").
+      -- every other warp tile fell through to a catch-all that called it
+      -- "stairs" — and the ledger offered the six S.S. Anne cabin doorways
+      -- and the kitchen door as "stairs/ladder", six fake staircases
+      -- drowning the one real staircase on that deck (user, at the
+      -- screen: "staircases? there should be three; the rest are all
+      -- doors").
       --
-      -- Every leftover warp tile in the game was rendered from
-      -- assets/generated/tilesets/*.png in its own map to settle what is
-      -- actually drawn: CAVERN 24/26 are ladders, CEMETERY 19/27,
-      -- FACILITY 19, GATE 26/28, SHIP 55/57 and UNDERGROUND 19 are all
-      -- staircases, and SHIP 74 -- alone -- is a gap in a wall with a mat
-      -- in it. One tile, checked by eye, kept beside the engine's own
-      -- WARP_PAD_TILES table which is the same kind of fact.
-      local DOORWAY_TILES = { SHIP = { [74] = true } }
+      -- Every tileset:tile pair that reached that catch-all — 55 of them —
+      -- was rendered from assets/generated/tilesets/*.png in a map that
+      -- uses it. FIFTEEN are staircases or ladders. All the rest are
+      -- doorways, exit mats and cave mouths: the exit mat of every house,
+      -- Center, Mart and gym, the gate doorways, the cabin doors, the
+      -- Vermilion pier. So the catch-all is a DOOR and the stairs are the
+      -- list, which is the way round the game actually is.
+      local STAIR_TILES = {
+        CAVERN       = { [24] = true, [26] = true },   -- cave ladders
+        CEMETERY     = { [19] = true, [27] = true },   -- Pokemon Tower
+        DOJO         = { [74] = true },                -- Lance's room
+        FACILITY     = { [19] = true },
+        GATE         = { [26] = true, [28] = true },
+        MUSEUM       = { [26] = true, [28] = true },
+        REDS_HOUSE_1 = { [28] = true },
+        REDS_HOUSE_2 = { [26] = true },
+        SHIP         = { [55] = true, [57] = true },   -- NOT 74 or 52,
+                                                       -- which are cabin
+                                                       -- doorways
+        UNDERGROUND  = { [19] = true },
+      }
       local function warp_look(x, y)
         if lm and lm.isDoorTileCell and lm:isDoorTileCell(x, y) then
-          return "door"
-        end
-        local _dw = DOORWAY_TILES[md and md.tileset]
-        if _dw and lm and lm.cellTile and _dw[lm:cellTile(x, y)] then
           return "door"
         end
         if lm and lm.warpPadOrHoleAt then
@@ -658,12 +667,16 @@ local function observe(G, seq, result)
             for _, dn in ipairs({ "down", "up", "left", "right" }) do
               local okc, fires = pcall(WarpM.extraCheck, lm, carpets,
                                        x, y, dn)
-              if okc and fires then return "threshold" end
+              if okc and fires then return "door" end
             end
           end
           return "landing"
         end
-        return "stairs"
+        local _st = STAIR_TILES[md and md.tileset]
+        if _st and lm and lm.cellTile and _st[lm:cellTile(x, y)] then
+          return "stairs"
+        end
+        return "door"
       end
       -- ...AND A LANDING IS NOT SHOWN AT ALL. It is drawn as ordinary
       -- floor (user, looking at it: "it looks like an ordinary block not a
