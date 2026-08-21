@@ -323,7 +323,29 @@ local function _screen_name(G)
     local txt = type(pg) == "table" and table.concat(pg, " ") or tostring(pg)
     bits[#bits + 1] = "text: " .. tostring(txt):sub(1, 60)
   end
-  if #bits == 0 then bits[1] = "an unnamed screen" end
+  -- ...AND THE ONES WITH NO NAME AT ALL. The screens that keep winning
+  -- this argument are exactly the nameless ones — a Transition fade and
+  -- ElevatorShake both carry only `phase` and `frames`, which is why
+  -- _is_fade duck-types on that pair — and "an unnamed screen" is what
+  -- this first said about the lift, which is no better than the "a box
+  -- was up" it replaced. Print the pair. It is the same line the probe
+  -- that finally solved the lift printed.
+  if #bits == 0 then
+    if t.phase ~= nil or t.frames ~= nil then
+      bits[#bits + 1] = ("a timed state: phase=%s frames=%s%s")
+        :format(tostring(t.phase), tostring(t.frames),
+                t.preFrames and (" preFrames=" .. tostring(t.preFrames))
+                  or "")
+    else
+      local ks = {}
+      for k in pairs(t) do
+        if type(k) == "string" and #ks < 8 then ks[#ks + 1] = k end
+      end
+      table.sort(ks)
+      bits[#bits + 1] = "an unnamed screen with fields: "
+        .. (#ks > 0 and table.concat(ks, ",") or "none")
+    end
+  end
   return table.concat(bits, ", ")
 end
 
@@ -4707,7 +4729,21 @@ function OPS.elevator(G, c)
       U.wait(20)
       if G.stack:top() == G.overworld then break end
     elseif _is_fade(_t) then
-      local _budget = (tonumber(_t.frames) or 120) + 90
+      -- A SHAKE'S `frames` IS A COUNTER, NOT A DURATION. _is_fade
+      -- duck-types on (phase, frames), which catches the Transition —
+      -- whose frames IS its length — and ElevatorShake, whose frames
+      -- counts UP and RESETS between its phases, so reading it as a
+      -- length asks for 90-ish frames of patience for a ride that is
+      -- preFrames + 100 cycles x 2 frames plus a music tail, by the
+      -- engine's own header (src/world/ElevatorShake.lua). Budget the
+      -- shake from what it actually is; keep reading the Transition off
+      -- its own field.
+      local _budget
+      if _t.preFrames ~= nil then
+        _budget = (tonumber(_t.preFrames) or 12) + 200 + 180
+      else
+        _budget = (tonumber(_t.frames) or 120) + 90
+      end
       for _ = 1, math.ceil(_budget / 10) do
         if not _is_fade(G.stack:top()) then break end
         U.wait(10)
