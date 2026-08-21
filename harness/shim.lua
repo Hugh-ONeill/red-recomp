@@ -527,8 +527,30 @@ local function observe(G, seq, result)
         -- ground nobody has ever named falls through to a fresh mint.
         local name = known[here]
         if not name then
+          -- ...AND WHEN THE GROUND CARRIES TWO NAMES, COUNT IT. A merge --
+          -- the fossil taken off the corridor it blocked, a boulder
+          -- pushed, a tree cut -- leaves two minted names painted over one
+          -- component, and `pairs` handed back whichever the hash reached
+          -- first. So Mt Moon 1F answered to 2,2 on one arrival and 3,2 on
+          -- the next; the frontier walk then aimed at 2,2, a name the
+          -- world had stopped minting, and reported "the walk did not
+          -- arrive" standing in the very room it asked for. The name most
+          -- of the reachable ground already carries is the one this place
+          -- answers to; ties go to the topmost-then-leftmost cell, the
+          -- same rule a fresh mint uses.
+          local votes = {}
           for k in pairs(rreach) do
-            if known[k] then name = known[k] break end
+            local v = known[k]
+            if v then votes[v] = (votes[v] or 0) + 1 end
+          end
+          local bn, byy, bxx
+          for v, n in pairs(votes) do
+            local vx, vy = v:match("^(-?%d+),(-?%d+)$")
+            vx, vy = tonumber(vx) or 0, tonumber(vy) or 0
+            if not bn or n > bn
+               or (n == bn and (vy < byy or (vy == byy and vx < bxx))) then
+              bn, byy, bxx, name = n, vy, vx, v
+            end
           end
         end
         name = name or (bx and (bx .. "," .. by))
@@ -2158,7 +2180,47 @@ function OPS.use_warp(G, c)
   -- edge; that is the same rule the conflict-voiding already states, moved
   -- to where the bad data is born instead of cleaning up after it.
   local walk_why = nil
+  -- A LADDER YOU ARRIVED ON DOES NOT FIRE UNDER YOUR FEET. A warp triggers
+  -- on the step ONTO it, so the tile the last warp deposited you on is
+  -- inert until you leave and come back. use_warp aimed at the tile you are
+  -- already standing on skipped the walk entirely and fell through to the
+  -- press loop, which is written for map-EDGE doorways (stand on the mat,
+  -- press into the wall) and does nothing for a ladder in the middle of a
+  -- cave floor. Step off to a plain neighbouring cell first and let the
+  -- ordinary walk-onto path -- the one that works -- do the work.
+  local function step_off(x, y)
+    local okc2, Collision2 = pcall(require, "src.world.Collision")
+    if not okc2 then return end
+    local warps = {}
+    for _, w in ipairs(((ow.map and ow.map.def) or {}).warps or {}) do
+      warps[w.x .. "," .. w.y] = true
+    end
+    for _, dn in ipairs({ "down", "up", "left", "right" }) do
+      local d = DIRS[dn]
+      local nx, ny = x + d[1], y + d[2]
+      if not warps[nx .. "," .. ny]
+         and Collision2.canMove(ow.map, ow.entities, p, dn) then
+        OPS.walk_to(G, { x = nx, y = ny, max_steps = 4 })
+        return
+      end
+    end
+  end
   local function attempt(x, y)
+    local stepped = false
+    if p.cellX == x and p.cellY == y then
+      step_off(x, y)
+      stepped = (p.cellX ~= x or p.cellY ~= y)
+    end
+    -- ...AND THAT CROSSING IS NOT AN UNKNOWN DOOR. "crossed mid-walk"
+    -- means the walk passed over a warp that was not the one we aimed at,
+    -- so the executor is told to file no edge. When WE stepped the party
+    -- one cell off the tile it asked for and walked it straight back, the
+    -- door that fired is the door we aimed at, and the edge is knowable.
+    local function crossed()
+      if (ow.map and ow.map.id) == startMap then return nil end
+      if stepped then return true, "warped" end
+      return true, "crossed mid-walk (door unknown)"
+    end
     -- Three passes, yielding ground between them: pass 1 is the plain
     -- walk, and each retry backs off a tile first so an NPC pinned by the
     -- player has somewhere to go. cross() is already NPC-robust this way
@@ -2168,15 +2230,13 @@ function OPS.use_warp(G, c)
         local _wok, _wwhy = OPS.walk_to(
           G, { x = x, y = y, max_steps = c.max_steps or 400 })
         walk_why = _wwhy or walk_why
-        if (ow.map and ow.map.id) ~= startMap then
-          return true, "crossed mid-walk (door unknown)"
-        end
+        local _ok, _why = crossed()
+        if _ok then return _ok, _why end
       end
       if p.cellX == x and p.cellY == y then break end
       if pass < 3 then yield_ground(G) end
-      if (ow.map and ow.map.id) ~= startMap then
-        return true, "crossed mid-walk (door unknown)"
-      end
+      local _ok, _why = crossed()
+      if _ok then return _ok, _why end
     end
     if p.cellX ~= x or p.cellY ~= y then return false, "unreachable" end
     -- step through: prefer whichever edge the tile sits on (cell dims)
