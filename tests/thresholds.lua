@@ -96,6 +96,60 @@ check("the Vermilion pier is not among them",
 check("nor the gangway onto the ship",
       not inl(landings, "VERMILION_DOCK 14,2 -> SS_ANNE_1F"))
 
+-- The leftovers: warp tiles the ROM's door list omits, which used to be
+-- called "stairs" wholesale. Every one was rendered from the tileset PNG
+-- in its own map to see what is drawn there; ten are staircases or
+-- ladders and SHIP 74 is a doorway with a mat in it (the S.S. Anne
+-- cabins). If a new tile joins this set, it needs the same look before it
+-- gets a name.
+local LEFTOVERS = {
+  ["CAVERN:24"] = "stairs", ["CAVERN:26"] = "stairs",
+  ["DOJO:74"] = "stairs",          -- same tile NUMBER as the S.S. Anne
+                                   -- cabin door, drawn as a staircase in
+                                   -- Lance's room: the table is keyed by
+                                   -- tileset for exactly this reason
+  ["CEMETERY:19"] = "stairs", ["CEMETERY:27"] = "stairs",
+  ["FACILITY:19"] = "stairs", ["GATE:26"] = "stairs",
+  ["GATE:28"] = "stairs", ["SHIP:55"] = "stairs",
+  ["SHIP:57"] = "stairs", ["UNDERGROUND:19"] = "stairs",
+  ["SHIP:74"] = "door",
+}
+local PADS = { FACILITY = {[0x20]=1, [0x11]=1}, CAVERN = {[0x22]=1},
+               INTERIOR = {[0x55]=1} }
+local found = {}
+for id, m in pairs(maps) do
+  local T = ts[m.tileset]
+  if T and T.blocks and m.blocks then
+    local W, H = m.width * 2, m.height * 2
+    local doors, wt = setof(T.doorTiles), setof(T.warpTiles)
+    local function cellTile(cx, cy)
+      local tx, ty = cx * 2, cy * 2 + 1
+      local bx, by = math.floor(tx / 4), math.floor(ty / 4)
+      local bid
+      if bx < 0 or by < 0 or bx >= m.width or by >= m.height then bid = m.borderBlock
+      else bid = m.blocks[by * m.width + bx + 1] end
+      local b = T.blocks[(bid or 0) + 1]
+      if not b then return nil end
+      return b[(ty % 4) * 4 + (tx % 4) + 1]
+    end
+    for _, w in ipairs(m.warps or {}) do
+      local t = cellTile(w.x, w.y)
+      local edge = (w.x <= 0 or w.y <= 0 or w.x >= W - 1 or w.y >= H - 1)
+      if not edge and not doors[t] and wt[t] and not (PADS[m.tileset] or {})[t] then
+        found[m.tileset .. ":" .. t] = true
+      end
+    end
+  end
+end
+print("\nwarp tiles the ROM's door list leaves out:")
+local extra = {}
+for k in pairs(found) do if not LEFTOVERS[k] then extra[#extra + 1] = k end end
+table.sort(extra)
+check("no unlooked-at tile has been given a name",
+      #extra == 0, table.concat(extra, " "))
+check("the S.S. Anne cabin doorway is a door, not a staircase",
+      LEFTOVERS["SHIP:74"] == "door" and found["SHIP:74"])
+
 print(("\n%s"):format(("-"):rep(60)))
 if fails > 0 then
   print(("WAYS OUT ARE BEING HIDDEN AGAIN: %d case(s)"):format(fails))

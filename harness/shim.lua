@@ -593,8 +593,30 @@ local function observe(G, seq, result)
       -- and a warp tile that is neither is the stair/ladder case its own
       -- comment names. Says nothing about where any of them GOES.
       local lm = G.overworld and G.overworld.map
+      -- WARP TILES THE ROM'S DOOR LIST LEAVES OUT, THAT ARE STILL DOORS.
+      -- data/tilesets/door_tile_ids.asm is the list of tiles that get the
+      -- opening-door ANIMATION, not the list of tiles drawn as a door, so
+      -- everything else fell through to "stairs" -- and the six S.S. Anne
+      -- cabin doorways and the kitchen door were offered to the model as
+      -- "stairs/ladder", six fake staircases drowning the one real
+      -- staircase on that deck while the leg was hunting the way up
+      -- (user, watching it: "the warp-doors to the ss anne rooms are being
+      -- registered as stairs for some reason").
+      --
+      -- Every leftover warp tile in the game was rendered from
+      -- assets/generated/tilesets/*.png in its own map to settle what is
+      -- actually drawn: CAVERN 24/26 are ladders, CEMETERY 19/27,
+      -- FACILITY 19, GATE 26/28, SHIP 55/57 and UNDERGROUND 19 are all
+      -- staircases, and SHIP 74 -- alone -- is a gap in a wall with a mat
+      -- in it. One tile, checked by eye, kept beside the engine's own
+      -- WARP_PAD_TILES table which is the same kind of fact.
+      local DOORWAY_TILES = { SHIP = { [74] = true } }
       local function warp_look(x, y)
         if lm and lm.isDoorTileCell and lm:isDoorTileCell(x, y) then
+          return "door"
+        end
+        local _dw = DOORWAY_TILES[md and md.tileset]
+        if _dw and lm and lm.cellTile and _dw[lm:cellTile(x, y)] then
           return "door"
         end
         if lm and lm.warpPadOrHoleAt then
