@@ -5595,35 +5595,51 @@ class Executor:
             _subs = ((self.plan or {}).get("subgoals") or [])
             wants_item = any("has_item" in pred_keys(s2.get("done_when") or {})
                              for s2 in _subs if isinstance(s2, dict))
-        if not wants_item:
+        # A FULL BAG IS SAID WHATEVER THE STEP IS FOR. This was gated on
+        # the step wanting an item, and 20/20 does not care what the step
+        # is for: it silently refuses every gift and every ball on the
+        # ground until something goes. Four legs of this run have been
+        # blocked by it — the Lift Key, HM02, and the Silph Scope TWICE,
+        # the second time with Giovanni already beaten and the Scope lying
+        # on the floor where he had been. One-from-full stays gated; full
+        # is said every round.
+        if n < self.BAG_SLOTS and not wants_item:
             return ""
         keys = set((obs or {}).get("key_items") or [])
         spare = sorted(k for k in bag if k not in keys)
+        # SPEND BEFORE THROW. The list used to open with tossing, and
+        # tossing is also the shortest op to write — one item, no slot, no
+        # forget — so the reflex under pressure was to destroy a TM, twice
+        # in one leg, while a MOON_STONE, an IRON and two HP_UPs sat in the
+        # same bag, each of which frees the same slot and KEEPS what it is
+        # worth (user: "its reflex when the bag is full is always to toss a
+        # tm, instead of using it, or using a different consumable"). Same
+        # facts, put in the order that costs nothing. Which one to spend is
+        # still the model's; the harness says only that they can be.
+        usable = self._usable_on_a_mon(spare)
         return ("\nYOUR BAG HOLDS " + f"{n}/{self.BAG_SLOTS}"
                 + " KINDS OF THING"
-                + (" — IT IS FULL" if n >= self.BAG_SLOTS else "")
-                + ". A gift or a pickup is REFUSED when it is full, and this "
-                  "step is for an item. What you can get rid of ({\"op\":"
-                  "\"toss\",\"item\":X} throws it away, {\"op\":\"sell\"} "
-                  "at a shop counter turns it into money; key items can be "
-                  "neither): "
-                + (", ".join(spare[:10]) if spare else "nothing — every "
-                   "single thing you carry is a key item")
+                + (" — IT IS FULL, so every gift and every pickup is being "
+                   "REFUSED until a slot goes" if n >= self.BAG_SLOTS
+                   else ", one short of full")
                 + "."
-                # ...AND WHICH OF THOSE HAVE A USE. This list is read under
-                # pressure and reads as a scrap heap: on Silph 11F the run
-                # tossed the MOON_STONE to free a slot for two item balls.
-                # Naming the ones the game will let you USE on a party
-                # member says nothing about what any of them does — the
-                # names are the game's own and already printed here — but
-                # it is the difference between spending a thing and
-                # destroying it.
-                + (("\nOF THOSE, these are things this game will let you "
-                    "USE on a party member ({\"op\":\"use_item\","
-                    "\"item\":X,\"slot\":N}) — using one spends it and "
-                    "keeps whatever it is worth, tossing it does not: "
-                    + ", ".join(self._usable_on_a_mon(spare[:10])) + ".")
-                   if self._usable_on_a_mon(spare[:10]) else ""))
+                + (("\nSPENDING one frees the slot AND keeps what it is "
+                    "worth. These the game will let you USE on a party "
+                    "member right now ({\"op\":\"use_item\",\"item\":X,"
+                    "\"slot\":N} — a stone, a vitamin, a machine): "
+                    + ", ".join(usable) + ".")
+                   if usable else "")
+                + "\nSELLING at a shop counter turns one into money and "
+                  "frees the slot too ({\"op\":\"sell\",\"item\":X}). "
+                  "STORING at any Pokemon Center's PC frees it and destroys "
+                  "nothing ({\"op\":\"store_item\",\"item\":X}), which "
+                  "is the only one you can undo. TOSSING ({\"op\":\"toss\","
+                  "\"item\":X}) frees the slot and destroys the thing."
+                + "\nWhat may go at all (key items can be neither sold nor "
+                  "tossed): "
+                + (", ".join(spare[:12]) if spare else "nothing — every "
+                   "single thing you carry is a key item")
+                + ".")
 
     @staticmethod
     def _usable_on_a_mon(items):
