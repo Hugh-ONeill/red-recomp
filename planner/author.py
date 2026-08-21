@@ -3977,6 +3977,49 @@ def _badge_not_earned(goal: str, start: str) -> str | None:
     return None
 
 
+def _item_not_held(goal: str, start: str) -> str | None:
+    """An item this objective names by name that is not in the bag.
+
+    Third of the same family as _never_stood_in and _badge_not_earned, and
+    written for the same reason each of those was: refusing a claim the
+    record disproves is not judgment.
+
+    "Defeat Giovanni in the Rocket Hideout for the Silph Scope" was judged
+    ALREADY DONE with EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI fired and no
+    SILPH_SCOPE in the bag — because the bag was FULL when Giovanni
+    dropped it, so the pickup was silently refused and the Scope stayed on
+    the floor. The fight really had been won, which is what the judge was
+    looking at; the thing the leg was FOR was still lying where he had
+    been. The leg was crossed off, and nothing brings a crossed-off leg
+    back: Pokemon Tower would have been reached with no way past the
+    ghost and no record of why.
+
+    Item ids are in the state text beside the badges and cost nothing to
+    read. Longest name first, so "MOON STONE" is not matched as "STONE".
+
+    An objective that says GIVE, DELIVER, TRADE, SELL or USE ends with the
+    thing GONE, so its absence is evidence the leg worked rather than that
+    it did not — "Give a FRESH WATER to the thirsty guard" is done exactly
+    when there is no FRESH WATER. Those are left to the model.
+    """
+    if re.search(r"\b(give|gives|giving|deliver|delivers|delivering|trade|"
+                 r"trades|trading|sell|sells|selling|use|uses|using|hand|"
+                 r"hands|handing|spend|spends|spending)\b", goal, re.I):
+        return None
+    g = re.sub(r"[^A-Z]+", "", goal.upper())
+    have = re.sub(r"[^A-Z]+", "", (start or "").upper())
+    for it in sorted(ENGINE_ITEMS, key=len, reverse=True):
+        squashed = re.sub(r"[^A-Z]+", "", it.upper())
+        # two letters is not a name; POKE_BALL and its kin are consumables
+        # a leg is rarely ABOUT, and TMs get their own leg wording
+        if len(squashed) < 6 or squashed.startswith("TM") or \
+                squashed.startswith("HM"):
+            continue
+        if squashed in g and squashed not in have:
+            return it
+    return None
+
+
 def _events_bearing(goal: str) -> str:
     """Events THIS RUN HAS FIRED whose names touch the objective's words.
 
@@ -4655,6 +4698,11 @@ def check_done(goal: str, start: str, model: str,
     if badge:
         print(f"[check-done] refused: this objective names {badge} and the "
               f"run is not wearing it")
+        return False
+    item = _item_not_held(goal, start)
+    if item:
+        print(f"[check-done] refused: this objective names {item} and it is "
+              f"not in the bag")
         return False
     # A PLACE NAMED IN THE OBJECTIVE MUST BE THE PLACE IN THE EVIDENCE.
     # "Wake the Snorlax sleeping on ROUTE 12" was judged done on

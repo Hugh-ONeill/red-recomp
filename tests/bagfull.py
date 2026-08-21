@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "planner"))
 
 import executor as E          # noqa: E402
+import author as A            # noqa: E402
 
 FAILS = []
 
@@ -90,6 +91,34 @@ def main():
     check("a bag of nothing but key items says so",
           line(KEYS * 4) == "" or "every single thing you carry is a key item"
           in line([k for k in FULL], keys=FULL))
+
+    print("\n...and the leg that was crossed off anyway:")
+    # the same incident, the other end of it: Giovanni beaten, the Scope
+    # on the floor because the bag was full, and check-done waved the leg
+    # through on the fight alone
+    held = ("standing in ROCKET_HIDEOUT_B4F with CHARIZARD L39, "
+            "BOULDERBADGE, CASCADEBADGE, and BIKE_VOUCHER x1, "
+            "HELIX_FOSSIL x1, HM_CUT x1, LIFT_KEY x1, MOON_STONE x2, "
+            "S_S_TICKET x1, TM_DIG x1, TOWN_MAP x1")
+    check("an objective naming an item you do not hold is refused",
+          A._item_not_held(
+              "Defeat Giovanni in the Rocket Hideout for the Silph Scope",
+              held) == "SILPH_SCOPE")
+    check("...and one naming an item you DO hold is not",
+          A._item_not_held("Retrieve the S.S. Ticket from Bill", held)
+          is None)
+    check("GIVING one ends with it gone, so absence is not evidence",
+          A._item_not_held("Give a FRESH WATER from the Celadon Department "
+                           "Store roof to the thirsty guard at a Saffron "
+                           "City gate", held) is None)
+    check("...and so does trading one away",
+          A._item_not_held("Trade the SPEAROW for a FARFETCHD", held)
+          is None)
+    check("an objective naming no item at all is left alone",
+          A._item_not_held("Reach Cerulean City", held) is None)
+    check("a TM leg is left to the model",
+          A._item_not_held("Obtain TM_DIG from the Celadon prize corner",
+                           held) is None)
 
     print("\n" + "-" * 60)
     if FAILS:
