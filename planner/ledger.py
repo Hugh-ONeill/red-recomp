@@ -373,7 +373,13 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
     inert = ex._inert_objs.get(here, {}) if hasattr(ex, "_inert_objs") else {}
     again = set(ex._worth_another_word(here, obs, backfill=False)
                 if hasattr(ex, "_worth_another_word") else [])
-    snap = ex._snapshot(obs) if hasattr(ex, "_snapshot") else None
+    # A NAMED THING IS INERT WHEREVER YOU PRESSED IT FROM. See
+    # Executor._snapshot_anywhere: keying this on the player's tile kept
+    # ROUTE12_SNORLAX "worth another word" through nineteen presses of the
+    # same sentence, because each was made from a slightly different cell.
+    snap = (ex._snapshot_anywhere(obs)
+            if hasattr(ex, "_snapshot_anywhere")
+            else (ex._snapshot(obs) if hasattr(ex, "_snapshot") else None))
     seen_maps = {_map_of(a) for a in ex.visits}
     knows_cut = any(
         "CUT" in [str(mv.get("id") if isinstance(mv, dict) else mv)

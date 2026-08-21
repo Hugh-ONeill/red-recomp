@@ -7163,7 +7163,12 @@ never produce an encounter),
 the difference from THIS map's mart clerk — it talks to the clerk ITSELF,
 no interact needed first; obs.money is your budget),
 {"op":"use_item","item":"POTION","slot":N} (use a bag item on party slot
-N COUNTING FROM 1 — slot 1 is the lead — lead if omitted; this is ALSO
+N COUNTING FROM 1 — slot 1 is the lead — lead if omitted. NOT EVERY ITEM
+IS USED ON A POKEMON: some are used WHERE YOU STAND and act on whatever
+you are standing next to — send them with no slot and the reply says what
+happened, including when the answer is that nothing did. Holding such a
+thing does nothing; pressing A at the obstacle does nothing; USING it is
+the whole of it. This is ALSO
 how a TM or HM is TAUGHT: the item
 boots and the chosen slot learns the move. A mon that already knows four
 moves needs {"op":"use_item","item":"TM_...","slot":N,"forget":"MOVE"}
@@ -7383,6 +7388,25 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         if isinstance(m0, int) and isinstance(m1, int) and m0 != m1:
             parts.append(f"money {m1 - m0:+d} ({m1} left)")
         return ("  [" + "; ".join(parts) + "]") if parts else ""
+
+    @staticmethod
+    def _snapshot_anywhere(obs):
+        """The world snapshot WITHOUT where you were standing.
+
+        A named thing does nothing wherever you press it from — interact
+        walks to the thing itself — so keying its inertness on the
+        player's tile means one step sideways makes a dead lead look
+        fresh again. ROUTE12_SNORLAX was pressed NINETEEN times, said "A
+        sleeping POKEMON blocks the way!" every time, changed nothing
+        every time, and never once read as inert: each press was made
+        from a slightly different cell, so the stored snapshot never
+        matched (user: "its not USE-ing the pokeflute just expecting it
+        to wake snorlax by having it and interacting").
+        """
+        snap = list(Executor._snapshot(obs))
+        snap[1] = None
+        snap[2] = None
+        return tuple(snap)
 
     @staticmethod
     def _snapshot(obs):
@@ -8424,7 +8448,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         # world changes (hp drops, a flag fires) it is
                         # worth another go
                         self._inert_objs.setdefault(
-                            self._where(pre_obs), {})[step["name"]] = before
+                            self._where(pre_obs), {})[step["name"]] = \
+                            self._snapshot_anywhere(pre_obs)
             else:
                 chg = []
                 if before[0] != after[0]:
