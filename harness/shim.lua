@@ -1668,6 +1668,20 @@ local function bfs_dir_pass(G, tx, ty, wblock)
   local said = ("no path — the ground you can walk from here is %d cell(s) "
     .. "and the closest it comes to %d,%d is %s,%s"):format(
       nseen, tx, ty, tostring(bx), tostring(by))
+  -- YOU ARE ALREADY AS CLOSE AS ANYONE GETS. When the nearest walkable
+  -- cell is RIGHT BESIDE the target, the walk did not fail to approach —
+  -- the target itself is a thing you cannot stand on, and beside it is
+  -- where you were going to end up anyway. Route 12's leg asked to walk
+  -- to (10,62), the sleeping Snorlax's own cell, four rounds running; the
+  -- reply named (10,61) each time and the run read the whole line as a
+  -- refusal, played the POKE FLUTE from wherever it had stopped, and was
+  -- told "Now, that's a catchy tune!" — the game's words for "not next to
+  -- it". Say which cell is the standing-next-to one.
+  if best == 1 and bx and by then
+    said = said .. (", which is RIGHT BESIDE it — nothing can stand ON "
+      .. "%d,%d, so (%d,%d) is as close as anyone gets. Walk to (%d,%d) "
+      .. "and act from there"):format(tx, ty, bx, by, bx, by)
+  end
   local fence = {}
   for _, npc in ipairs(ow.npcs or {}) do
     local nx, ny = npc.cellX, npc.cellY
