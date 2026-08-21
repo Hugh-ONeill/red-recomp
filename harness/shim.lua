@@ -615,6 +615,30 @@ local function observe(G, seq, result)
                       or (lm and lm.heightCells and y >= lm.heightCells - 1))
         if not edge and lm and lm.isWarpTileCell
            and not lm:isWarpTileCell(x, y) then
+          -- ...BUT MOST OF THEM ARE NOT LANDINGS AT ALL. The rule above was
+          -- written from ONE example (SILPH_CO_1F 16,10, tile 1, floor on
+          -- all four sides) and it hid 60 real ways out of this game: every
+          -- route gate, all three Rocket Hideout lift doors, the S.S. Anne
+          -- cabin doors and its bow, and both cells of the VERMILION dock
+          -- -- so the run stood in Vermilion 56 times with the S.S. TICKET
+          -- in the bag reading "FULLY WORKED: nothing here is untried",
+          -- and went hunting the gym door behind a CUT tree instead.
+          -- src/world/Warp.lua's own comment names them: "the player
+          -- stands on a warp cell and the extra check passes -- route-gate
+          -- doorways, the Vermilion dock entrance". So ask the engine's
+          -- rule rather than guessing from the tile: if standing here and
+          -- pressing on WOULD fire it, it is a way through. What is left
+          -- after that -- 7 of 67 -- are the real landings.
+          local okw, WarpM = pcall(require, "src.world.Warp")
+          local carpets = G.data and G.data.field
+                          and G.data.field.warpCarpets
+          if okw and WarpM and WarpM.extraCheck then
+            for _, dn in ipairs({ "down", "up", "left", "right" }) do
+              local okc, fires = pcall(WarpM.extraCheck, lm, carpets,
+                                       x, y, dn)
+              if okc and fires then return "threshold" end
+            end
+          end
           return "landing"
         end
         return "stairs"
@@ -2249,6 +2273,31 @@ function OPS.use_warp(G, c)
     elseif x <= 0 then order = {"left","up","down","right"}
     elseif x >= w - 1 then order = {"right","up","down","left"}
     else order = {"down","up","left","right"} end
+    -- ...AND IF THE ENGINE WILL SAY WHICH WAY FIRES IT, ASK. A gate doorway
+    -- or the Vermilion pier fires on a BLOCKED step toward a carpet tile
+    -- (Warp.extraCheck), and which direction that is has nothing to do
+    -- with which map edge the tile is near -- Route 7's east gate wants
+    -- "right", Route 8's wants "left", the dock wants "down". Guessing
+    -- costs three presses and three walks back onto the tile, each of
+    -- which can drift the party off it.
+    do
+      local okw, WarpM = pcall(require, "src.world.Warp")
+      local carpets = G.data and G.data.field and G.data.field.warpCarpets
+      local lm = ow.map
+      if okw and WarpM and WarpM.extraCheck and lm then
+        for _, dn in ipairs({ "down", "up", "left", "right" }) do
+          local okc, fires = pcall(WarpM.extraCheck, lm, carpets, x, y, dn)
+          if okc and fires then
+            local head = { dn }
+            for _, d2 in ipairs(order) do
+              if d2 ~= dn then head[#head + 1] = d2 end
+            end
+            order = head
+            break
+          end
+        end
+      end
+    end
     for _, dir in ipairs(order) do
       -- a held direction whose neighbor was walkable DRIFTS the player
       -- off the warp cell (the SS Anne bow's down/up/left are all open

@@ -100,7 +100,7 @@ class Candidate:
     hops: int | None = None      # exits: legs to the goal over walked ground
     offer: bool = True           # False only for the two hard cases
     rank: tuple = field(default_factory=tuple)
-    look: str = "door"           # door | stairs | pad | hole (warps only)
+    look: str = "door"           # door | stairs | pad | hole | threshold
 
     def label(self) -> str:
         if self.kind == "seam":
@@ -113,6 +113,12 @@ class Candidate:
                 return f"hole ({self.key})"
             if _l == "stairs":
                 return f"stairs/ladder ({self.key})"
+            if _l == "threshold":
+                # A gate doorway, a cabin door, the end of the Vermilion
+                # pier: ground you walk onto and then keep pressing into.
+                # Named apart from a door because it has no door drawn on
+                # it — what you see is the path running out.
+                return f"way through ({self.key})"
             return f"door ({self.key})"
         if self.kind == "op":
             return self.key
