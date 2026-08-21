@@ -10080,6 +10080,27 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # untried list instead — a fact about the harness's own budget,
             # not the game. What is untried is in the ledger; explore takes
             # the next one; which is the model's.
+            # WHAT YOU ARE CARRYING, WHEN NOTHING IS MOVING. The bag
+            # reached this prompt only after TWO blackouts, so a run that is
+            # merely stuck — not dying — is never told what it holds. Route
+            # 12's leg is literally named for the POKE FLUTE, the flute was
+            # in the bag, and across eleven escalations the word POKE_FLUTE
+            # did not appear in the prompt once: the model pressed the
+            # Snorlax nineteen times instead, which is the one thing the
+            # engine says can never work. A bag is on-screen at any moment
+            # for the price of opening it, and it is a short list. Say it
+            # whenever a round changed nothing.
+            if (0 < self._stale_rounds) or self._blackouts.get(
+                    self._target_key(sg), 0) >= 2:
+                _bag2 = (cur or {}).get("bag") or {}
+                if _bag2 and "WHAT YOU ARE CARRYING" not in stuck_note:
+                    stuck_note += ("\nWHAT YOU ARE CARRYING: "
+                                   + ", ".join(f"{k} x{v}" for k, v
+                                               in sorted(_bag2.items()))
+                                   + ". Some of these are used ON a party "
+                                     "member and some WHERE YOU STAND; "
+                                     "{\"op\":\"use_item\",\"item\":X} "
+                                     "with no slot uses one on the spot.")
             if 0 < self._stale_rounds < STALE_CUTOFF:
                 stuck_note += (
                     f"\nSTALE {self._stale_rounds} of {STALE_CUTOFF}: that "
