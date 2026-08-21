@@ -1,0 +1,45 @@
+{
+ "goal": "Defeat Lt. Surge for the Thunder Badge",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Vermilion City Pokemon Center",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Lt. Surge for the Thunder Badge"
+   }
+  },
+  {
+   "id": "enter_vermilion_gym",
+   "goal_text": "Enter the Vermilion City Gym",
+   "done_when": {
+    "map": "VERMILION_GYM"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Lt. Surge for the Thunder Badge"
+   }
+  },
+  {
+   "id": "defeat_lt_surge",
+   "goal_text": "Defeat Lt. Surge in battle to earn the Thunder Badge",
+   "done_when": {
+    "badge": "THUNDERBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Lt. Surge for the Thunder Badge"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

@@ -1,0 +1,45 @@
+{
+ "goal": "Travel through Rock Tunnel from the north side of Route 10 to its south side",
+ "subgoals": [
+  {
+   "id": "go_to_route_10",
+   "goal_text": "Travel from Route 9 to Route 10",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Travel through Rock Tunnel from the north side of Route 10 to its south side"
+   }
+  },
+  {
+   "id": "enter_rock_tunnel",
+   "goal_text": "Enter the Rock Tunnel from Route 10",
+   "done_when": {
+    "map": "ROCK_TUNNEL_1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Travel through Rock Tunnel from the north side of Route 10 to its south side"
+   }
+  },
+  {
+   "id": "exit_rock_tunnel_south",
+   "goal_text": "Navigate through the Rock Tunnel and exit from the south side",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Travel through Rock Tunnel from the north side of Route 10 to its south side"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

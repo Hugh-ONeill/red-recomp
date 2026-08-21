@@ -1,0 +1,58 @@
+{
+ "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth",
+ "subgoals": [
+  {
+   "id": "exit_vermilion_center",
+   "goal_text": "Exit the Vermilion Pokemon Center to enter Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth"
+   }
+  },
+  {
+   "id": "travel_to_route_11",
+   "goal_text": "Travel east from Vermilion City to Route 11",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth"
+   }
+  },
+  {
+   "id": "travel_to_route_12",
+   "goal_text": "Travel east from Route 11 to Route 12",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth"
+   }
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Travel north from Route 12 to enter Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

@@ -1,0 +1,45 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a WATER or GRASS type"
+   }
+  },
+  {
+   "id": "go_to_route_24",
+   "goal_text": "Travel north from Cerulean City to Route 24",
+   "done_when": {
+    "map": "ROUTE_24"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a WATER or GRASS type"
+   }
+  },
+  {
+   "id": "catch_water_grass_type",
+   "goal_text": "Catch a Water or Grass type Pokemon on Route 24 or 25 (e.g., Oddish or Bellsprout if available, or Water types in the water)",
+   "done_when": {
+    "party_type": "WATER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a WATER or GRASS type"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

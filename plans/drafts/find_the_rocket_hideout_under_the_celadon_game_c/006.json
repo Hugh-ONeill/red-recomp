@@ -1,0 +1,32 @@
+{
+ "goal": "Find the Rocket Hideout under the Celadon Game Corner",
+ "subgoals": [
+  {
+   "id": "talk_to_game_corner_owner",
+   "goal_text": "Talk to the owner of the Game Corner to reveal the secret entrance to the Rocket Hideout.",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Find the Rocket Hideout under the Celadon Game Corner"
+   }
+  },
+  {
+   "id": "enter_rocket_hideout",
+   "goal_text": "Locate and enter the secret entrance to the Rocket Hideout within the Game Corner.",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B1F"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Find the Rocket Hideout under the Celadon Game Corner"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

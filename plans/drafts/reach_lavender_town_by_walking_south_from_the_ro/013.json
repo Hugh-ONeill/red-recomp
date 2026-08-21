@@ -1,0 +1,42 @@
+{
+ "goal": "Reach Lavender Town by walking south from the Rock Tunnel's south mouth",
+ "subgoals": [
+  {
+   "id": "go_to_rock_tunnel_north",
+   "goal_text": "Travel to the north entrance of Rock Tunnel on Route 10",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_rock_tunnel",
+   "goal_text": "Enter the Rock Tunnel from the north",
+   "done_when": {
+    "map": "ROCK_TUNNEL_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_rock_tunnel_south",
+   "goal_text": "Navigate through the Rock Tunnel and exit from the south mouth onto Route 10",
+   "done_when": {
+    "player_at": {
+     "x": 14,
+     "y": 52,
+     "radius": 5
+    }
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "travel_to_lavender_town",
+   "goal_text": "Walk south from the south mouth of Rock Tunnel to enter Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

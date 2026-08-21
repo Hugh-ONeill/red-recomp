@@ -1,0 +1,41 @@
+{
+  "goal": "Reach Cerulean City",
+  "subgoals": [
+    {
+      "id": "exit_mt_moon",
+      "goal_text": "Exit Mt. Moon and return to the surface",
+      "done_when": {
+        "map": "ROUTE_4"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 15,
+          "y": 27,
+          "when": {
+            "map": "MT_MOON_B2F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign4",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "reach_cerulean_city",
+      "goal_text": "Travel east from Route 4 to enter Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

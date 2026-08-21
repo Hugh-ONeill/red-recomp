@@ -1,0 +1,58 @@
+{
+ "goal": "Defeat Giovanni in the Rocket Hideout for the Silph Scope",
+ "subgoals": [
+  {
+   "id": "heal_at_center",
+   "goal_text": "Since the party is nearly fainted and out of PP, return to the Celadon City Pokemon Center to heal",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "to": "CELADON_POKECENTER"
+    },
+    {
+     "op": "heal",
+     "when": {
+      "map": "CELADON_POKECENTER"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 2,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "return_to_hideout",
+   "goal_text": "Travel back to the Rocket Hideout under the Celadon Game Corner",
+   "done_when": {
+    "area": "ROCKET_HIDEOUT_B4F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "defeat_giovanni",
+   "goal_text": "Defeat Giovanni in the battle at the bottom of the Rocket Hideout",
+   "done_when": {
+    "flag": "EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_silph_scope",
+   "goal_text": "Talk to Giovanni after the battle to receive the Silph Scope",
+   "done_when": {
+    "has_item": {
+     "SILPH_SCOPE": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

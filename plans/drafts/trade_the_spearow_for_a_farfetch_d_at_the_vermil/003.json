@@ -1,0 +1,58 @@
+{
+ "goal": "Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house",
+ "subgoals": [
+  {
+   "id": "exit_ss_anne",
+   "goal_text": "Leave the S.S. Anne and return to Vermilion City",
+   "done_when": {
+    "map": "VERMILION_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house"
+   }
+  },
+  {
+   "id": "catch_spearow",
+   "goal_text": "Catch a SPEAROW in the wild",
+   "done_when": {
+    "has_species": "SPEAROW"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house"
+   }
+  },
+  {
+   "id": "enter_trade_house",
+   "goal_text": "Enter the Vermilion City trade house",
+   "done_when": {
+    "map": "VERMILION_TRADE_HOUSE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house"
+   }
+  },
+  {
+   "id": "trade_for_farfetchd",
+   "goal_text": "Trade the SPEAROW for a FARFETCH'D",
+   "done_when": {
+    "has_species": "FARFETCHD"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

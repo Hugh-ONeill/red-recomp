@@ -10,7 +10,8 @@ its last step having achieved nothing.
 Map hops may be re-planned freely; a flag/badge subgoal is an event that
 something later depends on, so it is carried forward.
 
-Usage: carry_gates.py <old_plan.json> <new_plan.json>   (edits new in place)
+Usage: carry_gates.py <old_plan.json> <new_plan.json> [--journal run/executor_log.jsonl]
+       (edits new in place)
 """
 from __future__ import annotations
 
@@ -39,13 +40,85 @@ def gates(plan: dict) -> list:
 MAX_CARRIES = 2
 
 
-def carry(old: dict, new: dict) -> tuple:
+def failed_at(journal: Path | None, old: dict) -> dict | None:
+    """The subgoal the attempt just died on, out of the journal the
+    re-author was handed. Returns its record from the OLD plan, or None."""
+    if not journal or not journal.exists():
+        return None
+    want = None
+    try:
+        with journal.open() as fh:
+            for line in fh:
+                if '"plan_failed_at"' not in line:
+                    continue
+                try:
+                    want = json.loads(line).get("subgoal") or want
+                except Exception:
+                    pass
+    except Exception:
+        return None
+    if not want:
+        return None
+    for sg in old.get("subgoals") or []:
+        if sg.get("id") == want:
+            return sg
+    return None
+
+
+def _kinds(sg) -> set:
+    dw = sg.get("done_when") or {}
+    return {k for k in ("flag", "badge") if k in dw}
+
+
+def replaced(sg, old: dict, new: dict) -> bool:
+    """Did the rewrite put a DIFFERENT gate of the same kind in its place?
+
+    Carrying exists to survive an ACCIDENTAL drop — a plan re-authored
+    mid-dungeon that forgets what it came for. A REPLACEMENT is not a drop.
+    Leg 24 failed on defeat_giovanni {flag: EVENT_BEAT_GIOVANNI}, which is
+    the VIRIDIAN GYM Giovanni and four badges away; the re-author read the
+    journal, saw EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI fire in
+    ROCKET_HIDEOUT_B4F, and wrote that instead. Carrying the old one back
+    in — renamed defeat_giovanni_2, ahead of the fixed one — re-imposed
+    exactly what the rewrite was called to fix, twice, and the leg could
+    not pass however many attempts it was given (user: "not triggering,
+    probably a different event flag for defeating giovanni the first time
+    in the hideout").
+
+    A drop still gets carried: if the rewrite answered "party too weak for
+    Brock" by writing a training plan with no badge gate at all, nothing
+    replaced it and the gate comes back.
+    """
+    mine = _kinds(sg)
+    if not mine:
+        return False
+    was = {json.dumps(g.get("done_when") or {}, sort_keys=True)
+           for g in gates(old)}
+    for cand in gates(new):
+        if not (_kinds(cand) & mine):
+            continue
+        if json.dumps(cand.get("done_when") or {}, sort_keys=True) in was:
+            continue                       # the new plan simply kept an old
+        return True                        # gate; a NEW one is a substitute
+    return False
+
+
+def carry(old: dict, new: dict, journal: Path | None = None) -> tuple:
     """Return (merged, carried_ids). Matching is by CONDITION, not id, so a
     renamed subgoal with the same done_when is not duplicated."""
     have = {json.dumps(sg.get("done_when") or {}, sort_keys=True)
             for sg in new.get("subgoals") or []}
+    _died_on = failed_at(journal, old)
+    _swap = (_died_on is not None and replaced(_died_on, old, new))
+    if _swap:
+        print(f"[gates] not carrying {_died_on.get('id')} "
+              f"{json.dumps(_died_on.get('done_when') or {})} — the attempt "
+              f"failed on it and the rewrite put a different gate of the "
+              f"same kind in its place. That is a replacement, not a drop.")
     missing, spent = [], []
     for sg in gates(old):
+        if _swap and sg.get("id") == _died_on.get("id"):
+            continue
         if json.dumps(sg.get("done_when") or {}, sort_keys=True) in have:
             continue
         if int(sg.get("carried_forward") or 0) >= MAX_CARRIES:
@@ -173,17 +246,22 @@ def carry_macros(old: dict, new: dict) -> list:
 
 
 def main() -> int:
-    if len(sys.argv) != 3:
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    journal = None
+    for i, a in enumerate(sys.argv):
+        if a == "--journal" and i + 1 < len(sys.argv):
+            journal = Path(sys.argv[i + 1])
+    if len(args) != 2:
         print(__doc__)
         return 2
-    old_p, new_p = Path(sys.argv[1]), Path(sys.argv[2])
+    old_p, new_p = Path(args[0]), Path(args[1])
     try:
         old = json.loads(old_p.read_text())
         new = json.loads(new_p.read_text())
     except Exception as e:                       # a missing/short file is not
         print(f"[gates] could not merge: {e}")   # worth failing the campaign
         return 0
-    merged, carried = carry(old, new)
+    merged, carried = carry(old, new, journal)
     macros = carry_macros(old, merged)
     if carried or macros:
         new_p.write_text(json.dumps(merged, indent=1))

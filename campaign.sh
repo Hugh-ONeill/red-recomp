@@ -235,7 +235,11 @@ PY
   # scratch, so a plan written while stuck in Mt Moon B2F became "walk out"
   # and dropped defeat_super_nerd — a leg that can march to its last subgoal
   # having achieved nothing. Map hops may be re-planned freely.
+  # ...BUT A GATE THE ATTEMPT DIED ON AND THE REWRITE REPLACED IS NOT A
+  # DROP. The journal is how carry_gates learns which subgoal that was —
+  # the same journal the re-author was just handed.
   python planner/carry_gates.py "plans/$failed_plan" "$rewritten" \
+      --journal run/executor_log.jsonl \
       2>&1 | tee -a "$LOG"
 
   # resume from the failed leg onward; earlier legs already succeeded and

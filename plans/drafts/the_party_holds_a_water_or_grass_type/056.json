@@ -1,0 +1,35 @@
+{
+ "goal": "the party holds a WATER or GRASS type",
+ "subgoals": [
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel to Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a WATER or GRASS type"
+   }
+  },
+  {
+   "id": "catch_water_grass_type",
+   "goal_text": "Catch a Water or Grass type Pokemon in the wild near Cerulean City",
+   "done_when": {
+    "party_type": [
+     "WATER",
+     "GRASS"
+    ]
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "the party holds a WATER or GRASS type"
+   }
+  }
+ ],
+ "drawn_as": "draw 2"
+}

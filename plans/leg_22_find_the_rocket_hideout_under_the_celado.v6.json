@@ -1,0 +1,100 @@
+{
+  "goal": "Find the Rocket Hideout under the Celadon Game Corner",
+  "subgoals": [
+    {
+      "id": "talk_to_game_corner_owner",
+      "goal_text": "Talk to the owner of the Game Corner to reveal the secret entrance to the Rocket Hideout.",
+      "done_when": {
+        "map": "GAME_CORNER"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Find the Rocket Hideout under the Celadon Game Corner"
+      }
+    },
+    {
+      "id": "enter_rocket_hideout",
+      "goal_text": "Locate the hidden rocket switch in the Game Corner and enter the Rocket Hideout.",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4,
+      "subgoal_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "via": "author.py decomposition",
+        "goal": "Find the Rocket Hideout under the Celadon Game Corner"
+      },
+      "macro": [
+        {
+          "op": "buy",
+          "item": "GAME_COIN",
+          "count": 50,
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "GAMECORNER_MIDDLE_AGED_MAN1",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "buy",
+          "item": "GAME_COIN",
+          "count": 50,
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "GAMECORNER_MIDDLE_AGED_WOMAN",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "buy",
+          "item": "GAME_COIN",
+          "count": 50,
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "GAMECORNER_ROCKET",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "POSTER",
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 17,
+          "y": 4,
+          "when": {
+            "map": "GAME_CORNER"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 8
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

@@ -1,0 +1,210 @@
+{
+ "goal": "every party member is at least level 25",
+ "subgoals": [
+  {
+   "id": "heal_at_vermilion",
+   "goal_text": "Heal the party at the Vermilion City Pokemon Center to recover from the gym battle.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "travel_to_route_11",
+   "goal_text": "Travel east from Vermilion City to Route 11.",
+   "done_when": {
+    "map": "ROUTE_11"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "enter_digletts_cave",
+   "goal_text": "Enter Diglett's Cave from Route 11.",
+   "done_when": {
+    "map": "DIGLETTS_CAVE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "exit_digletts_cave_east",
+   "goal_text": "Traverse Diglett's Cave and exit on the east side to Route 12.",
+   "done_when": {
+    "map": "ROUTE_12"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "reach_lavender_town",
+   "goal_text": "Travel north from Route 12 to Lavender Town.",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "heal_at_lavender",
+   "goal_text": "Heal the party at the Lavender Town Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "travel_to_route_8",
+   "goal_text": "Travel west from Lavender Town to Route 8.",
+   "done_when": {
+    "map": "ROUTE_8"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "reach_saffron_city",
+   "goal_text": "Travel west from Route 8 to Saffron City.",
+   "done_when": {
+    "map": "SAFFRON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "travel_to_route_7",
+   "goal_text": "Travel west from Saffron City to Route 7.",
+   "done_when": {
+    "map": "ROUTE_7"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "reach_celadon_city",
+   "goal_text": "Travel west from Route 7 to Celadon City.",
+   "done_when": {
+    "map": "CELADON_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "heal_at_celadon",
+   "goal_text": "Heal the party at the Celadon City Pokemon Center.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "grind_oddish",
+   "goal_text": "Battle wild Pokemon in the grass around Celadon City or Route 7 until Oddish reaches level 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 1,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "grind_nidorina",
+   "goal_text": "Battle wild Pokemon until Nidorina reaches level 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 2,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "grind_farfetchd",
+   "goal_text": "Battle wild Pokemon until Farfetch'd reaches level 25.",
+   "done_when": {
+    "slot_level": {
+     "slot": 4,
+     "min": 25
+    }
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  },
+  {
+   "id": "final_check_levels",
+   "goal_text": "Ensure all party members, including Charmeleon, are at least level 25.",
+   "done_when": {
+    "party_min_level": 25
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "every party member is at least level 25"
+   }
+  }
+ ],
+ "drawn_as": "draw 3"
+}

@@ -1,0 +1,71 @@
+{
+ "goal": "Defeat Misty for the Cascade Badge",
+ "subgoals": [
+  {
+   "id": "exit_bills_house",
+   "goal_text": "Leave Bill's house and return to the overworld.",
+   "done_when": {
+    "map": "ROUTE_25"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Misty for the Cascade Badge"
+   }
+  },
+  {
+   "id": "go_to_cerulean_city",
+   "goal_text": "Travel from Bill's house back to Cerulean City.",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Misty for the Cascade Badge"
+   }
+  },
+  {
+   "id": "heal_at_cerulean_center",
+   "goal_text": "Visit the Cerulean City Pokemon Center to heal the party, especially the fainted Nidoran_F and Oddish.",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Misty for the Cascade Badge"
+   }
+  },
+  {
+   "id": "enter_cerulean_gym",
+   "goal_text": "Enter the Cerulean Gym to face Misty.",
+   "done_when": {
+    "map": "CERULEAN_GYM"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Misty for the Cascade Badge"
+   }
+  },
+  {
+   "id": "defeat_misty",
+   "goal_text": "Battle and defeat Gym Leader Misty using the Grass-type Oddish or other party members.",
+   "done_when": {
+    "badge": "CASCADEBADGE"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Defeat Misty for the Cascade Badge"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

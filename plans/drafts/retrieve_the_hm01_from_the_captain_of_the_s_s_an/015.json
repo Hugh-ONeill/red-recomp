@@ -1,0 +1,48 @@
+{
+ "goal": "Retrieve the HM01 from the captain of the S.S. Anne",
+ "subgoals": [
+  {
+   "id": "board_ss_anne",
+   "goal_text": "Enter the S.S. Anne from Vermilion City",
+   "done_when": {
+    "map": "SS_ANNE_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_anne_2f",
+   "goal_text": "Go up to the second floor of the S.S. Anne",
+   "done_when": {
+    "map": "SS_ANNE_2F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_anne_3f",
+   "goal_text": "Go up to the third floor of the S.S. Anne",
+   "done_when": {
+    "map": "SS_ANNE_3F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "reach_captains_room",
+   "goal_text": "Enter the Captain's room",
+   "done_when": {
+    "map": "SS_ANNE_CAPTAINS_ROOM"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "get_hm01",
+   "goal_text": "Talk to the Captain to receive HM01",
+   "done_when": {
+    "has_item": {
+     "HM_CUT": 1
+    }
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

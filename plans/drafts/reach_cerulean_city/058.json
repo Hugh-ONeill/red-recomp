@@ -1,0 +1,19 @@
+{
+ "goal": "Reach Cerulean City",
+ "subgoals": [
+  {
+   "id": "walk_to_cerulean",
+   "goal_text": "Walk east from Route 4 to enter Cerulean City",
+   "done_when": {
+    "map": "CERULEAN_CITY"
+   },
+   "escalation_rounds": 4,
+   "subgoal_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "via": "author.py decomposition",
+    "goal": "Reach Cerulean City"
+   }
+  }
+ ],
+ "drawn_as": "draw 1"
+}

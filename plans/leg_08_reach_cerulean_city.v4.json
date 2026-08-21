@@ -1,0 +1,14 @@
+{
+  "goal": "Reach Cerulean City",
+  "subgoals": [
+    {
+      "id": "reach_route_4_exit",
+      "goal_text": "Walk east from Route 4 to enter Cerulean City",
+      "done_when": {
+        "map": "CERULEAN_CITY"
+      },
+      "escalation_rounds": 4
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

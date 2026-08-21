@@ -1,0 +1,30 @@
+{
+ "goal": "Find the Rocket Hideout under the Celadon Game Corner",
+ "subgoals": [
+  {
+   "id": "heal_at_celadon_center",
+   "goal_text": "Visit the Celadon Pokemon Center to heal the party before heading to the Game Corner",
+   "done_when": {
+    "party_healthy": true
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "go_to_game_corner",
+   "goal_text": "Travel to the Celadon Game Corner",
+   "done_when": {
+    "map": "GAME_CORNER"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "find_rocket_hideout_entrance",
+   "goal_text": "Locate and enter the hidden entrance to the Rocket Hideout",
+   "done_when": {
+    "map": "ROCKET_HIDEOUT_B1F"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

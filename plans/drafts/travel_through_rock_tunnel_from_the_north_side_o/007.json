@@ -1,0 +1,30 @@
+{
+ "goal": "Travel through Rock Tunnel from the north side of Route 10 to its south side",
+ "subgoals": [
+  {
+   "id": "travel_to_route_10_north",
+   "goal_text": "Travel to the north side of Route 10",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "enter_rock_tunnel",
+   "goal_text": "Enter the Rock Tunnel from Route 10",
+   "done_when": {
+    "map": "ROCK_TUNNEL_1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "traverse_rock_tunnel",
+   "goal_text": "Navigate through the Rock Tunnel to the south exit",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

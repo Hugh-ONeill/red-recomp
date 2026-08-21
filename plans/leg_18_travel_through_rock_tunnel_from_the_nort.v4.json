@@ -1,0 +1,110 @@
+{
+ "goal": "Travel through Rock Tunnel from the north side of Route 10 to its south side",
+ "subgoals": [
+  {
+   "id": "travel_to_route_10",
+   "goal_text": "Travel from Vermilion City to the north side of Route 10",
+   "done_when": {
+    "map": "ROUTE_10"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "to": "ROUTE_9|0,8"
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 1,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "enter_rock_tunnel",
+   "goal_text": "Enter the Rock Tunnel from Route 10",
+   "done_when": {
+    "map": "ROCK_TUNNEL_1F"
+   },
+   "escalation_rounds": 4,
+   "macro": [
+    {
+     "op": "interact",
+     "name": "TEXT_ROUTE10_ROCKTUNNEL_NORTH_SIGN",
+     "when": {
+      "map": "ROUTE_10"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "TEXT_ROUTE10_POKECENTER_SIGN",
+     "when": {
+      "map": "ROUTE_10"
+     }
+    },
+    {
+     "op": "interact",
+     "name": "ROUTE10_COOLTRAINER_F1",
+     "when": {
+      "map": "ROUTE_10"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 11,
+     "y": 19,
+     "when": {
+      "map": "ROUTE_10"
+     }
+    },
+    {
+     "op": "heal",
+     "when": {
+      "map": "ROCK_TUNNEL_POKECENTER"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 3,
+     "y": 7,
+     "when": {
+      "map": "ROCK_TUNNEL_POKECENTER"
+     }
+    },
+    {
+     "op": "use_warp",
+     "x": 8,
+     "y": 17,
+     "when": {
+      "map": "ROUTE_10"
+     }
+    }
+   ],
+   "macro_provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "campaign1",
+    "via": "escalation",
+    "n_ops": 7,
+    "carried_from_rewrite": true
+   }
+  },
+  {
+   "id": "reach_rock_tunnel_b1f",
+   "goal_text": "Descend to the basement floor of Rock Tunnel",
+   "done_when": {
+    "map": "ROCK_TUNNEL_B1F"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "exit_rock_tunnel_south",
+   "goal_text": "Navigate through the Rock Tunnel and exit from the south side into Lavender Town",
+   "done_when": {
+    "map": "LAVENDER_TOWN"
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

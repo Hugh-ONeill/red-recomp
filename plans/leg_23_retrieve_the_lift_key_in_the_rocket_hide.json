@@ -1,0 +1,199 @@
+{
+  "goal": "Retrieve the Lift Key in the Rocket Hideout",
+  "subgoals": [
+    {
+      "id": "enter_rocket_hideout",
+      "goal_text": "Enter the Rocket Hideout via the secret entrance in the Celadon Game Corner",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B1F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b2f",
+      "goal_text": "Navigate through the first floor and take the stairs down to the second floor",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B2F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 2,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "descend_to_b3f",
+      "goal_text": "Navigate through the second floor and take the stairs down to the third floor",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B3F"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "descend_to_b4f",
+      "goal_text": "Navigate through the third floor and take the stairs down to the fourth floor",
+      "done_when": {
+        "map": "ROCKET_HIDEOUT_B4F"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 23,
+          "y": 2,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        },
+        {
+          "op": "toss",
+          "item": "NUGGET",
+          "confirm": true,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ITEM_9_17",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB1F_ROCKET3",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB1F_ROCKET4",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 21,
+          "y": 24,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B1F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 21,
+          "y": 8,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B2F"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 19,
+          "y": 18,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B3F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 8
+      }
+    },
+    {
+      "id": "get_lift_key",
+      "goal_text": "Find and interact with the item on the desk in the bottom floor office to retrieve the Lift Key",
+      "done_when": {
+        "has_item": {
+          "LIFT_KEY": 1
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "ITEM_10_12",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "toss",
+          "item": "TM_MEGA_PUNCH",
+          "confirm": true,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ITEM_9_4",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ROCKETHIDEOUTB4F_ROCKET3",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "toss",
+          "item": "TM_RAZOR_WIND",
+          "confirm": true,
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        },
+        {
+          "op": "interact",
+          "name": "ITEM_10_2",
+          "answer": "yes",
+          "when": {
+            "map": "ROCKET_HIDEOUT_B4F"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 6
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

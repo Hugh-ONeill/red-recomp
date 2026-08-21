@@ -1,0 +1,207 @@
+{
+  "goal": "every party member is at least level 25",
+  "subgoals": [
+    {
+      "id": "heal_before_grind",
+      "goal_text": "Go to the Vermilion Pokemon Center and heal the party to full health",
+      "done_when": {
+        "party_healthy": true
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 4,
+          "y": 17,
+          "when": {
+            "map": "VERMILION_GYM"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        }
+      ],
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 4,
+        "carried_from_rewrite": true
+      }
+    },
+    {
+      "id": "level_up_farfetchd",
+      "goal_text": "Battle wild Pokemon on Route 11 until Farfetch'd reaches level 25",
+      "done_when": {
+        "slot_level": {
+          "slot": 1,
+          "min": 25
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        },
+        {
+          "op": "grind",
+          "intent": "train",
+          "when": {
+            "map": "ROUTE_11"
+          }
+        },
+        {
+          "op": "grind",
+          "intent": "train",
+          "when": {
+            "map": "ROUTE_11"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    },
+    {
+      "id": "level_up_gloom",
+      "goal_text": "Battle wild Pokemon on Route 11 until Gloom reaches level 25",
+      "done_when": {
+        "slot_level": {
+          "slot": 4,
+          "min": 25
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "party_swap",
+          "a": 1,
+          "b": 4,
+          "when": {
+            "map": "ROUTE_11"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    },
+    {
+      "id": "level_up_nidorina",
+      "goal_text": "Battle wild Pokemon on Route 11 until Nidorina reaches level 25",
+      "done_when": {
+        "slot_level": {
+          "slot": 2,
+          "min": 25
+        }
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "party_swap",
+          "a": 1,
+          "b": 2,
+          "when": {
+            "map": "ROUTE_11"
+          }
+        },
+        {
+          "op": "grind",
+          "intent": "train",
+          "when": {
+            "map": "ROUTE_11"
+          }
+        },
+        {
+          "to": "VERMILION_CITY"
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "party_swap",
+          "a": 1,
+          "b": 2,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 5
+      }
+    },
+    {
+      "id": "verify_party_levels",
+      "goal_text": "Ensure all party members, including Charmeleon, are at least level 25",
+      "done_when": {
+        "party_min_level": 25
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "grind",
+          "intent": "train",
+          "when": {
+            "map": "ROUTE_11"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign2",
+        "via": "escalation",
+        "n_ops": 1
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}

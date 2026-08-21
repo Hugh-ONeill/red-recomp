@@ -1,0 +1,33 @@
+{
+ "goal": "Take one of the fossils from the deepest floor of Mt. Moon",
+ "subgoals": [
+  {
+   "id": "reach_fossil_room",
+   "goal_text": "Navigate to the specific area of the deepest floor (B2F) where the fossils are located. The evidence shows the fossils are behind a door at (5,7) in area MT_MOON_B2F|20,5.",
+   "done_when": {
+    "area": "MT_MOON_B2F|20,5"
+   },
+   "escalation_rounds": 4
+  },
+  {
+   "id": "collect_fossil",
+   "goal_text": "Pick up either the Helix Fossil or the Dome Fossil from the ground on the deepest floor of Mt. Moon.",
+   "done_when": {
+    "any_of": [
+     {
+      "has_item": {
+       "HELIX_FOSSIL": 1
+      }
+     },
+     {
+      "has_item": {
+       "DOME_FOSSIL": 1
+      }
+     }
+    ]
+   },
+   "escalation_rounds": 4
+  }
+ ],
+ "authored_by": "gemma4:31b-it-q4_K_M"
+}

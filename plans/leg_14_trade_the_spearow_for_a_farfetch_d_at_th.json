@@ -1,0 +1,111 @@
+{
+  "goal": "Trade the SPEAROW for a FARFETCH'D at the Vermilion City trade house",
+  "subgoals": [
+    {
+      "id": "exit_ss_anne",
+      "goal_text": "Leave the S.S. Anne and return to Vermilion City",
+      "done_when": {
+        "map": "VERMILION_CITY"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "catch_spearow",
+      "goal_text": "Catch a SPEAROW in the wild",
+      "done_when": {
+        "has_species": "SPEAROW"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "use_warp",
+          "x": 11,
+          "y": 3,
+          "when": {
+            "map": "VERMILION_CITY"
+          }
+        },
+        {
+          "op": "heal",
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 3,
+          "y": 7,
+          "when": {
+            "map": "VERMILION_POKECENTER"
+          }
+        },
+        {
+          "op": "use_warp",
+          "x": 49,
+          "y": 8,
+          "when": {
+            "map": "ROUTE_11"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 4
+      }
+    },
+    {
+      "id": "enter_trade_house",
+      "goal_text": "Enter the Vermilion City trade house",
+      "done_when": {
+        "map": "VERMILION_TRADE_HOUSE"
+      },
+      "escalation_rounds": 4
+    },
+    {
+      "id": "trade_for_farfetchd",
+      "goal_text": "Trade the SPEAROW for a FARFETCH'D",
+      "done_when": {
+        "has_species": "FARFETCHD"
+      },
+      "escalation_rounds": 4,
+      "macro": [
+        {
+          "op": "interact",
+          "name": "VERMILIONTRADEHOUSE_LITTLE_GIRL",
+          "slot": 4,
+          "when": {
+            "map": "VERMILION_TRADE_HOUSE"
+          }
+        },
+        {
+          "op": "menu",
+          "index": 1
+        },
+        {
+          "op": "interact",
+          "name": "VERMILIONTRADEHOUSE_LITTLE_GIRL",
+          "answer": "yes",
+          "slot": 4,
+          "when": {
+            "map": "VERMILION_TRADE_HOUSE"
+          }
+        }
+      ],
+      "subgoal_provenance": {
+        "authored_by": "unknown (pre-audit)"
+      },
+      "macro_provenance": {
+        "authored_by": "gemma4:31b-it-q4_K_M",
+        "run": "campaign1",
+        "via": "escalation",
+        "n_ops": 3
+      }
+    }
+  ],
+  "authored_by": "gemma4:31b-it-q4_K_M"
+}
