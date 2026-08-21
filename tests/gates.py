@@ -109,6 +109,29 @@ def main():
     check("the old behaviour stands when nobody says what failed",
           carried == ["defeat_giovanni_2"], carried)
 
+    print("\nthe command line it is actually called with:")
+    import subprocess, tempfile, os
+    d = tempfile.mkdtemp()
+    o = os.path.join(d, "o.json")
+    n = os.path.join(d, "n.json")
+    j = os.path.join(d, "j.jsonl")
+    Path(o).write_text(json.dumps(
+        plan(("g", {"flag": "EVENT_A"}), ("keep", {"map": "X"}))))
+    Path(n).write_text(json.dumps(plan(("keep", {"map": "X"}))))
+    Path(j).write_text(json.dumps({"kind": "plan_failed_at",
+                                   "subgoal": "keep"}) + "\n")
+    out = subprocess.run(
+        [sys.executable, str(ROOT / "planner" / "carry_gates.py"), o, n,
+         "--journal", j], capture_output=True, text=True)
+    check("--journal's VALUE is not read as a positional",
+          "Usage:" not in out.stdout, out.stdout.strip()[:200])
+    check("...and the gate is actually carried",
+          "carried 1 event gate" in out.stdout, out.stdout.strip()[:200])
+    check("...and written to the file",
+          [s2["id"] for s2 in json.loads(Path(n).read_text())["subgoals"]]
+          == ["g", "keep"],
+          Path(n).read_text()[:200])
+
     print("\n" + "-" * 60)
     if FAILS:
         print(f"A REPLACED GATE IS STILL COMING BACK: {len(FAILS)} case(s)")

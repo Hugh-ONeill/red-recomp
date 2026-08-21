@@ -246,11 +246,19 @@ def carry_macros(old: dict, new: dict) -> list:
 
 
 def main() -> int:
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    journal = None
-    for i, a in enumerate(sys.argv):
-        if a == "--journal" and i + 1 < len(sys.argv):
-            journal = Path(sys.argv[i + 1])
+    # A FLAG'S VALUE IS NOT A POSITIONAL. Filtering only the "--" words left
+    # the journal PATH in the positional list, so the usage text printed and
+    # no gate was carried at all — the opposite of this file's whole job,
+    # shipped live for one leg.
+    argv, args, journal = list(sys.argv[1:]), [], None
+    while argv:
+        a = argv.pop(0)
+        if a == "--journal" and argv:
+            journal = Path(argv.pop(0))
+        elif a.startswith("--"):
+            continue
+        else:
+            args.append(a)
     if len(args) != 2:
         print(__doc__)
         return 2
