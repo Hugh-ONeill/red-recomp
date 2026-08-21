@@ -3410,6 +3410,37 @@ function OPS.use_item(G, c)
   if bag_count(G, c.item) < 1 then
     return false, "no " .. c.item .. " in the bag"
   end
+  -- DO NOT OPEN A BOX YOU WILL ONLY HAVE TO CLIMB BACK OUT OF. A machine
+  -- taught to a Pokemon that already knows four moves needs a forget=,
+  -- and without one this used to walk the whole flow — start menu, bag,
+  -- party picker, "Delete an older move to make room" — decline it, and
+  -- try to back out. When the back-out did not take, the game sat on that
+  -- prompt and EVERY op after it came back "not in overworld (a box was
+  -- up and would not close)": the run spent four rounds pressing menu
+  -- indexes to escape a box the harness had opened on its behalf, and the
+  -- teach never happened (user: "itll plan to use it, but then when it
+  -- does it wont make the pokemon forget a move and instead exit the
+  -- menu"). The party's moves are readable without touching a menu. Ask
+  -- first, and refuse standing in the overworld where the next op can
+  -- still act.
+  if (c.item:find("^TM_") or c.item:find("^HM_")) and not c.forget then
+    local _party = (G.save and G.save.party) or {}
+    local _slot = math.floor(tonumber(c.slot) or 1)
+    if _slot < 1 then _slot = 1 end
+    local _mon = _party[_slot]
+    local _mv = {}
+    for j, m in ipairs((_mon and _mon.moves) or {}) do
+      _mv[j] = tostring(type(m) == "table" and m.id or m)
+    end
+    if #_mv >= 4 then
+      return false, ((_mon and _mon.species) or ("slot " .. _slot))
+        .. " already knows four moves: " .. table.concat(_mv, ", ")
+        .. ". Teaching a machine writes over one of them, so this op needs "
+        .. "you to say which: re-send it with forget= one of those four "
+        .. "(HM moves cannot be forgotten). Nothing has been opened or "
+        .. "spent and you are still standing where you were."
+    end
+  end
   U.tap(G, "start"); U.wait(8)
   local menu = ui_top(G)
   if not (menu and menu.screenId == "StartMenu") then
@@ -3537,6 +3568,24 @@ function OPS.use_item(G, c)
     end
   end
   ui_back_out(G)
+  -- ...AND IF IT IS STILL UP, KEEP CLOSING IT. ui_back_out presses B a few
+  -- times, which a plain menu obeys and a pending QUESTION does not: "Abandon
+  -- learning BODY SLAM?" answers to A, not B. Leaving it up poisons every op
+  -- that follows, so answer what is asked until the overworld is back.
+  for _ = 1, 12 do
+    if G.stack:top() == G.overworld then break end
+    if ui_is_choice(G) then
+      local _tx = page_text()
+      if _tx:find("bandon") or _tx:find("ive up") then
+        U.tap(G, "a")                        -- YES, stop trying to learn
+      else
+        U.tap(G, "b")
+      end
+    else
+      U.tap(G, "b")
+    end
+    U.wait(8)
+  end
   -- report from the party record, the only truth that matters
   local after = {}
   for j, mv in ipairs((mon and mon.moves) or {}) do
