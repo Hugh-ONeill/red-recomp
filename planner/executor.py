@@ -1458,7 +1458,7 @@ class Executor:
               f"{region} — now at {at}"]
         if not ignore_done and pred_holds(sg.get("done_when"), cur):
             return True, tr, [dict(step)]
-        if self._where(cur) != region:
+        if not self._same_area(self._where(cur), region):
             tr.append("go: the walk did not arrive; author from here")
             return False, tr, []
         return False, tr, [dict(step)]
@@ -1513,13 +1513,7 @@ class Executor:
                     f"{len(things)} thing(s) here never pressed; "
                     f"pressing {c.key} first")
 
-        if things:
-            c = things[0]
-            self.log("explore_step", subgoal=sg.get("id"), step="press",
-                     what=c.key, left=len(things))
-            return _run(*_thing_op(c))
-        if exits:
-            c = exits[0]
+        def _exit_op(c):
             self.log("explore_step", subgoal=sg.get("id"), step="exit",
                      what=c.key, left=len(exits))
             step = ({"op": "cross", "dir": c.key} if c.kind == "seam"
@@ -1528,13 +1522,54 @@ class Executor:
                           "y": int(c.key.split(",")[1])})
             return _run(step, f"{len(exits)} exit(s) here never taken; "
                               f"taking {c.label()}")
+
+        # THE DEED FOLLOWS THE WORDS. plan_explore reads a way out before a
+        # person when the goal is a map (a press cannot change which map
+        # you are on); this ran the press anyway, so the ledger's item 1
+        # and what {"op":"explore"} actually did disagreed.
+        _map_goal = str(target or "").startswith("map:")
+        if _map_goal and exits:
+            return _exit_op(exits[0])
+        if things:
+            c = things[0]
+            self.log("explore_step", subgoal=sg.get("id"), step="press",
+                     what=c.key, left=len(things))
+            return _run(*_thing_op(c))
+        if exits:
+            return _exit_op(exits[0])
         # nowhere here: the nearest area over walked ground with a way never
         # taken or a thing never pressed (same rule as ledger.plan_explore)
         here = self._where(obs)
         best = None
         regions = set(list(self.frontier or {}) + list(self.sightings or {}))
+        # A NAME YOU CANNOT ARRIVE AT IS NOT A DESTINATION. One room wears
+        # several fingerprints across a run (see _same_area), but only one
+        # of them is the name the world mints TODAY — and the frontier walk
+        # aimed at MT_MOON_1F|2,2, a name last seen three visits into the
+        # run, then reported "the walk did not arrive" from the very room
+        # it had asked for. Alias groups collapse to the name that has been
+        # stood in most: the live one.
+        _visits = self.visits or {}
+        _drop = set()
+        for _r in regions:
+            for _a in AREA_ALIASES.get(_r, ()):
+                if _a not in regions:
+                    continue
+                if (_visits.get(_a, 0), _a) > (_visits.get(_r, 0), _r):
+                    _drop.add(_r)
+        regions -= _drop
+        # WHAT THE GOAL IS MADE OF DECIDES WHAT COUNTS AS FRONTIER. This
+        # picked the NEAREST area with anything left at all, so a step
+        # whose target is a MAP walked toward Mt Moon 1F — nought exits
+        # never taken, eight people never spoken to — while the region
+        # holding the mountain's one untried ladder sat two hops further
+        # on. People cannot be walked through: for a map goal, an area
+        # with a way out nobody has taken comes first, and distance
+        # decides only among those. (Same rule as the ledger's ranking,
+        # which already puts the kind of thing that answers a goal first.)
+        _map_goal = str(target or "").startswith("map:")
         for region in regions:
-            if region == here:
+            if self._same_area(here, region) or self._same_area(region, here):
                 continue
             left = self._frontier_left(region)
             unpressed = ledger.untouched_in(self, region)
@@ -1543,11 +1578,29 @@ class Executor:
             path = self._route(here, region)
             if not path:
                 continue
-            r = (len(path), -(len(left) + len(unpressed)), region)
+            r = ((0 if left else 1) if _map_goal else 0,
+                 len(path), -(len(left) + len(unpressed)), region)
             if best is None or r < best[0]:
                 best = (r, region, left, unpressed, path)
         if not best:
-            self.log("explore_step", subgoal=sg.get("id"), step="none")
+            # ...AND SAY WHICH KIND OF NOTHING IT IS. "Something you have
+            # done must be undone" is a claim about the WORLD, and it was
+            # made when the truth was about this turn: the pocket's one
+            # exit had just refused a hop and was blocked for the current
+            # world mark, so the router could reach nothing while an
+            # untried ladder stood four walked hops away. A road shut for
+            # now is not a world with no roads left.
+            _shut = self._blocked_frontier(here)
+            self.log("explore_step", subgoal=sg.get("id"), step="none",
+                     blocked=len(_shut))
+            if _shut:
+                return False, [
+                    "explore: nothing untried is reachable over walked "
+                    "ground RIGHT NOW — every route on to " + ", ".join(
+                        sorted(_shut)[:3]) + " runs through a hop that "
+                    "refused you this turn. Those are roads again the "
+                    "moment anything about the world changes; taking one "
+                    "of this area's exits by hand is the other way out"], []
             return False, ["explore: nothing untried anywhere you can walk "
                            "to over walked ground — something you have done "
                            "must be undone or something you carry must be "
@@ -1565,7 +1618,7 @@ class Executor:
               f"{arrived or self._where(cur) or 'an unexpected stop'}"]
         if not ignore_done and pred_holds(sg.get("done_when"), cur):
             return True, tr, []
-        if self._where(cur) != region:
+        if not self._same_area(self._where(cur), region):
             tr.append("explore: the walk did not arrive; author from here")
             return False, tr, []
         # one expansion on arrival — the same order as at home
@@ -1582,18 +1635,22 @@ class Executor:
                          key=lambda c: (order.get(c.kind, 4), c.key))
         exits2 = [c for c in cands2
                   if c.status == "untried" and c.kind in ("door", "seam")]
-        if things2:
-            things = things2                # for _thing_op's count
-            ok, t2, cl = _run(*_thing_op(things2[0]))
-            return ok, tr + t2, cl
-        if exits2:
-            c = exits2[0]
+        def _there(c):
             step = ({"op": "cross", "dir": c.key} if c.kind == "seam"
                     else {"op": "use_warp",
                           "x": int(c.key.split(",")[0]),
                           "y": int(c.key.split(",")[1])})
             ok, t2, cl = _run(step, f"taking {c.label()} there")
             return ok, tr + t2, cl
+
+        if _map_goal and exits2:            # same rule as at home
+            return _there(exits2[0])
+        if things2:
+            things = things2                # for _thing_op's count
+            ok, t2, cl = _run(*_thing_op(things2[0]))
+            return ok, tr + t2, cl
+        if exits2:
+            return _there(exits2[0])
         return False, tr, []
 
     def _outcomes_here(self, obs) -> dict:
@@ -1739,6 +1796,28 @@ class Executor:
                 marks[d] = now
             if marks[d] == now:
                 out.add(d)
+        return out
+
+    def _blocked_frontier(self, here: str) -> set:
+        """Areas with an exit never taken that ONLY a refused hop stands
+        between us and.
+
+        The difference between "there is nothing left" and "there is
+        nothing left I can get to this turn" is the difference between a
+        world that needs a key and a corridor somebody was standing in a
+        moment ago. `_route` skips edges marked blocked_at for the current
+        world mark; this asks the same question with that skip lifted, so
+        the frontier step can say which it is."""
+        out = set()
+        for region in set(self.frontier or {}):
+            if self._same_area(here, region) or self._same_area(region, here):
+                continue
+            if not self._frontier_left(region):
+                continue
+            if self._route(here, region):
+                continue                      # reachable now: not this case
+            if self._route(here, region, ignore_blocked=True):
+                out.add(region)
         return out
 
     def _frontier_left(self, region) -> list:
@@ -3042,6 +3121,27 @@ class Executor:
         return f"{m.get('id')}|{m.get('region')}"
 
     @staticmethod
+    def _same_area(got, want) -> bool:
+        """Are these two region names the SAME PLACE?
+
+        A room's fingerprint is minted from the component the party can
+        walk, so one room carries several names across a run: Mt Moon B2F
+        is 3,2 / 20,5 / 27,5 for the one cavern, before and after the
+        fossil that blocked its corridor was taken. `pred_holds("area")`
+        and `_route` have both asked through AREA_ALIASES since the day
+        that bit them; the two arrival checks in `go` and `explore` asked
+        with `!=` and so called a walk that landed exactly where it was
+        sent "did not arrive" — then the frontier walk that had just been
+        thrown away took the pocket's only exit with it, and the next
+        round reported "nothing untried anywhere you can walk to" with an
+        untried ladder four walked hops off (live, 2026-08-20, the leg
+        that could not leave Mt Moon).
+        """
+        if got == want:
+            return True
+        return bool(got) and got in AREA_ALIASES.get(want, ())
+
+    @staticmethod
     def _world_mark(obs) -> list:
         """What the run is carrying, coarsely — badges, event flags, and
         the KINDS of item in the bag. Not a clock: a door does not care how
@@ -3699,7 +3799,8 @@ class Executor:
         out.sort(key=lambda p: p[0])
         return [t for _, t in out]
 
-    def _route(self, frm: str, to: str, avoid: set | None = None):
+    def _route(self, frm: str, to: str, avoid: set | None = None,
+               ignore_blocked: bool = False):
         """Shortest path over the LEARNED region graph, as (exit_key, dest)
         hops. Only edges actually walked count — this navigates known
         ground, it never guesses a connection."""
@@ -3768,7 +3869,8 @@ class Executor:
                     continue
                 # a hop that failed to land in THIS world state is not
                 # routed again until the world moves (see _walk_route)
-                if _now is not None and e.get("blocked_at") == _now:
+                if (not ignore_blocked and _now is not None
+                        and e.get("blocked_at") == _now):
                     continue
                 hop = path + [(key, nxt)]
                 if nxt == to or nxt in AREA_ALIASES.get(to, ()):
@@ -4546,6 +4648,7 @@ class Executor:
             # getting somewhere; give up after two tries that moved nothing.
             _stuck = 0
             _last_pos = None
+            _last_det = ""
             for _ in range(12):
                 pre = self.b.obs()
                 _sf = bool(getattr(self, "_go_surf", False))
@@ -4566,6 +4669,15 @@ class Executor:
                 # Route 5 gate, seven times in a row, from the lane that
                 # cannot reach that tile at all.
                 _det = ((_res or {}).get("result") or {}).get("detail") or ""
+                # THE OP SAID WHY AND NOBODY WROTE IT DOWN. edge_blocked
+                # and route_walk_lost record wanted/got and nothing else,
+                # so a hop that died on "couldn't reach the warp tile —
+                # somebody is standing by it" and one that died on "no
+                # fire" read identically in the log, and the morning after
+                # a burnout there is no way to tell a blocked corridor
+                # from a ladder that would not take. Our own rule about
+                # not hiding applies to our own diagnostics.
+                _last_det = _det or _last_det
                 # A REGROWN BUSH ON A ROAD YOU HAVE WALKED IS NOT A NEW
                 # OBSTACLE. Bushes come back whenever the game reloads, so a
                 # route recorded through one fails on the way back and the
@@ -4646,7 +4758,7 @@ class Executor:
                         # it is a road again the moment anything changes.
                         rec["blocked_at"] = self._world_mark(o)
                         self.log("edge_blocked", frm=frm, via=key, to=nxt,
-                                 n=rec.get("n"))
+                                 n=rec.get("n"), why=_last_det[:200])
                     else:
                         del self.explored[frm][key]
                         self.log("edge_voided", frm=frm, via=key, to=nxt)
@@ -4691,7 +4803,7 @@ class Executor:
                              landed=self._where(o))
                     self._save_memory()
                 self.log("route_walk_lost", subgoal=sg["id"], wanted=nxt,
-                         got=self._where(o))
+                         got=self._where(o), why=_last_det[:200])
                 return self._where(o)
         self.log("route_walked", subgoal=sg["id"], to=self._where(o),
                  hops=len(path))
