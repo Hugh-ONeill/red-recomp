@@ -303,6 +303,30 @@ local ui_back_out           -- ditto; needed by need_overworld above it
 -- after a lift ride the next op met the tail of the fade, reported a
 -- stuck box, and the model spent a round tapping B at a screen nobody
 -- could have closed. Wait for it instead; that is all it ever needed.
+-- WHAT IS ON TOP, IN WORDS. When a close loop gives up, "a screen is
+-- STILL up that would not close" names nothing, and the six passes at the
+-- lift bug were all guesses at which screen it was. Say what it is: the
+-- engine's own screenId, the title of a list, or the first line of a text
+-- page. Costs nothing and turns the next occurrence into a fact.
+local function _screen_name(G)
+  local t = G.stack and G.stack:top()
+  if not t then return "nothing" end
+  if t == G.overworld then return "the overworld" end
+  local bits = {}
+  if t.screenId then bits[#bits + 1] = tostring(t.screenId) end
+  if t.title then bits[#bits + 1] = "\"" .. tostring(t.title) .. "\"" end
+  if t.kind and t.kind ~= t.title then
+    bits[#bits + 1] = "kind=" .. tostring(t.kind)
+  end
+  if t.pages and t.pageIndex then
+    local pg = t.pages[t.pageIndex]
+    local txt = type(pg) == "table" and table.concat(pg, " ") or tostring(pg)
+    bits[#bits + 1] = "text: " .. tostring(txt):sub(1, 60)
+  end
+  if #bits == 0 then bits[1] = "an unnamed screen" end
+  return table.concat(bits, ", ")
+end
+
 local function _is_fade(t)
   return t ~= nil and t.phase ~= nil and t.frames ~= nil
      and t.map == nil and t.items == nil
@@ -2064,14 +2088,16 @@ function OPS.wait(G, c) U.wait(c.frames or 30) return true end
 
 function OPS.walk(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   return walk(G, c.dir, c.steps or 1)
 end
 
 function OPS.walk_to(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local ow = G.overworld
   local startMap = ow.map and ow.map.id
@@ -2219,7 +2245,8 @@ end
 -- door + map-transition primitive walk_to (in-map only) can't cover.
 function OPS.use_warp(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local ow = G.overworld
   local startMap = ow.map and ow.map.id
@@ -2503,7 +2530,8 @@ end
 -- there is no door warp. Decision-free: the model picks the direction.
 function OPS.cross(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local dmap = { north = "up", south = "down", west = "left", east = "right" }
   local cmap = { up = "north", down = "south", left = "west", right = "east" }
@@ -3404,7 +3432,8 @@ end
 -- slot). Healing items target c.slot (default the lead).
 function OPS.use_item(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   if not c.item then return false, "use_item needs item" end
   if bag_count(G, c.item) < 1 then
@@ -3659,7 +3688,8 @@ end
 -- was the model's decision when it named the tile.
 function OPS.field_move(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local mv = c.move
   if not mv then return false, "field_move needs move" end
@@ -3870,7 +3900,8 @@ end
 
 function OPS.toss(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   if not c.item then return false, "toss needs item" end
   local have = bag_count(G, c.item)
@@ -4093,7 +4124,8 @@ end
 
 local function pc_move(G, c, row, giving)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   if not c.item then return false, "needs item" end
   local before = bag_count(G, c.item)
@@ -4205,7 +4237,8 @@ end
 -- the confirmation differs, and only for RELEASE.
 local function pc_mon(G, c, row, pick)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local ok, why = pc_open_boxes(G)
   if not ok then return false, why end
@@ -4410,7 +4443,8 @@ end
 -- reasoning that settles enter_shop. c.door stays as an override.
 function OPS.heal(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local function find_nurse()
     for _, npc in ipairs((G.overworld.npcs) or {}) do
@@ -4483,7 +4517,8 @@ end
 -- which is why this op ends with you still inside it.
 function OPS.elevator(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   if not c.floor then
     return false, "elevator needs floor=<label>, e.g. floor=\"B4F\""
@@ -4657,6 +4692,14 @@ function OPS.elevator(G, c)
   -- about that — so it cleared sometimes and not others, which is exactly
   -- how this behaved across six attempts. Read the number off the object
   -- rather than inventing one, and leave room after it.
+  -- ...AND B IS NOT THE KEY FOR EVERY SCREEN. This loop pressed B at
+  -- whatever was left, and B closes a MENU: it does not advance a text
+  -- page and it does not answer a question. So the ride finished, a box
+  -- was left on screen, the step-out below never ran because it is gated
+  -- on the overworld being on top, and the op handed the model "you are
+  -- still IN the car ... A screen is STILL up that would not close" —
+  -- making a lift a two-op sequence again for the sake of one keypress
+  -- the harness could have made itself. Press what the screen answers to.
   U.wait(20)
   for _i = 1, 40 do
     local _t = G.stack:top()
@@ -4669,8 +4712,12 @@ function OPS.elevator(G, c)
         if not _is_fade(G.stack:top()) then break end
         U.wait(10)
       end
+    elseif _t and _t.pages and _t.pageIndex then
+      U.tap(G, "a"); U.wait(10)          -- a text page turns with A
+    elseif ui_is_choice(G) then
+      U.tap(G, "a"); U.wait(10)          -- a question wants an answer
     else
-      U.tap(G, "b"); U.wait(10)
+      U.tap(G, "b"); U.wait(10)          -- a menu closes with B
     end
   end
   -- ...AND THEN WALK OUT, BECAUSE THAT IS THE SAME INTENT. "Rode to 3F —
@@ -4718,8 +4765,9 @@ function OPS.elevator(G, c)
             #_mine > 0 and ("its door " .. table.concat(_mine, " or "))
               or "its door",
             table.concat(offer, ", "),
-            _stuck and (". A screen is STILL up that would not close — "
-              .. "{\"op\":\"tap\",\"btn\":\"b\"} before walking out")
+            _stuck and (". A screen is STILL up that would not close ("
+              .. _screen_name(G) .. ") — {\"op\":\"tap\",\"btn\":\"b\"} "
+              .. "before walking out")
               or "")
 end
 
@@ -4736,7 +4784,8 @@ end
 -- all, is entirely the model's. The op drives the menu the player would.
 function OPS.party_swap(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local party = (G.save or {}).party or {}
   local a = math.floor(tonumber(c.a) or 0)
@@ -4812,7 +4861,8 @@ end
 
 function OPS.daycare_deposit(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local save = G.save or {}
   local dc = save.daycare
@@ -4864,7 +4914,8 @@ end
 
 function OPS.daycare_withdraw(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local save = G.save or {}
   local dc = save.daycare
@@ -4907,7 +4958,8 @@ end
 -- and the plan decides UNTIL; walking onto wild ground is mechanics.
 function OPS.grind(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local Collision = require("src.world.Collision")
   local ow = G.overworld
@@ -5300,7 +5352,8 @@ end
 -- NPCs, signs — anything the object list surfaces.
 function OPS.interact(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local ow = G.overworld
   local tx, ty = c.x, c.y
@@ -5959,7 +6012,8 @@ end
 
 function OPS.map_probe(G, c)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   local Collision = require("src.world.Collision")
   local ow, p, map = G.overworld, G.overworld.player, G.overworld.map
@@ -6029,7 +6083,8 @@ end
 -- ride the save text. The title's CONTINUE loads it next boot.
 function OPS.save_game(G)
   if not need_overworld(G) then
-    return false, "not in overworld (a box was up and would not close)"
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
   end
   U.tap(G, "start"); U.wait(8)
   local menu = ui_top(G)
