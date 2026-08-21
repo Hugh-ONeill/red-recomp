@@ -664,7 +664,8 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
     # ---- explore ------------------------------------------------------
     if want_explore:
         out.insert(0, Candidate(key="explore", kind="op", status="op",
-                                note=plan_explore(ex, obs, out)))
+                                note=plan_explore(ex, obs, out,
+                                                  target=target)))
     return out
 
 
@@ -676,7 +677,8 @@ def _refused(c) -> bool:
             or "no walkable path" in n)
 
 
-def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None) -> str:
+def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
+                 target: str | None = None) -> str:
     """What one `explore` step WOULD do from here, in words. Nothing runs.
 
     The order is the sweep's, made explicit: press what is untouched here
@@ -707,44 +709,77 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None) -> str:
                      and c.reachable and not _refused(c)
                      and c.kind not in ("door", "seam", "op")),
                     key=lambda c: (order.get(c.kind, 4), c.key))
-    if things:
+    def _thing_line():
+        if not things:
+            return None
         if things[0].status == "cuttable":
             return (f"CUT the bush at ({things[0].x},{things[0].y}) — a "
                     f"party Pokemon knows CUT and it is a way on")
         return (f"press {things[0].key} here ({things[0].kind}); "
                 f"{len(things)} thing(s) here are untouched")
-    # A WAY THAT JUST REFUSED YOU IS NOT AN UNTRIED WAY. The crossing stays
-    # "untried" because it never completed, and the refusal lives only in
-    # the note — so explore kept recommending "take walk west" in a
-    # four-cell Route 14 nook whose west seam cannot be reached from it, and
-    # the run stood in that pocket 1181 times. Prefer an exit nothing has
-    # turned us back from; fall back to the refused one only if it is all
-    # there is, since the world does change.
-    exits = [c for c in cands if c.status == "untried"
-             and c.kind in ("door", "seam")]
-    _fresh = [c for c in exits if not _refused(c)]
-    if _fresh:
-        return f"take {_fresh[0].label()} — untried from here"
-    if exits:
-        return (f"take {exits[0].label()} — untried from here, though it "
-                f"turned you back last time")
-    # WHEN EVERY WAY OUT HAS BEEN TAKEN, TAKE THE LEAST-TAKEN ONE. A door
-    # walked twice has had less of a look than one walked fifty times, and
-    # where a run circles it is usually circling the SAME two exits — Silph
-    # 3F's pads were taken 15 and 31 times while others sat on 1. This does
-    # not claim anything is behind it; it orders what is already here by
-    # how little of it has been used (user's idea, 2026-08-20).
-    _used = sorted((c for c in cands
-                    if c.kind in ("door", "seam") and c.reachable
-                    and c.status in ("taken", "came_in_by")
-                    and not _refused(c)),
-                   key=lambda c: (c.n, c.key))
-    if _used and _used[0].n < (_used[-1].n if len(_used) > 1 else 0):
-        _c = _used[0]
-        return (f"everything here has been taken at least once; the "
-                f"least-used way out is {_c.label()} ({_c.n}x, against "
-                f"{_used[-1].n}x for the most-used) — going back through "
-                f"the one you have leaned on least is how a circuit breaks")
+
+    def _way_line():
+        # A WAY THAT JUST REFUSED YOU IS NOT AN UNTRIED WAY. The crossing
+        # stays "untried" because it never completed, and the refusal lives
+        # only in the note — so explore kept recommending "take walk west"
+        # in a four-cell Route 14 nook whose west seam cannot be reached
+        # from it, and the run stood in that pocket 1181 times. Prefer an
+        # exit nothing has turned us back from; fall back to the refused
+        # one only if it is all there is, since the world does change.
+        exits = [c for c in cands if c.status == "untried"
+                 and c.kind in ("door", "seam")]
+        _fresh = [c for c in exits if not _refused(c)]
+        if _fresh:
+            return f"take {_fresh[0].label()} — untried from here"
+        # WHEN EVERY WAY OUT HAS BEEN TAKEN, TAKE THE LEAST-TAKEN ONE. A
+        # door walked twice has had less of a look than one walked fifty
+        # times, and where a run circles it is usually circling the SAME
+        # two exits — Silph 3F's pads were taken 15 and 31 times while
+        # others sat on 1. This does not claim anything is behind it; it
+        # orders what is already here by how little of it has been used
+        # (user's idea, 2026-08-20).
+        # ...AND IT OUTRANKS A WAY THAT IS PROVEN SHUT. This sat BELOW the
+        # refused-exit fallback, so on Route 4 — whose east seam is on the
+        # far side of the mountain and can never be walked to from the
+        # entrance side — item 1 read "take walk east, though it turned you
+        # back last time" while two doors the run had walked sat unnamed. A
+        # door used once has more left in it than a wall.
+        _used = sorted((c for c in cands
+                        if c.kind in ("door", "seam") and c.reachable
+                        and c.status in ("taken", "came_in_by")
+                        and not _refused(c)),
+                       key=lambda c: (c.n, c.key))
+        if _used and _used[0].n < (_used[-1].n if len(_used) > 1 else 0):
+            _c = _used[0]
+            return (f"everything here has been taken at least once; the "
+                    f"least-used way out is {_c.label()} ({_c.n}x, against "
+                    f"{_used[-1].n}x for the most-used) — going back "
+                    f"through the one you have leaned on least is how a "
+                    f"circuit breaks")
+        if exits:
+            return (f"take {exits[0].label()} — untried from here, though "
+                    f"it turned you back last time")
+        return None
+
+    # A PERSON IS NOT A WAY OUT. The kind of thing that answers the goal
+    # comes first in the ledger's ranking already; item 1 ignored it and
+    # always offered a press before a door. With the step's target a MAP,
+    # standing in Mt Moon 1F, it read "press MTMOON1F_COOLTRAINER_F2 here;
+    # 6 thing(s) here are untouched" on all 48 arrivals, while the run was
+    # trying to find the ladder out of the mountain and had four of them
+    # in the same list. Talking to somebody cannot put you on another map;
+    # for a map goal the way out is read first, and the people are still
+    # right there in the list underneath (live, 2026-08-20).
+    if str(target or "").startswith("map:"):
+        _line = _way_line()
+        if _line:
+            return _line
+    _line = _thing_line()
+    if _line:
+        return _line
+    _line = _way_line()
+    if _line:
+        return _line
     # ...AND SAY THE SAME THING THE HEADER SAYS. The header learned that a
     # floor holding something no walk reaches is not finished; this line,
     # two lines below it, still announced "THIS AREA IS FULLY WORKED —
