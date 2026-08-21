@@ -1452,6 +1452,12 @@ class Executor:
         region, path = best
         self.log("go_step", subgoal=sg.get("id"), to=region, legs=len(path))
         arrived = self._walk_route(sg, path)
+        # _walk_route hands back a region name from most of its exits and a
+        # whole observation from the ones that give up, so "now at" printed
+        # the entire obs dict — badges, party, bag — into the model's trace
+        # as the name of a place.
+        if isinstance(arrived, dict):
+            arrived = self._where(arrived)
         cur = self.settle() or {}
         at = arrived or self._where(cur) or "an unexpected stop"
         tr = [f"go: walked {len(path)} leg(s) over walked ground toward "
@@ -1646,6 +1652,8 @@ class Executor:
                  to=region, legs=len(path), left=len(left),
                  unpressed=len(unpressed))
         arrived = self._walk_route(sg, path)
+        if isinstance(arrived, dict):
+            arrived = self._where(arrived)
         cur = self.settle() or {}
         tr = [f"explore: this area is fully worked, so you were walked "
               f"{len(path)} leg(s) over walked ground to {region}, which "
@@ -8008,9 +8016,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # the run's own record, not a guess about the map.
                 elif op == "cross" and _rr.get("ok"):
                     _land = self._where(self.settle() or obs)
+                    # The pocket test is _uncork_seam's own — exactly one
+                    # walked, unshut way out, and it a compass seam — and
+                    # it is the right one. Asking _frontier_left here
+                    # instead never fired: the nook's west seam carries a
+                    # SHUT record, shut records re-open when the world mark
+                    # moves, so "west" read as still-untried every round
+                    # and the guard held the door shut on the fix.
                     if (_land != self._where(pre_obs)
-                            and (self.visits.get(_land) or 0) >= 2
-                            and not self._frontier_left(_land)):
+                            and (self.visits.get(_land) or 0) >= 2):
                         _alt2 = self._uncork_seam(
                             self.b.obs() or obs, sg, step.get("dir"))
                         if _alt2 is not None:
