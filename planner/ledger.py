@@ -78,6 +78,8 @@ STATUS_RANK = {
     "unreachable": 6,   # visible, cannot be walked to right now
     "cuttable": 0,      # a bush, and a party Pokemon knows CUT: a way on
     "bush": 3,          # a bush, and nobody knows CUT yet
+    "pushable": 0,      # a boulder, and STRENGTH is known: a way on
+    "boulder": 3,       # a boulder, and nobody knows STRENGTH yet
     "op": -1,           # explore
 }
 
@@ -314,7 +316,8 @@ def beyond(ex, dest: str, target: str, here: str | None = None) -> str:
     return ""
 
 
-UNWORKED = ("untried", "untouched", "unspoken", "reopened", "cuttable")
+UNWORKED = ("untried", "untouched", "unspoken", "reopened", "cuttable",
+            "pushable")
 
 
 def switches(cands: list) -> list:
@@ -381,10 +384,13 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             if hasattr(ex, "_snapshot_anywhere")
             else (ex._snapshot(obs) if hasattr(ex, "_snapshot") else None))
     seen_maps = {_map_of(a) for a in ex.visits}
-    knows_cut = any(
-        "CUT" in [str(mv.get("id") if isinstance(mv, dict) else mv)
-                  for mv in (mon.get("moves") or [])]
-        for mon in (obs.get("party") or []))
+    def _party_knows(move: str) -> bool:
+        return any(move in [str(mv.get("id") if isinstance(mv, dict) else mv)
+                            for mv in (mon.get("moves") or [])]
+                   for mon in (obs.get("party") or []))
+
+    knows_cut = _party_knows("CUT")
+    knows_strength = _party_knows("STRENGTH")
 
     out: list[Candidate] = []
     # A ROOM WITH DOORS ON OPPOSITE WALLS IS A CORRIDOR. What a player sees
@@ -611,6 +617,16 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         c.n = int(oc.get("n") or 0)
         if oc.get("last"):
             c.note = str(oc["last"])
+        if kind == "boulder":
+            # A BOULDER IS IN THE WAY AND STAYS THERE. Same shape as the
+            # bush: not something you press, something one field move
+            # moves — and only after STRENGTH has been switched on from
+            # the party menu on THIS map, because the engine clears that
+            # on every map load. Never "spoken to", never "untouched".
+            c.status = ("unreachable" if not o.get("reachable")
+                        else "pushable" if knows_strength else "boulder")
+            out.append(c)
+            continue
         if kind == "cut_tree":
             # A BUSH IS NOT PRESSED, IT IS CUT. Interact by name never
             # reaches one (they come from the tileset scan), so "never
@@ -717,8 +733,8 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         return ("press the panel and ride: {\"op\":\"elevator\","
                 "\"floor\":\"<a floor as the panel spells it>\"} — the "
                 "car's one door opens onto whichever floor you rode to")
-    order = {"item": 0, "fixture": 1, "cut_tree": 1, "npc": 2, "trainer": 2,
-             "sign": 3}
+    order = {"item": 0, "fixture": 1, "cut_tree": 1, "boulder": 1,
+             "npc": 2, "trainer": 2, "sign": 3}
     # THIRTY-SIX OF A THING IS ONE THING. The kind order above is fixed —
     # fixtures before people, always — and in the Rocket Game Corner that
     # meant item 1 read "press SLOT_MACHINE_18 here (fixture); 31 thing(s)
@@ -935,6 +951,15 @@ _STATUS_WORDS = {
     "inert": "pressed {n}x; nothing changed",
     "cuttable": "a bush — CUT clears it, and a party Pokemon knows CUT",
     "bush": "a bush — CUT clears it; nobody in the party knows CUT yet",
+    # the braces are doubled because this table is .format()ed for {n}
+    "pushable": "a BOULDER — it is pushed, not pressed, and a party Pokemon "
+                "knows STRENGTH. Switch STRENGTH on from the party menu "
+                "first ({{\"op\":\"field_move\",\"move\":\"STRENGTH\"}})"
+                " — the game turns it off again on every map load — then "
+                "push with {{\"op\":\"push\",\"x\":N,\"y\":N,"
+                "\"dir\":\"up|down|left|right\"}}",
+    "boulder": "a BOULDER — it is pushed, not pressed, and STRENGTH is what "
+               "pushes it; nobody in the party knows STRENGTH yet",
 }
 
 NOTE_CHARS = 140

@@ -892,6 +892,18 @@ local function observe(G, seq, result)
         name = ("ITEM_%d_%d"):format(npc.cellX or 0, npc.cellY or 0)
       elseif d.trainerClass then
         kind = "trainer"
+      elseif d.sprite == "SPRITE_BOULDER" then
+        -- A BOULDER IS NOT A PERSON. The chain here ends in `npc`, and a
+        -- boulder carries a sprite, a text and no trainerClass, so all
+        -- twenty-five of them in this game — Victory Road's switches,
+        -- Seafoam's waterfall stoppers, the one parked on the Warden's
+        -- RARE_CANDY — were listed to the model as people, "never spoken
+        -- to", competing with the room's actual inhabitants for item 1
+        -- and for the page. You cannot speak to a rock. It is the same
+        -- shape as CUT_TREE, which the shim already keeps apart: a thing
+        -- in the way that one field move moves (user: "boulders may
+        -- register as npcs?").
+        kind = "boulder"
       elseif name:find("SIGN") or (d.text and not d.sprite) then
         kind = "sign"
       end
@@ -3734,6 +3746,70 @@ end
 -- that knows the move -> the move in its submenu. WHICH party member
 -- knows it is a party-list fact (mechanics); WHETHER and WHERE to use it
 -- was the model's decision when it named the tile.
+-- PUSH A BOULDER. Walking into one moves it a cell, but only on the
+-- SECOND consecutive try (push_boulder.asm arms on the first through
+-- BIT_TRIED_PUSH_BOULDER) and only while STRENGTH is switched on, which
+-- the party menu does and every map load undoes
+-- (OverworldController:checkBoulderPush). Three facts, none of them
+-- guessable from outside, and the run had no verb for any of them: a
+-- boulder was listed as a person to talk to.
+--
+-- WHICH WAY IT GOES IS THE MODEL'S. This walks to the cell the push has
+-- to be made from, faces the rock and shoves — it never picks a
+-- direction, the same line field_move draws.
+function OPS.push(G, c)
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
+  end
+  local ow = G.overworld
+  local p = ow.player
+  if not (c.x and c.y and c.dir) then
+    return false, "push needs x, y and dir (the way the BOULDER should go)"
+  end
+  local d = DIRS[c.dir]
+  if not d then return false, "push dir must be up, down, left or right" end
+  local rock
+  for _, npc in ipairs(ow.npcs or {}) do
+    if npc.cellX == c.x and npc.cellY == c.y then rock = npc end
+  end
+  if not rock then
+    return false, ("nothing is standing at (%d,%d) to push"):format(c.x, c.y)
+  end
+  if ((rock.def or {}).sprite) ~= "SPRITE_BOULDER" then
+    return false, ("what is at (%d,%d) is %s, not a boulder — only a "
+      .. "boulder can be pushed"):format(c.x, c.y,
+        tostring((rock.def or {}).name or "something"))
+  end
+  if not ow.strengthActive then
+    return false, "STRENGTH is not switched on. It is switched on from the "
+      .. "party menu ({\"op\":\"field_move\",\"move\":\"STRENGTH\"}) "
+      .. "and the game switches it off again every time you change map, so "
+      .. "it has to be on for THIS map before any boulder here will move."
+  end
+  -- stand on the far side of the rock from where it is going
+  local sx, sy = c.x - d[1], c.y - d[2]
+  if p.cellX ~= sx or p.cellY ~= sy then
+    OPS.walk_to(G, { x = sx, y = sy,
+                     max_steps = _approach_budget(p, sx, sy) })
+  end
+  if p.cellX ~= sx or p.cellY ~= sy then
+    return false, ("to push it %s you have to stand at (%d,%d) and that is "
+      .. "not ground you can walk to from here"):format(c.dir, sx, sy)
+  end
+  local bx0, by0 = rock.cellX, rock.cellY
+  for _ = 1, 3 do                    -- first shove arms it, second moves it
+    U.tap(G, c.dir); U.wait(12)
+    if rock.cellX ~= bx0 or rock.cellY ~= by0 then break end
+  end
+  if rock.cellX == bx0 and rock.cellY == by0 then
+    return false, ("shoved it %s and it did not move — something is behind "
+      .. "it, or that is not a way it can go"):format(c.dir)
+  end
+  return true, ("pushed the boulder %s: it was at (%d,%d) and is at (%d,%d)")
+    :format(c.dir, bx0, by0, rock.cellX, rock.cellY)
+end
+
 function OPS.field_move(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close: "

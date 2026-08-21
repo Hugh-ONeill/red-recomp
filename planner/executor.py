@@ -7300,7 +7300,14 @@ made from its move list in obs.party; with no forget NOTHING is opened or
 spent and the reply lists the four moves for you to choose from),
 {"op":"field_move","move":"CUT","x":N,"y":N} (use a field move a party
 member KNOWS at the named tile — kind:"cut_tree" objects are the bushes
-CUT clears; a fence with a bush in it is a door once you have CUT),
+CUT clears; a fence with a bush in it is a door once you have CUT. With
+no x,y it just switches the move on, which is what STRENGTH needs),
+{"op":"push","x":N,"y":N,"dir":"up|down|left|right"} (shove the
+kind:"boulder" at that tile ONE cell the way you say. It walks you to the
+side you have to push from and shoves; WHICH WAY the rock should go is
+yours. STRENGTH must be switched on for THIS map first
+({"op":"field_move","move":"STRENGTH"}) — the game switches it off again
+every time you change map),
 {"op":"toss","item":"TM_BIDE","count":N} (throw away bag items — count
 omitted tosses the whole stack. The bag holds 20 KINDS of item and a
 FULL bag makes every gift and pickup silently FAIL: "got X!" plays and
