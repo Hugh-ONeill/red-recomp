@@ -1485,6 +1485,20 @@ class Executor:
                              want_explore=False)
         order = {"item": 0, "fixture": 1, "cut_tree": 1, "npc": 2,
                  "trainer": 2, "sign": 3}
+        # THE DEED FOLLOWS THE WORDS, here too: among things equally
+        # untouched, the rarer NAME first, so a room's one strange person
+        # is tried before its thirty-sixth identical slot machine. See
+        # ledger.plan_explore for why.
+        _crowd: dict = {}
+        for c in cands:
+            if c.kind == "fixture":          # furniture only; see the ledger
+                _k = ledger._stem(c.key)
+                _crowd[_k] = _crowd.get(_k, 0) + 1
+
+        def _thing_key(c):
+            return (0 if c.kind in ledger._goal_kinds_of(target) else 1,
+                    _crowd.get(ledger._stem(c.key), 1),
+                    order.get(c.kind, 4), c.key)
         outs = self._outcomes_here(obs)
         things = sorted((c for c in cands
                          if c.status in ("untouched", "unspoken", "cuttable")
@@ -1497,7 +1511,7 @@ class Executor:
                          # reachable tile adjacent to target".
                          and "no reachable tile" not in
                          ((outs.get(c.key) or {}).get("last") or "")),
-                        key=lambda c: (order.get(c.kind, 4), c.key))
+                        key=_thing_key)
         exits = [c for c in cands
                  if c.status == "untried" and c.kind in ("door", "seam")]
 
@@ -1632,7 +1646,7 @@ class Executor:
                           and c.kind not in ("door", "seam", "op")
                           and "no reachable tile" not in
                           ((outs2.get(c.key) or {}).get("last") or "")),
-                         key=lambda c: (order.get(c.kind, 4), c.key))
+                         key=_thing_key)
         exits2 = [c for c in cands2
                   if c.status == "untried" and c.kind in ("door", "seam")]
         def _there(c):

@@ -55,6 +55,7 @@ is not to be edited under it. Wiring is a few lines at the next stop:
 
 from __future__ import annotations
 
+import re as _re
 from dataclasses import dataclass, field
 
 # status vocabulary — the order here IS the rank order within a kind
@@ -125,6 +126,23 @@ class Candidate:
 
 def _map_of(region: str | None) -> str:
     return str(region or "").split("|")[0]
+
+
+def _stem(key: str | None) -> str:
+    """A name with its trailing number taken off: SLOT_MACHINE_18 and
+    SLOT_MACHINE_19 are two of the same thing, and the game names them
+    that way itself."""
+    return _re.sub(r"\d+$", "", str(key or ""))
+
+
+def _goal_kinds_of(target: str | None) -> set:
+    """The kind of thing that answers this goal. An item goal is answered
+    by items; an event by the fixtures that fire them (a switch, a machine,
+    a lever) — not by whoever is standing near."""
+    t = str(target or "")
+    return ({"item"} if t.startswith("item:")
+            else {"fixture"} if t.startswith("flag:")
+            else set())
 
 
 def _came_in_by(ex, obs, here: str, key: str, dest_map: str | None) -> bool:
@@ -622,12 +640,7 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         out.append(c)
 
     # ---- rank ---------------------------------------------------------
-    # an item goal is answered by items; an event by the fixtures that fire
-    # them (a switch, a machine, a lever) — not by whoever is standing near
-    _t = str(target or "")
-    _goal_kinds = ({"item"} if _t.startswith("item:")
-                   else {"fixture"} if _t.startswith("flag:")
-                   else set())
+    _goal_kinds = _goal_kinds_of(target)
     for c in out:
         # untried before taken; among untried, an exit into a map never
         # SEEN before one back into a seen map (unopened before known);
@@ -700,6 +713,24 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                 "car's one door opens onto whichever floor you rode to")
     order = {"item": 0, "fixture": 1, "cut_tree": 1, "npc": 2, "trainer": 2,
              "sign": 3}
+    # THIRTY-SIX OF A THING IS ONE THING. The kind order above is fixed —
+    # fixtures before people, always — and in the Rocket Game Corner that
+    # meant item 1 read "press SLOT_MACHINE_18 here (fixture); 31 thing(s)
+    # here are untouched" while the way down to the hideout is a Rocket you
+    # talk to. Pressing the twenty-second slot machine cannot teach you
+    # what the first twenty-one did not. How MANY of a thing there are is
+    # on the screen and it is worth something: a room's one strange person
+    # is a lead in a way its thirty-sixth identical machine is not, so
+    # among things equally untouched the rarer name goes first. Rooms where
+    # everything is unique are unaffected (user, watching the casino: "its
+    # only looking at the slot machines instead of talking to anyone").
+    # FURNITURE ONLY. People with numbered names are different people who
+    # say different things — ROUTE3_COOLTRAINER_F1 and F2 are two trainers,
+    # not one seen twice — so a crowd is only ever a crowd of fixtures.
+    _crowd: dict = {}
+    for c in cands:
+        if c.kind == "fixture":
+            _crowd[_stem(c.key)] = _crowd.get(_stem(c.key), 0) + 1
     # ...AND THE SAME FOR THINGS, WHICH I ONLY FIXED FOR EXITS. A press
     # that came back "no reachable tile adjacent to target" leaves the
     # thing "never spoken to", so explore kept offering it: Silph 2F's
@@ -710,7 +741,9 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                      if c.status in ("untouched", "unspoken", "cuttable")
                      and c.reachable and not _refused(c)
                      and c.kind not in ("door", "seam", "op")),
-                    key=lambda c: (order.get(c.kind, 4), c.key))
+                    key=lambda c: (0 if c.kind in _goal_kinds_of(target) else 1,
+                                   _crowd.get(_stem(c.key), 1),
+                                   order.get(c.kind, 4), c.key))
     def _thing_line():
         if not things:
             return None
@@ -983,7 +1016,25 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # people; a door or a seam is a way out and every one is shown.
     exits = [c for c in cands if c.kind in ("door", "seam", "op")]
     rest = [c for c in cands if c.kind not in ("door", "seam", "op")]
-    keep = rest[:max(0, limit - len(exits))]
+    # A CROWD IS FOLDED BEFORE THE PAGE IS CUT, or the fold saves nothing.
+    # The Game Corner's thirty-six slot machines filled the cap and pushed
+    # every person in the room off the end — "…and 28 more thing(s) not
+    # shown: … 10 unspoken", the Rocket standing in front of the way down
+    # among them. Counted as one entry, the room fits.
+    _mob: dict = {}
+    for c in rest:
+        if c.kind == "fixture" and c.status == "untouched":
+            _mob.setdefault(_stem(c.key), []).append(c)
+    _mob = {k: v for k, v in _mob.items() if len(v) > 3}
+    _folded, _first = [], set()
+    for c in rest:
+        _st = _stem(c.key)
+        if c.kind == "fixture" and _st in _mob and c.status == "untouched":
+            if _st in _first:
+                continue
+            _first.add(_st)
+        _folded.append(c)
+    keep = _folded[:max(0, limit - len(exits))]
     shown = [c for c in cands if c in exits or c in keep]
     # ONE LINE FOR THE WEAK LEADS. Things pressed before the world moved
     # are the same fact eleven times over in a town square; they keep
@@ -991,8 +1042,31 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # rank of the first, names listed, so they cannot bury the doors.
     weak = [c for c in shown if c.status == "worth_a_word"]
     weak_done = False
+    # ...AND ONE LINE FOR A CROWD OF THE SAME THING. Same rule as the weak
+    # leads, for the other way a page gets buried: the Rocket Game Corner
+    # has thirty-six slot machines and the ledger spent lines 2 through 22
+    # on them, cut the page at the limit, and ended "…and 28 more thing(s)
+    # not shown: … 10 unspoken" — every person in the room, including the
+    # Rocket who is standing in front of the way down, off the page behind
+    # a wall of furniture (user: "its only looking at the slot machines
+    # instead of talking to anyone"). They keep their entries and lookup
+    # still finds each; they read as one line at the rank of the first,
+    # which is all thirty-six of them are worth saying.
     i = 0
     for c in shown:
+        _herd = (_mob.get(_stem(c.key))
+                 if (c.kind == "fixture" and c.status == "untouched")
+                 else None)
+        if _herd:
+            i += 1
+            _names = ", ".join(x.key for x in _herd[:4])
+            lines.append(
+                f" {i}. {len(_herd)} x {_stem(c.key).rstrip('_')} "
+                f"({_herd[0].kind}) — none of them pressed; they are the "
+                f"same thing over and over, so whatever one of them does, "
+                f"all of them do: {_names}"
+                + (f" and {len(_herd) - 4} more" if len(_herd) > 4 else ""))
+            continue
         if c in weak and len(weak) > 2:
             if not weak_done:
                 weak_done = True
@@ -1067,7 +1141,9 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         if c.beyond:
             note += f" — {c.beyond}"
         lines.append(f" {i}. {c.label()}{kind}{arrow} — {words}{note}")
-    cut = [c for c in rest if c not in keep]
+    # a crowd folded into one line is SHOWN, not cut — counting its
+    # members here would contradict the line that just named them
+    cut = [c for c in _folded if c not in keep]
     if cut:
         by = {}
         for c in cut:
