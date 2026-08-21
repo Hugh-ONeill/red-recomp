@@ -10455,6 +10455,25 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         if _re_obs is not None:
                             obs = _re_obs
                             r = (obs or {}).get("result") or {}
+                    # ...AND ON ARRIVAL, HERE TOO. Ops are dispatched from
+                    # two places and the arrival uncork went into the other
+                    # one, so the path the escalation actually uses never
+                    # ran it: the run crossed into Route 14's nook and sat
+                    # there exactly as before. Third time this file has
+                    # paid for the split (see the recall fallback's own
+                    # note, two lines up).
+                    elif op == "cross" and r.get("ok"):
+                        _land2 = self._where(self.settle() or obs)
+                        if (_land2 != self._where(pre_obs)
+                                and (self.visits.get(_land2) or 0) >= 2):
+                            _u2 = self._uncork_seam(self.b.obs() or obs, sg,
+                                                    step.get("dir"))
+                            if _u2 is not None:
+                                self.log("uncorked_on_arrival", into=_land2,
+                                         asked=step.get("dir"),
+                                         landed=self._where(_u2))
+                                obs = _u2
+                                r = (obs or {}).get("result") or {}
                     self.log("step", subgoal=sg["id"], op=op, params=step,
                              ok=r.get("ok"), detail=r.get("detail"),
                              map=(obs.get("map") or {}).get("id")
