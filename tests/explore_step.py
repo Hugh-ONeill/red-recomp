@@ -128,6 +128,22 @@ def main():
           ex.ran == [] and not ex.walked and any("nothing untried" in t for t in tr),
           str((ex.ran, ex.walked, tr)))
 
+    # 5) the only untried way here is one that has already refused us
+    ex = bare(frontier={U.HERE: ["west", "east"]},
+              explored={U.HERE: {"east": {"to": f"{U.MAP}|9,9", "n": 16}}})
+    ex.visits = {U.HERE: 16}
+    o = obs(U.MAP, "0,0", conns=["west", "east"])
+    ex.settle = lambda: o
+    ex._outcomes = {"t": {U.HERE: {"west": {
+        "last": "FAILED — the west seam cannot be walked to from here — "
+                "no walkable path reaches it"}}}}
+    ex._outcomes_here = lambda _o: (ex._outcomes["t"][U.HERE])
+    ex._explore_step(SG, o)
+    check("a seam that has refused you is not the exit explore takes",
+          ex.ran != [{"op": "cross", "dir": "west"}], str(ex.ran))
+    check("...it takes the way it came in by instead",
+          ex.ran == [{"op": "cross", "dir": "east"}], str(ex.ran))
+
     print("\ngo, the way you know:")
     NEXT = f"{U.MAP}|9,9"
     ex = bare(explored={U.HERE: {"north": {"to": NEXT, "n": 3}},

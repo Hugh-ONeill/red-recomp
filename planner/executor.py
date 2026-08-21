@@ -1512,8 +1512,30 @@ class Executor:
                          and "no reachable tile" not in
                          ((outs.get(c.key) or {}).get("last") or "")),
                         key=_thing_key)
-        exits = [c for c in cands
-                 if c.status == "untried" and c.kind in ("door", "seam")]
+        # A WAY THAT JUST REFUSED YOU IS NOT AN UNTRIED WAY — and this is
+        # the half that never learned it. plan_explore has filtered
+        # refusals since the day the Route 14 nook cost 1181 visits; the
+        # DEED behind item 1 did not, so {"op":"explore"} in that same
+        # four-cell nook picked `walk west` — seventeen cells past a wall,
+        # failed every time — as "1 exit(s) here never taken", sixteen
+        # rounds running. The words were fixed and the deed was left
+        # behind, which is the split this file keeps paying for.
+        _all_exits = [c for c in cands
+                      if c.status == "untried" and c.kind in ("door", "seam")]
+        exits = [c for c in _all_exits if not ledger._refused(c)]
+        # ...only when every untried way here is a refusal. With no untried
+        # ways at all this must stay empty, or "fully worked here, walk to
+        # the area that still has something" never fires.
+        if _all_exits and not exits:
+            # ...and only when there is nothing else at all, since the
+            # world does change and a refusal is not a proof forever
+            _used_now = sorted(
+                (c for c in cands
+                 if c.kind in ("door", "seam") and c.reachable
+                 and c.status in ("taken", "came_in_by")
+                 and not ledger._refused(c)),
+                key=lambda c: (c.n, c.key))
+            exits = _used_now[:1] or _all_exits
 
         def _run(step, why):
             ok, tr, cl = self._run_traced(sg, [step], ignore_done=ignore_done)
@@ -1808,7 +1830,7 @@ class Executor:
         for d in dirs:
             if d not in marks:
                 marks[d] = now
-            if marks[d] == now:
+            if marks[d] == "geom" or marks[d] == now:
                 out.add(d)
         return out
 
@@ -8327,8 +8349,25 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         and (self.visits.get(_prev["to"]) or 0) > 0)
                     if d0 and not _crossed_before:
                         self._no_cross.setdefault(here0, set()).add(d0)
-                        self._no_cross_at.setdefault(here0, {})[d0] = \
-                            self._world_mark(obs)
+                        # GEOMETRY IS NOT WEATHER. A proof expires when the
+                        # world mark moves — badges, flags, bag — which is
+                        # right for a seam with somebody STANDING in it and
+                        # wrong for one the BFS could not reach at all. On
+                        # Route 14 the party sat in a four-cell nook whose
+                        # west seam is seventeen cells past a wall; every
+                        # attempt beat a trainer on the way, every trainer
+                        # moved the flag count, and the proof evaporated
+                        # before the next round could use it. Sixteen
+                        # visits, sixteen crossings into the same wall. The
+                        # load-time repair beside this already says it out
+                        # loud — "recorded at a region is geometry, not
+                        # weather" — and the recorder did not. A walkable
+                        # path is not opened by winning a fight; when this
+                        # seam IS crossed the walked-edge rule below drops
+                        # the proof, which is the honest way for it to go.
+                        _geom = "no walkable path reaches it" in det
+                        self._no_cross_at.setdefault(here0, {})[d0] = (
+                            "geom" if _geom else self._world_mark(obs))
                     elif d0:
                         self.log("cross_failed_but_known", region=here0,
                                  exit=d0, to=_prev.get("to"))
