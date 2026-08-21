@@ -1319,6 +1319,18 @@ end
 -- trainers is strategy, and strategy belongs to the model.
 local DIRS = { up = {0,-1}, down = {0,1}, left = {-1,0}, right = {1,0} }
 
+-- HOW FAR A WALK TO ONE CELL IS ALLOWED TO GO. Three ops walk to the tile
+-- beside a thing before pressing it, and all three hard-coded sixty steps
+-- — fine in a room, nothing on a route that is 108 cells tall. A walk that
+-- runs out of budget looks exactly like a walk with nowhere to go, and the
+-- refusals these ops print say the second thing. Scale it, and keep a floor
+-- for short hops. (cross() already does this; see its own note.)
+local function _approach_budget(p, x, y)
+  local d = math.abs((x or 0) - (p.cellX or 0))
+          + math.abs((y or 0) - (p.cellY or 0))
+  return math.max(60, d * 3)
+end
+
 -- A BUSH IS TERRAIN, NOT AN OBJECT, so the "who is standing where you
 -- would have to stand" reports never saw one: a CUT_TREE across the only
 -- approach to an item read as a bare "no reachable tile adjacent to
@@ -3743,7 +3755,8 @@ function OPS.field_move(G, c)
     end
     if not placed then
       for _, a in ipairs(adj) do
-        OPS.walk_to(G, { x = a[1], y = a[2], max_steps = 60 })
+        OPS.walk_to(G, { x = a[1], y = a[2],
+                         max_steps = _approach_budget(p, a[1], a[2]) })
         if p.cellX == a[1] and p.cellY == a[2] then placed = a break end
       end
     end
@@ -4069,7 +4082,8 @@ local function pc_open_menu(G)
     end
     if at then break end
     for _, a in ipairs(adj) do
-      OPS.walk_to(G, { x = a[1], y = a[2], max_steps = 60 })
+      OPS.walk_to(G, { x = a[1], y = a[2],
+                       max_steps = _approach_budget(p, a[1], a[2]) })
       if p.cellX == a[1] and p.cellY == a[2] then break end
     end
   end
@@ -5842,7 +5856,18 @@ function OPS.interact(G, c)
     refresh_target()
     if press_from_adjacent() then return settle_dialog() end
     for _, a in ipairs(adj) do
-      OPS.walk_to(G, { x = a[1], y = a[2], max_steps = 60 })
+      -- A STEP BUDGET MUST FIT THE MAP — the lesson cross() learned on
+      -- Cycling Road, which this never got. Sixty steps is a room; Route
+      -- 12 is 108 cells tall, and the walk to the tile beside the
+      -- sleeping Snorlax at (10,62) ran out of steps every time. The op
+      -- then reported "no reachable tile adjacent to target" — while the
+      -- line directly above it, from walk_to's own BFS, said the ground
+      -- reaches (10,61), which IS that tile. Two definitions of
+      -- reachable, one of them silently counting steps, and the run spent
+      -- eleven escalations with the POKE FLUTE in the bag and no way to
+      -- stand where it had to be played.
+      OPS.walk_to(G, { x = a[1], y = a[2], max_steps = _approach_budget(
+        p, a[1], a[2]) })
       if G.stack:top() ~= ow then break end       -- a battle or a script
       refresh_target()                             -- they may have moved
       if press_from_adjacent() then return settle_dialog() end
