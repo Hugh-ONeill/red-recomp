@@ -52,11 +52,15 @@ KEYS = ["BIKE_VOUCHER", "S_S_TICKET", "TOWN_MAP", "HM_CUT", "LIFT_KEY"]
 def bare():
     ex = object.__new__(E.Executor)
     ex.plan = {"subgoals": []}
+    ex.visits = {"SAFFRON_POKECENTER|0,3": 1}
+    ex.explored = {}
+    ex._route = lambda a, b: [1] * 10
     return ex
 
 
-def line(items, keys=KEYS, done_when=None):
-    obs = {"bag": {k: 1 for k in items}, "key_items": keys}
+def line(items, keys=KEYS, done_when=None, objects=None, mapid="ROUTE_12"):
+    obs = {"bag": {k: 1 for k in items}, "key_items": keys,
+           "map": {"id": mapid, "region": "0,0", "objects": objects or []}}
     return bare()._bag_line(obs, {"id": "t",
                                   "done_when": done_when or {"map": "X"}})
 
@@ -72,8 +76,23 @@ def main():
           t.index("SPENDING") < t.index("TOSSING"), t)
     check("...and tossing is still there, described as what it is",
           "destroys the thing" in t, t)
-    check("storing is named as the reversible one",
-          "destroys\nnothing" in t or "destroys nothing" in t, t)
+    check("storing is named, and named as needing a PC",
+          "STORING" in t and "Pokemon Center PC" in t, t)
+    check("...and it says neither a counter nor a PC is on this map",
+          "THERE IS NEITHER ON THIS MAP" in t, t)
+    check("...and how far the nearest one it has walked to is",
+          "SAFFRON_POKECENTER (10 leg(s))" in t, t)
+    t2 = line(FULL, mapid="CELADON_MART",
+              objects=[{"name": "CELADONMART_CLERK"}])
+    check("at a counter, selling is offered as a thing you can do HERE",
+          "SELLING at the counter on this map" in t2, t2)
+    t3 = line(FULL, mapid="VIRIDIAN_POKECENTER", objects=[{"name": "PC"}])
+    check("at a PC, storing is offered as a thing you can do HERE",
+          "STORING in the PC on this map" in t3, t3)
+    check("...and only there is it called the reversible one",
+          "destroys nothing" in t3 and "destroys nothing" not in t, t3)
+    check("...and neither of those says there is nothing here",
+          "THERE IS NEITHER" not in t2 and "THERE IS NEITHER" not in t3)
     check("key items are not offered",
           all(k not in t.split("What may go at all")[1] for k in
               ("BIKE_VOUCHER", "S_S_TICKET", "HM_CUT")), t)

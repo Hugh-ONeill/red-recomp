@@ -5698,17 +5698,71 @@ class Executor:
                     "\"slot\":N} — a stone, a vitamin, a machine): "
                     + ", ".join(usable) + ".")
                    if usable else "")
-                + "\nSELLING at a shop counter turns one into money and "
-                  "frees the slot too ({\"op\":\"sell\",\"item\":X}). "
-                  "STORING at any Pokemon Center's PC frees it and destroys "
-                  "nothing ({\"op\":\"store_item\",\"item\":X}), which "
-                  "is the only one you can undo. TOSSING ({\"op\":\"toss\","
-                  "\"item\":X}) frees the slot and destroys the thing."
+                + self._where_the_slot_goes(obs)
                 + "\nWhat may go at all (key items can be neither sold nor "
                   "tossed): "
                 + (", ".join(spare[:12]) if spare else "nothing — every "
                    "single thing you carry is a key item")
                 + ".")
+
+    def _where_the_slot_goes(self, obs) -> str:
+        """Sell, store, toss — and which of them can be done from HERE.
+
+        The note listed all three as though they were alternatives standing
+        side by side, and two of them are somewhere else. In the SAFARI
+        ZONE, with no counter and no PC on any of its maps, the only thing
+        that frees a slot on the spot is tossing — so the run tossed
+        TM_DIG, TM_MEGA_DRAIN and TM_THUNDERBOLT, each time by re-sending
+        the same toss with confirm after the refusal, which is exactly what
+        the refusal tells it to do (user: "its just tossing tms like its
+        nobodies business ... it ignores the warning by throwing away with
+        confirmation").
+
+        Tossing may still be the right call ten legs from a counter. It is
+        a different call when the price of keeping the thing is named, and
+        the walk is something this run has already measured.
+        """
+        m = (obs or {}).get("map") or {}
+        objs = m.get("objects") or []
+        names = [str(o.get("name") or "") for o in objs]
+        has_pc = any(n == "PC" or n.endswith("_PC") for n in names)
+        has_clerk = any("CLERK" in n for n in names)
+        here = self._where(obs)
+        far = []
+        for r in set(self.visits or {}) | set(self.explored or {}):
+            mm = r.split("|")[0]
+            if not mm.endswith("POKECENTER") and not mm.endswith("MART"):
+                continue
+            p2 = self._route(here, r)
+            if p2 is not None:
+                far.append((len(p2), mm))
+        far.sort()
+        _seen, _rows = set(), []
+        for n, mm in far:
+            if mm in _seen:
+                continue
+            _seen.add(mm)
+            _rows.append(f"{mm} ({n} leg(s))" if n else f"{mm} (here)")
+        out = ""
+        if has_clerk:
+            out += ("\nSELLING at the counter on this map turns one into "
+                    "money and frees the slot ({\"op\":\"sell\","
+                    "\"item\":X}).")
+        if has_pc:
+            out += ("\nSTORING in the PC on this map frees the slot and "
+                    "destroys nothing ({\"op\":\"store_item\","
+                    "\"item\":X}) — the only one you can undo.")
+        if not (has_clerk or has_pc):
+            out += ("\nSELLING ({\"op\":\"sell\"}) needs a shop counter "
+                    "and STORING ({\"op\":\"store_item\"}) needs a "
+                    "Pokemon Center PC, and THERE IS NEITHER ON THIS MAP"
+                    + ((" — the nearest you have walked to: "
+                        + ", ".join(_rows[:3]) + ".") if _rows else "."))
+        out += ("\nTOSSING ({\"op\":\"toss\",\"item\":X}) frees the "
+                "slot here and now and destroys the thing; it is refused "
+                "once for anything with a use left in it and goes through "
+                "on the same op sent again with \"confirm\":true.")
+        return out
 
     @staticmethod
     def _usable_on_a_mon(items):
