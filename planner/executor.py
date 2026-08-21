@@ -3528,6 +3528,17 @@ class Executor:
                if step.get("x") is not None else step.get("dir"))
         if key is None:
             return
+        # A CROSSING MADE AT ANOTHER CELL OF THE SEAM IS NOT THE PLAIN ONE.
+        # The uncork steps back out and re-crosses with skip=N, which lands
+        # on a DIFFERENT cell of the same edge — and it filed the result
+        # under the bare direction. So "ROUTE_13|50,0 --west--> ROUTE_14|5,4"
+        # went into the graph, every later plain cross west landed in the
+        # four-cell nook instead, and the walk refuted the edge and filed it
+        # in bad_seam: the one crossing that actually works, learned and
+        # then thrown away. Keep it under its own key, carrying the skip
+        # that produced it, so _walk_route can reproduce it.
+        if step.get("skip"):
+            key = f"{key}#skip{int(step['skip'])}"
         if src == dst:
             # A DOORWAY YOU COULD NOT EVEN WALK TO IS NOT AN EXIT OF THIS
             # ROOM. An attempt that never reached the tile was filed against
@@ -4198,8 +4209,8 @@ class Executor:
                 except TimeoutError:
                     o2 = self.b.obs()
                 o2 = self.settle() or o2
-                self.note_transition(o, {"dir": _OPP[back]}, o2,
-                                     reason="uncork")
+                self.note_transition(o, {"dir": _OPP[back], "skip": skip},
+                                     o2, reason="uncork")
                 final = o2
                 land = self._where(o2)
                 self.log("seam_cell_retried", frm=here, back=back, skip=skip,
@@ -4270,8 +4281,8 @@ class Executor:
                 except TimeoutError:
                     o2 = self.b.obs()
                 o2 = self.settle() or o2
-                self.note_transition(pre, {"dir": _OPP[back]}, o2,
-                                     reason="recross")
+                self.note_transition(pre, {"dir": _OPP[back], "skip": skip},
+                                     o2, reason="recross")
                 final = o2
                 if self._where(o2).split("|")[0] != mymap:
                     break                # the way back did not take
@@ -4284,6 +4295,20 @@ class Executor:
                          landed=self._where(o3), target=f"{tx},{ty}",
                          reached=bool(r.get("ok")))
                 if r.get("ok"):
+                    return o3
+                # A LANDING SOMEWHERE ELSE IS THE POINT, TILE OR NO TILE.
+                # skip=1 out of Route 14's four-cell nook lands in
+                # ROUTE_14|5,4 — 472 cells of the same map, reaching its
+                # west edge — and because the tile this was asked about
+                # was not reachable from there either, the loop stepped
+                # back out and tried skip=2, which landed in the nook
+                # again. It threw away the way out because the way out was
+                # not the whole answer. Getting off a pocket is progress
+                # the model can use; what to do from the new ground is its
+                # call, as it always was.
+                if self._where(o3) != here:
+                    self.log("recross_kept", frm=here, landed=self._where(o3),
+                             skip=skip, target=f"{tx},{ty}")
                     return o3
         finally:
             self._recrossing = False
@@ -4757,9 +4782,23 @@ class Executor:
                     step = {"x": int(x), "y": int(y)}
                 else:
                     _dirk = str(key).split("#", 1)[0]
-                    _res = (self._send_safe("cross", dir=_dirk, surf=True)
-                            if _sf else self._send_safe("cross", dir=_dirk))
-                    step = {"dir": _dirk}
+                    # ...AND A KEY THAT CARRIES A SKIP MUST BE CROSSED WITH
+                    # IT. The suffix is stripped so a "#alt" inference can
+                    # ride under a direction; "#skipN" is not an inference,
+                    # it is the cell of the seam that produced this landing
+                    # and the only one that reproduces it. Stripping it and
+                    # crossing plainly walks back into the pocket the skip
+                    # was found to escape.
+                    _mk = _re.match(r".*#skip(\d+)$", str(key))
+                    _skip = int(_mk.group(1)) if _mk else 0
+                    _args = {"dir": _dirk}
+                    if _skip:
+                        _args["skip"] = _skip
+                    if _sf:
+                        _args["surf"] = True
+                    _res = self._send_safe("cross", **_args)
+                    step = dict(_args)
+                    step.pop("surf", None)
                 o = self.settle()
                 # KEEP THE OP'S OWN VERDICT. settle() overwrites result with
                 # its own, so "crossed mid-walk (door unknown)" was thrown
@@ -7955,6 +7994,30 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         _alt = self._uncork_seam(obs, sg, step.get("dir"))
                     if _alt is not None:
                         obs = _alt
+                # ...AND A CROSS THAT SUCCEEDS INTO A KNOWN DEAD POCKET.
+                # Uncorking only ever ran off a FAILED cross, so the loop
+                # had to be entered before it could be broken: cross west
+                # into Route 14's four-cell nook (fine, it succeeded),
+                # then cross west again from inside it (fails, uncork
+                # fires). One wasted round every time round, and once the
+                # per-process guard had spent itself the run simply sat
+                # there. A seam is a row: landing on the wrong cell of it
+                # is known the moment you land, not a round later. Fires
+                # only on ground the run has stood on BEFORE and whose one
+                # walked way out is the way it just came in — a pocket by
+                # the run's own record, not a guess about the map.
+                elif op == "cross" and _rr.get("ok"):
+                    _land = self._where(self.settle() or obs)
+                    if (_land != self._where(pre_obs)
+                            and (self.visits.get(_land) or 0) >= 2
+                            and not self._frontier_left(_land)):
+                        _alt2 = self._uncork_seam(
+                            self.b.obs() or obs, sg, step.get("dir"))
+                        if _alt2 is not None:
+                            self.log("uncorked_on_arrival", into=_land,
+                                     asked=step.get("dir"),
+                                     landed=self._where(_alt2))
+                            obs = _alt2
                 if obs and obs.get("mode") == "battle":
                     pre_map = (obs.get("map") or {}).get("id") or before[0]
                     # A room that starts fights is NOT inert. The revisit
