@@ -1121,9 +1121,16 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                 _leg = (f"the door at ({_ks})" if _ks[:1].isdigit()
                         else "the lift to " + _ks.split(":", 1)[1]
                         if _ks.startswith("lift:") else f"walk {_ks}")
+                # ...AND THE OP THAT WALKS IT WHOLE. Named leg-by-leg, the
+                # first leg ended in the lift car, whose panel re-derived
+                # "he is on 11F" every visit — the model cannot hold a
+                # 4-leg route across rounds, and go already replays walked
+                # routes end to end.
                 head += (f"; you have walked a route there before: start "
                          f"by taking {_leg} to {_dest} "
-                         f"({len(_path)} leg(s) total)")
+                         f"({len(_path)} leg(s) total), or "
+                         "{\"op\":\"go\",\"to\":\"" + str(_reg)
+                         + "\"} walks the whole walked route for you")
             else:
                 head += ("; no walked route from here is known — how you "
                          "got in before is in your own record")
