@@ -2213,7 +2213,11 @@ local function bfs_to_edge(G, dir, skip, surf)
                      return (" This map holds OTHER water that this body "
                        .. "does not touch: the nearest such water lies "
                        .. "at (%d,%d), %d tile(s) from you in a straight "
-                       .. "line."):format(bx2, by2, bd2)
+                       .. "line. {\"op\":\"walk_to\",\"x\":%d,"
+                       .. "\"y\":%d,\"surf\":true} walks toward it "
+                       .. "and says what stands in the way; a cross sent "
+                       .. "from beside THAT water searches from it.")
+                       :format(bx2, by2, bd2, bx2, by2)
                    end
                    return ""
                  end)()))
