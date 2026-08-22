@@ -5803,6 +5803,29 @@ function OPS.interact(G, c)
         adj[#adj + 1] = { o[1], o[2], o[3] }
       end
     end
+    -- NEVER STAND ON A DOOR TO PRESS A THING BESIDE IT. A warp mat fires
+    -- on arrival: approaching Fuchsia's POKECENTER sign chose the
+    -- Center's own mat as the stand, warped the walker inside, reloaded
+    -- the city, and regrew every bush the model had just cut a path
+    -- through (2026-08-22). The transit BFS already refuses to walk
+    -- THROUGH warp cells; the chosen STAND must refuse them too. A warp
+    -- cell stays a stand of last resort, in case a thing is only
+    -- pressable from a doorway.
+    do
+      local md2 = ow.map and G.data and G.data.maps
+                  and G.data.maps[(ow.map or {}).id]
+      local iswarp = {}
+      for _, w in ipairs((md2 and md2.warps) or {}) do
+        iswarp[w.x .. "," .. w.y] = true
+      end
+      local nonwarp = {}
+      for _, a in ipairs(adj) do
+        if not iswarp[a[1] .. "," .. a[2]] then
+          nonwarp[#nonwarp + 1] = a
+        end
+      end
+      if #nonwarp > 0 then adj = nonwarp end
+    end
     if want_facing then
       local keep = {}
       for _, a in ipairs(adj) do

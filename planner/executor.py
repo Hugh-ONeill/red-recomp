@@ -10280,7 +10280,21 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # almost never — and it never ran at all.
             if not clean:
                 here_s = self._where(cur)
-                touched = self._tried_objs.setdefault(here_s, set())
+                # A NAME PRESSED ON THIS MAP IS PRESSED, whatever the
+                # region fingerprint has since become — the same map-union
+                # the ledger's build applies (2026-08-21), which this sweep
+                # kept its own region-scoped copy of (one concept, two
+                # implementations). Cutting a bush re-anchors the region,
+                # the new key held nothing, and the sweep re-pressed all
+                # eight Fuchsia signs every round of every attempt — and
+                # its walks dragged the party over the Center's door mat,
+                # reloading the map and regrowing the bushes the model had
+                # just cleared a path through.
+                touched = set(self._tried_objs.setdefault(here_s, set()))
+                _mid_s = str((cur.get("map") or {}).get("id"))
+                for _r2, _n2 in self._tried_objs.items():
+                    if str(_r2).split("|")[0] == _mid_s:
+                        touched |= set(_n2 or ())
                 loose = [o.get("name") for o in
                          ((cur.get("map") or {}).get("objects") or [])
                          if o.get("reachable") and o.get("name")
