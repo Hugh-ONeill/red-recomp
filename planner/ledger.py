@@ -104,21 +104,27 @@ class Candidate:
     offer: bool = True           # False only for the two hard cases
     rank: tuple = field(default_factory=tuple)
     look: str = "door"           # door | stairs | pad | hole
+    twins: list = field(default_factory=list)
+                                 # doors: the other tiles of this doorway —
+                                 # a doorway spans up to four warp tiles
+                                 # and is ONE door (_door_groups)
 
     def label(self) -> str:
         if self.kind == "seam":
             return f"walk {self.key}"
         if self.kind == "door":
             _l = getattr(self, "look", "door") or "door"
+            _tw = "".join(f"+({t})"
+                          for t in (getattr(self, "twins", None) or []))
             if _l == "pad":
-                return f"warp pad ({self.key})"
+                return f"warp pad ({self.key}){_tw}"
             if _l == "hole":
-                return f"hole ({self.key})"
+                return f"hole ({self.key}){_tw}"
             if _l == "stairs":
-                return f"stairs/ladder ({self.key})"
+                return f"stairs/ladder ({self.key}){_tw}"
             if _l == "threshold":        # an older shim's word for a door
-                return f"door ({self.key})"
-            return f"door ({self.key})"
+                return f"door ({self.key}){_tw}"
+            return f"door ({self.key}){_tw}"
         if self.kind == "op":
             return self.key
         return f"{self.key}"
@@ -560,6 +566,40 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             c.status = "came_in_by"
         out.append(c)
 
+    # ONE DOORWAY, ONE LINE (_door_groups; untried.py's law). Adjacent
+    # warp tiles leading to the same place are one opening — the Safari
+    # rest house read as "door (2,7)" and "door (3,7)", two entries with
+    # separate counts for one doorway (user, 2026-08-22: "functionally
+    # the same warp"). The most-walked tile speaks for the doorway, the
+    # counts combine, and the label shows every tile it spans.
+    _groups = (ex._door_groups(m.get("warps") or [])
+               if hasattr(ex, "_door_groups") else {})
+    if any(len(g) > 1 for g in _groups.values()):
+        _pref = {"unreachable": 2, "untried": 1}
+        _byk = {c.key: c for c in out}
+        _folded, _seen_g = [], set()
+        for c in out:
+            g = _groups.get(c.key) or (c.key,)
+            if len(g) == 1:
+                _folded.append(c)
+                continue
+            if g in _seen_g:
+                continue
+            _seen_g.add(g)
+            members = [_byk[k] for k in g if k in _byk]
+            members.sort(key=lambda cc: (-(cc.n or 0),
+                                         _pref.get(cc.status, 0),
+                                         tuple(int(v) for v
+                                               in cc.key.split(","))))
+            surv = members[0]
+            surv.n = sum(cc.n or 0 for cc in members)
+            surv.twins = [cc.key for cc in members[1:]]
+            if not surv.note:
+                surv.note = next((cc.note for cc in members[1:]
+                                  if cc.note), "")
+            _folded.append(surv)
+        out = _folded
+
     # ---- exits: seams -------------------------------------------------
     for d in (m.get("connections") or {}):
         rec = taken.get(d) or {}
@@ -909,7 +949,11 @@ def lookup(cands: list[Candidate], step: dict) -> Candidate | None:
     op = (step or {}).get("op")
     by_key = {c.key: c for c in cands}
     if op == "use_warp":
-        return by_key.get(f"{step.get('x')},{step.get('y')}")
+        k = f"{step.get('x')},{step.get('y')}"
+        # a step aimed at any tile of a folded doorway is on-ledger
+        return by_key.get(k) or next(
+            (c for c in cands if k in (getattr(c, "twins", None) or [])),
+            None)
     if op == "cross":
         return by_key.get(str(step.get("dir")))
     if op == "interact":

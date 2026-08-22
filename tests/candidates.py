@@ -245,7 +245,11 @@ def main():
     cands = L.build(ex, o, target="flag:X")
     st = {c.key: c for c in cands}
     check("the arrival tile is the door you came in by", st["2,7"].status == "came_in_by")
-    check("its twin tile is too", st["3,7"].status == "came_in_by")
+    # the twin tile is not a second entry any more: adjacent tiles with one
+    # destination are ONE door, folded into the arrival tile's line
+    check("its twin tile is folded into it as the same door",
+          "3,7" not in st and st["2,7"].twins == ["3,7"],
+          f"twins={st['2,7'].twins} keys={sorted(st)}")
     check("the BACK door to the same map is untried, not came-in-by",
           st["2,0"].status == "untried", st["2,0"].status)
     # outdoors: arrival one tile in front of the door still counts

@@ -998,6 +998,12 @@ class Executor:
         self._dead_at: dict = {}            # ...and the world mark they are OF
         self._ferried: dict = {}            # target -> {region: untried set}
         self.map_doors: dict = {}           # map id -> every doorway seen
+        self.door_dests: dict = {}          # map id -> {key: destMap} —
+                                            # INTERNAL, never printed: kept
+                                            # only so the one-doorway
+                                            # grouping (_door_groups) can be
+                                            # applied by readers that have
+                                            # no observation in hand
         self.save_each = False              # in-game SAVE after each subgoal
         self._tried_objs: dict = {}         # region -> objects interacted
         self._drift: dict = {}              # subgoal -> goalward progress
@@ -1896,8 +1902,39 @@ class Executor:
                         and (e or {}).get("shut_at") != _now)}
         done |= set(self._spent_exits(region))
         shut = self._sealed(region)
-        return [e for e in (self.frontier.get(region) or [])
+        left = [e for e in (self.frontier.get(region) or [])
                 if e not in done and e not in shut]
+        # ONE DOORWAY, ONE ENTRY — the same grouping every reader applies
+        # (_door_groups; untried.py's law). A twin tile of a door already
+        # walked is not an unopened way, and counting it kept "1 exit(s)
+        # never taken" true for every two-tile gate for ever. Groups come
+        # from the destinations recorded when the doorway was SEEN
+        # (door_dests, internal); a key with no recorded destination folds
+        # with nothing.
+        dd = (getattr(self, "door_dests", {}) or {}).get(
+            str(region).split("|")[0]) or {}
+        if dd and left:
+            ws = []
+            for k, d in dd.items():
+                try:
+                    x, y = (int(v) for v in k.split(","))
+                except (TypeError, ValueError):
+                    continue
+                ws.append({"x": x, "y": y, "dest": d})
+            groups = self._door_groups(ws)
+            left_set = set(left)
+            out = []
+            for e in left:
+                g = groups.get(e)
+                if not g or len(g) == 1:
+                    out.append(e)
+                    continue
+                if any(m in done or m in shut for m in g):
+                    continue            # the doorway itself has been taken
+                if e == next(m for m in g if m in left_set):
+                    out.append(e)       # one entry per doorway
+            return out
+        return left
 
     def _count_visit(self, region):
         """ONE ARRIVAL, ONE VISIT. Two places counted: note_transition on a
@@ -2338,6 +2375,7 @@ class Executor:
                       f"ledgers — contents are not on the screen")
             self.map_doors = {k: set(v) for k, v
                               in (data.get("map_doors") or {}).items()}
+            self.door_dests = data.get("door_dests") or {}
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
             # reset before ever reaching 2 — the TOO-WEAK note was aimed at
@@ -2531,7 +2569,8 @@ class Executor:
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead,
                  "map_doors": {k: sorted(v)
-                               for k, v in (self.map_doors or {}).items()}},
+                               for k, v in (self.map_doors or {}).items()},
+                 "door_dests": self.door_dests},
                 indent=1)
             tmp = self.MEMORY.with_suffix(".json.tmp")
             tmp.write_text(payload)
@@ -2742,6 +2781,13 @@ class Executor:
                     for w in (_m.get("warps") or [])}
             if _all:
                 self.map_doors[_mid] = set(self.map_doors.get(_mid, ())) | _all
+            # the destinations ride along, unprinted (see door_dests above);
+            # the claim rule forbids SAYING them, not knowing which two
+            # tiles are one door
+            _dd = self.door_dests.setdefault(_mid, {})
+            for _w in (_m.get("warps") or []):
+                if _w.get("x") is not None and _w.get("dest") is not None:
+                    _dd[f"{_w.get('x')},{_w.get('y')}"] = str(_w.get("dest"))
         # A visit is a VISIT, counted on arrival — not only on a recorded
         # transition. Regions whose transitions landed under other labels
         # (the hop-free relabeling) collected zero visits however often
@@ -3274,8 +3320,55 @@ class Executor:
         return [len(o.get("badges") or []), len(o.get("flags") or []),
                 len(o.get("bag") or {})]
 
+    @staticmethod
+    def _door_groups(warps) -> dict:
+        """key -> sorted tuple of the doorway's tiles. ONE relation, used
+        by every reader (untried.py's law: two implementations of one
+        concept and one of them is wrong).
+
+        A doorway is one door however many tiles it spans: warp tiles that
+        are ORTHOGONALLY ADJACENT and lead to the SAME destination are one
+        opening, transitively (VIRIDIAN_FOREST's south door is four tiles
+        wide). Both halves of the rule are load-bearing: adjacency alone
+        would weld CELADON_MANSION's side-by-side up/down stairwells and
+        SEAFOAM B3F's neighbouring ladders into one (the only three
+        adjacent different-destination pairs in the game — checked against
+        every map), and destination alone would weld the trashed house's
+        front and back doors across the fence between them.
+        """
+        ws = [w for w in (warps or []) if w.get("x") is not None]
+        parent = {}
+
+        def find(k):
+            while parent[k] != k:
+                parent[k] = parent[parent[k]]
+                k = parent[k]
+            return k
+
+        for w in ws:
+            parent[f"{w.get('x')},{w.get('y')}"] = f"{w.get('x')},{w.get('y')}"
+        for a in ws:
+            for b in ws:
+                if (a is not b and a.get("dest") is not None
+                        and a.get("dest") == b.get("dest")
+                        and abs((a.get("x") or 0) - (b.get("x") or 0))
+                        + abs((a.get("y") or 0) - (b.get("y") or 0)) == 1):
+                    ka, kb = (f"{a.get('x')},{a.get('y')}",
+                              f"{b.get('x')},{b.get('y')}")
+                    parent[find(ka)] = find(kb)
+        groups = {}
+        for k in parent:
+            groups.setdefault(find(k), []).append(k)
+        out = {}
+        for members in groups.values():
+            members.sort(key=lambda k: tuple(int(v) for v in k.split(",")))
+            t = tuple(members)
+            for k in members:
+                out[k] = t
+        return out
+
     def _twin_keys(self, before_obs, step) -> list:
-        """A doorway is one door however many tiles it spans.
+        """The other tiles of the doorway `step` names (see _door_groups).
 
         Gate buildings have PAIRED warp tiles — (3,0) and (4,0) are the same
         opening — and the ledger counted them as two separate unknowns, so
@@ -3287,12 +3380,9 @@ class Executor:
         x, y = step.get("x"), step.get("y")
         if x is None:
             return []
+        key = f"{x},{y}"
         warps = ((before_obs or {}).get("map") or {}).get("warps") or []
-        dest = next((w.get("dest") for w in warps
-                     if w.get("x") == x and w.get("y") == y), None)
-        return [f"{w.get('x')},{w.get('y')}" for w in warps
-                if w.get("dest") == dest
-                and abs((w.get("x") or 0) - x) + abs((w.get("y") or 0) - y) == 1]
+        return [k for k in self._door_groups(warps).get(key, ()) if k != key]
 
     def _goal_drift(self, sg, obs):
         """Is this subgoal getting CLOSER to what it is aimed at?
@@ -3874,8 +3964,34 @@ class Executor:
         blocked = set(blocked) | set(self._spent_exits(self._where(obs)))
         seen_maps = {a.split("|")[0] for a in self.visits}
         out = []
+        # ONE DOORWAY, ONE ENTRY (_door_groups; untried.py's law). The
+        # per-tile test below runs for every MEMBER of a doorway: the
+        # doorway is untried only if every tile of it is, and it is listed
+        # once, under its first reachable tile.
+        _groups = self._door_groups(m.get("warps") or [])
+        _bywarp = {f"{w.get('x')},{w.get('y')}": w
+                   for w in (m.get("warps") or [])}
+
+        def _tile_open(k2):
+            w2 = _bywarp.get(k2) or {}
+            was2 = taken.get(k2) or {}
+            re2 = (was2.get("shut")
+                   and (was2.get("shut_at") != self._world_mark(obs)
+                        or (w2.get("reachable")
+                            and not was2.get("shut_reach", True))))
+            return (k2 not in taken or re2) and k2 not in blocked
+
         for w in (m.get("warps") or []):
             k = f"{w.get('x')},{w.get('y')}"
+            _g = _groups.get(k) or (k,)
+            if len(_g) > 1:
+                if not all(_tile_open(m2) for m2 in _g):
+                    continue        # the doorway has been taken/refused
+                _rep = next((m2 for m2 in _g
+                             if (_bywarp.get(m2) or {}).get("reachable")),
+                            None)
+                if k != _rep:
+                    continue        # one entry per doorway
             # A SHUT DOOR IS NEITHER EXPLORED NOR UNTRIED. It stays out of
             # this list — it monopolised the "prefer a door nobody has
             # opened" rule and held the run at the Saffron gates for
