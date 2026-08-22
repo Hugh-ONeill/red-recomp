@@ -5392,6 +5392,15 @@ function OPS.grind(G, c)
   -- rather than the grass beside it — but you have to be ON it, and
   -- getting on it is a decision (different wilds, a different place to be
   -- dumped). `surf=true` says do it; the mount is walk_to's mechanic.
+  -- ...AND A SURF ASK DESERVES A SURF ANSWER. Route 12's water holds no
+  -- wild table in this game, and surf=true fell through SILENTLY to the
+  -- grass refusal — the model iterated water tiles for rounds hunting a
+  -- spot the map does not have (watched live, 2026-08-22). Say the water
+  -- fact when the water was the question.
+  if c.surf and encDef and not encDef.water then
+    return false, "the water on this map holds no wild Pokemon — surfing "
+      .. "it starts no battles here. This map's wilds live in its grass."
+  end
   if c.surf and not p.surfing and encDef and encDef.water then
     local knows = false
     for _, mon in ipairs((G.save or {}).party or {}) do
