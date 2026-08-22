@@ -4571,7 +4571,7 @@ class Executor:
         out.sort()
         return out
 
-    def _pad_recross_for_target(self, obs, sg, tx, ty):
+    def _pad_recross_for_target(self, obs, sg, tx, ty, probe=None):
         """THE TARGET IS ON THIS MAP, NO GROUND WE HAVE WALKED REACHES IT
         — AND A PAD THE RUN HAS RIDDEN LANDS HERE.
 
@@ -4587,6 +4587,7 @@ class Executor:
         The model asked for a tile on this map; which pad to arrive by
         is pathfinding, the same as the route to it."""
         self._last_pad_rides = 0
+        self._last_pad_detail = ""
         here0 = self._where(obs)
         mymap = here0.split("|")[0]
         if getattr(self, "_recrossing", False):
@@ -4633,13 +4634,22 @@ class Executor:
                     self.log("pad_recross_missed", frm=reg, via=k,
                              landed=self._where(o), target=f"{tx},{ty}")
                     continue             # the ride lands elsewhere now
-                r = (self._send_safe("walk_to", x=int(tx), y=int(ty))
-                     or {}).get("result") or {}
-                o2 = self.settle() or o
+                # ...and is the target reachable from THIS landing? The
+                # default question is the walk; a caller whose op is the
+                # question (an item ball's tile is solid — you stand
+                # BESIDE it and press) sends its own probe instead.
+                if probe is None:
+                    r = (self._send_safe("walk_to", x=int(tx), y=int(ty))
+                         or {}).get("result") or {}
+                    ok, o2, _pd = bool(r.get("ok")), None, ""
+                else:
+                    ok, o2, _pd = probe()
+                o2 = o2 or self.settle() or o
+                self._last_pad_detail = _pd
                 self.log("pad_recrossed", frm=reg, via=k,
                          landed=self._where(o2), target=f"{tx},{ty}",
-                         reached=bool(r.get("ok")))
-                if r.get("ok"):
+                         reached=ok)
+                if ok:
                     return o2
         finally:
             self._recrossing = False
@@ -8946,6 +8956,51 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             f"you have SEEN it, reachable, in {seen_in[0]} "
                             f"— no walked route from here is known, so "
                             f"explore toward it.")
+                    # A POCKET ITEM'S ONLY ENTRANCE IS AN ARRIVAL. The
+                    # thing is HERE, on this map, visible — and no walk
+                    # and no walked route reaches it. The last pathfinding
+                    # left is the pad recall (the seam law, one tile
+                    # wide), the same as walk_to's handler: ride a pad the
+                    # run has ridden before and press again from where it
+                    # sets you down. The item's tile is solid, so the
+                    # probe is the op itself, not a walk to its cell.
+                    if (_pos_named and not routed
+                            and "no reachable tile adjacent" in det):
+                        try:
+                            _ix, _iy = (int(v) for v in
+                                        str(name).split("_")[1:3])
+                        except (ValueError, IndexError):
+                            _ix = _iy = None
+                        if _ix is not None:
+                            def _probe(_nm=name):
+                                _r = ((self._send_safe("interact", name=_nm)
+                                       or {}).get("result") or {})
+                                return (bool(_r.get("ok")),
+                                        self.settle() or None,
+                                        str(_r.get("detail") or ""))
+                            _px = self._pad_recross_for_target(
+                                obs, sg, _ix, _iy, probe=_probe)
+                            if _px is not None:
+                                obs = self.settle() or _px
+                                _pd = str(getattr(self, "_last_pad_detail",
+                                                  "") or "")
+                                trace.append(
+                                    f"{name} could not be reached from "
+                                    f"where you stood, so a pad you have "
+                                    f"ridden before was ridden again — "
+                                    f"and from the cell it set you down "
+                                    f"on, it could"
+                                    + (f": {_pd[:200]}" if _pd else "."))
+                            else:
+                                _rr = int(getattr(self, "_last_pad_rides",
+                                                  0) or 0)
+                                if _rr:
+                                    trace.append(
+                                        f"{_rr} pad ride(s) you have made "
+                                        f"before were re-ridden onto this "
+                                        f"map too, without finding a "
+                                        f"stand {name} could be reached "
+                                        f"from")
                 if "cannot afford" in det:
                     trace.append(
                         "That is a MONEY problem, not a route problem — "

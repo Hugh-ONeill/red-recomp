@@ -207,6 +207,27 @@ def main():
           (ex._last_pad_rides,
            [c for c in calls if c[0] == "use_warp"]))
 
+    # a caller whose op IS the question sends a probe: an item ball's
+    # tile is solid, you stand beside it and press, so "did the walk
+    # finish" is the wrong question and the op itself is the right one
+    ex, calls, notes, logs = rig(routes, rides, walk_ok_from=set())
+    hits = []
+
+    def probe():
+        here = E.Executor._where(ex.b.obs())
+        hits.append(here)
+        if here == "SILPH_CO_5F|16,16":
+            return True, None, "you stood beside it and pressed"
+        return False, None, ""
+    o = ex._pad_recross_for_target(MAIN, {"id": "t"}, 21, 16, probe=probe)
+    check("the probe is asked at every landing and its verdict rules",
+          o is not None
+          and hits == ["SILPH_CO_5F|20,0", "SILPH_CO_5F|16,16"]
+          and ex._last_pad_detail == "you stood beside it and pressed",
+          (hits, o))
+    check("no walk_to is sent when the probe owns the question",
+          not any(c[0] == "walk_to" for c in calls), calls)
+
     print("the record:")
     # The intra-map branch keeps the landing cell now, like the cross-map
     # write always did: ride Silph 3F's (23,11) pad, land at (27,15), and
