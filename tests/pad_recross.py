@@ -228,6 +228,18 @@ def main():
     check("no walk_to is sent when the probe owns the question",
           not any(c[0] == "walk_to" for c in calls), calls)
 
+    print("the name:")
+    C = E.Executor._item_name_coords
+    check("a map-qualified name yields its coordinates",
+          C("ITEM_SILPH_CO_5F_21_16") == (21, 16))
+    check("a map id ending in a number does not eat a coordinate",
+          C("ITEM_ROUTE_12_5_89") == (5, 89))
+    check("the bare shape older plans still carry resolves too",
+          C("ITEM_21_16") == (21, 16))
+    check("a non-item name yields nothing",
+          C("SILPHCO2F_SCIENTIST1") == (None, None)
+          and C("") == (None, None))
+
     print("the record:")
     # The intra-map branch keeps the landing cell now, like the cross-map
     # write always did: ride Silph 3F's (23,11) pad, land at (27,15), and

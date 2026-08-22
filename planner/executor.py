@@ -4521,6 +4521,17 @@ class Executor:
             self._recrossing = False
         return final if self._where(final) != here else None
 
+    @staticmethod
+    def _item_name_coords(name):
+        """The coordinates inside a harness-minted item name, either
+        shape: ITEM_<MAP>_x_y (map-qualified since 2026-08-22, so names
+        stop colliding across floors) or the bare ITEM_x_y that older
+        plans and distilled macros still carry."""
+        m = _re.match(r"^ITEM_(?:(.+)_)?(\d+)_(\d+)$", str(name or ""))
+        if not m:
+            return None, None
+        return int(m.group(2)), int(m.group(3))
+
     def _pad_arrivals(self, mymap: str):
         """Every doorway the run has WALKED whose recorded landing is this
         map — one entry per doorway, least-ridden first.
@@ -8966,11 +8977,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # probe is the op itself, not a walk to its cell.
                     if (_pos_named and not routed
                             and "no reachable tile adjacent" in det):
-                        try:
-                            _ix, _iy = (int(v) for v in
-                                        str(name).split("_")[1:3])
-                        except (ValueError, IndexError):
-                            _ix = _iy = None
+                        _ix, _iy = self._item_name_coords(name)
                         if _ix is not None:
                             def _probe(_nm=name):
                                 _r = ((self._send_safe("interact", name=_nm)

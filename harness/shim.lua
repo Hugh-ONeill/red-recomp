@@ -907,7 +907,14 @@ local function observe(G, seq, result)
         -- say. Named by position (items do not move); the real name still
         -- resolves in interact so distilled macros keep replaying, but it
         -- is never emitted (user, 2026-08-18: "only 'item at x,y'").
-        name = ("ITEM_%d_%d"):format(npc.cellX or 0, npc.cellY or 0)
+        -- ...AND BY MAP. Bare ITEM_x_y collided across floors — (8,3)
+        -- exists on dozens of maps — and cost three separate bugs
+        -- (cross-map sighting recall, cross-map interact, the "seen
+        -- elsewhere" line). The map is on the screen; saying it hides
+        -- nothing (user, 2026-08-22: "the map-name item-coords thing").
+        name = ("ITEM_%s_%d_%d"):format(
+          tostring((G.overworld.map or {}).id or "?"),
+          npc.cellX or 0, npc.cellY or 0)
       elseif d.trainerClass then
         kind = "trainer"
       elseif d.sprite == "SPRITE_BOULDER" then
@@ -5717,7 +5724,22 @@ function OPS.interact(G, c)
     -- observe: contents are never emitted); pressing it is pressing that
     -- tile. The map's own object names still resolve below, so a macro
     -- distilled before the rename keeps replaying.
-    local ix, iy = tostring(c.name):match("^ITEM_(%d+)_(%d+)$")
+    -- Two shapes resolve: ITEM_<MAP>_x_y (minted since 2026-08-22, the
+    -- map spelled out so names stop colliding across floors) and the
+    -- bare ITEM_x_y still sitting in older plans and distilled macros.
+    local mp, ix, iy = tostring(c.name):match("^ITEM_(.-)_(%d+)_(%d+)$")
+    if not ix then
+      ix, iy = tostring(c.name):match("^ITEM_(%d+)_(%d+)$")
+      mp = nil
+    end
+    if ix and mp and mp ~= "" and mp ~= tostring((ow.map or {}).id) then
+      return false, ("that name is a ball lying on %s, and you are on %s "
+        .. "— an ITEM_<map>_x_y name means \"the ball at those "
+        .. "coordinates on THAT map\". Go there first (use_warp/go take "
+        .. "map=), or press a tile here with "
+        .. "{\"op\":\"interact\",\"x\":N,\"y\":N}.")
+        :format(mp, tostring((ow.map or {}).id))
+    end
     if ix then
       tx, ty = tonumber(ix), tonumber(iy)
       -- ...BUT ONLY ON THE MAP THAT NAME CAME FROM. ITEM_x_y names a ball
