@@ -703,8 +703,10 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         else:
             c.status = "unspoken" if kind in ("npc", "trainer") else "untouched"
             if not o.get("reachable"):
-                c.note = _join("an item you cannot walk to right now",
-                               str(o.get("why") or ""))
+                # the verdict lives in the rendered words (with the pad
+                # recall's ops contract beside it); the note keeps only
+                # the WHY, when the screen gave one
+                c.note = _join(c.note, str(o.get("why") or ""))
         out.append(c)
 
     # ---- rank ---------------------------------------------------------
@@ -1175,9 +1177,22 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # on the screen), "never pressed" undersells it: it is a thing lying
         # on the ground that pressing A picks up, at no cost. Say that.
         if c.kind == "item" and c.status == "untouched":
+            # ...AND "CANNOT WALK TO" MUST NOT OUTLIVE ITS TRUTH. Since the
+            # pad recall (2026-08-22), a press at an unwalkable item is
+            # answered by riding pads the run has already ridden onto its
+            # map and pressing again from where they set you down — so the
+            # old bare verdict ("an item you cannot walk to right now")
+            # told the model the press was wasted, and it walked past the
+            # Card Key twice on the strength of our own stale words. Say
+            # the ops contract instead; which pad, if any, stays unsaid.
             words = ("lying on the ground, never picked up — pressing A "
                      "takes it and it costs nothing"
-                     + ("" if c.reachable else "; not walkable-to right now"))
+                     + ("" if c.reachable else
+                        "; not walkable-to right now, but pressing it is "
+                        "still WORTH SENDING — if a pad or door you have "
+                        "ridden before arrives on this map, the press "
+                        "rides it again and tries from where it sets "
+                        "you down"))
         # NO COUNT IS NOT ZERO. Until _run_traced writes the outcomes
         # ledger, a pressed thing has no per-subgoal count; "pressed 0x"
         # would be a lie in the other direction.
