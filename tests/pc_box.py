@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -44,6 +45,24 @@ sys.path.insert(0, str(ROOT / "planner"))
 sys.path.insert(0, str(ROOT / "tests"))
 
 import contract as C                                   # noqa: E402
+
+
+def wild_maps():
+    """Map ids with a wild-encounter table, read from the engine's own
+    data. On any of these a single step can roll a battle — grass, water,
+    or (indoors) every floor tile — and this test drives menus, not
+    battles: one Zubat during the heal-walk and it dies at "a box was up
+    and would not close: kind=wild". It sat red for exactly that reason
+    from 2026-08-21 until the guard below. Towns and buildings have no
+    table, and a Pokemon Center is always in a town, so skipping the
+    encounter maps skips nothing the test is actually for."""
+    enc = (Path.home() / "Developer/gen1recomp"
+           / "data/generated/encounters.lua")
+    try:
+        return set(re.findall(r"^  ([A-Z_0-9]+) = \{",
+                              enc.read_text(), re.M))
+    except OSError:
+        return set()          # no engine data: guard off, test as before
 
 
 def party_of(o):
@@ -95,6 +114,14 @@ def main():
         if n0 < 2:
             sys.exit("this test needs at least 2 party members to be safe "
                      "— the PC refuses your last Pokemon")
+
+        here0 = (o.get("map") or {}).get("id") or ""
+        if here0 in wild_maps():
+            print(f"\n  SKIPPED — the save stands on {here0}, which has "
+                  f"wild encounters, and the walk to a Center can roll "
+                  f"one this test cannot fight.")
+            print("  Re-run from a save in a town or building.")
+            return 0
 
         # A PC IS IN EVERY POKEMON CENTER and the ops walk to it
         # themselves, so the run has to be standing in one. The save is
@@ -295,7 +322,7 @@ def main():
         if out:
             b.send("use_warp", x=out["x"], y=out["y"])
         o = b.obs() or {}
-        if (o.get("map") or {}).get("id") == "VIRIDIAN_POKECENTER":
+        if "POKECENTER" in ((o.get("map") or {}).get("id") or ""):
             print("  SKIPPED (counter) — could not get out of the Center")
         else:
             money0 = o.get("money")
@@ -309,22 +336,36 @@ def main():
                 print(f"          {r.get('detail')}")
                 fails.append("sell")
 
-            # the clerk, pressed blind, is where the 15 balls came from
-            r = (b.send("interact", name="VIRIDIANMART_CLERK")
-                 or {}).get("result") or {}
-            det = str(r.get("detail") or "")
-            o2 = b.obs() or {}
-            spent = (o2.get("money") or 0) < (o.get("money") or 0)
-            # LEADS WITH THE WORDS, and stays short. Dropping the clerk's
-            # own line was the bug: the model asked her a question and got
-            # 392 characters of guard notice instead of an answer.
-            ok = ("shop COUNTER" in det) and not spent and len(det) < 200
-            print(f"  {'ok  ' if ok else 'FAIL'}  a bare interact on the "
-                  f"clerk is handed back, and nothing is bought")
-            if not ok:
-                print(f"          {det[:160]}")
-                print(f"          money {o.get('money')} -> {o2.get('money')}")
-                fails.append("clerk guard")
+            # the clerk, pressed blind, is where the 15 balls came from.
+            # `sell` walked itself into whatever mart this town has, so
+            # ask the map who its clerk is — the first version hardcoded
+            # VIRIDIANMART_CLERK and failed in Fuchsia on a working guard.
+            o = b.obs() or {}
+            clerk = next((str(d.get("name"))
+                          for d in (o.get("map") or {}).get("objects") or []
+                          if "CLERK" in str(d.get("name") or "")), None)
+            if not clerk:
+                print("  SKIPPED (clerk) — no CLERK object on "
+                      f"{(o.get('map') or {}).get('id')}; sell must not "
+                      "have landed in a mart")
+            else:
+                r = (b.send("interact", name=clerk)
+                     or {}).get("result") or {}
+                det = str(r.get("detail") or "")
+                o2 = b.obs() or {}
+                spent = (o2.get("money") or 0) < (o.get("money") or 0)
+                # LEADS WITH THE WORDS, and stays short. Dropping the
+                # clerk's own line was the bug: the model asked her a
+                # question and got 392 characters of guard notice instead
+                # of an answer.
+                ok = ("shop COUNTER" in det) and not spent and len(det) < 200
+                print(f"  {'ok  ' if ok else 'FAIL'}  a bare interact on "
+                      f"the clerk is handed back, and nothing is bought")
+                if not ok:
+                    print(f"          {det[:160]}")
+                    print(f"          money {o.get('money')} -> "
+                          f"{o2.get('money')}")
+                    fails.append("clerk guard")
 
     finally:
         # contract.stop_game, NOT proc.terminate(): run.sh execs xvfb-run,
