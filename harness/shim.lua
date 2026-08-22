@@ -2184,7 +2184,12 @@ local function bfs_to_edge(G, dir, skip, surf)
              .. "up costs more steps than a walk down, and pausing loses "
              .. "some of it")
         or "")
-    .. ((nwater > 0)
+    .. ((nwater > 0 and _swim)
+        and ((". The water HERE WAS COUNTED AS GROUND for this search (a "
+              .. "party Pokemon knows SURF), and the edge is still out of "
+              .. "reach: the sea you can swim from here is walled off "
+              .. "before it. The way west is not this water."))
+        or (nwater > 0)
         and ((". %d WATER cell(s) lie between the ground you can reach and "
               .. "that edge%s"):format(nwater,
              knows_surf
