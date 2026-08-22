@@ -2437,9 +2437,25 @@ class Executor:
             if not path.exists():
                 continue
             try:
-                return json.loads(path.read_text()), path.name
+                data = json.loads(path.read_text())
             except (OSError, ValueError) as e:
-                tried.append(f"{path.name} ({e.__class__.__name__})")
+                tried.append(f"{path.name} ({e.__class__.__name__}: {e})")
+                continue
+            if tried:
+                # THE FALLBACK IS NOT SILENT EITHER. The live file existed,
+                # failed to parse, and the last good copy loaded in its
+                # place — the right recovery for a crash mid-write, and
+                # exactly the wrong one for a HAND EDIT: the edit never
+                # loads, the next two saves rotate the pre-edit copy into
+                # both files, and the editor is left staring at a ledger
+                # that silently threw their fix away (2026-08-21, the
+                # Route 14 no_cross seed). Name the file that lost and the
+                # parse error that cost it.
+                print("[memory] !!! " + path.name + " loaded INSTEAD OF "
+                      + "; ".join(tried) + ". If that file was edited by "
+                      "hand, the edit did NOT load and the next save will "
+                      "overwrite it — fix the parse error and relaunch.")
+            return data, path.name
         if tried:
             print("[memory] !!! COULD NOT READ THE WALKED MAP: "
                   + ", ".join(tried) + ". Starting with an EMPTY ledger — "
