@@ -3618,8 +3618,35 @@ function OPS.use_item(G, c)
   -- choice of forget= makes TM_WATER_GUN teachable to a Charmeleon, so the
   -- model would burn every round overwriting a different move for nothing.
   local incompatible
-  for _ = 1, 50 do
+  -- 50 LAPS STARVED THIS LOOP TO DEATH IN THE MIDDLE OF THE FLOW. Traced
+  -- 2026-08-22 (RED_TEACH_TRACE): a stone evolution spends ~35 laps on
+  -- EvolutionState before its text even appears, and every TextBox page
+  -- eats 13-19 laps of typing — the HM teach burned all 50 on
+  -- "trying to learn" + "can't learn more than 4" and died with the
+  -- "Delete an older move?" question never yet asked, leaving the choice
+  -- for the close-out loop, which answers questions with B and cannot
+  -- finish one. 300 laps covers the pages — and the wall-clock arm
+  -- covers the AUTO boxes that hold until a CRY stops sounding, which
+  -- runs in REAL time regardless of POKEPORT_SPEED (see field_move's
+  -- twin of this loop for the full story).
+  local _ui0 = os.time()
+  local _i = 0
+  while true do
+    _i = _i + 1
     local t = G.stack:top()
+    if _i > 300 and os.time() - _ui0 > 12 then break end
+    if os.getenv("RED_TEACH_TRACE") then
+      local fh = io.open(os.getenv("RED_TEACH_TRACE"), "a")
+      if fh then
+        fh:write(("[teach %d] screenId=%s idx=%s items=%s newMove=%s "
+          .. "selecting=%s pages=%s text=%q\n"):format(_i,
+          tostring(t and t.screenId),
+          tostring(t and t.index), tostring(t and t.items ~= nil),
+          tostring(t and t.newMoveId), tostring(t and t.selecting),
+          tostring(t and t.pages ~= nil), page_text():sub(1, 60)))
+        fh:close()
+      end
+    end
     if t == G.overworld then break end
     do
       local _tx = page_text()
@@ -3942,9 +3969,23 @@ function OPS.field_move(G, c)
   end
   U.tap(G, "a"); U.wait(10)
   local said
-  for _ = 1, 30 do
+  -- THE BUDGET IS LAPS *AND* WALL-CLOCK, because two different clocks
+  -- gate this flow. Text pages type in EMULATED frames (30 laps starved
+  -- mid-page; 300 covers any number of pages) — but STRENGTH and SURF
+  -- end in an AUTO TextBox that holds until the chosen mon's CRY stops
+  -- SOUNDING (TextBox.lua autoSrc:isPlaying, WaitForSoundToFinish), and
+  -- audio plays in REAL time no matter what POKEPORT_SPEED says. At
+  -- speed 200 all 300 laps fit inside a fraction of one cry, so the op
+  -- declared "a screen up that would not close" about a box that was
+  -- simply listening to NIDOQUEEN. Laps alone can never cover that at
+  -- every speed; only real seconds can.
+  local _fm0 = os.time()
+  local _fi = 0
+  while true do
+    _fi = _fi + 1
     local t = G.stack:top()
     if t == ow then break end
+    if _fi > 300 and os.time() - _fm0 > 12 then break end
     if t and t.pages and t.pageIndex then
       local pg = t.pages[t.pageIndex]
       if type(pg) == "table" then said = table.concat(pg, " ")
