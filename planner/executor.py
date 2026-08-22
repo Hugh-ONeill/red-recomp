@@ -8893,7 +8893,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                            and "warped" in str(r.get("detail") or ""))
             if r.get("ok") and (before[0] != after[0] or _intra_warp) \
                     and not blackout:
-                self.note_transition(pre_obs, step, obs, op_detail=_op_det)
+                # ...and hand the recorder the op's own words when the
+                # battle-intent field is empty: the intra-warp record keys
+                # on "warped" in this string, and _op_det is only set for
+                # battle intents — so the pad rides it was built for never
+                # matched it and the phantoms survived one more attempt.
+                self.note_transition(
+                    pre_obs, step, obs,
+                    op_detail=_op_det or str(r.get("detail") or ""))
                 # RECOGNISE A DEAD END ON ARRIVAL. The exit-level warning
                 # only covers exits already taken FROM here, so an untried
                 # ladder that happens to drop into a known-bad room walked
