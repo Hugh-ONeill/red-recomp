@@ -8445,9 +8445,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # ledger lists that bush as cuttable one line up.
                 _why = self._dead_why.get(sig) or ""
                 trace.append(f"{op}({_args}): REFUSED — this exact action "
-                             "has already failed 3 times in this subgoal "
-                             "from this area, with nothing about you "
-                             "changed since"
+                             "has already come to nothing 3 times in this "
+                             "subgoal from this area, with nothing about "
+                             "you changed since"
                              + (f", each time: {_why}" if _why else "")
                              + "; it cannot work from here as things stand. "
                              "Whatever stopped it is what has to change.")
@@ -8815,7 +8815,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     and "backed out" in str(r.get("detail") or "")
                     and op == "interact" and step.get("name")):
                 self._retract_touch(self._where(pre_obs), step["name"])
-            if r.get("ok"):
+            # AN OP THAT RAN AND CHANGED NOTHING IS SPENT, NOT SUCCEEDED.
+            # A vitamin refused by a capped Pokemon answers ok ("used
+            # PROTEIN and NOTHING HAPPENED"), so it CLEARED the strike
+            # count instead of adding to it, and the same press cycled
+            # for whole escalations — five PROTEIN-on-slot-1 in one
+            # attempt, each round re-deriving the idea fresh (user,
+            # 2026-08-22: "yeah do the strikes thing"). The game gave
+            # the same answer every time; our own history should count.
+            _noeff = (op == "use_item" and r.get("ok")
+                      and "NOTHING HAPPENED" in str(r.get("detail") or ""))
+            if r.get("ok") and not _noeff:
                 # AN ACTION THAT JUST WORKED IS NOT A DEAD ACTION. The
                 # count only ever reset when the WORLD MARK moved, so
                 # failures accumulated across successes: walking out of
@@ -8830,6 +8840,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self._dead_ops.pop(sig, None)
                 self._dead_why.pop(sig, None)
                 self._dead_at.pop(sig, None)
+            if _noeff:
+                _mk = getattr(self, "_mark_now", None)
+                if self._dead_at.get(sig) != _mk:
+                    self._dead_ops[sig] = 0
+                    self._dead_at[sig] = _mk
+                self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
+                self._dead_why[sig] = str(r.get("detail") or "")[:160]
             if not r.get("ok"):
                 # THREE FAILURES ARE THREE FAILURES IN ONE WORLD. The
                 # refusal below is absolute and never expired, so an op
