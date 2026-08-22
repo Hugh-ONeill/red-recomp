@@ -6218,6 +6218,30 @@ function OPS.interact(G, c)
         .. table.concat(_b, ", ")
     end
   end
+  -- FENCED IN IS FOR EVER, AND THE BARE REFUSAL NEVER SAID SO. When not
+  -- one of the four tiles beside the target is walkable GROUND — no
+  -- person, no bush, plain wall or fence on every side — "no reachable
+  -- tile adjacent" reads as a pathing failure to solve, and the run cut
+  -- Fuchsia's hedges over and over to open a way to the zoo pen's LAPRAS
+  -- that no amount of clearing can open (the fence is drawn on screen;
+  -- ten attempts, 2026-08-22). Geometry is permanent; say it is.
+  do
+    local _open = false
+    for _, a in ipairs({ {tx, ty + 1}, {tx, ty - 1},
+                         {tx - 1, ty}, {tx + 1, ty} }) do
+      if ow.map and ow.map.isWalkableCell
+         and ow.map:isWalkableCell(a[1], a[2]) then
+        _open = true
+      end
+    end
+    if not _open then
+      return false, ("no tile beside (%d,%d) is ground anyone can stand "
+        .. "on — it is fenced in on all four sides. That is the map "
+        .. "itself, not something in the way: no cutting, shifting or "
+        .. "waiting opens a way to press it. It can be looked at and "
+        .. "nothing more."):format(tx, ty)
+    end
+  end
   return false, "no reachable tile adjacent to target"
 end
 
