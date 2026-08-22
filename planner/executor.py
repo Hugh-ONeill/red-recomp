@@ -5136,6 +5136,22 @@ class Executor:
                     o = self.handle_battle(sg, o)
                     o = self.settle()
                 if self._where(o) != nxt:
+                    # ...AND A WALK THAT DID NOT ARRIVE MUST STOP BEING
+                    # THE SHORTEST ROUTE — the lift's own rule, never
+                    # applied here. An intra edge recorded under an older
+                    # region model bridged Route 12's bands, today's
+                    # collision refuted it, and `go ROUTE_20` re-planned
+                    # through the same dead hop four rounds running
+                    # ("walked 9 leg(s)... did not arrive", 2026-08-22).
+                    # Blocked for the world as it stands; a road again the
+                    # moment anything changes.
+                    _wrec = (self.explored.get(self._where(_now)) or {}) \
+                        .get(str(key))
+                    if _wrec is not None:
+                        _wrec["blocked_at"] = self._world_mark(o)
+                        self.log("walk_edge_blocked",
+                                 frm=self._where(_now), via=str(key))
+                        self._save_memory()
                     self.log("route_abandoned", subgoal=sg.get("id"),
                              step=str(key), standing=self._where(o),
                              why="the walk across this map did not arrive")
