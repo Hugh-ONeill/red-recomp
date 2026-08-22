@@ -1472,6 +1472,14 @@ local function bushes_blocking(G, tx, ty, reach)
   local out = {}
   local lm = G.overworld and G.overworld.map
   local W, H = (lm and lm.widthCells) or 0, (lm and lm.heightCells) or 0
+  -- ...AND THE WATER, WHICH ONLY cross EVER NAMED. The seam refusal says
+  -- "N WATER cells lie between..." with the SURF contract, but a walk_to
+  -- or push inside a floor names pads, doors and bushes and never the
+  -- channel — so Seafoam's west halves read as plain walls for two whole
+  -- cycles while NIDOQUEEN carried SURF the entire time. One line, the
+  -- nearest water tile touching walked ground; riding it stays the
+  -- model's call.
+  local wx_, wy_, wd_
   for cy = 0, math.min(H - 1, 127) do
     for cx = 0, math.min(W - 1, 127) do
       if cut_bush_at(G, cx, cy) or shut_door_at(G, cx, cy)
@@ -1483,6 +1491,15 @@ local function bushes_blocking(G, tx, ty, reach)
         if touches then
           out[#out + 1] = { x = cx, y = cy,
                             d = math.abs(cx - tx) + math.abs(cy - ty) }
+        end
+      elseif lm and lm.isWaterCell and lm:isWaterCell(cx, cy) then
+        local touches = false
+        for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
+          if reach[(cx + d[1]) .. "," .. (cy + d[2])] then touches = true end
+        end
+        if touches then
+          local dd = math.abs(cx - tx) + math.abs(cy - ty)
+          if not wd_ or dd < wd_ then wd_, wx_, wy_ = dd, cx, cy end
         end
       end
     end
@@ -1501,6 +1518,23 @@ local function bushes_blocking(G, tx, ty, reach)
                 and ("a CLOSED DOOR at (%d,%d)")
               or ("CUT_TREE (a bush CUT clears) at (%d,%d)"))
       :format(out[i].x, out[i].y)
+  end
+  if wx_ then
+    local _ks = false
+    for _, mon in ipairs((G.save or {}).party or {}) do
+      for _, mv in ipairs(mon.moves or {}) do
+        if tostring(type(mv) == "table" and mv.id or mv) == "SURF" then
+          _ks = true
+        end
+      end
+    end
+    txt[#txt + 1] = ("WATER at (%d,%d) — a walk will not cross water%s")
+      :format(wx_, wy_, _ks
+        and (", but a party Pokemon knows SURF: walk_to and cross take "
+             .. "surf=true to ride it, or {\"op\":\"field_move\","
+             .. "\"move\":\"SURF\",\"x\":N,\"y\":N} beside a water tile "
+             .. "steps onto it — from the water, water is walkable")
+        or "; nobody in the party knows SURF")
   end
   return txt
 end
