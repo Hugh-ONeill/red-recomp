@@ -5491,10 +5491,21 @@ function OPS.grind(G, c)
       -- standing one building away from. Say which it is; the map is on
       -- screen, the reachable set is ours.
       local any_ground, any_water = false, false
+      -- ...AND WHERE. "This map HAS grass" with no address sent the model
+      -- guessing walk targets down the whole length of Route 12 (y=40,
+      -- 50, 60, 80...), never aiming at the patch itself — so no refusal
+      -- ever named what stands between, and the guessing ran for whole
+      -- attempts. The grass is drawn on the screen; its nearest tile is
+      -- an on-screen fact like the walk report's closest-reach cell.
+      local ngx, ngy, ngd
       local W2, H2 = map_dims_cells(G)
       for yy = 0, math.max(0, H2 - 1) do
         for xx = 0, math.max(0, W2 - 1) do
-          if not any_ground and map:isGrassCell(xx, yy) then any_ground = true end
+          if map:isGrassCell(xx, yy) then
+            any_ground = true
+            local dd = math.abs(xx - p.cellX) + math.abs(yy - p.cellY)
+            if not ngd or dd < ngd then ngd, ngx, ngy = dd, xx, yy end
+          end
           if not any_water and map.isWaterCell and map:isWaterCell(xx, yy) then
             any_water = true
           end
@@ -5508,9 +5519,11 @@ function OPS.grind(G, c)
       end
       if any_ground then
         return false, ("this map HAS " .. ground .. ", but none of it is "
-          .. "reachable from where you stand — the part of the map you are "
-          .. "in has none, so the walking to do is toward the rest of it."
-          .. extra)
+          .. "reachable from where you stand — the nearest lies at ("
+          .. tostring(ngx) .. "," .. tostring(ngy) .. "), "
+          .. tostring(ngd) .. " tile(s) from you in a straight line. The "
+          .. "part of the map you are in has none, so the walking to do "
+          .. "is toward there." .. extra)
       end
       return false, "no " .. ground .. " anywhere on this map." .. extra
     end
