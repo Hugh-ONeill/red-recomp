@@ -258,6 +258,25 @@ def main():
     check("a door adjacent to the arrival tile counts (you stand in front of it)",
           {c.key: c for c in cands}["2,7"].status == "came_in_by")
 
+    # --- a regrown bush is not a fresh way on ------------------------------
+    ex = make(frontier={U.HERE: []})
+    ex._cut_bushes = {"TESTMAP": ["5,5"]}
+    o = U.obs_for(ex, [])
+    o["map"]["objects"] = [{"name": "CUT_TREE", "kind": "cut_tree",
+                            "x": 5, "y": 5, "reachable": True}]
+    o["party"] = [{"species": "F", "moves": [{"id": "CUT"}]}]
+    cands = L.build(ex, o, target="flag:X")
+    bush = next(c for c in cands if c.kind == "cut_tree")
+    check("a bush cut before reads recut, not cuttable",
+          bush.status == "recut", bush.status)
+    check("...and a room whose only lure is a regrown bush is fully worked",
+          L.fully_worked(cands))
+    ex._cut_bushes = {}
+    cands = L.build(ex, o, target="flag:X")
+    bush = next(c for c in cands if c.kind == "cut_tree")
+    check("a bush never cut is still a way on",
+          bush.status == "cuttable", bush.status)
+
     # --- bushes ------------------------------------------------------------
     ex = make(frontier={U.HERE: []})
     o = obs(ex, [], objects=[

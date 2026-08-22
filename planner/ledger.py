@@ -77,6 +77,7 @@ STATUS_RANK = {
     "dead": 5,          # this goal has provably failed beyond it
     "unreachable": 6,   # visible, cannot be walked to right now
     "cuttable": 0,      # a bush, and a party Pokemon knows CUT: a way on
+    "recut": 2,         # a bush cut before, regrown: reopens WALKED ground
     "bush": 3,          # a bush, and nobody knows CUT yet
     "pushable": 0,      # a boulder, and STRENGTH is known: a way on
     "boulder": 3,       # a boulder, and nobody knows STRENGTH yet
@@ -672,15 +673,20 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             # reaches one (they come from the tileset scan), so "never
             # pressed" would be true for ever and explore would reach for
             # it first every round. It is a way on once CUT is known.
-            c.status = ("unreachable" if not o.get("reachable")
-                        else "cuttable" if knows_cut else "bush")
             # ...and one you cut before has grown back (reload does that
-            # in this recomp): say it is the same bush.
+            # in this recomp). A REGROWN BUSH IS NOT A FRESH WAY ON: the
+            # first cut already opened that ground, so cutting it again
+            # reopens what was open — but ranked "a way on" it sat at the
+            # top of explore every round for ever, and the run spent six
+            # attempts of leg 33 cutting the same Fuchsia bush between
+            # Center trips while three never-walked seams out of the city
+            # sat below it (user: "it says its going to exit the city
+            # then doesnt").
             _cut = (getattr(ex, "_cut_bushes", {}) or {}).get(mid) or []
-            if f"{o.get('x')},{o.get('y')}" in _cut:
-                c.note = _join(c.note, "you CUT this bush before and it has "
-                                       "grown back — a bush comes back when "
-                                       "the game reloads; it cuts again")
+            _again = f"{o.get('x')},{o.get('y')}" in _cut
+            c.status = ("unreachable" if not o.get("reachable")
+                        else ("recut" if _again else "cuttable")
+                        if knows_cut else "bush")
         elif not o.get("reachable") and kind != "item":
             c.status = "unreachable"
             # WHY, when the tile beside it says so. "you cannot walk to it"
@@ -994,6 +1000,9 @@ _STATUS_WORDS = {
                     "— people here say different things once the world moves",
     "inert": "pressed {n}x; nothing changed",
     "cuttable": "a bush — CUT clears it, and a party Pokemon knows CUT",
+    "recut": "a bush you have CUT before, grown back (every bush regrows "
+             "when the game reloads) — cutting it reopens the SAME way it "
+             "opened before, not new ground",
     "bush": "a bush — CUT clears it; nobody in the party knows CUT yet",
     # the braces are doubled because this table is .format()ed for {n}
     "pushable": "a BOULDER — it is pushed, not pressed, and a party Pokemon "
