@@ -3903,6 +3903,22 @@ function OPS.use_item(G, c)
     local said = tostring(recent_text or last_text or "")
     if said:find("catchy tune") or said:find("won't have any effect")
        or said:find("no effect") then
+      -- ...BUT ONLY WHEN IT WAS AIMED AT THE WORLD. An item sent at a
+      -- party slot acted on that POKEMON, and the tile under your feet
+      -- plays no part — watched live (2026-08-22): CARBOS on the lead
+      -- answered "It won't have any effect." and this text blamed the
+      -- spot the player stood on, so the model carried the bottle around
+      -- the building trying floors. WHY the game refused is the game's
+      -- business, said in its own words; nothing was spent.
+      if c.slot and mon then
+        return true, ("used " .. c.item .. " on "
+          .. tostring(mon.species or ("slot " .. tostring(c.slot)))
+          .. " and NOTHING HAPPENED — the game said \""
+          .. said:gsub("\n", " ") .. "\". The item acted on that POKEMON; "
+          .. "where you were standing plays no part, and trying again "
+          .. "from somewhere else changes nothing. The item is still in "
+          .. "the bag.")
+      end
       local p2 = G.overworld.player
       return true, ("used " .. c.item .. " and NOTHING HAPPENED — the game "
         .. "said \"" .. said:gsub("\n", " ") .. "\". A field item acts on "
