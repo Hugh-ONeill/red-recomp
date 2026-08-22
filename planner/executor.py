@@ -3654,6 +3654,24 @@ class Executor:
         if step.get("skip"):
             key = f"{key}#skip{int(step['skip'])}"
         if src == dst:
+            # A PAD PAIR INSIDE ONE ROOM IS STILL AN EXIT TAKEN. Silph 3F's
+            # (23,11)<->(27,15) fired, landed in the same region, and
+            # nothing recorded it: the success path only reported map
+            # CHANGES, so the frontier kept both pads "never taken" and the
+            # ledger re-offered them every round — the run rode them over
+            # and over, told each time they were new (user: "are we telling
+            # it those doors arent taken when they are?"). A warp that
+            # reports warped is a taken exit wherever it landed.
+            if "warped" in str(op_detail or ""):
+                node = self.explored.setdefault(src, {})
+                for k in [key] + self._twin_keys(before_obs, step):
+                    e = node.setdefault(k, {"n": 0, "to": dst})
+                    e["n"] += 1
+                    e["to"] = dst
+                    e.pop("shut", None)
+                self.log("intra_warp", frm=src, via=str(key), to=dst)
+                self._save_memory()
+                return
             # A DOORWAY YOU COULD NOT EVEN WALK TO IS NOT AN EXIT OF THIS
             # ROOM. An attempt that never reached the tile was filed against
             # whatever region the party was standing in, so Mt Moon's
@@ -8871,7 +8889,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 note += (f" — your party FAINTED mid-op (blackout): you "
                          f"respawned at {blackout}, party healed, position "
                          f"progress lost")
-            if r.get("ok") and before[0] != after[0] and not blackout:
+            _intra_warp = (op == "use_warp" and r.get("ok")
+                           and "warped" in str(r.get("detail") or ""))
+            if r.get("ok") and (before[0] != after[0] or _intra_warp) \
+                    and not blackout:
                 self.note_transition(pre_obs, step, obs, op_detail=_op_det)
                 # RECOGNISE A DEAD END ON ARRIVAL. The exit-level warning
                 # only covers exits already taken FROM here, so an untried
