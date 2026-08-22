@@ -1834,7 +1834,7 @@ end
 -- to (3,17) and pressed down 8x into a wall ("stepped down at gap but no
 -- map change"). Mirrors OverworldState:connectionLanding, clamp included.
 local COMPASS = { up = "north", down = "south", left = "west", right = "east" }
-local function landing_ok(G, dir, x, y)
+local function landing_ok(G, dir, x, y, swim)
   local ow = G.overworld
   local md = ow and ow.map and ow.map.def
   local conn = md and md.connections and md.connections[COMPASS[dir]]
@@ -1855,7 +1855,7 @@ local function landing_ok(G, dir, x, y)
   local okp, res = pcall(function()
     local Map = require("src.world.Map")
     return Map.defPassable(dest, ts, lx, ly,
-                           ow.player and ow.player.surfing)
+                           swim or (ow.player and ow.player.surfing))
   end)
   -- never let a probe failure make a real seam look shut
   if not okp then return true end
@@ -1920,7 +1920,7 @@ local function doorway_labels(ws)
   return out
 end
 
-local function bfs_to_edge(G, dir, skip)
+local function bfs_to_edge(G, dir, skip, surf)
   local Collision = require("src.world.Collision")
   local ow = G.overworld
   local p = ow.player
@@ -1987,6 +1987,14 @@ local function bfs_to_edge(G, dir, skip)
       end
     end
   end
+  -- A SEAM ON THE FAR SIDE OF WATER IS STILL A SEAM. This finder walked
+  -- land only, so `cross west surf=true` on Route 19 died in the finder
+  -- ("no walkable path reaches it") before the surf flag was ever read —
+  -- the mount lives in the walk that FOLLOWS the find (user, 2026-08-22:
+  -- "having some trouble surfing... trying to cross with it and not being
+  -- successful"). When the op asks to swim and somebody can, or the party
+  -- is already afloat, water is ground to this search too.
+  local _swim = (surf and knows_surf) or (p and p.surfing) or false
   -- ...AND CYCLING ROAD IS NOT LEDGES AT ALL. On a slope map the bike is
   -- pulled one cell SOUTH on every idle poll (OverworldController:1251,
   -- Game.data.field.forcedMovement.slopeMaps) unless A or B is held, so a
@@ -2029,8 +2037,9 @@ local function bfs_to_edge(G, dir, skip)
     for _, d in pairs(DIRS) do
       local nx, ny = cur.x + d[1], cur.y + d[2]
       if not seen[key(nx, ny)] and not wblock[key(nx, ny)] then
-        local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
-                                   { __index = p })
+        local probe = setmetatable(
+          { cellX = cur.x, cellY = cur.y, surfing = _swim or nil },
+          { __index = p })
         local dname = (d[1] == 0 and (d[2] < 0 and "up" or "down"))
                       or (d[1] < 0 and "left" or "right")
         if Collision.canMove(ow.map, ow.entities, probe, dname) then
@@ -2048,7 +2057,7 @@ local function bfs_to_edge(G, dir, skip)
               seen[key(sx, sy)] = true
               nspin = nspin + 1
               note(sx, sy)
-              if hit(sx, sy) and landing_ok(G, dir, sx, sy) then
+              if hit(sx, sy) and landing_ok(G, dir, sx, sy, _swim) then
                 local rx, ry = take(sx, sy)
                 if rx then return rx, ry end
               end
@@ -2057,7 +2066,7 @@ local function bfs_to_edge(G, dir, skip)
           else
             note(nx, ny)
             if hit(nx, ny) then
-              if landing_ok(G, dir, nx, ny) then
+              if landing_ok(G, dir, nx, ny, _swim) then
                 local rx, ry = take(nx, ny)
                 if rx then return rx, ry end
               else
@@ -2081,7 +2090,7 @@ local function bfs_to_edge(G, dir, skip)
             -- can only reject seams that genuinely have nothing behind
             -- them.
             if hit(lx, ly) then
-              if landing_ok(G, dir, lx, ly) then
+              if landing_ok(G, dir, lx, ly, _swim) then
                 local rx, ry = take(lx, ly)
                 if rx then return rx, ry end
               else
@@ -2766,7 +2775,7 @@ function OPS.cross(G, c)
   local seen_cells, nseen_cells
   for round = 1, 4 do
     ex, ey, bfs_why, stallx, stally, seen_cells, nseen_cells =
-      bfs_to_edge(G, dir, c.skip)
+      bfs_to_edge(G, dir, c.skip, c.surf)
     if ex then break end
     U.wait(40)
     if G.stack:top() ~= ow then
@@ -3046,7 +3055,7 @@ function OPS.cross(G, c)
       end
       if p.cellX == ex and p.cellY == ey then break end
       U.wait(30)
-      local nx, ny = bfs_to_edge(G, dir)   -- NPC moved: retarget the gap
+      local nx, ny = bfs_to_edge(G, dir, nil, c.surf)   -- NPC moved: retarget the gap
       if nx then ex, ey = nx, ny end
     end
     if p.cellX ~= ex or p.cellY ~= ey then
