@@ -260,6 +260,9 @@ def main():
     check("a non-item name yields nothing",
           C("SILPHCO2F_SCIENTIST1") == (None, None)
           and C("") == (None, None))
+    check("a door name carries its coordinates the same way",
+          C("DOOR_SILPH_CO_5F_15_10") == (15, 10)
+          and C("DOOR_SILPH_CO_11F_5_4") == (5, 4))
 
     print("the record:")
     # The intra-map branch keeps the landing cell now, like the cross-map

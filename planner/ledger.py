@@ -782,7 +782,7 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                 "\"floor\":\"<a floor as the panel spells it>\"} — the "
                 "car's one door opens onto whichever floor you rode to")
     order = {"item": 0, "fixture": 1, "cut_tree": 1, "boulder": 1,
-             "npc": 2, "trainer": 2, "sign": 3}
+             "shut_door": 1, "npc": 2, "trainer": 2, "sign": 3}
     # THIRTY-SIX OF A THING IS ONE THING. The kind order above is fixed —
     # fixtures before people, always — and in the Rocket Game Corner that
     # meant item 1 read "press SLOT_MACHINE_18 here (fixture); 31 thing(s)
@@ -1176,6 +1176,12 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # AN ITEM IS FREE STUFF. Renamed to ITEM_x_y (its contents are not
         # on the screen), "never pressed" undersells it: it is a thing lying
         # on the ground that pressing A picks up, at no cost. Say that.
+        # A SHUT DOOR IS FURNITURE, NOT SCENERY. It is drawn closed on the
+        # screen; what pressing it does is the game's own conversation.
+        if c.kind == "shut_door" and c.status in ("untouched", "touched",
+                                                  "inert", "worth_a_word"):
+            words = ("a CLOSED DOOR, drawn shut across the way — "
+                     + _STATUS_WORDS.get(c.status, c.status).format(n=c.n))
         if c.kind == "item" and c.status == "untouched":
             # ...AND "CANNOT WALK TO" MUST NOT OUTLIVE ITS TRUTH. Since the
             # pad recall (2026-08-22), a press at an unwalkable item is

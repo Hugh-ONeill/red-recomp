@@ -1034,6 +1034,48 @@ local function observe(G, seq, result)
         end
       end
     end
+    -- CARD-KEY SHUTTERS ARE DRAWN ON THE SCREEN TOO. shut_door_at names
+    -- one only inside a failed walk's blocker line, so the doors lived in
+    -- refusals that evaporate with the round: the model held the CARD KEY
+    -- for a whole cycle, read "the boardroom is unreachable" every round,
+    -- and never pressed a door it was never SHOWN as a thing (user: "can
+    -- it see the doors and recognize them as doors?" — it could not). A
+    -- drawn shut door is furniture of the room the way a sign is;
+    -- pressing it is the game's own conversation, key or no key.
+    -- (shut_door_at is declared below observe and is nil here — the DIRS
+    -- scoping trap — so the tile test is inlined.)
+    do
+      local lm = G.overworld and G.overworld.map
+      local ck = G.data and G.data.field and G.data.field.cardKeyDoors
+      local onList = false
+      for _, mn in ipairs((ck and ck.maps) or {}) do
+        if lm and mn == lm.id then onList = true break end
+      end
+      if onList and lm and lm.cellTile then
+        local w = lm.widthCells or 0
+        local h = lm.heightCells or 0
+        for cy = 0, math.min(h - 1, 71) do
+          for cx = 0, math.min(w - 1, 71) do
+            local t = lm:cellTile(cx, cy)
+            local hit
+            if lm.id == "SILPH_CO_11F" then
+              hit = ck.silphCo11F and t == ck.silphCo11F.doorTile
+            else
+              for _, dt in ipairs(ck.doorTiles or {}) do
+                if t == dt then hit = true end
+              end
+            end
+            if hit then
+              o.map.objects[#o.map.objects + 1] = {
+                x = cx, y = cy, kind = "shut_door",
+                name = ("DOOR_%s_%d_%d"):format(tostring(lm.id), cx, cy),
+                reachable = adjacent_reachable(cx, cy, false),
+              }
+            end
+          end
+        end
+      end
+    end
   elseif top and (top.enemy or top.kind) then
     o.mode = "battle"
     o.battle = scalars(top, 0)
@@ -5755,6 +5797,20 @@ function OPS.interact(G, c)
         .. "map=), or press a tile here with "
         .. "{\"op\":\"interact\",\"x\":N,\"y\":N}.")
         :format(mp, tostring((ow.map or {}).id))
+    end
+    -- A DOOR NAME IS A TILE OF THIS MAP. DOOR_<MAP>_x_y is minted from
+    -- the map's own card-key shutter tiles (see observe); pressing it is
+    -- pressing that tile — no object lookup, the tile IS the thing.
+    if not ix then
+      local dmp, dx, dy = tostring(c.name):match("^DOOR_(.-)_(%d+)_(%d+)$")
+      if dx then
+        if dmp ~= tostring((ow.map or {}).id) then
+          return false, ("that name is a door on %s, and you are on %s — "
+            .. "go there first (use_warp/go take map=).")
+            :format(dmp, tostring((ow.map or {}).id))
+        end
+        tx, ty = tonumber(dx), tonumber(dy)
+      end
     end
     if ix then
       tx, ty = tonumber(ix), tonumber(iy)

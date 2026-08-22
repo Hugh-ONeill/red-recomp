@@ -4535,7 +4535,8 @@ class Executor:
         shape: ITEM_<MAP>_x_y (map-qualified since 2026-08-22, so names
         stop colliding across floors) or the bare ITEM_x_y that older
         plans and distilled macros still carry."""
-        m = _re.match(r"^ITEM_(?:(.+)_)?(\d+)_(\d+)$", str(name or ""))
+        m = _re.match(r"^(?:ITEM|DOOR)_(?:(.+)_)?(\d+)_(\d+)$",
+                      str(name or ""))
         if not m:
             return None, None
         return int(m.group(2)), int(m.group(3))
@@ -8975,7 +8976,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # House item was "SEEN, reachable, in OAKS_LAB" and the
                     # run was sent across Kanto for a different ball. Match
                     # such names only within the SAME MAP.
-                    _pos_named = str(name).startswith("ITEM_")
+                    _pos_named = str(name).startswith(("ITEM_", "DOOR_"))
                     _here_map = here_now.split("|")[0]
                     seen_in = [reg for reg, objs in self.sightings.items()
                                if name in objs and reg != here_now
