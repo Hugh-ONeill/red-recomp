@@ -1085,8 +1085,50 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  + str(len(_stuck)) + " thing(s) sit on this floor that no "
                  "walk from here reaches ("
                  + ", ".join(c.key for c in _stuck[:4])
-                 + "), so this is not finished ground, it is ground you "
-                 "have not found the way into")
+                 + "), so this is not finished ground, it is ")
+        # ...AND "NOT FOUND THE WAY IN" MUST NOT OUTLIVE ITS TRUTH either.
+        # The run rode 7F's pad into 11F's boss pocket, stood beside
+        # Giovanni, and this header went on saying "ground you have not
+        # found the way into" from the entrance strip — the graph held the
+        # walked way while the page denied it existed (user: "does it
+        # specifically get something like 'alternate area reached from 7F
+        # warp'? only since its already been there of course"). Same
+        # recall standard as the interact advice: sighted there, visited
+        # there, route walked before — say so; going is still its call.
+        _mymap = str(here).split("|")[0]
+        _seen_in: dict = {}
+        for _nm in (c.key for c in _stuck):
+            for _reg, _names in (getattr(ex, "sightings", {}) or {}).items():
+                if (_reg != here and str(_reg).split("|")[0] == _mymap
+                        and _nm in (_names or [])
+                        and int((getattr(ex, "visits", {}) or {})
+                                .get(_reg) or 0) > 0):
+                    _seen_in.setdefault(_reg, []).append(_nm)
+        if _seen_in:
+            _reg = max(_seen_in, key=lambda r: len(_seen_in[r]))
+            try:
+                _path = ex._route(here, _reg)
+            except Exception:
+                _path = None
+            head += ("ground you HAVE stood in before: "
+                     + ", ".join(_seen_in[_reg][:4]) + f" are in {_reg}, "
+                     "which you have visited "
+                     + str(int((getattr(ex, "visits", {}) or {})
+                               .get(_reg) or 0)) + "x")
+            if _path:
+                _k, _dest = _path[0]
+                _ks = str(_k)
+                _leg = (f"the door at ({_ks})" if _ks[:1].isdigit()
+                        else "the lift to " + _ks.split(":", 1)[1]
+                        if _ks.startswith("lift:") else f"walk {_ks}")
+                head += (f"; you have walked a route there before: start "
+                         f"by taking {_leg} to {_dest} "
+                         f"({len(_path)} leg(s) total)")
+            else:
+                head += ("; no walked route from here is known — how you "
+                         "got in before is in your own record")
+        else:
+            head += "ground you have not found the way into"
     elif fully_worked(cands):
         head += (". FULLY WORKED: nothing here is untried or unpressed — "
                  "staying finds nothing new; leaving for ground that still "
