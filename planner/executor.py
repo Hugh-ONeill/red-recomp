@@ -3669,6 +3669,15 @@ class Executor:
                     e["n"] += 1
                     e["to"] = dst
                     e.pop("shut", None)
+                    # WHERE THE PAD PUT YOU — the same fact the cross-map
+                    # write keeps below. Within one map the landing cell
+                    # is the ONLY thing that tells a pad pair's two sides
+                    # apart: the region label is the flood's inference and
+                    # can be wrong; the cell you stood on is the walk.
+                    _ap = (((after_obs or {}).get("map") or {})
+                           .get("player") or {})
+                    if _ap.get("x") is not None and _ap.get("y") is not None:
+                        e["land"] = f"{_ap['x']},{_ap['y']}"
                 self.log("intra_warp", frm=src, via=str(key), to=dst)
                 self._save_memory()
                 return
@@ -4511,6 +4520,137 @@ class Executor:
         finally:
             self._recrossing = False
         return final if self._where(final) != here else None
+
+    def _pad_arrivals(self, mymap: str):
+        """Every doorway the run has WALKED whose recorded landing is this
+        map — one entry per doorway, least-ridden first.
+
+        The order is the argument. The doors worn smooth land on ground
+        walk_to has already been tried from, while a ride made once is
+        the one whose landing the region model may have mislabelled:
+        Silph 5F's one Card Key arrival (9F's pad, taken once) was filed
+        against the MAIN region, so nothing in its record said "other
+        side" — the landing CELL is the observation, the label is the
+        flood's inference. Twin tiles fold to one candidate (the
+        ledger's own law); lift rides and intra-map walks are not
+        arrivals at all — the point is to be SET DOWN somewhere, which
+        only a warp cell can do."""
+        out = []
+        for reg, edges in (self.explored or {}).items():
+            tiles = {}
+            for k, e in (edges or {}).items():
+                ks = str(k)
+                if ks.startswith(("lift:", "walk:")) or "#" in ks:
+                    continue
+                if "," not in ks or (e or {}).get("shut"):
+                    continue
+                if int((e or {}).get("n") or 0) < 1:
+                    continue
+                if str((e or {}).get("to") or "").split("|")[0] != mymap:
+                    continue
+                try:
+                    x, y = (int(v) for v in ks.split(","))
+                except ValueError:
+                    continue
+                tiles[f"{x},{y}"] = (int(e.get("n") or 0),
+                                     {"x": x, "y": y,
+                                      "dest": str(e.get("to"))})
+            if not tiles:
+                continue
+            groups = self._door_groups([w for _n, w in tiles.values()])
+            done = set()
+            for kk in sorted(tiles):
+                g = groups.get(kk, (kk,))
+                if g in done:
+                    continue
+                done.add(g)
+                span = [t for t in g if t in tiles]
+                total = sum(tiles[t][0] for t in span)
+                rep = max(span, key=lambda t: (tiles[t][0], t))
+                out.append((total, reg, rep))
+        out.sort()
+        return out
+
+    def _pad_recross_for_target(self, obs, sg, tx, ty):
+        """THE TARGET IS ON THIS MAP, NO GROUND WE HAVE WALKED REACHES IT
+        — AND A PAD THE RUN HAS RIDDEN LANDS HERE.
+
+        The pad sibling of the seam recross above. A warp pad is a seam
+        compressed to one tile: the cell SEPARATES two bands of its map
+        (user, 2026-08-22 — Silph 5F's Card Key pocket "could be said
+        to belong to either"), so which band you stand on is decided by
+        how you ARRIVE. Walking toward the pad teleports you away
+        before you ever cross it, which is why a target behind one is
+        unreachable by any walk however long — and why one ride the run
+        already made is worth more than every worn door in the
+        building. Ride the walked pair again and walk off the far side.
+        The model asked for a tile on this map; which pad to arrive by
+        is pathfinding, the same as the route to it."""
+        self._last_pad_rides = 0
+        here0 = self._where(obs)
+        mymap = here0.split("|")[0]
+        if getattr(self, "_recrossing", False):
+            return None
+        key0 = (mymap, int(tx), int(ty))
+        if key0 in getattr(self, "_pad_recrossed", set()):
+            return None
+        cands = self._pad_arrivals(mymap)
+        if not cands:
+            return None
+        self._recrossing = True
+        rode = 0
+        try:
+            for _n, reg, k in cands:
+                if rode >= 3:
+                    break                # three arrivals is a fair try
+                cur = self.b.obs() or obs
+                here = self._where(cur)
+                if here != reg and reg not in AREA_ALIASES.get(here, ()) \
+                        and here not in AREA_ALIASES.get(reg, ()):
+                    path = self._route(here, reg)
+                    if path is None:
+                        continue         # no walked way to that doorway
+                    if path:
+                        cur = self._walk_route(sg, path) or cur
+                        cur = self.settle() or cur
+                    _at = self._where(cur)
+                    if _at != reg and reg not in AREA_ALIASES.get(_at, ()) \
+                            and _at not in AREA_ALIASES.get(reg, ()):
+                        continue         # the road there did not take
+                x, y = (int(v) for v in k.split(","))
+                rode += 1
+                _res = self._send_safe("use_warp", x=x, y=y)
+                o = self.settle() or cur
+                _det = ((_res or {}).get("result") or {}).get("detail") or ""
+                if (((cur.get("map") or {}).get("id")
+                        != (o.get("map") or {}).get("id"))
+                        or "warped" in _det):
+                    self.note_transition(cur, {"x": x, "y": y}, o,
+                                         reason="pad_recross",
+                                         op_detail=_det)
+                if ((o.get("map") or {}).get("id")
+                        or self._where(o).split("|")[0]) != mymap:
+                    self.log("pad_recross_missed", frm=reg, via=k,
+                             landed=self._where(o), target=f"{tx},{ty}")
+                    continue             # the ride lands elsewhere now
+                r = (self._send_safe("walk_to", x=int(tx), y=int(ty))
+                     or {}).get("result") or {}
+                o2 = self.settle() or o
+                self.log("pad_recrossed", frm=reg, via=k,
+                         landed=self._where(o2), target=f"{tx},{ty}",
+                         reached=bool(r.get("ok")))
+                if r.get("ok"):
+                    return o2
+        finally:
+            self._recrossing = False
+            self._last_pad_rides = rode
+            if rode:
+                # one shot per target per attempt — but only if a ride
+                # actually happened; "nothing was routable from there"
+                # must stay retryable from other ground.
+                self._pad_recrossed = (getattr(self, "_pad_recrossed",
+                                               set()) | {key0})
+        return None
 
     def _route_to_frontier(self, obs, sg, patient: bool = False):
         """Walk back to the NEAREST region that still has exits never taken.
@@ -8120,12 +8260,36 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             obs = self.settle() or _rx
                         else:
                             obs = self.settle() or _pre
+                        # ...AND NOT BY ANY SEAM. One class of arrival is
+                        # left: a warp pad's cell separates the two bands
+                        # of its map, so ground no walk and no seam can
+                        # reach may still be one walked RIDE away.
+                        _px = self._pad_recross_for_target(
+                            obs, sg, step.get("x"), step.get("y"))
+                        if _px is not None:
+                            obs = self.settle() or _px
+                            trace.append(
+                                f"walk_to({step.get('x')},"
+                                f"{step.get('y')}): no path from where you "
+                                f"stood, so a pad you have ridden before "
+                                f"was ridden again — and from the cell it "
+                                f"set you down on, the walk worked")
+                            self._record_outcome(_pre, op, step,
+                                                 "walk_to: ok via pad")
+                            continue
+                        obs = self.settle() or obs
+                        _rides = int(getattr(self, "_last_pad_rides", 0)
+                                     or 0)
                         trace.append(
                             f"walk_to({step.get('x')},{step.get('y')}): "
                             f"FAILED — {_d0}"
                             + (f"; nor from the {_tried_regions} other part(s)"
                                f" of {_mid} you have walked to"
-                               if _tried_regions else ""))
+                               if _tried_regions else "")
+                            + (f"; {_rides} pad ride(s) you have made "
+                               f"before were re-ridden onto this map too, "
+                               f"without finding a stand the walk could "
+                               f"finish from" if _rides else ""))
                         self._record_outcome(_pre, op, step,
                                              f"walk_to: FAILED — {_d0}")
                     continue
