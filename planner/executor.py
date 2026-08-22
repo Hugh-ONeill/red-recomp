@@ -7744,7 +7744,19 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # effect (nothing changed)" and the round looked wasted.
                 # Trailing, so the circling test (indices 0/4/5) is
                 # untouched.
-                ((obs or {}).get("ui") or {}).get("screenId"))
+                ((obs or {}).get("ui") or {}).get("screenId"),
+                # WHO THE PARTY IS AND WHAT IT KNOWS. A taught move
+                # changes no count, level sum, bag slot or HP — so the
+                # teach that finally solved leg 33 was reported "ran but
+                # had NO visible effect (nothing changed) — used HM_SURF —
+                # slot 2 learned SURF", a contradiction in one line
+                # (user-caught, 2026-08-22). A stone evolution with the
+                # same moveset was equally invisible. Species and movesets
+                # are world state; trailing, so no index shifts.
+                tuple((m.get("species"),
+                       tuple(str(mv.get("id") if isinstance(mv, dict)
+                                 else mv) for mv in (m.get("moves") or [])))
+                      for m in (obs or {}).get("party") or []))
 
     # SAVE ON THE WAY OUT. Both save points sit at the END of an attempt —
     # one for a plan that succeeded, one after the loop "to keep what it

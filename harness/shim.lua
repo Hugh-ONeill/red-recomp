@@ -4092,8 +4092,25 @@ function OPS.field_move(G, c)
       seen[#seen + 1] = tostring(it.label or it.text or it.action or "?")
     end
     ui_back_out(G)
+    -- THE MENU'S OWN GATE, NAMED. The party knows the move and the row is
+    -- still missing: PartyMenu lists a field move only once its badge is
+    -- in the case (src/ui/PartyMenu.lua — the same list-time filter for
+    -- FLY/FLASH/CUT/SURF/STRENGTH), and "was not offered" without the
+    -- why sent the run surfing at a menu that can never show SURF until
+    -- Koga is beaten (2026-08-22). Which badge licenses which HM is
+    -- manual tier — the game's gym guides say it out loud.
+    local _gate = ({ CUT = "CASCADEBADGE", SURF = "SOULBADGE",
+                     STRENGTH = "RAINBOWBADGE", FLY = "THUNDERBADGE",
+                     FLASH = "BOULDERBADGE" })[mv]
+    local _extra = ""
+    if _gate and not (G.save and G.save.inventory
+                      and G.save.inventory[_gate]) then
+      _extra = " — the menu only lists " .. mv .. " once the " .. _gate
+        .. " is in your badge case, and it is not there yet; a gym "
+        .. "leader's badge is what changes this"
+    end
     return false, mv .. " was not offered in the menu (it lists: "
-      .. table.concat(seen, ", ") .. ")"
+      .. table.concat(seen, ", ") .. ")" .. _extra
   end
   for _ = 1, 40 do
     if not pm2.subIndex or pm2.subIndex == mrow then break end
