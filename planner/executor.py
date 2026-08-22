@@ -6052,11 +6052,14 @@ class Executor:
                 f"\"item\":\"HM_...\",\"slot\":N}} (forget=MOVE if it "
                 f"knows four); the game says on screen, the moment you try, "
                 f"whether that species can take it, and a refusal is final "
-                f"for that species; (2) a LEVEL, by fighting "
+                f"for that species — but a species is not for ever: "
+                f"EVOLUTION changes it, and what it can take changes with "
+                f"it; (2) a LEVEL, by fighting "
                 f"({{\"op\":\"grind\",\"intent\":\"train\"}}); (3) a "
                 f"DIFFERENT POKEMON that can — caught ({{\"op\":\"grind\","
-                f"\"intent\":\"catch\",\"want\":...}}), traded, or given, "
-                f"which is a place to go, and the ledger below is for that. "
+                f"\"intent\":\"catch\",\"want\":...}}), traded, given, or "
+                f"MADE by evolving one you already have (levelling, or a "
+                f"stone used on a Pokemon it suits). "
                 f"Which way is yours to judge; the party now: {_party}.\n")
         # THE LEDGER (EXPLORE_DESIGN §3): one ranked block for everything
         # LOCAL — exits, things, people, each with its status and what
