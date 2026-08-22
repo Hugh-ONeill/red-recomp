@@ -3958,8 +3958,10 @@ function OPS.use_item(G, c)
           .. " and NOTHING HAPPENED — the game said \""
           .. said:gsub("\n", " ") .. "\". The item acted on that POKEMON; "
           .. "where you were standing plays no part, and trying again "
-          .. "from somewhere else changes nothing. The item is still in "
-          .. "the bag.")
+          .. "from somewhere else changes nothing. What refused it is "
+          .. "that one POKEMON's state — the same item can still work on "
+          .. "a DIFFERENT party member (another slot=N). The item is "
+          .. "still in the bag.")
       end
       local p2 = G.overworld.player
       return true, ("used " .. c.item .. " and NOTHING HAPPENED — the game "
