@@ -8904,8 +8904,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # one — the run cut the Vermilion gym's bush, the campaign
             # relaunched, and it then insisted the path was clear while
             # the door failed three times "couldn't reach the warp tile".
+            # ...the old test also demanded "hacked away" in the NOTE, but
+            # the success branch writes the note as ": ok (changes)" with
+            # the op's own words left in r.detail — so the condition never
+            # matched, cut_bushes stayed {} for ever, and the regrown-bush
+            # demotion built on it never engaged (found 2026-08-22 while
+            # the run cut Fuchsia's bush for the ninth time). A successful
+            # CUT is a cut bush: the op returns ok on nothing else.
             if (op == "field_move" and str(step.get("move")).upper() == "CUT"
-                    and r.get("ok") and "hacked away" in note):
+                    and r.get("ok")):
                 _cm = ((pre_obs or {}).get("map") or {}).get("id")
                 if _cm and step.get("x") is not None:
                     self._cut_bushes.setdefault(_cm, [])
