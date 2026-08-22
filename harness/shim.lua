@@ -1558,25 +1558,31 @@ function warp_reach(G, no_ledges)
   -- gate doors at 11,9/11,10 are on the far side of the building, yet the
   -- ledger offered them as plain available doors and use_warp answered
   -- "no path" every time. A warp cell stays REACHABLE (you can step onto
-  -- it) and is not expanded FROM. Only for the warp-reachability fill:
-  -- region identity (no_ledges) keeps its own shape, since re-minting
-  -- every region id mid-run would orphan the whole walked graph.
-  local THROUGH = nil
-  if not no_ledges then
-    THROUGH = {}
-    for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
-      THROUGH[key(w.x, w.y)] = true
-    end
-    -- ...BUT NOT THE ONE YOU ARE STANDING ON. "A door is an endpoint, not
-    -- a corridor" is about routing THROUGH a warp; the cell under your own
-    -- feet is where you already are, and you can step off it in any
-    -- direction. Applied to the origin it collapsed the whole fill to a
-    -- single tile whenever the party stood on a pad — so on Silph's pads
-    -- everything in the room read "not walkable-to right now" and the
-    -- region fingerprint was minted from one cell (user: "it was on the
-    -- pad, which i think has been conflated with the main area").
-    THROUGH[key(p.cellX, p.cellY)] = nil
+  -- it) and is not expanded FROM.
+  -- ...AND SINCE 2026-08-22 THE REGION IDENTITY HONOURS THE SAME RULE:
+  -- PADS ARE SEAMS. A floor partitioned by warp cells is several rooms —
+  -- the walker cannot cross between them — and calling it one room let a
+  -- pad pocket's landing be absorbed into the main region's name: Silph
+  -- 5F's Card Key pocket was arrived at ONCE (9F 17,15 -> 5F), labelled
+  -- |20,0, and taught the graph nothing while the key sat beside it all
+  -- night (user: "that pad is what SEPERATES the two regions"). The old
+  -- exemption here feared re-minting every region id mid-run, but the
+  -- majority-vote anchor naming now keeps ordinary rooms' names stable
+  -- when they merely lose their doormat cells; only genuinely split
+  -- ground mints a new name, which is the point.
+  local THROUGH = {}
+  for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
+    THROUGH[key(w.x, w.y)] = true
   end
+  -- ...BUT NOT THE ONE YOU ARE STANDING ON. "A door is an endpoint, not
+  -- a corridor" is about routing THROUGH a warp; the cell under your own
+  -- feet is where you already are, and you can step off it in any
+  -- direction. Applied to the origin it collapsed the whole fill to a
+  -- single tile whenever the party stood on a pad — so on Silph's pads
+  -- everything in the room read "not walkable-to right now" and the
+  -- region fingerprint was minted from one cell (user: "it was on the
+  -- pad, which i think has been conflated with the main area").
+  THROUGH[key(p.cellX, p.cellY)] = nil
   while q[head] do
     local cur = q[head]; head = head + 1
     for dn, d in pairs(DIRS) do
