@@ -1817,6 +1817,54 @@ end
 -- the run still re-crossed into it. Rows 4 and 8 are open the whole way.
 -- Which cell of a seam to walk to is pathfinding, same as the route to it;
 -- the direction stays the model's.
+-- ONE DOORWAY, ONE LABEL. Adjacent warp tiles with the same destination
+-- are one opening; a gate's double door printed as "(14,8), (14,9)" while
+-- the planner's ledger folds it to one line (user, 2026-08-22: "would
+-- read as one door right?"). Display-only Lua twin of the planner's
+-- _door_groups relation — the planner's is the authority and carries the
+-- tests (tests/twin_doors.py); both halves of the rule are load-bearing
+-- there and here (Celadon Mansion's adjacent up/down stairs must stay
+-- separate). ws: list of {x=,y=,dest=}; returns sorted labels like
+-- "(14,8)+(14,9)".
+local function doorway_labels(ws)
+  local n = #ws
+  local parent = {}
+  for i = 1, n do parent[i] = i end
+  local function find(i)
+    while parent[i] ~= i do parent[i] = parent[parent[i]]; i = parent[i] end
+    return i
+  end
+  for i = 1, n do
+    for j = i + 1, n do
+      local a, b = ws[i], ws[j]
+      if a.dest ~= nil and a.dest == b.dest
+         and math.abs(a.x - b.x) + math.abs(a.y - b.y) == 1 then
+        parent[find(i)] = find(j)
+      end
+    end
+  end
+  local groups = {}
+  for i = 1, n do
+    local r = find(i)
+    groups[r] = groups[r] or {}
+    table.insert(groups[r], ws[i])
+  end
+  local out = {}
+  for _, g in pairs(groups) do
+    table.sort(g, function(a, b)
+      if a.x ~= b.x then return a.x < b.x end
+      return a.y < b.y
+    end)
+    local parts = {}
+    for _, w in ipairs(g) do
+      parts[#parts + 1] = ("(%d,%d)"):format(w.x, w.y)
+    end
+    out[#out + 1] = table.concat(parts, "+")
+  end
+  table.sort(out)
+  return out
+end
+
 local function bfs_to_edge(G, dir, skip)
   local Collision = require("src.world.Collision")
   local ow = G.overworld
@@ -2841,10 +2889,27 @@ function OPS.cross(G, c)
         end
       end
     end
-    for _, w in ipairs((md and md.warps) or {}) do
-      if w.x and w.y and near_seam(w.x, w.y) and #doors < 6 then
-        doors[#doors + 1] = ("%s at %d,%d")
-          :format(tostring(w.destMap or "somewhere"), w.x, w.y)
+    do
+      local near_ws = {}
+      for _, w in ipairs((md and md.warps) or {}) do
+        if w.x and w.y and near_seam(w.x, w.y) then
+          near_ws[#near_ws + 1] = { x = w.x, y = w.y, dest = w.destMap }
+        end
+      end
+      -- one doorway, one entry — the double door of a gate is not two
+      -- ways past the seam (doorway_labels; the planner's ledger folds
+      -- the same way)
+      for _, lab in ipairs(doorway_labels(near_ws)) do
+        local d
+        for _, w in ipairs(near_ws) do
+          if lab:find("(" .. w.x .. "," .. w.y .. ")", 1, true) then
+            d = w.dest break
+          end
+        end
+        if #doors < 6 then
+          doors[#doors + 1] = ("%s at %s")
+            :format(tostring(d or "somewhere"), lab)
+        end
       end
     end
     table.sort(blockers, function(a, b) return (a.d or 0) < (b.d or 0) end)
@@ -2887,11 +2952,13 @@ function OPS.cross(G, c)
     do
       local md3 = G.data and G.data.maps and G.data.maps[startMap]
       local reach = warp_reach(G) or {}
-      local open_doors = {}
+      local open_ws = {}
       for _, w in ipairs((md3 and md3.warps) or {}) do
-        local k = w.x .. "," .. w.y
-        if reach[k] then open_doors[#open_doors + 1] = ("(%d,%d)"):format(w.x, w.y) end
+        if reach[w.x .. "," .. w.y] then
+          open_ws[#open_ws + 1] = { x = w.x, y = w.y, dest = w.destMap }
+        end
       end
+      local open_doors = doorway_labels(open_ws)
       if #open_doors > 0 then
         said = said .. (" You are not shut in: %d door(s) on this map CAN "
           .. "be walked to from where you stand — %s. The ledger says which "

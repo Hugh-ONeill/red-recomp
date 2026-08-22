@@ -3966,6 +3966,27 @@ class Executor:
             out.append((k, w.get("dest"),
                         near[1] if near[0] is not None and near[0] <= 8
                         else None))
+        # ONE DOORWAY, ONE ENTRY (_door_groups) — and a doorway with a
+        # REACHABLE twin tile is not blocked at all: a person standing on
+        # one tile of a double door left the other tile open, and listing
+        # "(2,7), nearest person X" beside a working (3,7) sent the run
+        # to negotiate with someone it could simply walk past.
+        groups = self._door_groups(m.get("warps") or [])
+        if any(len(groups.get(k, ())) > 1 for k, _d, _w in out):
+            byw = {f"{w.get('x')},{w.get('y')}": w
+                   for w in (m.get("warps") or [])}
+            byk = {k: (k, d, who) for k, d, who in out}
+            folded, seen = [], set()
+            for k, d, who in out:
+                g = groups.get(k) or (k,)
+                if g in seen:
+                    continue
+                seen.add(g)
+                if any((byw.get(m2) or {}).get("reachable")
+                       or m2 not in byk for m2 in g):
+                    continue          # some tile of it is open or walked
+                folded.append(("+".join(g), d, who))
+            out = folded
         return out
 
     def _untried_exits(self, obs) -> list:

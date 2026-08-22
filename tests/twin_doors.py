@@ -129,6 +129,56 @@ def main():
           U.keys_of(ex._untried_exits(o)) == {"3,7"},
           ex._untried_exits(o))
 
+    print("the blocked-doorways reader:")
+    # two unreachable, untaken twin tiles with a person near: ONE entry,
+    # keyed by the joined span the renderer prints as "(3,7+4,7)"
+    ex = make(frontier={U.HERE: []})
+    o = U.obs_for(ex, [])
+    o["map"]["warps"] = [
+        {"x": 3, "y": 7, "dest": "SOMEWHERE", "reachable": False},
+        {"x": 4, "y": 7, "dest": "SOMEWHERE", "reachable": False}]
+    o["map"]["objects"] = [{"x": 3, "y": 6, "name": "GUARD",
+                            "reachable": True}]
+    got = ex._unopened_doors(o)
+    check("a blocked double door is one doorway",
+          [(k, who) for k, _d, who in got] == [("3,7+4,7", "GUARD")], got)
+    # ...and a doorway with one tile still reachable is not blocked at all
+    o["map"]["warps"][1]["reachable"] = True
+    got = ex._unopened_doors(o)
+    check("a doorway with an open twin tile is not listed as blocked",
+          got == [], got)
+
+    print("the shim's labels (the same code the game runs):")
+    lua_src = (ROOT / "harness/shim.lua").read_text()
+    import re as _re
+    m = _re.search(r"(local function doorway_labels\(ws\).*?\nend\n)",
+                   lua_src, _re.S)
+    check("doorway_labels found in the shim", bool(m))
+    if m:
+        import subprocess
+        script = m.group(1) + """
+local function eq(got, want)
+  if #got ~= #want then return false end
+  for i = 1, #want do if got[i] ~= want[i] then return false end end
+  return true
+end
+local W = function(x, y, d) return { x = x, y = y, dest = d } end
+assert(eq(doorway_labels({ W(14,8,"LAST_MAP"), W(14,9,"LAST_MAP") }),
+          { "(14,8)+(14,9)" }), "gate pair folds")
+assert(eq(doorway_labels({ W(6,1,"CELADON_MANSION_2F"),
+                           W(7,1,"CELADON_MANSION_ROOF") }),
+          { "(6,1)", "(7,1)" }), "adjacent stairs stay separate")
+assert(eq(doorway_labels({ W(27,9,"CERULEAN_CITY"),
+                           W(27,11,"CERULEAN_CITY") }),
+          { "(27,11)", "(27,9)" }), "the fence pair stays separate")
+print("lua-ok")
+"""
+        r = subprocess.run(["lua", "-e", script], capture_output=True,
+                           text=True)
+        check("the shim folds and separates the same way",
+              r.returncode == 0 and "lua-ok" in r.stdout,
+              (r.stdout + r.stderr)[:200])
+
     print("the remote reader:")
     ex = make(explored={U.HERE: {"3,7": {"n": 2, "to": "B|0,0"}}},
               frontier={U.HERE: ["3,7", "4,7"]})
