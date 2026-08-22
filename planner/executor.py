@@ -5871,6 +5871,31 @@ class Executor:
                                     for lv, sp, i in _short)
                         + ". A Pokemon in the PC is not in the party, and "
                           "one in the party is counted however it got there.")
+                    # ...WHICH CUTS BOTH WAYS, AND ONLY ONE WAY WAS SAID.
+                    # "However it got there" includes WITHDRAWN: the
+                    # condition measures the party as composed, so who is
+                    # in it is part of the play — TENTACOOL L15 fainted to
+                    # the first hit of every battle for a whole cycle
+                    # (a fainted mon earns nothing) while HITMONLEE L32
+                    # sat in the box (user: "we should also allow the
+                    # grind to be fulfilled just by taking a higher
+                    # leveled mon out of the box"). Restates obs.pc_mons;
+                    # whether to swap or to train stays its call.
+                    _stored = (obs or {}).get("pc_mons") or []
+                    if _stored:
+                        _who = ", ".join(
+                            f"{m.get('species')} L{m.get('level')} "
+                            f"(box {m.get('box')}, #{m.get('index')})"
+                            for m in _stored[:6])
+                        lines.append(
+                            "THE PARTY IS WHOEVER IS IN IT: swapping who "
+                            "stands in it changes what the condition "
+                            "measures. Your PC storage holds: " + _who
+                            + ". At any Pokemon Center PC, "
+                            "{\"op\":\"pc_deposit\",\"slot\":N} puts a "
+                            "party member away and "
+                            "{\"op\":\"pc_withdraw\",\"index\":N,"
+                            "\"box\":B} takes a stored one out.")
         else:
             lines.append("YOUR PARTY IS EMPTY.")
         # ...AND THE WAYS OUT, WHICH THIS PROMPT USED TO HIDE. A training
