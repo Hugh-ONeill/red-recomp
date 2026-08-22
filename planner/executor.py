@@ -10321,21 +10321,29 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                               # "leave, it is not here" is the opposite of
                               # the truth when you simply keep losing
             elif here_objs and here_objs.issubset(spent_here):
+                # SAY ONLY WHAT THE AREA KNOWS. This note used to add "some
+                # events fire by TRAVELLING (walking out along a road)" —
+                # and the model, hearing it in every exhausted room, built
+                # a travel superstition out of it: one wall from Giovanni
+                # with the route walked and recorded, it spent a round-set
+                # crossing Saffron -> Route 8 -> Cycling Road -> Fuchsia ->
+                # Route 12 "to trigger the event" (user, 2026-08-22:
+                # "pendulum swinging wildly after being right there"). The
+                # area's exhaustion is a fact about THIS AREA; where to go
+                # instead is the model's call, and its own ledger and past
+                # plans already name both the untried and the unfinished.
                 stuck_note = (
                     f"\nYou have now interacted with EVERYTHING reachable in "
-                    f"this area and DONE_WHEN is still false. The trigger is "
-                    f"NOT here. Leave through an exit you have not taken "
-                    f"yet — some events fire by TRAVELLING (walking out "
-                    f"along a road) rather than by entering a place or "
-                    f"talking to anyone.")
+                    f"this area and DONE_WHEN is still false. Nothing "
+                    f"reachable in THIS AREA can move it; its exits are how "
+                    f"you reach ground that can — untried ground, or walked "
+                    f"ground you left unfinished.")
             elif self._stuck_in.get(here_now, 0) >= 3:
                 stuck_note = (
                     f"\n{self._stuck_in[here_now]} rounds in this same area "
-                    f"have not moved DONE_WHEN. Whatever sets it may not be "
-                    f"HERE. Events can be triggered by TRAVELLING (walking "
-                    f"out along a road or path) rather than by entering a "
-                    f"building or talking to someone. Consider leaving and "
-                    f"taking an UNTRIED map edge or door.")
+                    f"have not moved DONE_WHEN. Whatever sets it is not "
+                    f"reachable from HERE. Consider an UNTRIED map edge or "
+                    f"door — or walked ground you left unfinished.")
             loop_note = ""
             had_blackout = any("blackout" in t for t in trace)
             # A round in which EVERY op was refused executed nothing: the
