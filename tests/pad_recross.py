@@ -154,7 +154,11 @@ def main():
                              player={"x": kw["x"], "y": kw["y"]})
                     world["obs"] = dict(world["obs"], map=m)
                     return {"result": {"ok": True, "detail": "walked"}}
-                return {"result": {"ok": False, "detail": "no path"}}
+                return {"result": {"ok": False, "detail":
+                        ("no path — the ground you can walk from here is "
+                         "5 cell(s) and the closest it comes to "
+                         f"{kw['x']},{kw['y']} is {kw['x']},"
+                         f"{int(kw['y']) - 1}")}}
             return {"result": {"ok": True}}
         ex._send_safe = send
         return ex, calls, notes, logs
@@ -206,6 +210,23 @@ def main():
           o is None and ex._last_pad_rides == 3,
           (ex._last_pad_rides,
            [c for c in calls if c[0] == "use_warp"]))
+
+    # A SOLID TARGET CANNOT BE STOOD ON: the ball occupies its own tile,
+    # so walk_to to that exact cell fails even from inside the pocket the
+    # ride just entered — beside it IS arrival (watched live: the recall
+    # rode 9F's pad onto the Card Key's side and walked back out)
+    POCKETB = dict(POCKET, map=dict(
+        POCKET["map"],
+        objects=[{"x": 21, "y": 16, "name": "ITEM_SILPH_CO_5F_21_16"}]))
+    ex, calls, notes, logs = rig(routes, {**rides, (17, 15): POCKETB},
+                                 walk_ok_from=set())
+    o = ex._pad_recross_for_target(MAIN, {"id": "t"}, 21, 16)
+    check("landing beside a thing on the target tile counts as arrival",
+          o is not None and E.Executor._where(o) == "SILPH_CO_5F|16,16"
+          and ex._last_pad_adjacent, (o, ex._last_pad_rides))
+    check("...but bare adjacency with nothing on the tile does not",
+          E.Executor._thing_at(POCKETB, 21, 16)
+          and not E.Executor._thing_at(POCKET, 21, 16))
 
     # a caller whose op IS the question sends a probe: an item ball's
     # tile is solid, you stand beside it and press, so "did the walk

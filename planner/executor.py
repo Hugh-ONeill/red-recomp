@@ -4522,6 +4522,14 @@ class Executor:
         return final if self._where(final) != here else None
 
     @staticmethod
+    def _thing_at(obs, x, y):
+        """Is a listed object standing on this exact cell?"""
+        for ob in (((obs or {}).get("map") or {}).get("objects") or []):
+            if ob.get("x") == int(x) and ob.get("y") == int(y):
+                return True
+        return False
+
+    @staticmethod
     def _item_name_coords(name):
         """The coordinates inside a harness-minted item name, either
         shape: ITEM_<MAP>_x_y (map-qualified since 2026-08-22, so names
@@ -4599,6 +4607,7 @@ class Executor:
         is pathfinding, the same as the route to it."""
         self._last_pad_rides = 0
         self._last_pad_detail = ""
+        self._last_pad_adjacent = False
         here0 = self._where(obs)
         mymap = here0.split("|")[0]
         if getattr(self, "_recrossing", False):
@@ -4653,6 +4662,27 @@ class Executor:
                     r = (self._send_safe("walk_to", x=int(tx), y=int(ty))
                          or {}).get("result") or {}
                     ok, o2, _pd = bool(r.get("ok")), None, ""
+                    if not ok:
+                        # A SOLID TARGET CANNOT BE STOOD ON. A ball
+                        # occupies its own tile, so walk_to to that exact
+                        # cell fails from EVERYWHERE — including the very
+                        # pocket the ride just entered: watched live
+                        # (2026-08-22), the recall rode 9F's pad onto the
+                        # Card Key's side, asked the unanswerable
+                        # question, and walked back out. Beside a thing IS
+                        # arrival; the press stays the model's.
+                        _pd = str(r.get("detail") or "")
+                        _mm = _re.search(r"closest it comes to "
+                                         r"(\d+),(\d+) is (\d+),(\d+)", _pd)
+                        _o_now = self.settle() or o
+                        if (_mm and self._thing_at(_o_now, tx, ty)
+                                and abs(int(_mm.group(1))
+                                        - int(_mm.group(3)))
+                                + abs(int(_mm.group(2))
+                                      - int(_mm.group(4))) <= 1):
+                            ok = True
+                            self._last_pad_adjacent = True
+                            o2 = _o_now
                 else:
                     ok, o2, _pd = probe()
                 o2 = o2 or self.settle() or o
@@ -8294,7 +8324,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                 f"{step.get('y')}): no path from where you "
                                 f"stood, so a pad you have ridden before "
                                 f"was ridden again — and from the cell it "
-                                f"set you down on, the walk worked")
+                                f"set you down on, "
+                                + ("the walk put you BESIDE it: that tile "
+                                   "is occupied by the thing lying on it, "
+                                   "so beside it is as close as standing "
+                                   "gets"
+                                   if getattr(self, "_last_pad_adjacent",
+                                              False)
+                                   else "the walk worked"))
                             self._record_outcome(_pre, op, step,
                                                  "walk_to: ok via pad")
                             continue
@@ -9008,6 +9045,43 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                         f"map too, without finding a "
                                         f"stand {name} could be reached "
                                         f"from")
+                # THE SAME RECALL FOR A PRESS BY COORDINATES. Watched live
+                # (2026-08-22): the model's walk_to(21,16) was refused, it
+                # pressed (21,16) by number in the very next op — and the
+                # hook above only knew names, so the op that mattered most
+                # got nothing and sat in the round as "inert".
+                if (op == "interact" and not step.get("name")
+                        and step.get("x") is not None
+                        and step.get("y") is not None
+                        and "no reachable tile adjacent" in det):
+                    def _probe_xy(_st=dict(step)):
+                        _st.pop("op", None)
+                        _r = ((self._send_safe("interact", **_st)
+                               or {}).get("result") or {})
+                        return (bool(_r.get("ok")),
+                                self.settle() or None,
+                                str(_r.get("detail") or ""))
+                    _px = self._pad_recross_for_target(
+                        obs, sg, step["x"], step["y"], probe=_probe_xy)
+                    if _px is not None:
+                        obs = self.settle() or _px
+                        _pd = str(getattr(self, "_last_pad_detail", "")
+                                  or "")
+                        trace.append(
+                            f"({step['x']},{step['y']}) could not be "
+                            f"reached from where you stood, so a pad you "
+                            f"have ridden before was ridden again — and "
+                            f"from the cell it set you down on, it could"
+                            + (f": {_pd[:200]}" if _pd else "."))
+                    else:
+                        _rr = int(getattr(self, "_last_pad_rides", 0) or 0)
+                        if _rr:
+                            trace.append(
+                                f"{_rr} pad ride(s) you have made before "
+                                f"were re-ridden onto this map too, "
+                                f"without finding a stand "
+                                f"({step['x']},{step['y']}) could be "
+                                f"reached from")
                 if "cannot afford" in det:
                     trace.append(
                         "That is a MONEY problem, not a route problem — "
