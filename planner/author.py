@@ -1877,13 +1877,29 @@ def tried_text(recs: list, top_subgoals: int = 4, top_ops: int = 5) -> str:
                 head = t.split(":", 1)[0]
                 for c in pending.get(sg, []):
                     if head.startswith(c.split("(")[0]) and c not in d["last"]:
-                        d["last"][c] = t.split(":", 1)[1].strip()[:110] \
-                            if ":" in t else t[:110]
+                        _l = t.split(":", 1)[1].strip() if ":" in t else t
+                        # A DEFINITIVE REFUSAL CARRIES ITS CURE AT THE END
+                        # ("...so no forget= will help. What a species can
+                        # learn CHANGES WHEN IT EVOLVES...") and the 110-char
+                        # cut fell exactly before it: the rewrite read
+                        # twenty-one "can never learn" verdicts and zero
+                        # ways out, so every rewrite re-wrote the teach
+                        # (2026-08-22, the SURF leg).
+                        d["last"][c] = (_l[:360] if "NOT COMPATIBLE" in _l
+                                        or "never" in _l else _l[:110])
                 # keep the LAST outcome, not the first
                 for c in pending.get(sg, []):
                     if head.startswith(c.split("(")[0]):
-                        d["last"][c] = t.split(":", 1)[1].strip()[:110] \
-                            if ":" in t else t[:110]
+                        _l = t.split(":", 1)[1].strip() if ":" in t else t
+                        # A DEFINITIVE REFUSAL CARRIES ITS CURE AT THE END
+                        # ("...so no forget= will help. What a species can
+                        # learn CHANGES WHEN IT EVOLVES...") and the 110-char
+                        # cut fell exactly before it: the rewrite read
+                        # twenty-one "can never learn" verdicts and zero
+                        # ways out, so every rewrite re-wrote the teach
+                        # (2026-08-22, the SURF leg).
+                        d["last"][c] = (_l[:360] if "NOT COMPATIBLE" in _l
+                                        or "never" in _l else _l[:110])
                         # ...AND EVERY DISTINCT DEFINITIVE REFUSAL. "last:"
                         # for use_item(HM_CUT) named only the most recent
                         # species refused; the rewrite read PIDGEY and
@@ -1894,8 +1910,8 @@ def tried_text(recs: list, top_subgoals: int = 4, top_ops: int = 5) -> str:
                         if "NOT COMPATIBLE" in _det or "never" in _det:
                             fs = d.setdefault("final", {}).setdefault(c, [])
                             key = _det[:70]
-                            if key not in fs:
-                                fs.append(key)
+                            if not any(f.startswith(key) for f in fs):
+                                fs.append(_det[:360])
             pending.pop(sg, None)
     rows = [(sg, d) for sg, d in per.items() if d["rounds"] >= 3]
     if not rows:
@@ -1915,10 +1931,16 @@ def tried_text(recs: list, top_subgoals: int = 4, top_ops: int = 5) -> str:
             out.append(f"      {c} x{n}" + (f" — last: {last}" if last else ""))
             fin = (d.get("final") or {}).get(c) or []
             if len(fin) > 1:
+                _rest = "; ".join(
+                    (f.split(" is NOT COMPATIBLE")[0][:24]
+                     if " is NOT COMPATIBLE" in f else f[:40])
+                    for f in fin[1:6])
                 out.append("          every definitive refusal so far: "
-                           + " | ".join(fin[:6]))
+                           + fin[0]
+                           + (f" — and the same verdict for: {_rest}"
+                              if _rest else ""))
         for pl, n in sorted(d["plans"].items(), key=lambda kv: -kv[1])[:3]:
-            out.append(f"      it said (x{n}): \"{pl[:140]}\"")
+            out.append(f"      it said (x{n}): \"{pl[:118]}\"")
     return "\n".join(out)
 
 
