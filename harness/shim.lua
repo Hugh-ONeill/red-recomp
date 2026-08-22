@@ -2200,7 +2200,11 @@ local function bfs_to_edge(G, dir, skip, surf)
                    for yy = 0, math.max(0, H3 - 1) do
                      for xx = 0, math.max(0, W3 - 1) do
                        if ow.map.isWaterCell and ow.map:isWaterCell(xx, yy)
-                          and not seen[xx .. "," .. yy] then
+                          and not seen[xx .. "," .. yy]
+                          -- a swimmer parked on the tile makes it
+                          -- unmountable; name water that can be stood on
+                          and not Collision.occupied(ow.entities, xx, yy, p)
+                       then
                          local dd2 = math.abs(xx - p.cellX)
                                      + math.abs(yy - p.cellY)
                          if not bd2 or dd2 < bd2 then
