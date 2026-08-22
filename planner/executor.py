@@ -8101,9 +8101,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                              f"FAILED — {_d0}")
                 self._record_outcome(_pre, op, step, f"walk_to: FAILED — {_d0}")
                 continue
+            # EVERY PARAMETER THAT CHANGES THE ACTION IS PART OF ITS NAME.
+            # This keyed on name/dir/(x,y) alone — all None for use_item —
+            # so use_item(HM_SURF, slot=5), use_item(HM_SURF, slot=3,
+            # forget=...) and use_item(POKE_FLUTE) were all ONE signature,
+            # and the model's round-4 CHARIZARD+forget (a new action, sent
+            # on the harness's own instruction) was refused as "this exact
+            # action has already failed 3 times" when it had never been
+            # tried once (leg 33, 2026-08-22). `buy` stays special-cased
+            # above: a COUNT is not a different action, a target is.
             sig = (self._cur_target, self._where(obs), op,
                    step.get("name") or step.get("dir")
-                   or (step.get("x"), step.get("y")))
+                   or (step.get("x"), step.get("y")),
+                   step.get("item"), step.get("slot"), step.get("forget"),
+                   step.get("floor"), step.get("move"))
             # THE LEDGER IS THE GUARD (EXPLORE_DESIGN §2, §6b). Five
             # refusals used to live here — the door you came in by, a map
             # entered twice for this goal, a room already fully searched,
@@ -8169,7 +8180,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # holding two crosses or two interacts was told "cross:
                 # REFUSED" with no way to tell which one.
                 _args = ",".join(f"{k}={v}" for k, v in step.items()
-                                 if k in ("x", "y", "dir", "name", "item"))
+                                 if k in ("x", "y", "dir", "name", "item",
+                                          "slot", "forget", "floor", "move"))
                 # SAY WHAT STOPPED IT. "It cannot work from here" with no
                 # reason left the model re-proposing the gym door after a
                 # reload had regrown the bush in front of it — the three

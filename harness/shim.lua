@@ -3597,6 +3597,40 @@ function OPS.use_item(G, c)
   -- menu"). The party's moves are readable without touching a menu. Ask
   -- first, and refuse standing in the overworld where the next op can
   -- still act.
+  -- THE SPECIES DECIDES BEFORE THE MOVE LIST DOES. The four-moves guard
+  -- below used to fire first, so a machine aimed at a full-moveset
+  -- Pokemon that can NEVER learn it was answered "say which move to
+  -- forget" — an instruction that cannot work, and the model obeyed it
+  -- (CHARIZARD + HM_SURF, leg 33 2026-08-22; the retry guard then ate
+  -- the rest of the attempt). Ask the same table the game's own teach
+  -- screen reads and answer with the sentence the screen would say —
+  -- plus the manual-tier fact that makes the refusal navigable: what a
+  -- species can learn changes when it evolves (user: "it might need to
+  -- evolve first").
+  if c.item:find("^TM_") or c.item:find("^HM_") then
+    local _party = (G.save and G.save.party) or {}
+    local _slot = math.floor(tonumber(c.slot) or 1)
+    if _slot < 1 then _slot = 1 end
+    local _mon = _party[_slot]
+    local _idef = G.data and G.data.items and G.data.items[c.item]
+    local _mvname = _idef and _idef.machine and _idef.machine.move
+    local _pdef = _mon and G.data and G.data.pokemon
+                  and G.data.pokemon[_mon.species]
+    if _mon and _mvname and _pdef then
+      local _able = false
+      for _, mvn in ipairs(_pdef.tmhm or {}) do
+        if mvn == _mvname then _able = true break end
+      end
+      if not _able then
+        return false, tostring(_mon.species) .. " is NOT COMPATIBLE with "
+          .. c.item .. " — that species can never learn this move, so no "
+          .. "forget= will help. What a species can learn CHANGES WHEN IT "
+          .. "EVOLVES: an evolved form sometimes takes machines its "
+          .. "earlier form cannot. Try the machine on a different party "
+          .. "member, a different machine, or evolve somebody first."
+      end
+    end
+  end
   if (c.item:find("^TM_") or c.item:find("^HM_")) and not c.forget then
     local _party = (G.save and G.save.party) or {}
     local _slot = math.floor(tonumber(c.slot) or 1)
@@ -3832,8 +3866,10 @@ function OPS.use_item(G, c)
       return false, (mon and mon.species or ("slot " .. slot))
         .. " is NOT COMPATIBLE with " .. c.item
         .. " — that species can never learn this move, so no forget= will "
-        .. "help. Try the machine on a different party member, or a "
-        .. "different machine."
+        .. "help. What a species can learn CHANGES WHEN IT EVOLVES: an "
+        .. "evolved form sometimes takes machines its earlier form "
+        .. "cannot. Try the machine on a different party member, a "
+        .. "different machine, or evolve somebody first."
     end
     if #monmoves >= 4 then
       return false, "it already knows four moves: "
