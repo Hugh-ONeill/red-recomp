@@ -2188,7 +2188,35 @@ local function bfs_to_edge(G, dir, skip, surf)
         and ((". The water HERE WAS COUNTED AS GROUND for this search (a "
               .. "party Pokemon knows SURF), and the edge is still out of "
               .. "reach: the sea you can swim from here is walled off "
-              .. "before it. The way west is not this water."))
+              .. "before it. The way " .. dir .. " is not this water."
+              .. (function()
+                   -- ...AND THE MAP MAY HOLD OTHER WATER. The grind
+                   -- refusal names the nearest grass; the same standard
+                   -- names the nearest water this body does not touch —
+                   -- eight cycles mounted the island's sealed lagoon
+                   -- while the open sea lay across the beach.
+                   local bx2, by2, bd2
+                   local W3, H3 = map_dims_cells(G)
+                   for yy = 0, math.max(0, H3 - 1) do
+                     for xx = 0, math.max(0, W3 - 1) do
+                       if ow.map.isWaterCell and ow.map:isWaterCell(xx, yy)
+                          and not seen[xx .. "," .. yy] then
+                         local dd2 = math.abs(xx - p.cellX)
+                                     + math.abs(yy - p.cellY)
+                         if not bd2 or dd2 < bd2 then
+                           bd2, bx2, by2 = dd2, xx, yy
+                         end
+                       end
+                     end
+                   end
+                   if bx2 then
+                     return (" This map holds OTHER water that this body "
+                       .. "does not touch: the nearest such water lies "
+                       .. "at (%d,%d), %d tile(s) from you in a straight "
+                       .. "line."):format(bx2, by2, bd2)
+                   end
+                   return ""
+                 end)()))
         or (nwater > 0)
         and ((". %d WATER cell(s) lie between the ground you can reach and "
               .. "that edge%s"):format(nwater,
