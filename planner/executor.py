@@ -3868,6 +3868,25 @@ class Executor:
             self.log("transition_ignored_blackout", frm=src, via=str(key),
                      to=dst)
             return
+        # A LAST_MAP DOOR NEVER OPENS INDOORS. The sentinel resolves
+        # against the last OUTDOOR ground stood on (wLastMap is written
+        # only on outside-tileset maps, and a blackout re-points it at the
+        # heal TOWN), so a `returns` door whose crossing settled on an
+        # indoor map is a respawn or a script moving the party, not the
+        # door — the same class as the blackout guard above, for the doors
+        # the offline audit was blind to until 2026-08-22. Both fields
+        # come from the shim (warp `returns`, map `outdoor`); an obs from
+        # an older shim carries neither and nothing changes.
+        if step.get("x") is not None:
+            _bw0 = ((before_obs or {}).get("map") or {}).get("warps") or []
+            _ret = any(w.get("x") == step.get("x")
+                       and w.get("y") == step.get("y") and w.get("returns")
+                       for w in _bw0)
+            if (_ret and ((after_obs or {}).get("map") or {})
+                    .get("outdoor") is False):
+                self.log("transition_dropped_returns_indoors", frm=src,
+                         via=str(key), to=dst)
+                return
         if old and old.get("to") not in (dst,) \
                 and dst not in AREA_ALIASES.get(old.get("to"), ()):
             # ...and two anchors of ONE MAP are not a contradiction. A wide

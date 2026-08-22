@@ -511,6 +511,19 @@ local function observe(G, seq, result)
     local hb = (md and md.height) or map.height
     o.map = { id = map.id, name = map.name,
               width = wb and wb * 2, height = hb and hb * 2 }
+    -- OUTDOORS OR NOT, the engine's own test (Map.isOutside — the one
+    -- wLastMap reads). On screen: sky, town, route vs walls and a roof.
+    -- The recorder uses it to refuse a LAST_MAP door edge that claims to
+    -- land indoors, which that sentinel can never truthfully do.
+    do
+      local okm, MapM = pcall(require, "src.world.Map")
+      local okf, FD = pcall(require, "src.world.FieldDefaults")
+      if okm and okf and md and MapM.isOutside then
+        local okv, v = pcall(MapM.isOutside, md,
+                             FD.field and FD.field(G.data, "outsideTilesets"))
+        if okv then o.map.outdoor = v and true or false end
+      end
+    end
     -- the floors this car's panel was seen to offer (see lift_floors)
     o.map.lift_floors = lift_floors[tostring(map.id)]
     -- ONE FILL, NOT TWO. `reach` here and `objreach` further down were
@@ -742,6 +755,11 @@ local function observe(G, seq, result)
           _n = _n + 1
           o.map.warps[_n] = { x = w.x, y = w.y, dest = dest,
                               look = _look,
+                              -- a LAST_MAP door: it returns to the last
+                              -- outdoor ground stood on. Internal, like
+                              -- dest — the planner's recorder reads it,
+                              -- the model is never told it unwalked.
+                              returns = (w.destMap == "LAST_MAP") or nil,
                               reachable = reach[w.x .. "," .. w.y] and true
                                           or false }
         end
