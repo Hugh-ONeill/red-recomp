@@ -4199,6 +4199,66 @@ function OPS.field_move(G, c)
     U.tap(G, pm2.subIndex > mrow and "up" or "down"); U.wait(3)
   end
   U.tap(G, "a"); U.wait(10)
+  -- FLY IS A PICKER, NOT A TEXT. Choosing it opens "FLY TO?" — a list of
+  -- the towns this save has VISITED (FlyMenu reads save.visited through
+  -- the fly-town gate) — and the text ride-out below can only watch
+  -- pages, so FLY stalled at the lap cap with the list still up. Drive
+  -- it like the lift panel: exact row first, loose second, and name the
+  -- game's own offer on a miss (user, 2026-08-22: "do the fly op").
+  if mv == "FLY" then
+    local wantfly = tostring(c.to or ""):upper():gsub(" ", "_")
+    local lt
+    for _ = 1, 30 do
+      lt = ui_top(G)
+      if lt and lt.items and lt.title
+         and tostring(lt.title):upper():find("FLY") then break end
+      U.wait(4)
+    end
+    lt = ui_top(G)
+    if not (lt and lt.items and lt.title
+            and tostring(lt.title):upper():find("FLY")) then
+      ui_back_out(G)
+      return false, "FLY opened no destination list"
+    end
+    local offer, fidx, floose = {}, nil, nil
+    for i, it in ipairs(lt.items) do
+      local lab = tostring(it.value or it.label or "")
+                    :upper():gsub(" ", "_")
+      offer[#offer + 1] = lab
+      if lab == wantfly then
+        fidx = fidx or i
+      elseif not floose and wantfly ~= ""
+             and lab:find(wantfly, 1, true) then
+        floose = i
+      end
+    end
+    fidx = fidx or floose
+    if wantfly == "" then
+      ui_back_out(G)
+      return false, "FLY needs to=<a town you have visited>. It offers: "
+        .. table.concat(offer, ", ")
+    end
+    if not fidx then
+      ui_back_out(G)
+      return false, ("no fly destination called %s — FLY goes only to "
+        .. "towns you have VISITED, and it offers: %s")
+        :format(wantfly, table.concat(offer, ", "))
+    end
+    local _fromMap = (G.overworld.map or {}).id
+    ui_cursor_to(G, "index", fidx)
+    U.tap(G, "a"); U.wait(10)
+    for _ = 1, 200 do            -- ride the flight out
+      if G.stack:top() == G.overworld
+         and (G.overworld.map or {}).id ~= _fromMap then break end
+      U.wait(5)
+    end
+    local _now = (G.overworld.map or {}).id
+    if _now == _fromMap then
+      ui_back_out(G)
+      return false, "the flight did not take"
+    end
+    return true, "flew to " .. tostring(_now)
+  end
   local said
   -- THE BUDGET IS LAPS *AND* WALL-CLOCK, because two different clocks
   -- gate this flow. Text pages type in EMULATED frames (30 laps starved
