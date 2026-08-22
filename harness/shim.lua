@@ -5584,9 +5584,22 @@ function OPS.battle_move(G, c)
     -- whichever move the cursor rests on -- slot 1 -- a decision the
     -- harness has no business making. Stop here; the executor puts the
     -- list to the model.
+    -- ...AND THE QUESTION RIDES ON TOP OF THE LIST. MoveLearnMenu's own
+    -- preamble pushes a TextBox and then a bare ChoiceBox above itself
+    -- (MoveLearnMenu:enter), so checking only the TOP of the stack never
+    -- saw the menu until this loop's A had already answered YES with the
+    -- cursor on slot 1 — which is how CHARIZARD's FLAMETHROWER became
+    -- FIRE SPIN at L55 with no record and nobody asked (user-caught,
+    -- 2026-08-22). Scan the whole stack: while a learn is anywhere on
+    -- it, no button is pressed blind.
+    local _learn = false
+    for _, s in ipairs((G.stack or {}).states or {}) do
+      if s and s.newMoveId then _learn = true end
+    end
     local t = G.stack:top()
-    if t and t.screenId == "MoveLearnMenu" then
-      return true, "a Pokemon is trying to learn a move — the choice is on screen"
+    if _learn or (t and t.screenId == "MoveLearnMenu") then
+      return true, "a Pokemon is trying to learn a move — the choice is "
+        .. "on screen and nothing will be pressed for you"
     end
     U.tap(G, "a"); U.wait(3)
   end
