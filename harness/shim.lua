@@ -3714,12 +3714,23 @@ function OPS.use_item(G, c)
   -- covers the AUTO boxes that hold until a CRY stops sounding, which
   -- runs in REAL time regardless of POKEPORT_SPEED (see field_move's
   -- twin of this loop for the full story).
+  -- ...AND ONLY A TEXT SCREEN MAY SPEND THAT WALL CLOCK. The first
+  -- version extended past the lap budget until 12 real seconds had
+  -- passed whatever was on top — but the flow's FAILURE exits land in
+  -- MENUS (an incompatible teach prints "not compatible" and drops back
+  -- to the party list), and a menu never closes by waiting. At campaign
+  -- speed those 12 seconds are more emulated frames than the op
+  -- watchdog allows, so EEVEE's "Booted up an HM!" ended in WATCHDOG
+  -- with the party menu left open instead of the NOT COMPATIBLE refusal
+  -- (2026-08-22, leg 33 attempt 1). Text may wait out its cry; a menu
+  -- breaks at the lap budget and lets the honest refusal happen.
   local _ui0 = os.time()
   local _i = 0
   while true do
     _i = _i + 1
     local t = G.stack:top()
-    if _i > 300 and os.time() - _ui0 > 12 then break end
+    if _i > 300 and (not (t and t.pages)
+                     or os.time() - _ui0 > 8) then break end
     if os.getenv("RED_TEACH_TRACE") then
       local fh = io.open(os.getenv("RED_TEACH_TRACE"), "a")
       if fh then
@@ -4064,13 +4075,18 @@ function OPS.field_move(G, c)
   -- declared "a screen up that would not close" about a box that was
   -- simply listening to NIDOQUEEN. Laps alone can never cover that at
   -- every speed; only real seconds can.
+  -- ...and as in use_item's twin: only a TEXT screen may spend the wall
+  -- clock past the lap budget — a menu the flow fell back into never
+  -- closes by waiting, and at campaign speed waiting outlives the op
+  -- watchdog.
   local _fm0 = os.time()
   local _fi = 0
   while true do
     _fi = _fi + 1
     local t = G.stack:top()
     if t == ow then break end
-    if _fi > 300 and os.time() - _fm0 > 12 then break end
+    if _fi > 300 and (not (t and t.pages)
+                      or os.time() - _fm0 > 8) then break end
     if t and t.pages and t.pageIndex then
       local pg = t.pages[t.pageIndex]
       if type(pg) == "table" then said = table.concat(pg, " ")
