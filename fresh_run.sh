@@ -24,7 +24,9 @@ rig_register game "-$GAME_PID"     # setsid made it a group; kill the group
 trap 'kill -- -"$GAME_PID" 2>/dev/null || true;
       [ -n "${EXEC_PID:-}" ] && kill "$EXEC_PID" 2>/dev/null || true' EXIT
 for _ in $(seq 1 60); do [ -f run/obs.json ] && break; sleep 1; done
-[ -f run/obs.json ] || { echo "game did not come up" >&2; exit 1; }
+# exit 66 = the game never booted: the executor never ran, so no leg was
+# judged and no evidence exists. campaign.sh retries instead of rewriting.
+[ -f run/obs.json ] || { echo "game did not come up" >&2; exit 66; }
 # THE MODEL-AUTHORED SPEC IS THE ONE THAT PLAYS. battle_policy's own
 # header says the hand-seeded DEFAULT_SPEC "exists for spine/oracle
 # validation only; the record run requires a model-authored spec" — and

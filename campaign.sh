@@ -76,6 +76,18 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
     continue
   fi
 
+  # THE GAME NEVER CAME UP (fresh_run exit 66: obs.json never appeared).
+  # The executor never ran, so nothing was walked AND last_state.json was
+  # already deleted above — a rewrite here reads an empty world and calls
+  # the start "a brand new game" (v79 of the Cinnabar leg was authored from
+  # exactly that lie, against a save wearing six badges). A boot flake
+  # earns a retry, not a rewrite.
+  if [ "$rc" -eq 66 ]; then
+    echo "=== attempt $attempt: game never came up (rc=66) — not a result, "\
+         "re-running the same plan ===" | tee -a "$LOG"
+    continue
+  fi
+
   # Either verdict means the plan RAN TO THE END; whether the leg is
   # actually done is check-done's call, upstream. The second one says
   # subgoals were carried past unmet, which the judge should see.
