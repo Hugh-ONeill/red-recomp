@@ -8051,6 +8051,46 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         self.log("stopped_mid_attempt", saved=bool(r.get("ok")))
         sys.exit(0)
 
+    def _seam_proof(self, obs, step, det):
+        """Record "this seam cannot be crossed from here" off a failed cross.
+
+        This logic lived only on _run_traced's OLD generic-failure path;
+        the modern cross handler `continue`d past it, so NO proof was ever
+        written (run 14's no_cross was empty after 74 cross-west failures
+        on Route 20) and _untried_exits kept selling the proven wall as
+        "never been taken: walk west — Take one, do not give up"."""
+        if not ("seam of" in det and ("terrain blocks" in det
+                                      or "cannot be walked to" in det)):
+            return
+        # The cross op seam-searches the WHOLE edge, so one failure proves
+        # no cell of this component crosses it. ...BUT NOT IF YOU HAVE
+        # ALREADY CROSSED IT: a road that has opened before is a road
+        # something is standing in TODAY, which is a different fact.
+        d0 = step.get("dir")
+        here0 = self._where(obs)
+        _prev = (self.explored.get(here0) or {}).get(d0) or {}
+        _crossed_before = (
+            _prev.get("to") and _prev.get("to") != here0
+            and not _prev.get("shut")
+            and (self.visits.get(_prev["to"]) or 0) > 0)
+        if d0 and not _crossed_before:
+            self._no_cross.setdefault(here0, set()).add(d0)
+            # GEOMETRY IS NOT WEATHER: a seam the BFS could not reach at
+            # all is proven for good; one somebody stood in expires with
+            # the world mark.
+            _geom = "no walkable path reaches it" in det
+            self._no_cross_at.setdefault(here0, {})[d0] = (
+                "geom" if _geom else self._world_mark(obs))
+        elif d0:
+            self.log("cross_failed_but_known", region=here0,
+                     exit=d0, to=_prev.get("to"))
+        fr = self.frontier.get(here0)
+        if d0 and fr and d0 in fr:
+            fr.remove(d0)
+            self.log("frontier_pruned", region=here0, exit=d0,
+                     why="seam proven uncrossable")
+        self._save_memory()
+
     def _run_traced(self, sg, macro, ignore_done=False):
         """Run a proposed macro step-by-step, returning (done, trace, clean).
         `trace` is plain-English per-op outcomes for feedback (incl. 'ran but
@@ -8279,10 +8319,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                         f"it" if _cands2 else ""))
                         self._record_outcome(_pre, op, step,
                                              f"cross: FAILED — {_d0}")
+                        self._seam_proof(obs, step, _d0)
                     continue
                 obs = self.settle() or _pre
                 trace.append(f"cross(dir={step['dir']}): FAILED — {_d0}")
                 self._record_outcome(_pre, op, step, f"cross: FAILED — {_d0}")
+                self._seam_proof(obs, step, _d0)
                 continue
             # A BUILDING IN THE MIDDLE OF A MAP IS NOT A WALL IF YOU HAVE
             # WALKED THROUGH IT. walk_to BFSes one map's cells, so a route
@@ -8962,62 +9004,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             f"have talked to them. Reachable people here you "
                             f"have not spoken to: {', '.join(near[:5])}. "
                             f"Interact with them, then try the route again.")
-                if op == "cross" and "seam of" in det and (
-                        "terrain blocks" in det
-                        or "cannot be walked to" in det):
-                    # The cross op seam-searches the WHOLE edge, so one
-                    # failure proves no cell of this component crosses it.
-                    # Leaving it in the frontier made it the "nearest
-                    # unopened door" forever — the hint kept selling the
-                    # east seam of the Route 4 stub while the real way
-                    # east sat two ladders down.
-                    d0 = step.get("dir")
-                    here0 = self._where(obs)
-                    # ...BUT NOT IF YOU HAVE ALREADY CROSSED IT. "One
-                    # failure proves no cell of this component crosses it"
-                    # is only sound for a road never yet walked. Cerulean's
-                    # south seam had been crossed 14 times with 70 visits on
-                    # Route 5 when a single failed attempt filed it as
-                    # uncrossable — and every later exits list hid it, so
-                    # the way to the DAY CARE stopped being offered at all.
-                    # A road that has opened before is a road something is
-                    # standing in TODAY, which is a different fact.
-                    _prev = (self.explored.get(here0) or {}).get(d0) or {}
-                    _crossed_before = (
-                        _prev.get("to") and _prev.get("to") != here0
-                        and not _prev.get("shut")
-                        and (self.visits.get(_prev["to"]) or 0) > 0)
-                    if d0 and not _crossed_before:
-                        self._no_cross.setdefault(here0, set()).add(d0)
-                        # GEOMETRY IS NOT WEATHER. A proof expires when the
-                        # world mark moves — badges, flags, bag — which is
-                        # right for a seam with somebody STANDING in it and
-                        # wrong for one the BFS could not reach at all. On
-                        # Route 14 the party sat in a four-cell nook whose
-                        # west seam is seventeen cells past a wall; every
-                        # attempt beat a trainer on the way, every trainer
-                        # moved the flag count, and the proof evaporated
-                        # before the next round could use it. Sixteen
-                        # visits, sixteen crossings into the same wall. The
-                        # load-time repair beside this already says it out
-                        # loud — "recorded at a region is geometry, not
-                        # weather" — and the recorder did not. A walkable
-                        # path is not opened by winning a fight; when this
-                        # seam IS crossed the walked-edge rule below drops
-                        # the proof, which is the honest way for it to go.
-                        _geom = "no walkable path reaches it" in det
-                        self._no_cross_at.setdefault(here0, {})[d0] = (
-                            "geom" if _geom else self._world_mark(obs))
-                    elif d0:
-                        self.log("cross_failed_but_known", region=here0,
-                                 exit=d0, to=_prev.get("to"))
-                    fr = self.frontier.get(here0)
-                    if d0 and fr and d0 in fr:
-                        fr.remove(d0)
-                        self.log("frontier_pruned",
-                                 region=here0, exit=d0,
-                                 why="seam proven uncrossable")
-                    self._save_memory()
+                if op == "cross":
+                    # one implementation: see _seam_proof
+                    self._seam_proof(obs, step, det)
                 if op == "interact" and step.get("name") and (
                         "no reachable tile adjacent" in det
                         or "not visible" in det):
