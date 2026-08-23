@@ -10589,7 +10589,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                        if _seen["refused"] > 1 else "")
                     + ", and NOTHING ABOUT THE WORLD HAS CHANGED "
                     "since — same ops, same world, same answer, which was: "
-                    + (_seen["why"] or "it did not get you there")
+                    # ...AND WHEN NO ANSWER WAS RECORDED, SAY THAT. `why`
+                    # is only captured off a trace line carrying FAILED or
+                    # REFUSED, which `go` often does not, so this asserted
+                    # an answer the run never wrote down (2026-08-23).
+                    + (_seen["why"] or "NOT RECORDED — the run knows only "
+                       "that it did not finish, not why")
                     + f". {_others} different set(s) of ops have now been "
                     "spent from this same spot in this same unchanged "
                     "world. "
