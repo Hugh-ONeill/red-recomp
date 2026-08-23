@@ -5308,6 +5308,7 @@ class Executor:
             _stuck = 0
             _last_pos = None
             _last_det = ""
+            _rode = False
             for _ in range(12):
                 pre = self.b.obs()
                 _sf = bool(getattr(self, "_go_surf", False))
@@ -5369,6 +5370,37 @@ class Executor:
                                         y=int(_mm.group(2)))
                         o = self.settle() or o
                         continue
+                # A LEG WALKED WHILE RIDING IS RE-WALKED WHILE RIDING.
+                # `cross` hops already carry the ride (_go_surf); DOOR hops
+                # did not, and use_warp walks on foot — so Seafoam's
+                # B3F|1,0 --25,14--> B2F|23,10, the one swim joining the
+                # island's two halves, failed on every replay, took a
+                # blocked_at stamp, and darkened all six hops between the
+                # halves at once. Same class as the regrown-bush re-cut
+                # just above: re-opening a way this run opened itself is
+                # mechanics, not a new decision — WHERE to go was already
+                # the model's when it asked for this route (user, 2026-
+                # 08-23: "its still the model deciding where to go").
+                # Fresh water is untouched: walk_to still makes swimming
+                # opt-in, and this fires only on a walked door hop that
+                # just failed to reach, on a floor that has water.
+                if (self._where(o) != nxt and _is_door_key(key)
+                        and not _rode
+                        and self._knows_move(o or {}, "SURF")
+                        and ((o or {}).get("map") or {}).get("water")
+                        and "couldn't reach" in _det):
+                    _rode = True
+                    _dx, _dy = key.split(",")
+                    self.log("route_ride", subgoal=sg.get("id"),
+                             step=str(key), why=_det[:160])
+                    self._send_safe("walk_to", x=int(_dx), y=int(_dy),
+                                    surf=True)
+                    o = self.settle() or o
+                    self._send_safe("use_warp", x=int(_dx), y=int(_dy))
+                    o = self.settle() or o
+                    if self._where(o) == nxt:
+                        break
+                    continue
                 if o and pre and ((pre.get("map") or {}).get("id")
                                   != (o.get("map") or {}).get("id")):
                     self.note_transition(pre, step, o, op_detail=_det)
