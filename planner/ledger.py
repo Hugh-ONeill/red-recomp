@@ -1392,12 +1392,28 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # ledger has said for a long time about switches it could not see.
     _sw = m.get("switch_statues") or []
     if _sw:
+        # REACHABLE MEANS THE CELL YOU PRESS FROM. The statue itself is a
+        # solid tile, so it is never in the walkable component and the old
+        # test called every statue on every floor unreachable — printed
+        # one clause after telling the model to walk below it and press.
+        # It read that and left the Mansion floor by floor.
         _reach = [c for c in _sw if c.get("reachable")]
+
+        def _one(c):
+            if c.get("press_x") is None:
+                return f"({c['x']},{c['y']})"
+            return (f"({c['x']},{c['y']}), pressed from "
+                    f"({c['press_x']},{c['press_y']})"
+                    + ("" if c.get("reachable") else " — WHICH YOU CANNOT "
+                       "WALK TO FROM WHERE YOU STAND RIGHT NOW"))
+
         head += (f". THIS FLOOR HAS {len(_sw)} SWITCH STATUE(S): "
-                 + ", ".join(f"({c['x']},{c['y']})" for c in _sw[:6])
+                 + ", ".join(_one(c) for c in _sw[:6])
                  + (f" (+{len(_sw) - 6} more)" if len(_sw) > 6 else "")
                  + ". A switch is PRESSED, and only while you are FACING "
-                   "UP at it: walk to the cell BELOW it and interact. What "
+                   "UP at it: walk to the cell BELOW it and interact. The "
+                   "statue's own cell is SOLID — it is drawn S in the "
+                   "picture and you never stand on it. What "
                    "it changes is elsewhere on this floor or another"
                  + (". THEY ALL SHARE ONE SETTING, which is currently "
                     + ("PRESSED" if m.get("switches_on") else "UNPRESSED")
@@ -1406,8 +1422,8 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                       "first back"
                     if m.get("switches_on") is not None else "")
                  + ("" if _reach else
-                    " — none of these can be walked to from where you "
-                    "stand right now"))
+                    " — no statue on this floor has a press cell you can "
+                    "walk to from where you stand right now"))
     _cur = (m.get("currents") or {}) if isinstance(m.get("currents"), dict) \
         else {}
     _pushed, _carried = _cur.get("pushed") or [], _cur.get("carried") or []

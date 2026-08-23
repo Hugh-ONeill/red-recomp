@@ -705,8 +705,23 @@ local function observe(G, seq, result)
           for cy = 0, _H - 1 do
             for cx = 0, _W - 1 do
               if map.cellTile and map:cellTile(cx, cy) == 61 then
+                -- A STATUE IS SOLID. You do not stand on it — you stand
+                -- BELOW it and face up (onInteract tests facing == "up").
+                -- So its own cell is never in the walkable component, and
+                -- asking the flood fill about it answered "unreachable"
+                -- for every statue on every floor. The ledger printed
+                -- that verbatim, one clause after telling the model to
+                -- walk below it and press: "walk to the cell BELOW it and
+                -- interact ... none of these can be walked to from where
+                -- you stand right now" (2026-08-23, 1F: the statue at 2,5
+                -- is a wall tile; 2,6 directly below it is open ground the
+                -- party could have walked to, and the model left the floor
+                -- because we told it it could not). The cell you PRESS
+                -- FROM is the one whose reachability is the question.
+                local _px, _py = cx, cy + 1
                 _sw[#_sw + 1] = { x = cx, y = cy,
-                                  reachable = _rc[cx .. "," .. cy]
+                                  press_x = _px, press_y = _py,
+                                  reachable = _rc[_px .. "," .. _py]
                                               and true or false }
               end
             end
@@ -762,6 +777,14 @@ local function observe(G, seq, result)
         end
         for _, h in ipairs(o.map.holes or {}) do
           _hole[h.x .. "," .. h.y] = true
+        end
+        -- A STATUE IS SOLID, so the picture drew it as "#" — the same
+        -- character as the walls around it. A player sees a statue; the
+        -- model saw wall, and the coordinates in the ledger pointed into
+        -- what its own map called stone. Draw the thing that is there.
+        local _stat = {}
+        for _, c in ipairs(o.map.switch_statues or {}) do
+          _stat[c.x .. "," .. c.y] = true
         end
         -- A LEDGE IS ONE-WAY, so a picture without them shows routes that
         -- only exist downhill. But A TILE THAT MERELY LOOKS LIKE ONE IS
@@ -833,6 +856,8 @@ local function observe(G, seq, result)
                   this = "O"
                 elseif _hole[k] then
                   this = "o"
+                elseif _stat[k] then
+                  this = "S"
                 elseif _warp[k] then
                   this = "+"
                 elseif _ledge[k] then
@@ -851,8 +876,10 @@ local function observe(G, seq, result)
                 if this == "@" then ch = "@"
                 elseif this == "O" and ch ~= "@" then ch = "O"
                 elseif this == "o" and ch ~= "@" and ch ~= "O" then ch = "o"
+                elseif this == "S" and ch ~= "@" and ch ~= "O"
+                       and ch ~= "o" then ch = "S"
                 elseif this == "+" and ch ~= "@" and ch ~= "O"
-                       and ch ~= "o" then ch = "+"
+                       and ch ~= "o" and ch ~= "S" then ch = "+"
                 elseif this and this:find("^[v^<>]$") and ch == "#" then
                   ch = this
                 elseif this == "." and ch ~= "@" and ch ~= "+"
@@ -873,6 +900,9 @@ local function observe(G, seq, result)
                                   .. ", water you can reach, ~ water you "
                                   .. "cannot reach from here, "
                                   .. "O a boulder, o a hole, "
+                                  .. "S a SWITCH STATUE, which is solid "
+                                  .. "— you press it from the cell BELOW "
+                                  .. "it while facing up, "
                                   .. "v/^/</> a LEDGE, hoppable only the "
                                   .. "way the arrow points, "
                                   .. "+ a doorway, # solid or ground no "
