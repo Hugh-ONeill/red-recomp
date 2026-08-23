@@ -948,7 +948,17 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
     # nearest area with something never taken OR never pressed, over
     # walked ground — leaving worked ground for ground that still has
     # something is the whole idea, so both kinds of "something" count
-    best = None
+    # EVERY GROUND THAT STILL HAS SOMETHING, NOT ONLY THE CLOSEST ONE.
+    # Printing a single winner hid places with far more left one door away:
+    # on Route 20 the recall named FUCHSIA_CITY (2 legs, two untried doors)
+    # and never mentioned Seafoam at all, whose floors hold untried exits
+    # three to five legs down through a door the party has already walked
+    # (user, 2026-08-23: "should be promoting seafoam as its got unwalked
+    # stuff inside"). The leg count keeps meaning what it says — a floor is
+    # a leg — and the choice between near-and-thin and far-and-rich is the
+    # model's to make, which it cannot do about a place it is not told
+    # about.
+    found = []
     regions = set(list(getattr(ex, "frontier", {}) or {})
                   + list(getattr(ex, "sightings", {}) or {}))
     for region in regions:
@@ -962,8 +972,9 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         if not path:
             continue
         r = (len(path), -(len(left) + len(things)), region)
-        if best is None or r < best[0]:
-            best = (r, region, left, things, path)
+        found.append((r, region, left, things, path))
+    found.sort(key=lambda f: f[0])
+    best = found[0] if found else None
     if best:
         _, region, left, things, path = best
         fk, fd = path[0]
@@ -1002,10 +1013,27 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                  + ", ".join(c.key for c in _stuck[:3])
                  + " sits where no walk from here goes — the way in is "
                  "what is missing, not the thing).")
+        _more = []
+        for _r2, _reg2, _left2, _things2, _path2 in found[1:4]:
+            _fk2, _fd2 = _path2[0]
+            _first2 = (f"walk {_fk2}" if not _fk2[0].isdigit()
+                       else f"door ({_fk2})")
+            _has = []
+            if _left2:
+                _has.append(f"{len(_left2)} exit(s) never taken")
+            if _things2:
+                _has.append(f"{len(_things2)} thing(s) never pressed")
+            _more.append(f"{_reg2} ({len(_path2)} leg(s), first {_first2}"
+                         f" to {_fd2}) has " + " and ".join(_has))
         return (_head + f" The nearest "
                 f"ground with something never tried is {region} "
                 f"({len(path)} leg(s), first {first} to {fd}); explore "
-                f"walks there to " + " and ".join(what))
+                f"walks there to " + " and ".join(what)
+                + (". Other ground you have walked that still has "
+                   "something: " + "; ".join(_more)
+                   + ". Nearest is not always most: which of these is "
+                   "worth the walk is yours."
+                   if _more else ""))
     if _stood_aside:
         # The recall above could not put a walked route together (an edge
         # it needs is blocked this world-mark, or the graph is split), but
