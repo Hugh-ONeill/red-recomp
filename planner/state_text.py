@@ -20,6 +20,19 @@ if o is None:
     print("a brand new game")
     raise SystemExit
 
+# A SNAPSHOT WITH NO PARTY IS NOT THIS WORLD. An attempt that dies in
+# bootstrap still leaves a state file behind, and it holds the pre-load
+# screen: no party, no badges, 3000 money, an empty bag. Described in
+# those words it is a LIE about a save wearing six badges, and the
+# re-author writes its plan against it (leg 41, 2026-08-23; the same lie
+# the "brand new game" fallback made before 2f2276a, arriving by another
+# road). A run past its first minute always has a party; no party means
+# the snapshot is not of the world this leg is being written for, and
+# "an unknown location" is the honest thing to say about it.
+if not (o.get("party") or []):
+    print("an unknown location")
+    raise SystemExit
+
 
 # HP reaches the start text: the audit's ALREADY DONE check pruned
 # buy_potions because the bag was visible here, but kept every heal leg —

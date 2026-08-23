@@ -11882,6 +11882,17 @@ def _write_last_state(b, failed_plan=None, failed_subgoal=None):
     """
     try:
         o = b.obs() or {}
+        # ...AND A SNAPSHOT OF THE PRE-LOAD SCREEN IS WORSE THAN MISSING.
+        # An attempt that dies in bootstrap has an observation — the title
+        # screen — with no party in it, and writing that as "where the run
+        # stands" handed the re-author an empty world to plan against
+        # (2026-08-23). Keep the previous snapshot instead: it describes a
+        # world that at least existed. state_text.py refuses the same
+        # shape from the other side.
+        if not (o.get("party") or []):
+            print("[warn] last_state not written: the observation has no "
+                  "party, so it is not a snapshot of this run")
+            return
         (RUN / "last_state.json").write_text(json.dumps({
             "map": (o.get("map") or {}).get("id"),
             "region": (o.get("map") or {}).get("region"),
