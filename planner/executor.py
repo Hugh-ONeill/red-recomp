@@ -1030,6 +1030,7 @@ class Executor:
         self._dead_at: dict = {}            # ...and the world mark they are OF
         self._ferried: dict = {}            # target -> {region: untried set}
         self.map_doors: dict = {}           # map id -> every doorway seen
+        self.map_holes: dict = {}           # map id -> holes seen in its floor
         self.map_forced: dict = {}          # map id -> cells the water bumps
                                             # you off (seen while standing
                                             # there; see note_frontier)
@@ -2477,6 +2478,8 @@ class Executor:
                               in (data.get("map_doors") or {}).items()}
             self.map_forced = {k: set(v) for k, v
                                in (data.get("map_forced") or {}).items()}
+            self.map_holes = {k: sorted(set(v)) for k, v
+                              in (data.get("map_holes") or {}).items()}
             self.door_dests = data.get("door_dests") or {}
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
@@ -2678,6 +2681,8 @@ class Executor:
                                for k, v in (self.map_doors or {}).items()},
                  "map_forced": {k: sorted(v)
                                 for k, v in (self.map_forced or {}).items()},
+                 "map_holes": {k: sorted(v)
+                               for k, v in (self.map_holes or {}).items()},
                  "door_dests": self.door_dests},
                 indent=1)
             tmp = self.MEMORY.with_suffix(".json.tmp")
@@ -2907,6 +2912,19 @@ class Executor:
             if _pushed:
                 self.map_forced[_mid] = set(
                     self.map_forced.get(_mid, ())) | _pushed
+            # A HOLE IS ONLY VISIBLE FROM THE FLOOR IT IS IN, and the same
+            # rule the currents taught applies: remember what was seen, so
+            # the far-away line can say it too. Three cells on the
+            # Mansion's 3F are the only way into 1F's sealed room, and
+            # once the party walks off that floor nothing in the atlas has
+            # ever held them — every page said 3F was a floor whose doors
+            # were all taken, which is true and is not the whole of it.
+            _hs = sorted({f"{h.get('x')},{h.get('y')}"
+                          for h in (_m.get("holes") or [])
+                          if isinstance(h, dict) and h.get("x") is not None})
+            if _hs:
+                self.map_holes[_mid] = sorted(
+                    set(self.map_holes.get(_mid, ())) | set(_hs))
             _dd = self.door_dests.setdefault(_mid, {})
             for _w in (_m.get("warps") or []):
                 if _w.get("x") is not None and _w.get("dest") is not None:
@@ -6837,6 +6855,43 @@ class Executor:
                           + ". A door never taken on ground you have stood "
                             "on is reached by going back there; how to reach "
                             "a part never stood on is not known.")
+        # ...AND A FLOOR WHOSE DOORS ARE ALL TAKEN CAN STILL HAVE A WAY
+        # DOWN IN IT. The rows above are built from doorways only, so a
+        # floor with no untried door never appears — POKEMON_MANSION_3F,
+        # whose three holes are the only way into 1F's sealed room, was in
+        # neither list, not "unfinished" and not "fully worked", simply
+        # absent. A hole is in no warp table, so nothing else here would
+        # ever mention it. This is recall of ground already walked: what
+        # was seen standing there, said again from somewhere else.
+        _hrows = []
+        _here_map = str(here).split("|")[0]
+        for _m, _hs in sorted((self.map_holes or {}).items()):
+            if not _hs or _m == _here_map:
+                continue
+            # nearest region OF THAT FLOOR, the same walk the doors rows
+            # measure — a floor is only as far as its closest walked room
+            _hp = None
+            for _r3 in (self.explored or {}):
+                if _r3.split("|")[0] != _m:
+                    continue
+                _c3 = self._route(here, _r3)
+                if _c3 is not None and (_hp is None or len(_c3) < len(_hp)):
+                    _hp = _c3
+            if _hp is None:
+                continue
+            _hrows.append((len(_hp), _m, _hs))
+        if _hrows:
+            _hrows.sort()
+            floor_away += (
+                "\nFLOORS YOU HAVE WALKED THAT HAVE A HOLE IN THE FLOOR: "
+                + "; ".join(
+                    f"{_m} has {len(_hs)} ({', '.join(_hs[:4])})"
+                    + f", {_n} leg(s) away"
+                    for _n, _m, _hs in _hrows[:3])
+                + ". A hole is in no doorway list and takes no use_warp: "
+                  "you step ONTO it and DROP to the floor below, and there "
+                  "is no climbing back up. Where any of them lands is not "
+                  "recorded unless you have already fallen down it.")
         # A seam PROVEN uncrossable from this region is not an exit. A map
         # connection belongs to the whole map, so the stub side of a split
         # route still lists the far side's edge — and advertising it as
