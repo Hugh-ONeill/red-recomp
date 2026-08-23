@@ -763,8 +763,14 @@ def validate(plan: dict) -> list:
     # verbs whose leftover is ALWAYS a flag/item/badge/party change. Not
     # "give"/"talk"/"find": a drink handed to a guard leaves passage, and a
     # hideout found IS a place — a place condition is right for those.
+    # PUSH IS A DEED. "Push the boulders in the Seafoam Islands to clear
+    # the path" ended on {"player_at": {...}} — standing near a spot — and
+    # passed on attempt 1 with not one boulder moved and not one
+    # EVENT_SEAFOAM*_BOULDER*_DOWN_HOLE set. The verb was simply missing
+    # from this list, and until the `flag` predicate existed there was
+    # nothing the author could have written instead.
     DEED = ("defeat", "chase", "retrieve", "rescue", "wake", "deliver",
-            "obtain", "buy", "clear", "beat", "catch", "receive")
+            "obtain", "buy", "clear", "beat", "catch", "receive", "push")
     if subs and goal and goal.split()[0].lower().rstrip(",:") in DEED:
         last = subs[-1] if isinstance(subs[-1], dict) else {}
         dw = last.get("done_when") or {}
