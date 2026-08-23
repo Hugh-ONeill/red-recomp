@@ -994,6 +994,22 @@ class Executor:
         self._blackout_lead: dict = {}      # target -> lead level, last wipe
         self._faint_at = None               # region we were in when wiped
         self._ui_pending = 0                # rounds a prompt has sat open
+        # STRIKES DESCRIBE THE HARNESS THAT EARNED THEM. A count banked
+        # against a buggy op refused the FIXED op with the stale reason
+        # ("FLY opened no destination list") the moment persistence
+        # shipped — so the ledger carries a fingerprint of the harness
+        # code, and a load under different code drops it (they rebuild in
+        # one escalation).
+        try:
+            import hashlib as _hl
+            from pathlib import Path as _P
+            _root = _P(__file__).resolve().parent.parent
+            self._harness_rev = _hl.md5(
+                _P(__file__).read_bytes()
+                + (_root / "harness" / "shim.lua").read_bytes()
+            ).hexdigest()[:12]
+        except OSError:
+            self._harness_rev = "unknown"
         self._dead_ops: dict = {}           # (target, op, arg) -> failures
         self._dead_at: dict = {}            # ...and the world mark they are OF
         self._ferried: dict = {}            # target -> {region: untried set}
@@ -2147,7 +2163,10 @@ class Executor:
             # next failure, so a count from an older world expires exactly
             # as a stale in-process count did (user, 2026-08-23:
             # "persist the dead ops please").
-            for _rec in (data.get("dead_ops") or []):
+            _same_harness = (data.get("dead_ops_rev")
+                             == self._harness_rev)
+            for _rec in ((data.get("dead_ops") or [])
+                         if _same_harness else []):
                 try:
                     _k = tuple(tuple(e) if isinstance(e, list) else e
                                for e in _rec[0])
@@ -2575,6 +2594,7 @@ class Executor:
                  "dead_ops": [[list(k), v, self._dead_at.get(k),
                                self._dead_why.get(k)]
                               for k, v in self._dead_ops.items()],
+                 "dead_ops_rev": self._harness_rev,
                  "exit_tries": self._exit_tries,
                  "flag_sites": self.flag_sites,
                  "shut_doors": self.shut_doors,
