@@ -1384,6 +1384,43 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                      + (" and more" if len(_pushed) > 6 else "")
                      + " pushes you straight back the way you came, so you "
                      "cannot stand there while you are riding")
+    # THIS FLOOR HAS ANOTHER PART YOU HAVE WALKED. The page tells you about
+    # other MAPS with unfinished ground and about things sighted elsewhere,
+    # and never once about the rest of the floor under your feet. Standing
+    # in SEAFOAM_ISLANDS_1F|3,2 the ledger HELD 1F|21,12 — stood in 3x,
+    # whose door the run had taken twice onto the far shore of Route 20 —
+    # and said nothing, so every round re-derived the idea from the map and
+    # lost it at the next load (user, watching it: "it has the right idea
+    # but doesnt move from there, or worse, it leaves and forgets until it
+    # notices the east side leads west"). Recall of walked ground is ours
+    # to execute; where those doors go is the run's OWN record, the same
+    # rule this floor's own exits already follow. Which of them is worth
+    # the walk stays the model's.
+    _mymap2 = str(here).split("|")[0]
+    _kin = []
+    for _r3, _ex3 in sorted((getattr(ex, "explored", {}) or {}).items()):
+        if _r3 == here or str(_r3).split("|")[0] != _mymap2 or not _ex3:
+            continue
+        _went = sorted({str(_e3.get("to")) for _e3 in _ex3.values()
+                        if (_e3 or {}).get("to")
+                        and str(_e3.get("to")) != _r3}
+                       )
+        if not _went:
+            continue
+        _kin.append((_r3,
+                     int((getattr(ex, "visits", {}) or {}).get(_r3) or 0),
+                     _went))
+    if _kin:
+        _bits = []
+        for _r3, _v3, _went in _kin[:3]:
+            _bits.append(f"{_r3}" + (f", stood in {_v3}x" if _v3 else "")
+                         + ", whose ways out you have taken led to "
+                         + ", ".join(_went[:3]))
+        head += (". THIS FLOOR HAS ANOTHER PART YOU HAVE WALKED: "
+                 + "; ".join(_bits)
+                 + (f" (and {len(_kin) - 3} more)" if len(_kin) > 3 else "")
+                 + ". No walk from here need reach it — {\"op\":\"go\","
+                 "\"to\":\"AREA\"} replays a route you have walked")
     lines = [head + "."]
     # EXITS ARE NEVER CUT. The cap is for the long tail of things and
     # people; a door or a seam is a way out and every one is shown.

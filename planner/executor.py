@@ -10232,6 +10232,26 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             _mac_key = (self._where(obs) or "?",
                         json.dumps(macro, sort_keys=True), str(_mk_now))
             _seen = self._spent_macros.get(_mac_key)
+            # A RUN THE SEA INTERRUPTED IS NOT A RUN THAT WAS ANSWERED.
+            # This gate says "NOTHING ABOUT THE WORLD HAS CHANGED since —
+            # same ops, same world, same answer". For a crossing cut short
+            # by a wild fight that is untrue twice over: the party moved
+            # (58 -> 41 on Route 20's west sea) and the answer was not an
+            # answer, it was an interruption. Out on the far shore with
+            # the crossing finally walked, this refused `cross west
+            # surf=true` on its second send and the run turned round and
+            # went back down into the island (user, watching: "it
+            # backtracked all of a sudden after being out and on the
+            # correct route"). The strike ledger already learned this —
+            # its count for that very macro is 0 — and this is the same
+            # rule one layer up. A fight is the sea being the sea; let it
+            # be re-sent, and let the world mark keep the honest limit.
+            if _seen and any(w in str(_seen.get("why") or "").lower()
+                             for w in ("because of the battle",
+                                       "a fight started")):
+                self.log("repeat_allowed_after_battle", subgoal=sg["id"],
+                         round=rnd, why=str(_seen.get("why"))[:160])
+                _seen = None
             if _seen:
                 _others = len({k for k in self._spent_macros
                                if k[0] == _mac_key[0]
