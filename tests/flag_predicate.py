@@ -34,10 +34,20 @@ ck("a flagless observation satisfies nothing",
 ck("documented exactly once", list(author.PREDICATES).count("flag") == 1)
 ck("the validator accepts it", "flag" in author.VALID_KEYS)
 
-# the one thing that changed
+# the two things that changed
 src = open("planner/author.py").read()
 deed = src.split("DEED = (")[1].split(")")[0]
 ck("push is a deed", '"push"' in deed)
+
+# ...and player_at counts as a place, or the guard never fires for the
+# shape that actually slipped through: "Push the boulders" ended on
+# {"player_at": {"x":3,"y":14,"radius":2}} and passed with nothing pushed.
+places = src.split("if keys and keys <= ")[1].split(":")[0]
+ck("player_at is a place", '"player_at"' in places)
+for k in ("map", "area", "no_battle", "party_healthy"):
+    ck(f"{k} is still a place", f'"{k}"' in places)
+ck("a real witness is NOT a place", '"flag"' not in places
+   and '"has_item"' not in places and '"badge"' not in places)
 for verb in ("defeat", "retrieve", "clear", "catch"):
     ck(f"{verb} is still a deed", f'"{verb}"' in deed)
 

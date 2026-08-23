@@ -775,7 +775,15 @@ def validate(plan: dict) -> list:
         last = subs[-1] if isinstance(subs[-1], dict) else {}
         dw = last.get("done_when") or {}
         keys = set(pred_keys(dw)) if isinstance(dw, dict) else set()
-        if keys and keys <= {"map", "area", "no_battle", "party_healthy"}:
+        # ...AND player_at IS A PLACE. It was missing from this set, which
+        # is how "Push the boulders in the Seafoam Islands" ended on
+        # {"player_at": {"x":3,"y":14,"radius":2}} — standing within two
+        # cells of a spot — and passed with not one boulder moved. Of every
+        # predicate in the language it is the most place-like: "standing
+        # within radius R of a tile" is standing somewhere, and standing
+        # somewhere is not the deed done.
+        if keys and keys <= {"map", "area", "player_at", "no_battle",
+                             "party_healthy"}:
             probs.append(
                 f"subgoal[{len(subs) - 1}] ({last.get('id')}) is the LAST step "
                 f"of a leg whose objective is a deed (\"{goal[:60]}\"), but "
