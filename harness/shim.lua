@@ -647,6 +647,21 @@ local function observe(G, seq, result)
         for _, w in ipairs((md and md.warps) or {}) do
           _warp[w.x .. "," .. w.y] = true
         end
+        -- BOULDERS AND HOLES GO IN THE PICTURE. Both are already in lists,
+        -- but a list cannot say that this boulder stands beside that hole,
+        -- and the spatial fact is the one a player reads off the screen at
+        -- a glance. People and items stay out: the ledger names those, and
+        -- where they stand does not change what can be done with them
+        -- (user, 2026-08-23). Nothing here says what a boulder is FOR.
+        local _boul, _hole = {}, {}
+        for _, npc in ipairs((ow and ow.npcs) or {}) do
+          if ((npc.def or {}).sprite) == "SPRITE_BOULDER" then
+            _boul[npc.cellX .. "," .. npc.cellY] = true
+          end
+        end
+        for _, h in ipairs(o.map.holes or {}) do
+          _hole[h.x .. "," .. h.y] = true
+        end
         -- FULL RESOLUTION WHEN IT FITS. Folded 2x2, a one-cell wall
         -- vanishes into whichever neighbour won the priority test, so the
         -- barrier that splits Route 20 was invisible at exactly the moment
@@ -666,6 +681,10 @@ local function observe(G, seq, result)
                 local this
                 if p and cx == p.cellX and cy == p.cellY then
                   this = "@"
+                elseif _boul[k] then
+                  this = "O"
+                elseif _hole[k] then
+                  this = "o"
                 elseif _warp[k] then
                   this = "+"
                 elseif _rc[k] then
@@ -680,7 +699,10 @@ local function observe(G, seq, result)
                 -- @ beats a door beats ground beats reachable water beats
                 -- water you cannot reach
                 if this == "@" then ch = "@"
-                elseif this == "+" and ch ~= "@" then ch = "+"
+                elseif this == "O" and ch ~= "@" then ch = "O"
+                elseif this == "o" and ch ~= "@" and ch ~= "O" then ch = "o"
+                elseif this == "+" and ch ~= "@" and ch ~= "O"
+                       and ch ~= "o" then ch = "+"
                 elseif this == "." and ch ~= "@" and ch ~= "+" then ch = "."
                 elseif this == "," and (ch == "#" or ch == "~") then ch = ","
                 elseif this == "~" and ch == "#" then ch = "~"
@@ -697,6 +719,7 @@ local function observe(G, seq, result)
                                    or "@ you, . ground you can reach, ")
                                   .. ", water you can reach, ~ water you "
                                   .. "cannot reach from here, "
+                                  .. "O a boulder, o a hole, "
                                   .. "+ a doorway, # solid or ground no "
                                   .. "walk from here reaches; "
                                   .. (_step == 1
