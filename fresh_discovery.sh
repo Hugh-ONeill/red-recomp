@@ -353,9 +353,13 @@ while :; do
     # Seafoam evidence could answer was silently skipped. ONE ask per
     # leg (user, 2026-08-23), with a chain-wide ceiling so a runaway
     # still cannot happen. An insert renumbers the legs below it, so a
-    # leg that stalls again AFTER something was placed in front of it is
-    # asking a different question and may ask once more.
-    _ins_leg=$(grep -c "^$i:" run/outline_inserts 2>/dev/null || true)
+    # leg that stalls again after something was placed in front of it
+    # keeps its one ask — BUT THE BUDGET FOLLOWS THE OBJECTIVE, NOT THE
+    # SLOT. Keyed by number, an insert renumbered the stuck leg and handed
+    # it a fresh ask every time: Cinnabar asked at 40, was pushed to 41 by
+    # its own answer, and asked again at 41 (2026-08-23). The objective is
+    # what has the question, so the objective is what spends the ask.
+    _ins_leg=$(grep -Fc "LEG=$leg|" run/outline_inserts 2>/dev/null || true)
     if [ "$(cat run/outline_inserts 2>/dev/null | wc -l)" -lt 12 ] \
         && [ "${_ins_leg:-0}" -lt 1 ] \
         && missing=$(python planner/author.py --check-missing \
@@ -363,7 +367,7 @@ while :; do
             --start "$(python planner/state_text.py)" --model "$AUTHOR_MODEL"); then
       echo "=== leg $i needs something first: $missing ==="
       python planner/insert_leg.py "$i" "$missing"
-      echo "$i:$missing" >> run/outline_inserts
+      echo "LEG=$leg|$missing" >> run/outline_inserts
       continue
     fi
     # LAST RUNG: IS THE OBJECTIVE ITSELF WRONG? The chain halted at
