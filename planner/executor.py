@@ -273,6 +273,22 @@ def model_view(obs: dict, holding_map: bool = False,
     """
     o = dict(obs or {})
     o.pop("flags", None)
+    # PP IS A BATTLE LIMIT, AND THIS IS WHERE THE NUMBER IS READ. The party
+    # carries every move's PP, which is true and, for a field move, beside
+    # the point: the engine's field-move gate checks the badge, the bike
+    # flag, the current and what you face, never the PP. Watching it read
+    # {"id":"SURF","pp":0} off this very dump and conclude "SURF has 0 PP,
+    # so I need to heal first", then FLY to Fuchsia for PP it did not need
+    # and lose the shore it had crossed to (user: "also yeah move it
+    # there"). The rule is manual-tier and it belongs beside the number
+    # that misleads, not in a failure the run never reaches.
+    if any((m or {}).get("pp") == 0
+           for mon in (o.get("party") or [])
+           for m in (mon.get("moves") or []) if isinstance(m, dict)):
+        o["pp_note"] = ("PP is a BATTLE limit. A field move used from the "
+                        "party menu (CUT, FLY, SURF, STRENGTH) spends no "
+                        "PP and works at 0 — a move at 0 PP is only "
+                        "unusable IN a fight.")
     if isinstance(o.get("map"), dict):
         _mm = dict(o["map"])
         _mid = _mm.get("id")
@@ -9096,7 +9112,23 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # Testing the bag here meant a wipe inside a Lua op — grind,
                 # cross, walk_to, where mode never reads "battle" — was only
                 # ever caught when the bag happened to grow on the same step.
-                if healed and after[7] > before[7]:
+                # A HEAL IS NOT A WIPE. Every clause above is also true
+                # of walking into a Center and asking: you end in a
+                # POKECENTER, on a different map, at full HP with the HP
+                # sum up. So `heal` reported "your party FAINTED mid-op
+                # (blackout): you respawned at FUCHSIA_POKECENTER, party
+                # healed, position progress lost" about a party that had
+                # not fainted at all, in the same breath as quoting the
+                # nurse's welcome (user, reading it: "not true, we didnt
+                # wipe"). The real signal is the one the state watch
+                # already uses: a blackout HALVES YOUR MONEY. Ask that,
+                # and never call the op that asks for healing a faint.
+                _m0 = (pre_obs or {}).get("money")
+                _m1 = (obs or {}).get("money")
+                _halved = (isinstance(_m0, int) and isinstance(_m1, int)
+                           and _m0 > 0 and _m1 == _m0 // 2)
+                if healed and after[7] > before[7] and _halved \
+                        and op != "heal":
                     blackout = after[0]
                     self._faint_at = self._where(pre_obs)
                     if self._cur_target:
