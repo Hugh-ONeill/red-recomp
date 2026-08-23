@@ -9844,17 +9844,28 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if not _k.startswith(_tk + "|"):
                     continue
                 _area = _k.split("|", 1)[1]
+    
                 for _key, _rec in (_book or {}).items():
-                    _e = _agg.setdefault(_key, {"n": 0, "last": "", "where": _area})
+                    # A DIRECTION IS NOT A DEED UNTIL YOU SAY WHERE. Keyed on the
+                    # bare key, every west-crossing in Kanto summed into one
+                    # bucket and "what happened last" was whichever came last
+                    # ANYWHERE — so after a hundred failures on Route 20 the page
+                    # read "west x278 — ok via ROUTE_15", telling the model that
+                    # going west works (2026-08-23). Same map-qualification bug
+                    # the item names and the repeat gate each had; count a deed
+                    # where it was done.
+                    _mapk = (_area.split("|")[0], _key)
+                    _e = _agg.setdefault(_mapk, {"n": 0, "last": "", "where": _area})
                     _e["n"] += int(_rec.get("n") or 0)
                     _e["last"] = _rec.get("last") or _e["last"]
+
             _tried = sorted(_agg.items(), key=lambda kv: -kv[1]["n"])[:8]
             if _tried and sum(v["n"] for _, v in _tried) >= 4:
                 plan_echo += ("WHAT YOU HAVE DONE FOR THIS STEP SO FAR, over "
                               "every attempt (thing, how many times, what "
                               "happened last):\n"
                               + "\n".join(
-                                  f"  {k} x{v['n']} at {v['where']}"
+                                  f"  {k[1]} on {k[0]} x{v['n']}"
                                   + (f" — {v['last'][:110]}" if v['last'] else "")
                                   for k, v in _tried) + "\n")
             if plan_echo:
