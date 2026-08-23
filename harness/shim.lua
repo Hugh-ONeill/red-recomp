@@ -4539,6 +4539,17 @@ function OPS.field_move(G, c)
   end
   local mv = c.move
   if not mv then return false, "field_move needs move" end
+  -- WHAT THE GAME SAYS WHEN IT REFUSES. PartyMenu answers a refused field
+  -- move with its own words — _CurrentTooFastText on Seafoam B4F, the
+  -- badge text, the bike text, "no place to get off" — and loops back to
+  -- the submenu, which this op could only see as "the menus closed". So a
+  -- SURF the game blocked BECAUSE THE CURRENT IS TOO FAST was reported as
+  -- "SURF only fires standing at the water's edge facing the water", a
+  -- reason we invented, and the run kept re-aiming at tiles (user,
+  -- 2026-08-23: "the water itself wont let you pass"). Remember what had
+  -- been said before we touched anything; if the game speaks while we are
+  -- in the menu, its words are the answer.
+  local _txt_before = tostring(last_text or "")
   local slot
   for i, mon in ipairs((G.save and G.save.party) or {}) do
     for _, m in ipairs(mon.moves or {}) do
@@ -4861,6 +4872,12 @@ function OPS.field_move(G, c)
           .. " the water; name the water tile and this op walks there and"
           .. " faces it for you:"
           .. " {\"op\":\"field_move\",\"move\":\"SURF\",\"x\":..,\"y\":..}"
+      end
+      local _txt_now = tostring(last_text or "")
+      if _txt_now ~= "" and _txt_now ~= _txt_before then
+        return false, mv .. " was REFUSED BY THE GAME, which said: \""
+          .. _txt_now .. "\". That is the game's own answer about this "
+          .. "place, not a mistake in how the move was asked for"
       end
       return false, mv .. " did not fire (the menus closed without it)"
         .. _extra
