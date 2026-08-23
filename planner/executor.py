@@ -8144,14 +8144,46 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         self.log("stopped_mid_attempt", saved=bool(r.get("ok")))
         sys.exit(0)
 
-    def _strike(self, sig, det):
+    @staticmethod
+    def _spot(obs):
+        """Where the party stands, finely enough to see a crossing move."""
+        o = obs or {}
+        pl = o.get("player") or {}
+        return (((o.get("map") or {}).get("id")), pl.get("x"), pl.get("y"))
+
+    def _strike(self, sig, det, pre=None, post=None):
         """One failure (or ran-and-changed-nothing) against this exact
         action. Counts live per world mark — the count resets the first
         time the world moves after the last strike — and persist in the
         memory file, so an attempt restart no longer wipes them. The early
         cross/walk_to handlers `continue` before the generic failure
         block, so they call this themselves; forgetting that is how cross
-        west failed 74 times with zero strikes banked."""
+        west failed 74 times with zero strikes banked.
+
+        A TRY THAT CARRIED YOU TWENTY CELLS DID NOT COME TO NOTHING. The
+        gate's whole claim is "this came to nothing 3 times, with nothing
+        about you changed since" — and it was banking strikes against a
+        cross whose own failure line read "a fight started 38 cell(s)
+        short of the west edge gap (0,16) — the walk stopped at (38,16)
+        because of the battle, not because of the ground". Twenty cells of
+        open sea crossed, a wild fight survived, and the harness called it
+        nothing and then refused the one move that was working; the run
+        flew back to Fuchsia because that was the only thing left
+        unblocked (2026-08-23). A wild battle is the sea being the sea. It
+        is not evidence the way is shut, and interrupting is not
+        refusing."""
+        if pre is not None and post is not None:
+            if self._spot(pre) != self._spot(post):
+                # it moved: strikes banked against a stale standstill no
+                # longer describe this attempt, so the count starts over
+                self._dead_ops[sig] = 0
+                self._dead_at[sig] = getattr(self, "_mark_now", None)
+                self._dead_why[sig] = str(det or "")[:160]
+                return
+        _d = str(det or "").lower()
+        if "because of the battle" in _d or "a fight started" in _d:
+            self._dead_why[sig] = str(det or "")[:160]
+            return
         _mk = getattr(self, "_mark_now", None)
         if self._dead_at.get(sig) != _mk:
             self._dead_ops[sig] = 0
@@ -8458,13 +8490,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         self._record_outcome(_pre, op, step,
                                              f"cross: FAILED — {_d0}")
                         self._seam_proof(obs, step, _d0)
-                        self._strike(sig, _d0)
+                        self._strike(sig, _d0, _pre, obs)
                     continue
                 obs = self.settle() or _pre
                 trace.append(f"cross(dir={step['dir']}): FAILED — {_d0}")
                 self._record_outcome(_pre, op, step, f"cross: FAILED — {_d0}")
                 self._seam_proof(obs, step, _d0)
-                self._strike(sig, _d0)
+                self._strike(sig, _d0, _pre, obs)
                 continue
             # A BUILDING IN THE MIDDLE OF A MAP IS NOT A WALL IF YOU HAVE
             # WALKED THROUGH IT. walk_to BFSes one map's cells, so a route
