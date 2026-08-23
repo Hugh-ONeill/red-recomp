@@ -9986,6 +9986,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         # ~60 rounds). The same input in the same world gives the same
         # answer — that is arithmetic, not a hint about where to go.
         self._spent_macros: dict = {}
+        # keys already granted the "you can reach it now" re-run, so a door
+        # that is reachable AND still fails is not re-tried forever
+        self._reach_exempt: set = set()
         self._repeat_rounds = 0   # free refusals used this subgoal
         self._stale_rounds = 0    # the stale budget counts per subgoal
         self._stale_fp = None
@@ -10543,9 +10546,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # cells from that same door with the observation reporting it
             # reachable. The run was refused the op that walks into the
             # basement, by a record of a different room (2026-08-23).
-            if _seen and any(w in str(_seen.get("why") or "").lower()
-                             for w in ("reach the warp tile",
-                                       "no path")):
+            if _seen and (not str(_seen.get("why") or "").strip()
+                          or any(w in str(_seen.get("why") or "").lower()
+                                 for w in ("reach the warp tile",
+                                           "no path"))) \
+                    and _mac_key not in self._reach_exempt:
                 _mm = (obs or {}).get("map") or {}
                 _want = {(st.get("x"), st.get("y")) for st in macro
                          if isinstance(st, dict)
@@ -10554,9 +10559,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if any((w.get("x"), w.get("y")) in _want
                        and w.get("reachable")
                        for w in (_mm.get("warps") or [])):
+                    # ONCE per key per world: a door that is reachable and
+                    # still fails has answered, and the answer stands.
+                    self._reach_exempt.add(_mac_key)
                     self.log("repeat_allowed_now_reachable",
                              subgoal=sg["id"], round=rnd,
-                             why=str(_seen.get("why"))[:160])
+                             why=str(_seen.get("why") or "")[:160] or "(none recorded)")
                     _seen = None
             if _seen:
                 _others = len({k for k in self._spent_macros
@@ -10570,7 +10578,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _seen["refused"] = int(_seen.get("refused") or 0) + 1
                 self.log("escalate_repeat_refused", subgoal=sg["id"],
                          round=rnd, macro=macro, seen=_seen["n"],
-                         refused=_seen["refused"])
+                         refused=_seen["refused"],
+                         why=str(_seen.get("why") or "")[:200])
                 feedback = (
                     "REFUSED WITHOUT RUNNING IT: this exact set of ops has "
                     f"already been carried out {_seen['n']}x in this "

@@ -18,17 +18,21 @@ def ck(name, ok):
     print(("  ok   " if ok else "  FAIL ") + name)
 
 
-def gate(seen_why, warps, macro):
+def gate(seen_why, warps, macro, exempt=None, key="k"):
     """The exemption, exactly as executor.py applies it."""
+    exempt = exempt if exempt is not None else set()
     _seen = {"why": seen_why} if seen_why is not None else None
-    if _seen and any(w in str(_seen.get("why") or "").lower()
-                     for w in ("reach the warp tile", "no path")):
+    if _seen and (not str(_seen.get("why") or "").strip()
+                  or any(w in str(_seen.get("why") or "").lower()
+                         for w in ("reach the warp tile", "no path"))) \
+            and key not in exempt:
         _want = {(st.get("x"), st.get("y")) for st in macro
                  if isinstance(st, dict)
                  and st.get("op") in ("use_warp", "walk_to")
                  and st.get("x") is not None}
         if any((w.get("x"), w.get("y")) in _want and w.get("reachable")
                for w in warps):
+            exempt.add(key)
             _seen = None
     return _seen is not None          # True == still refused
 
@@ -47,6 +51,21 @@ ck("a different door being open does not excuse it",
    gate("FAILED — couldn't reach the warp tile", 
         [{"x": 5, "y": 10, "reachable": True}], mac))
 ck("no record: nothing to refuse", not gate(None, open_, mac))
+
+# THE RECORDED REASON IS OFTEN EMPTY. `_why` is only captured from trace
+# lines containing FAILED/REFUSED, so the gate routinely refuses with
+# "which was: it did not get you there" while holding no answer at all.
+# An unrecorded reason cannot outrank the world's own report.
+ck("no reason recorded + reachable now: allowed",
+   not gate("", open_, mac))
+ck("no reason recorded + still shut: refused",
+   gate("", shut, mac))
+
+# ...and the re-run is granted ONCE, so a reachable door that still fails
+# has answered and the answer stands.
+seen = set()
+ck("first re-run granted", not gate("", open_, mac, exempt=seen))
+ck("second re-run refused", gate("", open_, mac, exempt=seen))
 
 bad = [n for n, ok in checks if not ok]
 print(("FAIL %d/%d" % (len(bad), len(checks))) if bad
