@@ -539,6 +539,29 @@ local function observe(G, seq, result)
       if not _reach_memo then _reach_memo = warp_reach(G) or {} end
       return _reach_memo
     end
+    -- ...AND WHAT THE PARTY COULD REACH IF IT RODE. Computed only when
+    -- something is out of walking reach on a map that has water and the
+    -- party carries SURF, so the ordinary case pays nothing.
+    local _swim_memo, _knows_surf
+    local function party_knows_surf()
+      if _knows_surf == nil then
+        _knows_surf = false
+        for _, mon in ipairs((G.save or {}).party or {}) do
+          for _, mv in ipairs(mon.moves or {}) do
+            if tostring(type(mv) == "table" and mv.id or mv) == "SURF" then
+              _knows_surf = true
+            end
+          end
+        end
+      end
+      return _knows_surf
+    end
+    local function swim_cells()
+      if _swim_memo == nil then
+        _swim_memo = (party_knows_surf() and warp_reach(G, nil, true)) or false
+      end
+      return _swim_memo or {}
+    end
     -- THE WATER ON THIS FLOOR IS ON THE SCREEN AND WAS IN NO OBSERVATION.
     -- Water reached the model only through refusals — a cross that failed,
     -- a target with a channel in front of it — so a party standing on
@@ -901,6 +924,21 @@ local function observe(G, seq, result)
       if _here_k and k == _here_k then return true end
       return objreach[k] and not _spin[k] and not _warp[k]
     end
+    -- REACHABLE BY WATER IS STILL REACHABLE. A thing across a channel was
+    -- flatly "you cannot walk to it from where you stand", which is true
+    -- about WALKING and false about the party: NIDOQUEEN has carried SURF
+    -- since Koga. Articuno sits across B4F's water and read as
+    -- unreachable, so it ranked below furniture and no plan ever went for
+    -- it. The walk-truth is kept as it was; this is a second, honest fact
+    -- beside it, and riding stays the model's call.
+    local function adjacent_swimmable(x, y)
+      if not party_knows_surf() then return false end
+      local sc = swim_cells()
+      for _, d in ipairs({ {1, 0}, {-1, 0}, {0, 1}, {0, -1} }) do
+        if sc[(x + d[1]) .. "," .. (y + d[2])] then return true end
+      end
+      return false
+    end
     local function adjacent_reachable(x, y, over_counter)
       if stand_ok((x - 1) .. "," .. y) or stand_ok((x + 1) .. "," .. y)
          or stand_ok(x .. "," .. (y - 1)) or stand_ok(x .. "," .. (y + 1))
@@ -981,6 +1019,8 @@ local function observe(G, seq, result)
         -- arrival; without it the run spends 10 escalation rounds finding
         -- out (user: "the first two ladders lead to dead-end rooms").
         reachable = adjacent_reachable(npc.cellX, npc.cellY),
+        by_water = (not adjacent_reachable(npc.cellX, npc.cellY))
+                   and adjacent_swimmable(npc.cellX, npc.cellY) or nil,
         why = (not adjacent_reachable(npc.cellX, npc.cellY))
               and why_far(npc.cellX, npc.cellY) or nil,
       }
@@ -1032,6 +1072,8 @@ local function observe(G, seq, result)
       o.map.objects[#o.map.objects + 1] = {
         x = sg.x, y = sg.y, kind = kind, name = nm,
         reachable = adjacent_reachable(sg.x, sg.y, false),
+        by_water = (not adjacent_reachable(sg.x, sg.y, false))
+                   and adjacent_swimmable(sg.x, sg.y) or nil,
       }
     end
     -- The comment above promised Bill's separator; md.signs never
@@ -1041,6 +1083,8 @@ local function observe(G, seq, result)
       o.map.objects[#o.map.objects + 1] = {
         x = f.x, y = f.y, kind = "fixture", name = f.name,
         reachable = adjacent_reachable(f.x, f.y, false),
+        by_water = (not adjacent_reachable(f.x, f.y, false))
+                   and adjacent_swimmable(f.x, f.y) or nil,
       }
     end
     -- CUT TREES are drawn bushes — the most on-screen thing there is —
@@ -1656,7 +1700,12 @@ end
 -- can only get to by dropping down IS reachable, it just is not here.
 region_reach = function(G) return warp_reach(G, true) end
 
-function warp_reach(G, no_ledges)
+-- surf=true floods over WATER as well as ground, which is what the party
+-- can actually reach once a Pokemon carries it there. Used for saying
+-- whether a thing across a channel is reachable AT ALL, as against
+-- reachable on foot (user, 2026-08-23: "articuno should read as
+-- reachable (over water)").
+function warp_reach(G, no_ledges, surf)
   local okc, Collision = pcall(require, "src.world.Collision")
   local ow, p = G.overworld, G.overworld and G.overworld.player
   if not (okc and ow and p and ow.map) then return nil end
@@ -1712,7 +1761,8 @@ function warp_reach(G, no_ledges)
     for dn, d in pairs(DIRS) do
       local nx, ny = cur.x + d[1], cur.y + d[2]
       if not seen[key(nx, ny)] then
-        local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
+        local probe = setmetatable({ cellX = cur.x, cellY = cur.y,
+                                     surfing = surf or nil },
                                    { __index = p })
         if Collision.canMove(ow.map, NOBODY, probe, dn) then
           -- an arrow tile is not somewhere you stand: you arrive and are

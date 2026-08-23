@@ -705,6 +705,14 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                         if knows_cut else "bush")
         elif not o.get("reachable") and kind != "item":
             c.status = "unreachable"
+            # ...AND WATER IS NOT A WALL WHEN THE PARTY CARRIES SURF. The
+            # shim marks by_water on a thing the swum reach touches; the
+            # bare verdict ranked Articuno with the furniture.
+            if o.get("by_water"):
+                c.note = _join(c.note,
+                               "no walk from here reaches it, but the WATER "
+                               "does: a party Pokemon knows SURF, and from "
+                               "the water, water is walkable")
             # WHY, when the tile beside it says so. "you cannot walk to it"
             # is a verdict; "a warp pad is beside it" is a way in.
             if o.get("why"):
