@@ -2015,17 +2015,38 @@ def tried_text(recs: list, top_subgoals: int = 4, top_ops: int = 5) -> str:
     return "\n".join(out)
 
 
-def build_review(goal: str, plan: dict, start: str | None) -> str:
+def build_review(goal: str, plan: dict, start: str | None,
+                 tries: int = 0) -> str:
     """Ask the model to audit its own plan for conditions that cannot work.
 
     Every check here came from a condition that actually failed a run, and
     each is about the CONDITION, not the route — the model supplies the game
     knowledge, this only tells it what kinds of mistake to look for.
     """
+    # IS IT ONE STEP, OR SEVERAL NOBODY SEPARATED? Asked only when this
+    # objective has been written many times and never met, and the plan is
+    # still a single subgoal — the shape that cannot be partially achieved,
+    # so every attempt starts from nothing. The harness supplies the COUNT
+    # and the question; what the steps are, or whether there are any, is
+    # the model's (user, 2026-08-23: "do the review-pass question").
+    _one = len(plan.get("subgoals") or []) == 1
+    _ask = ""
+    if tries >= 3 and _one:
+        _ask = (
+            f"\n\nBEFORE YOU AUDIT: this objective has been written "
+            f"{tries} times before and has never been met, and the plan "
+            "above is ONE step. That is not proof the step is wrong. But a "
+            "step that has never once succeeded is sometimes several steps "
+            "nobody separated, and a single step cannot be half-done: every "
+            "attempt begins again from nothing. The evidence above lists "
+            "ground you have walked that still has ways out nobody has "
+            "taken. Decide for yourself whether reaching this objective "
+            "from where you stand is really one step. If it is, leave the "
+            "plan as it is and audit it as normal.")
     return (
         f"GOAL: {goal}\n"
         f"START: {start or 'a brand new game'}\n\n"
-        f"THE PLAN YOU WROTE:\n{json.dumps(plan, indent=1)}\n\n"
+        f"THE PLAN YOU WROTE:\n{json.dumps(plan, indent=1)}{_ask}\n\n"
         "Audit every subgoal against these failure modes and fix the ones "
         "that are broken:\n"
         "1. SATISFIED BY GOING BACKWARDS. A done_when that is already true "
@@ -2335,7 +2356,7 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
     base = (evidence_text(observed, journal, drafts)
             + build_prompt(goal, start))
     for rnd in range(1, rounds + 1):
-        _rev = build_review(goal, plan, start)
+        _rev = build_review(goal, plan, start, tries=len(drafts or []))
         prompt_guard("the review prompt", system=REVIEW_SYS,
                      evidence_and_vocabulary=base, plan_under_review=_rev)
         reply = brock_probe.chat(
