@@ -5518,6 +5518,20 @@ class Executor:
                                             y=int(_dy), surf=True)
                     _wdet = ((_wres or {}).get("result") or {}).get("detail")
                     o = self.settle() or o
+                    # A WILD FIGHT IS NOT A SHUT ROUTE. The mount failed
+                    # with "not in overworld (a box was up and would not
+                    # close: kind=wild)" — a Zubat, mid-ride — and both ops
+                    # died on it, after which the edge took a blocked_at
+                    # stamp and every route through the island went dark.
+                    # Fight it and ask again, once.
+                    if o and o.get("mode") == "battle":
+                        o = self.handle_battle(sg, o)
+                        o = self.settle() or o
+                        _wres = self._send_safe("walk_to", x=int(_dx),
+                                                y=int(_dy), surf=True)
+                        _wdet = ((_wres or {}).get("result")
+                                 or {}).get("detail")
+                        o = self.settle() or o
                     _ures = self._send_safe("use_warp", x=int(_dx),
                                             y=int(_dy))
                     _udet = ((_ures or {}).get("result") or {}).get("detail")
@@ -5590,9 +5604,24 @@ class Executor:
                         # Cerulean stopped existing. Blocked for NOW: the
                         # router skips it while the world mark stands, and
                         # it is a road again the moment anything changes.
-                        rec["blocked_at"] = self._world_mark(o)
-                        self.log("edge_blocked", frm=frm, via=key, to=nxt,
-                                 n=rec.get("n"), why=_last_det[:200])
+                        # ...AND NOT FOR A WILD FIGHT. The same rule
+                        # the strike gate and the repeat gate already
+                        # learned today: an op that died because a battle
+                        # box was up says nothing about the ground. This
+                        # stamped Seafoam's one joining swim on a wild
+                        # encounter and darkened every route between the
+                        # island's halves for the rest of the world mark.
+                        _wd = str(_last_det or "").lower()
+                        if ("a box was up" in _wd or "kind=wild" in _wd
+                                or "because of the battle" in _wd
+                                or "a fight started" in _wd):
+                            self.log("edge_not_blocked_battle", frm=frm,
+                                     via=key, to=nxt, why=_last_det[:200])
+                        else:
+                            rec["blocked_at"] = self._world_mark(o)
+                            self.log("edge_blocked", frm=frm, via=key,
+                                     to=nxt, n=rec.get("n"),
+                                     why=_last_det[:200])
                     else:
                         del self.explored[frm][key]
                         self.log("edge_voided", frm=frm, via=key, to=nxt)
