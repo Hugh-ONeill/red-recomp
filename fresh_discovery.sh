@@ -23,6 +23,14 @@ cd "$(dirname "$0")"
 rig_register chain
 ATTEMPTS="${1:-4}"
 MODEL="${RED_MODEL:-gemma4:31b-it-q4_K_M}"
+# WHO WRITES AND WHO PLAYS NEED NOT BE THE SAME MODEL. The escalation
+# model is judged on ops it composes in front of the game; the author is
+# judged on sentences written about a world it cannot see, and the two
+# have come apart — qwen3.8 plays a richer game than it writes (its
+# missing-step rung answered "Travel to the Johto Region" about an island
+# one seam west of the party). RED_AUTHOR_MODEL splits them; unset, the
+# playing model writes, which is the old behaviour exactly.
+AUTHOR_MODEL="${RED_AUTHOR_MODEL:-$MODEL}"
 # What the run is FOR, in the player's own words. It is the only thing the
 # outline pass is given, so it decides what the model thinks the game is —
 # "Become the Champion" produces a list of badges and the errands between
@@ -130,7 +138,7 @@ else
   echo "--- authoring the outline"
   echo "goal: $GOAL"
   python planner/author.py --outline --goal "$GOAL" \
-      --out plans/outline.txt --model "$MODEL"
+      --out plans/outline.txt --model "$AUTHOR_MODEL"
   # ...and bank it, untouched, so the fresh-chain block above can put the
   # list back the way the model wrote it after a chain has reordered it.
   # Taken HERE, at the only moment the file is known to be pristine.
@@ -158,7 +166,7 @@ sweep_ahead() {
   if [ "$(cat run/outline_skips 2>/dev/null | wc -l)" -lt 8 ] \
       && got=$(python planner/author.py --check-already-done \
           --goal "$leg" --outline-path plans/outline.txt --leg "$at" \
-          --start "$st" --observed run/explored.json --model "$MODEL") \
+          --start "$st" --observed run/explored.json --model "$AUTHOR_MODEL") \
       && [ -n "$got" ]; then
     nums=$(printf '%s\n' "$got" | cut -f1 | tr '\n' ' ')
     if python planner/skip_legs.py $nums; then
@@ -175,7 +183,7 @@ sweep_ahead() {
   # thinkable.
   python planner/author.py --recognize-done \
       --goal "$leg" --outline-path plans/outline.txt \
-      --start "$st" --model "$MODEL" || true
+      --start "$st" --model "$AUTHOR_MODEL" || true
 }
 
 # The outline is re-read EVERY iteration: a stuck leg may pull a later
@@ -224,7 +232,7 @@ while :; do
     echo "=== leg $i/${#LEGS[@]}: keeping existing $plan"
   else
     echo "=== leg $i/${#LEGS[@]}: authoring — $goal"
-    aargs=(--goal "$goal" --out "$plan" --model "$MODEL")
+    aargs=(--goal "$goal" --out "$plan" --model "$AUTHOR_MODEL")
     if [ "$i" -gt 1 ]; then
       aargs+=(--start "$(python planner/state_text.py)")
       [ -s run/explored.json ] && aargs+=(--observed run/explored.json)
@@ -284,7 +292,7 @@ while :; do
     if python planner/author.py --check-done --goal "$goal" \
         --start "$(python planner/state_text.py)" \
         --gained "$gained" \
-        --observed run/explored.json --model "$MODEL"; then
+        --observed run/explored.json --model "$AUTHOR_MODEL"; then
       echo "=== leg $i/${#LEGS[@]} judged already accomplished: $leg ==="
       echo "$i" > "$PROGRESS"
       sweep_ahead "$i"
@@ -327,7 +335,7 @@ while :; do
             --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
             --start "$(python planner/state_text.py)" \
             --observed run/explored.json \
-            --journal run/executor_log.jsonl --model "$MODEL"); then
+            --journal run/executor_log.jsonl --model "$AUTHOR_MODEL"); then
       echo "=== leg $i stuck behind leg $blocker: pulling it forward ==="
       python planner/pull_leg.py pull "$i" "$blocker"
       echo "$i<-$blocker" >> run/outline_reorders
@@ -352,7 +360,7 @@ while :; do
         && [ "${_ins_leg:-0}" -lt 1 ] \
         && missing=$(python planner/author.py --check-missing \
             --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
-            --start "$(python planner/state_text.py)" --model "$MODEL"); then
+            --start "$(python planner/state_text.py)" --model "$AUTHOR_MODEL"); then
       echo "=== leg $i needs something first: $missing ==="
       python planner/insert_leg.py "$i" "$missing"
       echo "$i:$missing" >> run/outline_inserts
@@ -379,7 +387,7 @@ while :; do
           --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
           --start "$(python planner/state_text.py)" \
           --observed run/explored.json \
-          --journal run/executor_log.jsonl --model "$MODEL")
+          --journal run/executor_log.jsonl --model "$AUTHOR_MODEL")
       wrc=$?
       set -e
       if [ $wrc = 0 ] && [ -n "$said" ]; then
@@ -438,7 +446,7 @@ while :; do
             --goal "$leg" --outline-path plans/outline.txt --leg "$i" \
             --pushed "$pushed" \
             --start "$(python planner/state_text.py)" \
-            --journal run/executor_log.jsonl --model "$MODEL"); then
+            --journal run/executor_log.jsonl --model "$AUTHOR_MODEL"); then
       # PROGRESS is deliberately NOT advanced: the objective that was next
       # has slid into this position, and that is the one to run now.
       python planner/push_leg.py "$i" "$at"
@@ -496,7 +504,7 @@ while :; do
   confirmed=1
   python planner/author.py --check-done --goal "$goal" \
       --start "$(python planner/state_text.py)" --gained "$gained" \
-      --observed run/explored.json --model "$MODEL" || confirmed=0
+      --observed run/explored.json --model "$AUTHOR_MODEL" || confirmed=0
   if [ "$redone" = 0 ] && [ "$confirmed" = 0 ]; then
     printf '%s\n' "$leg" >> run/leg_audit_redo
     echo "=== leg $i: the plan met its conditions but the objective is "

@@ -27,6 +27,8 @@ done
 [ ${#PLANS[@]} -gt 0 ] || { echo "no plans given" >&2; exit 1; }
 
 MODEL="${RED_MODEL:-gemma4:31b-it-q4_K_M}"
+# The re-author is WRITING, not playing — see fresh_discovery.sh.
+AUTHOR_MODEL="${RED_AUTHOR_MODEL:-$MODEL}"
 LOG=run/campaign.log
 : > "$LOG"
 
@@ -233,7 +235,7 @@ PY
   # took the whole chain down BEFORE the "produced nothing" guard three
   # lines below could do its job, mid-run, with no message.
   python planner/author.py --goal "$goal" --start "$start" \
-      --out "$rewritten" --model "$MODEL" \
+      --out "$rewritten" --model "$AUTHOR_MODEL" \
       --observed run/explored.json \
       --journal run/executor_log.jsonl 2>&1 | tee -a "$LOG" || true
   if [ ! -s "$rewritten" ]; then
