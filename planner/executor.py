@@ -10659,7 +10659,23 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         doing=json.dumps(macro)[:150])
             ok, trace, clean = self._run_traced(sg, macro,
                                                 ignore_done=redo)
-            if not ok:
+            # `ok` MEANS THE SUBGOAL WAS SATISFIED, NOT THAT THE OPS
+            # WORKED. Under REDO especially, a macro can do exactly what it
+            # said and still return False: warping down to B1F does not
+            # satisfy `map == POKEMON_MANSION_1F`, so a use_warp that the
+            # trace records as "ok (map->POKEMON_MANSION_B1F, moved,
+            # warped)" was filed as a spent FAILURE with no reason — which
+            # is why these refusals carried an empty `why`. The gate then
+            # refused the ONLY exit from 1F's sealed half, with the party
+            # standing three cells from that door and the observation
+            # reporting it reachable (2026-08-23). A refusal needs evidence
+            # of a failure: either a FAILED/REFUSED line, or a trace that
+            # shows nothing happened at all.
+            _why = next((str(t) for t in reversed(trace)
+                         if "FAILED" in str(t) or "REFUSED" in str(t)), "")
+            _did = any(w in str(t) for t in trace
+                       for w in ("map->", "moved", "warped"))
+            if not ok and (_why or not _did):
                 # Keyed on the world mark it was spent in, so anything that
                 # MOVES the world (a badge, a flag, an item, a door) frees
                 # every macro again — the refusal only ever covers a world
@@ -10667,8 +10683,6 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _rec = self._spent_macros.setdefault(
                     _mac_key, {"n": 0, "why": ""})
                 _rec["n"] += 1
-                _why = next((str(t) for t in reversed(trace)
-                             if "FAILED" in str(t) or "REFUSED" in str(t)), "")
                 if _why:
                     _rec["why"] = _why[:240]
             if _decl_lines:
