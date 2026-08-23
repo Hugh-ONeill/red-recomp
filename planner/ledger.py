@@ -153,6 +153,16 @@ def _goal_kinds_of(target: str | None) -> set:
     a lever) — not by whoever is standing near."""
     t = str(target or "")
     return ({"item"} if t.startswith("item:")
+            # A MAP IS ANSWERED BY A WAY OUT. With no kind preferred, a
+            # walked door tied on status with pressed people and then LOST
+            # the tiebreak to `into_seen`, which exists to rank exits among
+            # themselves — so Route 20 listed a sign and two trainers it
+            # had already pressed above the Seafoam door, the only entry on
+            # the page that can change which map you are on (user,
+            # 2026-08-23: "the seafoam door is rated 5th"). plan_explore
+            # already reads the way out first for a map goal; the list it
+            # sits above did not.
+            else {"door", "seam"} if t.startswith("map:")
             else {"fixture"} if t.startswith("flag:")
             else set())
 
