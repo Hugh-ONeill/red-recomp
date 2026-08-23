@@ -1696,8 +1696,22 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
             # told the model the press was wasted, and it walked past the
             # Card Key twice on the strength of our own stale words. Say
             # the ops contract instead; which pad, if any, stays unsaid.
-            words = ("lying on the ground, never picked up — pressing A "
-                     "takes it and it costs nothing"
+            # ...UNLESS THE BAG IS FULL, in which case pressing it takes
+            # NOTHING. gen 1 answers "No more room for items!" and leaves
+            # the ball where it is. This line said "pressing A takes it and
+            # it costs nothing" and then quoted that refusal three words
+            # later, in one breath — the same shape as the statue line that
+            # said walk below it and then that it could not be walked to.
+            # Two balls on the Mansion's B1F, one of them the Secret Key,
+            # were pressed and re-pressed against a 20-of-20 bag
+            # (2026-08-23).
+            _bagfull = len((obs.get("bag") or {})) >= 20
+            words = ("lying on the ground, never picked up — "
+                     + ("the BAG IS FULL (20 of 20 kinds), so pressing it "
+                        "now takes NOTHING and answers \"No more room for "
+                        "items!\" — a slot has to be free FIRST"
+                        if _bagfull else
+                        "pressing A takes it and it costs nothing")
                      + ("" if c.reachable else
                         "; not walkable-to right now, but pressing it is "
                         "still WORTH SENDING — if a pad or door you have "
