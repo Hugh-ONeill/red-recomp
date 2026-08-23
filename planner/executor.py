@@ -2139,6 +2139,25 @@ class Executor:
             self._no_cross = {r: set(v) for r, v in
                               (data.get("no_cross") or {}).items()}
             self._no_cross_at = data.get("no_cross_at") or {}
+            # THE STRIKE LEDGER OUTLIVES THE PROCESS. _dead_ops lived only
+            # in memory, so every attempt's fresh executor started the
+            # 3-strikes count at zero and the "come to nothing 3 times"
+            # refusal almost never fired (74 cross-west failures, 15
+            # refusals all run). The world-mark reset still applies on the
+            # next failure, so a count from an older world expires exactly
+            # as a stale in-process count did (user, 2026-08-23:
+            # "persist the dead ops please").
+            for _rec in (data.get("dead_ops") or []):
+                try:
+                    _k = tuple(tuple(e) if isinstance(e, list) else e
+                               for e in _rec[0])
+                    self._dead_ops[_k] = int(_rec[1])
+                    if _rec[2] is not None:
+                        self._dead_at[_k] = _rec[2]
+                    if _rec[3]:
+                        self._dead_why[_k] = _rec[3]
+                except Exception:
+                    continue
             self._exit_tries = data.get("exit_tries") or {}
             self.flag_sites = data.get("flag_sites") or {}
             # Entries written before the destination was removed still read
@@ -2553,6 +2572,9 @@ class Executor:
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
                  "no_cross_at": self._no_cross_at,
+                 "dead_ops": [[list(k), v, self._dead_at.get(k),
+                               self._dead_why.get(k)]
+                              for k, v in self._dead_ops.items()],
                  "exit_tries": self._exit_tries,
                  "flag_sites": self.flag_sites,
                  "shut_doors": self.shut_doors,
