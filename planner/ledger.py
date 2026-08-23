@@ -108,6 +108,9 @@ class Candidate:
     by_water: bool = False       # doors/things the swum reach touches and
                                  # the walk does not — water is not a wall
                                  # while the party carries SURF
+    spoke: str = ""              # what the game said when this exit was
+                                 # last tried — a locked door answers in
+                                 # words, and that answer is evidence
     twins: list = field(default_factory=list)
                                  # doors: the other tiles of this doorway —
                                  # a doorway spans up to four warp tiles
@@ -501,6 +504,19 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         c.n = int(oc.get("n") or rec.get("n") or 0)
         if oc.get("last"):
             c.note = str(oc["last"])
+        # A DOOR THE GAME HAS ANSWERED IN WORDS IS NOT AN UNTRIED DOOR.
+        # The sentence was already kept — against the region, under the
+        # bare op name — so the page could quote "The door is locked..."
+        # in one paragraph and call the door that said it "never taken
+        # from here — untried" three lines above, which is where explore
+        # kept walking back to (2026-08-23).
+        _said_here = ""
+        for _h in (getattr(ex, "hints", None) or {}).get(here, ()):
+            _pre = f"use_warp ({key}): "
+            if str(_h).startswith(_pre):
+                _said_here = str(_h)[len(_pre):]
+        if _said_here:
+            c.spoke = _said_here
         # A DOOR INTO A LIFT IS A LIFT. The op rides door to door from
         # where you stand — walks in, presses the floor, walks out — but
         # nothing outside the car ever said so, so the run kept working
@@ -1640,6 +1656,8 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                           + _seen_in[0].upper()
                           + "; the other setting has never been tried "
                             "from here")
+        if getattr(c, "spoke", ""):
+            words += (" — trying it said: \"" + str(c.spoke)[:120] + "\"")
         if c.kind == "fixture" and c.key != "PC" and c.status in (
                 "touched", "inert", "worth_a_word"):
             words += " — a fixture; it can be pressed again"

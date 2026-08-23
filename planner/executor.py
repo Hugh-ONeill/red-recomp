@@ -9387,7 +9387,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             heard = ""
             if said and self._op_spoke(pre_obs, obs, said):
                 self._last_said = said
+                # WHICH DOOR SAID IT. Keyed by the bare op, every locked
+                # door, every shutter and every sign pressed by tile filed
+                # its sentence under "use_warp" or "interact", so the line
+                # could never be matched back to the thing that produced
+                # it. Cinnabar's gym answered "The door is locked..." and
+                # the door at (18,3) went on being advertised as "never
+                # taken from here — untried", which is where explore kept
+                # walking (2026-08-23). A coordinate names the thing.
                 who = step.get("name") or op
+                if (not step.get("name") and step.get("x") is not None
+                        and step.get("y") is not None):
+                    who = f"{op} ({step.get('x')},{step.get('y')})"
                 reg = self._where(pre_obs)
                 # The harness's own noise is not a hint: saving, using an
                 # item and buying all print a line the game addressed to
