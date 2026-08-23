@@ -2883,7 +2883,27 @@ class Executor:
         _real = MAP_EDGES.get(here.split("|")[0]) or {}
         keys = [k for k in keys if k not in _nc or k in _real]
         if keys:
-            fresh = sorted(set(keys))
+            # A WAY OUT SEEN ONCE IS NEVER UNSEEN. This REPLACED the stored
+            # list with whatever the current instant could reach, so one
+            # observation that said "no" deleted a real exit for good —
+            # and every "is this area finished" test reads this dict.
+            # SEAFOAM_ISLANDS_B2F|23,2 ended up holding ONE exit, the
+            # ladder the party came in by, while the engine's own
+            # Collision says that room is 56 cells with THREE ladders in
+            # it; the missing one, (25,11), is the only link to the west
+            # half of the island and to the Route 20 door on the far side
+            # of the barrier. The run walked five cells of that room and
+            # was told it was finished. A boulder shoved into the one-cell
+            # neck at (25,5) is enough to produce that instant (57 cells
+            # -> 12), and a boulder is a thing you push, not a wall.
+            # Whether a doorway can be reached RIGHT NOW is a live fact,
+            # computed from the observation every round and reported
+            # separately; whether it EXISTS as a way out of this region is
+            # a fact about the world, and this ledger is the only place
+            # that remembers it. Union, never shrink — the same rule the
+            # seam proofs already obey ("proofs may discourage a
+            # direction, never delete a road the map says exists").
+            fresh = sorted(set(self.frontier.get(here) or []) | set(keys))
             if self.frontier.get(here) != fresh:
                 # persist on CHANGE, not only on transitions: the inventory
                 # was accumulating in memory and the file stayed empty until
