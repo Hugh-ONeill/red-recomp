@@ -662,6 +662,18 @@ local function observe(G, seq, result)
         for _, h in ipairs(o.map.holes or {}) do
           _hole[h.x .. "," .. h.y] = true
         end
+        -- A LEDGE IS ONE-WAY, so a picture without them shows routes that
+        -- only exist downhill. The arrow is the direction it may be hopped
+        -- (field.ledges: tileset, input, ledgeTile — the engine's own).
+        local _ledge, _ts = {}, (map and map.def and map.def.tileset)
+        for _, lg in ipairs((G.data and G.data.field
+                             and G.data.field.ledges) or {}) do
+          if (lg.tileset or "OVERWORLD") == _ts then
+            local _sym = ({ down = "v", up = "^",
+                            left = "<", right = ">" })[lg.input]
+            if _sym then _ledge[lg.ledgeTile] = _sym end
+          end
+        end
         -- FULL RESOLUTION WHEN IT FITS. Folded 2x2, a one-cell wall
         -- vanishes into whichever neighbour won the priority test, so the
         -- barrier that splits Route 20 was invisible at exactly the moment
@@ -687,6 +699,8 @@ local function observe(G, seq, result)
                   this = "o"
                 elseif _warp[k] then
                   this = "+"
+                elseif map.cellTile and _ledge[map:cellTile(cx, cy)] then
+                  this = _ledge[map:cellTile(cx, cy)]
                 elseif _rc[k] then
                   -- water you can reach is not ground you can reach: while
                   -- surfing both would draw as "." and the one distinction
@@ -703,7 +717,10 @@ local function observe(G, seq, result)
                 elseif this == "o" and ch ~= "@" and ch ~= "O" then ch = "o"
                 elseif this == "+" and ch ~= "@" and ch ~= "O"
                        and ch ~= "o" then ch = "+"
-                elseif this == "." and ch ~= "@" and ch ~= "+" then ch = "."
+                elseif this and this:find("^[v^<>]$") and ch == "#" then
+                  ch = this
+                elseif this == "." and ch ~= "@" and ch ~= "+"
+                       and not tostring(ch):find("^[v^<>]$") then ch = "."
                 elseif this == "," and (ch == "#" or ch == "~") then ch = ","
                 elseif this == "~" and ch == "#" then ch = "~"
                 end
@@ -720,6 +737,8 @@ local function observe(G, seq, result)
                                   .. ", water you can reach, ~ water you "
                                   .. "cannot reach from here, "
                                   .. "O a boulder, o a hole, "
+                                  .. "v/^/</> a LEDGE, hoppable only the "
+                                  .. "way the arrow points, "
                                   .. "+ a doorway, # solid or ground no "
                                   .. "walk from here reaches; "
                                   .. (_step == 1
