@@ -1279,6 +1279,19 @@ def observed_text(path: Path) -> str:
                   if _ls.get("map") and _ls.get("region") else "")
     except Exception:
         _here0 = ""
+    if not _here0:
+        # last_state is DELETED at the start of every attempt (campaign's
+        # stale-snapshot guard), so anything authored while a game is up
+        # found no seed and the list silently fell back to "most doors
+        # anywhere", which is every city's front doors. The live
+        # observation says where the party is standing right now.
+        try:
+            _ob = json.loads(Path("run/obs.json").read_text())
+            _m0 = _ob.get("map") or {}
+            _here0 = (f"{_m0.get('id')}|{_m0.get('region')}"
+                      if _m0.get("id") and _m0.get("region") else "")
+        except Exception:
+            _here0 = ""
     _hops = {}
     if _here0:
         from collections import deque as _dq
