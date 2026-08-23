@@ -823,6 +823,8 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         return (f"press {things[0].key} here ({things[0].kind}); "
                 f"{len(things)} thing(s) here are untouched")
 
+    _stood_aside = []          # live-beyond exits _way_line deferred on
+
     def _way_line():
         # A WAY THAT JUST REFUSED YOU IS NOT AN UNTRIED WAY. The crossing
         # stays "untried" because it never completed, and the refusal lives
@@ -854,6 +856,25 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                         and c.status in ("taken", "came_in_by")
                         and not _refused(c)),
                        key=lambda c: (c.n, c.key))
+        # WHERE A WAY LEADS OUTRANKS HOW OFTEN IT WAS USED. Counting bare
+        # uses put "walk east (1x)" at item 1 on Route 20 — a road back
+        # into worked ground — while the Seafoam door beside it (8x)
+        # carries, in this very ledger, "4 more leg(s) on through it
+        # SEAFOAM_ISLANDS_B4F still has 1 exit(s) never taken". Both facts
+        # are already computed; the one that says something is LEFT that
+        # way is the stronger one, and least-used still breaks the tie
+        # among equals (user, 2026-08-23). Where it leads is stated, so
+        # the reason is on the page and the choice stays the model's.
+        # ...so when one of them leads somewhere with something left, this
+        # line STANDS ASIDE: the nearest-area recall below says the same
+        # fact better — it names the region, how many legs, the first leg
+        # to take, and what is still there — and it was being preempted by
+        # a bare use-count for want of this check.
+        _live = [c for c in _used
+                 if c.beyond and "nothing new that way" not in c.beyond]
+        if _live:
+            _stood_aside.extend(_live)
+            return None
         if _used and _used[0].n < (_used[-1].n if len(_used) > 1 else 0):
             _c = _used[0]
             return (f"everything here has been taken at least once; the "
@@ -949,6 +970,15 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                 f"ground with something never tried is {region} "
                 f"({len(path)} leg(s), first {first} to {fd}); explore "
                 f"walks there to " + " and ".join(what))
+    if _stood_aside:
+        # The recall above could not put a walked route together (an edge
+        # it needs is blocked this world-mark, or the graph is split), but
+        # the exit itself and what lies past it are still facts.
+        _c = _stood_aside[0]
+        return (f"everything here has been taken at least once, and no "
+                f"walked route to that ground could be put together right "
+                f"now. The way out that leads toward something never taken "
+                f"is {_c.label()} ({_c.n}x): {_c.beyond}")
     if _stuck:
         return ("everything you can REACH here is done, but "
                 + ", ".join(c.key for c in _stuck[:3])
