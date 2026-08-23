@@ -621,7 +621,14 @@ local function observe(G, seq, result)
         for _, w in ipairs((md and md.warps) or {}) do
           _warp[w.x .. "," .. w.y] = true
         end
-        local _rows, _step = {}, 2
+        -- FULL RESOLUTION WHEN IT FITS. Folded 2x2, a one-cell wall
+        -- vanishes into whichever neighbour won the priority test, so the
+        -- barrier that splits Route 20 was invisible at exactly the moment
+        -- it mattered (user, 2026-08-23: "it cant see the barrier at that
+        -- resolution"). Draw cell-for-cell while the picture stays inside
+        -- a few hundred tokens; fold only for maps too big for that.
+        local _step = ((_W * _H) <= 2400) and 1 or 2
+        local _rows = {}
         for by = 0, _H - 1, _step do
           local line = {}
           for bx = 0, _W - 1, _step do
@@ -659,13 +666,19 @@ local function observe(G, seq, result)
           _rows[#_rows + 1] = table.concat(line)
         end
         o.map.sketch = { rows = _rows, scale = _step,
-                         legend = "@ you, . ground you can reach, "
+                         legend = (_step == 1
+                                   and "@ you, . ground you can reach, "
+                                   or "@ you, . ground you can reach, ")
                                   .. ", water you can reach, ~ water you "
                                   .. "cannot reach from here, "
                                   .. "+ a doorway, # solid or ground no "
-                                  .. "walk from here reaches; each "
-                                  .. "character is a 2x2 block of cells, "
-                                  .. "so cell x = column*2, cell y = row*2" }
+                                  .. "walk from here reaches; "
+                                  .. (_step == 1
+                                      and "one character is one cell, so "
+                                          .. "cell x = column, cell y = row"
+                                      or "each character is a 2x2 block of "
+                                         .. "cells, so cell x = column*2, "
+                                         .. "cell y = row*2") }
       end
     end
     -- THE WATER ON THIS FLOOR IS ON THE SCREEN AND WAS IN NO OBSERVATION.
