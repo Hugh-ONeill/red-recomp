@@ -7122,7 +7122,28 @@ function OPS.interact(G, c)
         -- run answered yes to the first and handed over its MAGIKARP while
         -- trying to collect its CHARIZARD.
         local qkey = who .. "|" .. tostring(recent_text or "?")
+        -- A SWITCH ASKS NOTHING IT CAN TAKE. The guard above exists
+        -- because a reflex "yes" boarded a level 40 CHARIZARD to the
+        -- day-care man; it costs one round to read a question first, and
+        -- that is right for anyone who can take something. A Mansion
+        -- switch statue takes nothing, gives nothing and grants nothing:
+        -- it flips wall blocks and asks "Press it?". The run pressed one,
+        -- was handed the question, answered on the next round, pressed
+        -- again, and EVENT_MANSION_SWITCH_ON stayed off through the whole
+        -- exchange (user, watching: "it has to clear a dialog after
+        -- pressing the switch, just have it auto-activate"). Where the
+        -- thing being pressed is a switch statue, the answer stands on
+        -- the first press.
+        local _is_switch = false
+        do
+          local _sx, _sy = c.x, c.y
+          if _sx and _sy and ow.map and ow.map.cellTile then
+            local _okt, _t = pcall(ow.map.cellTile, ow.map, _sx, _sy)
+            _is_switch = _okt and _t == 61
+          end
+        end
         if c.answer ~= nil and not seen_question[qkey] and not c.read_question
+           and not _is_switch
         then
           -- LEAVE IT OPEN. Neither pressing A nor pressing B here is the
           -- model's judgement: `answer` arrived as boilerplate on 302 of
