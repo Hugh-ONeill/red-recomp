@@ -105,6 +105,9 @@ class Candidate:
     offer: bool = True           # False only for the two hard cases
     rank: tuple = field(default_factory=tuple)
     look: str = "door"           # door | stairs | pad | hole
+    by_water: bool = False       # doors/things the swum reach touches and
+                                 # the walk does not — water is not a wall
+                                 # while the party carries SURF
     twins: list = field(default_factory=list)
                                  # doors: the other tiles of this doorway —
                                  # a doorway spans up to four warp tiles
@@ -469,6 +472,7 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         # tells these apart at a glance and the ledger called them all
         # "door", so eleven floors of Silph pads read like eleven doors.
         c.look = str(w.get("look") or "door")
+        c.by_water = bool(w.get("by_water"))
         oc = outcomes.get(key) or {}
         c.n = int(oc.get("n") or rec.get("n") or 0)
         if oc.get("last"):
@@ -1159,7 +1163,10 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         head += (". EVERYTHING YOU CAN REACH HERE IS DONE — but "
                  + str(len(_uw)) + " way(s) out of this area have never "
                  "been taken and no walk from here reaches them ("
-                 + ", ".join(c.label() for c in _uw[:4])
+                 + ", ".join(c.label()
+                              + (" — no WALK reaches it, but the water does"
+                                 if getattr(c, "by_water", False) else "")
+                              for c in _uw[:4])
                  + "), so this area is NOT finished: what is missing is a "
                  "way to where they stand, and that is on this same floor")
     elif fully_worked(cands) and [c for c in cands
@@ -1355,6 +1362,10 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # list, which is where the choice is actually made, called it a
         # hole and stopped. A player sees the drop; the model was told a
         # label (user, 2026-08-23: "it doesnt see them correctly").
+        if getattr(c, "by_water", False) and c.status == "unreachable":
+            words = ("no walk from here reaches it, but the WATER does: a "
+                     "party Pokemon knows SURF, and from the water, water "
+                     "is walkable")
         if c.kind == "door" and getattr(c, "look", "") == "hole":
             words = ("a HOLE in the floor: stepping on it DROPS you to the "
                      "floor below and there is no climbing back up it, so "

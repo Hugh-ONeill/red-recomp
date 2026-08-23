@@ -854,7 +854,18 @@ local function observe(G, seq, result)
                               -- the model is never told it unwalked.
                               returns = (w.destMap == "LAST_MAP") or nil,
                               reachable = reach[w.x .. "," .. w.y] and true
-                                          or false }
+                                          or false,
+                              -- ...AND A DOORWAY ACROSS WATER IS REACHED BY
+                              -- RIDING TO IT. The walk flood says no, which
+                              -- is true about walking; the swum flood is
+                              -- the party's real answer while a Pokemon
+                              -- carries SURF. Route 20's second exterior
+                              -- mat read "no walk from here reaches it"
+                              -- with 1418 cells of water on the same floor
+                              -- and nothing joining the two facts.
+                              by_water = (not reach[w.x .. "," .. w.y])
+                                         and swim_cells()[w.x .. "," .. w.y]
+                                         and true or nil }
         end
       end
     end
