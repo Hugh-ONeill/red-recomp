@@ -4241,6 +4241,26 @@ function OPS.field_move(G, c)
     end
     if p.facing ~= placed[3] then U.tap(G, placed[3]); U.wait(4) end
   end
+  if mv == "SURF" and not (c.x and c.y) then
+    -- THE MODEL BESIDE WATER PRESSING SURF MEANS THE WATER. Without a
+    -- named tile the op fired facing wherever the last step left the
+    -- sprite, and the game refused ("No SURFing on ... here!") while
+    -- water sat one quarter-turn away. Face the adjacent water first;
+    -- the sprite's own facing wins when it already faces water.
+    local _nb = { { p.cellX, p.cellY - 1, "up" },
+                  { p.cellX, p.cellY + 1, "down" },
+                  { p.cellX - 1, p.cellY, "left" },
+                  { p.cellX + 1, p.cellY, "right" } }
+    local _already, _first
+    for _, a in ipairs(_nb) do
+      if ow.map.isWaterCell and ow.map:isWaterCell(a[1], a[2])
+         and not Collision.occupied(ow.entities, a[1], a[2], p) then
+        if p.facing == a[3] then _already = true end
+        _first = _first or a[3]
+      end
+    end
+    if _first and not _already then U.tap(G, _first); U.wait(4) end
+  end
   U.tap(G, "start"); U.wait(8)
   local menu = ui_top(G)
   if not (menu and menu.screenId == "StartMenu") then
