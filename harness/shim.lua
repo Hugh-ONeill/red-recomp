@@ -2254,10 +2254,21 @@ local function bfs_dir_pass(G, tx, ty, wblock)
       for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
         if seen[key(nx + d[1], ny + d[2])] and #fence < 4 then
           local mv = ((npc.def or {}).movement) or "STAY"
-          fence[#fence + 1] = ("%s (a person, %s) at %d,%d"):format(
+          -- A BOULDER IS NOT A PERSON. ow.npcs carries every map object,
+          -- boulders included, and this called all of them people —
+          -- "SEAFOAMISLANDSB3F_BOULDER1 (a person, standing still)" was
+          -- the reason given for a hop that then went dark for the whole
+          -- world mark. The advice the word carries is opposite: you talk
+          -- to a person, and a boulder is the one blocker in this game a
+          -- field move shifts. The sprite says which, and the shim
+          -- already reads it in three other places.
+          local _isrock = ((npc.def or {}).sprite) == "SPRITE_BOULDER"
+          fence[#fence + 1] = ("%s (%s) at %d,%d"):format(
             tostring((npc.def or {}).name or "someone"),
-            mv == "WALK" and "who wanders"
-              or "standing still — they do not wander", nx, ny)
+            _isrock and "a BOULDER, which STRENGTH pushes — it is not "
+                        .. "someone to talk to"
+              or ("a person, " .. (mv == "WALK" and "who wanders"
+                  or "standing still — they do not wander")), nx, ny)
           break
         end
       end
@@ -3546,7 +3557,10 @@ function OPS.cross(G, c)
           -- reach fill already reads it.
           local _mv = ((npc.def or {}).movement) or "STAY"
           add(tostring((npc.def or {}).name or "someone")
-              .. (_mv == "WALK" and " (a person, who wanders)"
+              .. (((npc.def or {}).sprite) == "SPRITE_BOULDER"
+                    and " (a BOULDER, which STRENGTH pushes — it is not "
+                        .. "someone to talk to)"
+                  or _mv == "WALK" and " (a person, who wanders)"
                   or " (a person, standing still — they do not wander)"),
               nx, ny)
         end
