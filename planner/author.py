@@ -1253,6 +1253,63 @@ def observed_text(path: Path) -> str:
             lines.append(f"  {region}  --{keys}-->  {dest}"
                          + ("  (SHUT: walked into it and turned back every "
                             "time)" if shut and dest == region else ""))
+    # ...AND WHAT IS STILL UNOPENED THERE. The walked graph says where the
+    # run HAS been; it never said which of that ground still has a way out
+    # nobody has taken. So a leg author looking at Seafoam saw five floors
+    # it had walked and no reason to write a plan through them, and wrote
+    # "surf to Cinnabar" instead, over and over (user, 2026-08-23: "what we
+    # need is for it to generate plans that step through seafoam island
+    # again"). The frontier is the run's own record of doors it never
+    # opened — its play, read back to it, the same as the edges above.
+    # Which of them is worth anything stays the author's call.
+    _fr = d.get("frontier") or {}
+    # ...RANKED BY HOW FAR IT IS, not by how much is there. Sorted by count
+    # the list was every city's unentered front doors — Celadon 13, Saffron
+    # 12 — and the floors of the cave the party is standing next to never
+    # made it onto the page at all. Distance is measured over the run's own
+    # walked edges, the same graph the rest of this evidence is.
+    _here0 = ""
+    try:
+        # last_state stores the map and the region SEPARATELY ("ROUTE_20",
+        # "44,2"); the walked graph is keyed "MAP|region", so seeding the
+        # walk with the bare region matched nothing and every distance came
+        # back unknown.
+        _ls = json.loads(Path("run/last_state.json").read_text())
+        _here0 = (f"{_ls.get('map')}|{_ls.get('region')}"
+                  if _ls.get("map") and _ls.get("region") else "")
+    except Exception:
+        _here0 = ""
+    _hops = {}
+    if _here0:
+        from collections import deque as _dq
+        _q, _hops = _dq([(_here0, 0)]), {_here0: 0}
+        while _q:
+            _cur, _n = _q.popleft()
+            for _k2, _e2 in (exp.get(_cur) or {}).items():
+                _to = (_e2 or {}).get("to")
+                if _to and _to not in _hops and not (_e2 or {}).get("shut"):
+                    _hops[_to] = _n + 1
+                    _q.append((_to, _n + 1))
+    _left = sorted(((r, [k for k in (ks or [])])
+                    for r, ks in _fr.items() if ks),
+                   key=lambda rk: (_hops.get(rk[0], 999),
+                                   -len(rk[1]), rk[0]))
+    # ...AND IT GOES FIRST, not last. Appended to the end of the walked
+    # dump it sat past the 22000-char evidence budget and was cut every
+    # time — present in the code, absent from every prompt. What is still
+    # unopened outranks an exhaustive list of what is not.
+    _frontier_lines = []
+    if _left:
+        _frontier_lines.append(
+            "\n\nGROUND YOU HAVE WALKED THAT STILL HAS A WAY OUT NOBODY HAS "
+            "TAKEN (your own record of doors you never opened):")
+        for r, ks in _left[:14]:
+            _hop = _hops.get(r)
+            _frontier_lines.append(
+                f"  {r}: {len(ks)} never taken ("
+                + ", ".join(sorted(ks)[:6]) + ")"
+                + (f" — {_hop} walked leg(s) from where you stand"
+                   if _hop is not None else ""))
     # WHAT GETS CUT MATTERS MORE THAN HOW MANY. This was an alphabetical
     # names[:8], so CERULEAN_CITY showed eight COOLTRAINERs and GUARDs and
     # dropped CUT_TREE — the one object in that city the party could act
@@ -1326,6 +1383,7 @@ def observed_text(path: Path) -> str:
            "the enclosed areas actually walked; a map with several is split "
            "into parts that cannot be walked between, listed after its "
            "name):\n  " + _grouped
+           + "\n".join(_frontier_lines)
            + "\n\nWHAT PREVIOUS RUNS ACTUALLY WALKED (evidence — trust this "
            "over your memory of the game; MAP|region means one connected "
            "area, so the SAME map id appearing with DIFFERENT regions is a "
