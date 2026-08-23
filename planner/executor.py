@@ -9761,9 +9761,51 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             + (f"  → {_v}" if _v else "")
                             + ("  [a FAILED attempt wrote this]"
                                if dead else "") + _far)
-                plan_echo += ":\n" + "\n".join(
-                    [_pl(t, dead=True) for t in _older]
-                    + [_pl(t) for t in self._plans_said]) + "\n"
+                # THE SAME WORDS TEN TIMES IS ONE FACT, NOT TEN. Rendering
+                # every repetition as its own fresh line handed the model
+                # ten samples of its own phrasing to copy — and hid the one
+                # fact no single line carries: HOW MANY times this exact
+                # plan has been written and refused. Near-identical plans
+                # (word-set overlap >= 0.75) collapse into one counted
+                # line; the count is a fact of record, the conclusion
+                # stays the model's (user, 2026-08-23: "its saying the
+                # same thing basically verbatim").
+                _all = ([(t, True) for t in _older]
+                        + [(t, False) for t in self._plans_said])
+                def _wordset(p):
+                    return {w for w in str(p).lower().split() if len(w) > 3}
+                _groups = []
+                for _t, _d in _all:
+                    _ws = _wordset(_t[2])
+                    _hit = None
+                    for _g in _groups:
+                        _ref = _wordset(_g[0][0][2])
+                        _u = len(_ws | _ref) or 1
+                        if len(_ws & _ref) / _u >= 0.75:
+                            _hit = _g
+                            break
+                    if _hit is not None:
+                        _hit.append((_t, _d))
+                    else:
+                        _groups.append([(_t, _d)])
+                _lines = []
+                for _g in _groups:
+                    if len(_g) == 1:
+                        _t, _d = _g[0]
+                        _lines.append(_pl(_t, dead=_d))
+                        continue
+                    _t0 = _g[0][0]
+                    _v = next((x[0][3] for x in reversed(_g)
+                               if len(x[0]) > 3 and x[0][3]), "")
+                    _ndead = sum(1 for _, d in _g if d)
+                    _lines.append(
+                        f"  THE SAME PLAN, written {len(_g)} separate "
+                        f"times"
+                        + (f" ({_ndead} of them in attempts that FAILED)"
+                           if _ndead else "")
+                        + f" (first R{_t0[0]} at {_t0[1]}): {_t0[2]}"
+                        + (f"  → every time: {_v}" if _v else ""))
+                plan_echo += ":\n" + "\n".join(_lines) + "\n"
                 if any(str(t[1]) != str(_here_now)
                        for t in (_older + list(self._plans_said))):
                     plan_echo += ("Where a plan above was written somewhere "
