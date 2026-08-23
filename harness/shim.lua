@@ -2297,6 +2297,34 @@ local function bfs_to_edge(G, dir, skip, surf)
       tostring(ow.map.id), nseen, tostring(ow.map.def and ow.map.def.tileset),
       table.concat(edge_tiles, " ", 1, math.min(#edge_tiles, 24))))
   end
+  -- WATER THAT TOUCHES THE GROUND YOU CAN REACH, IN ANY DIRECTION. nwater
+  -- above counts only water lying straight along the seam's own direction,
+  -- so Route 19 — a sea route whose beach has the ocean to its south and
+  -- west of the stopping cell rather than dead west of it — counted ZERO
+  -- and the refusal named a trainer as the thing the walk stopped at and
+  -- never said the word water (user, 2026-08-23: "thinks the way is
+  -- blocked by the trainers near it instead of the water"). The sea is on
+  -- the screen; whether to ride it stays the model's.
+  local _tw_n, _tw_x, _tw_y, _tw_d = 0, nil, nil, nil
+  if nwater == 0 and ow.map and ow.map.isWaterCell then
+    local _cnt = {}
+    for k in pairs(seen) do
+      local cx, cy = k:match("^(-?%d+),(-?%d+)$")
+      if cx then
+        cx, cy = tonumber(cx), tonumber(cy)
+        for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
+          local wx, wy = cx + d[1], cy + d[2]
+          local wk = wx .. "," .. wy
+          if not seen[wk] and not _cnt[wk] and ow.map:isWaterCell(wx, wy) then
+            _cnt[wk] = true
+            _tw_n = _tw_n + 1
+            local dd = math.abs(wx - p.cellX) + math.abs(wy - p.cellY)
+            if not _tw_d or dd < _tw_d then _tw_d, _tw_x, _tw_y = dd, wx, wy end
+          end
+        end
+      end
+    end
+  end
   return nil, nil, ("BFS from %d,%d walked %d cells (%d ledge hop%s, %d arrow-tile "
     .. "slide%s); closest to "
     .. "the %s edge was %s,%s, still %d cell%s short%s")
@@ -2394,6 +2422,18 @@ local function bfs_to_edge(G, dir, skip, surf)
                     .. "tile you are standing beside puts you on it, and "
                     .. "from there water is walkable")
                or " — nobody in the party can SURF, so water is a wall"))
+        or "")
+    .. ((_tw_n > 0)
+        and ((". WATER lies against the ground you can reach: %d cell(s) of "
+              .. "it, the nearest at (%d,%d). A walk will not cross water%s")
+             :format(_tw_n, _tw_x, _tw_y,
+               knows_surf
+                 and (" — but a party Pokemon knows SURF: {\"op\":"
+                      .. "\"field_move\",\"move\":\"SURF\",\"x\":N,"
+                      .. "\"y\":N} beside a water tile steps onto it, and "
+                      .. "from the water, water is walkable; cross and "
+                      .. "walk_to also take surf=true")
+                 or "; nobody in the party knows SURF"))
         or "")
     .. (nwall_ledge > 0
         and (". " .. nwall_ledge .. " LEDGE tile(s) stand between the "
