@@ -1030,6 +1030,9 @@ class Executor:
         self._dead_at: dict = {}            # ...and the world mark they are OF
         self._ferried: dict = {}            # target -> {region: untried set}
         self.map_doors: dict = {}           # map id -> every doorway seen
+        self.map_forced: dict = {}          # map id -> cells the water bumps
+                                            # you off (seen while standing
+                                            # there; see note_frontier)
         self.door_dests: dict = {}          # map id -> {key: destMap} —
                                             # INTERNAL, never printed: kept
                                             # only so the one-doorway
@@ -2472,6 +2475,8 @@ class Executor:
                       f"ledgers — contents are not on the screen")
             self.map_doors = {k: set(v) for k, v
                               in (data.get("map_doors") or {}).items()}
+            self.map_forced = {k: set(v) for k, v
+                               in (data.get("map_forced") or {}).items()}
             self.door_dests = data.get("door_dests") or {}
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
@@ -2671,6 +2676,8 @@ class Executor:
                  "blackout_lead": self._blackout_lead,
                  "map_doors": {k: sorted(v)
                                for k, v in (self.map_doors or {}).items()},
+                 "map_forced": {k: sorted(v)
+                                for k, v in (self.map_forced or {}).items()},
                  "door_dests": self.door_dests},
                 indent=1)
             tmp = self.MEMORY.with_suffix(".json.tmp")
@@ -2885,6 +2892,21 @@ class Executor:
             # the destinations ride along, unprinted (see door_dests above);
             # the claim rule forbids SAYING them, not knowing which two
             # tiles are one door
+            # ...AND WHICH OF THEM THE WATER WILL NOT LET YOU STAND ON.
+            # The shim publishes this floor's forced cells while you are on
+            # it; a floor away, the executor had nothing, so the
+            # floors-not-finished line advertised B4F's (20,17)/(21,17) as
+            # "plain untried doors, 5 leg(s) away" — the two the current
+            # bumps you straight back off, which this harness has modelled
+            # since 86874b2. Remember what was seen, so the far-away line
+            # can say it too.
+            _cur = (_m.get("currents") or {}) if isinstance(
+                _m.get("currents"), dict) else {}
+            _pushed = {f"{c.get('x')},{c.get('y')}"
+                       for c in (_cur.get("pushed") or [])}
+            if _pushed:
+                self.map_forced[_mid] = set(
+                    self.map_forced.get(_mid, ())) | _pushed
             _dd = self.door_dests.setdefault(_mid, {})
             for _w in (_m.get("warps") or []):
                 if _w.get("x") is not None and _w.get("dest") is not None:
@@ -6737,9 +6759,32 @@ class Executor:
             def _floor_row(_n, _m, _t, _open, _far):
                 parts = []
                 if _open:
-                    parts.append(f"{len(_open)} never taken and on ground you "
-                                 f"have stood on ({', '.join(_open[:4])}) — "
-                                 f"plain untried doors, {_n} leg(s) away")
+                    # "PLAIN" IS A CLAIM, AND FOR TWO OF THESE IT IS FALSE.
+                    # B4F's (20,17)/(21,17) were advertised here as plain
+                    # untried doors five legs away; they are the cells the
+                    # current bumps you straight back off, which this
+                    # harness has modelled since 86874b2 and which the run
+                    # spent whole attempts walking back to. Untried they
+                    # are; plain they are not.
+                    _fc = set(self.map_forced.get(_m, ()))
+                    _bad = [k for k in _open if k in _fc]
+                    if _bad:
+                        parts.append(
+                            f"{len(_open)} never taken and on ground you "
+                            f"have stood on ({', '.join(_open[:4])}), "
+                            f"{_n} leg(s) away — but "
+                            + ("both of those" if len(_bad) == len(_open)
+                               and len(_bad) == 2 else
+                               "all of those" if len(_bad) == len(_open)
+                               else ", ".join(_bad))
+                            + " the water pushed you back off when you "
+                              "rode there, so being untried is not the "
+                              "same as being open")
+                    else:
+                        parts.append(
+                            f"{len(_open)} never taken and on ground you "
+                            f"have stood on ({', '.join(_open[:4])}) — "
+                            f"plain untried doors, {_n} leg(s) away")
                 if _far:
                     parts.append(f"{len(_far)} on parts you have never stood "
                                  f"on ({', '.join(_far[:4])})")
@@ -6919,13 +6964,51 @@ class Executor:
                     if _pick is None or _r < _pick[0]:
                         _pick = (_r, region, _p, _d)
                 if _pick and not _pick[2]:
-                    route_line = (
-                        f"\nYou are STANDING on the closest ground you have "
-                        f"walked to {want_map} — the printed map puts it "
-                        f"{_pick[3]} leg(s) from here, and nothing else you "
-                        f"have covered gets nearer. The way on is not on "
-                        f"walked ground: it is through something here you "
-                        f"have not been through yet.")
+                    # THE PRINTED MAP CANNOT TELL TWO SHORES APART. This
+                    # distance is measured MAP to MAP, so every walked part
+                    # of Route 20 scores the same 1 leg from Cinnabar, the
+                    # tie breaks on fewest legs from here, and `here` wins
+                    # with zero every time. The sentence then claimed far
+                    # more than the measurement: "nothing else you have
+                    # covered gets nearer" is only true at map granularity,
+                    # and "the way on is not on walked ground" is flatly
+                    # false — ROUTE_20|58,9 is walked ground and is the one
+                    # shore that touches the seam. Standing on the east
+                    # side, the run read this as "stop looking at walked
+                    # routes, force a way through HERE" and spent 187
+                    # crossings on a wall (user: "check the full output ...
+                    # and see if theres anything misleading"). Say what the
+                    # map can support, name the other parts it cannot rank,
+                    # and leave the choice alone.
+                    _ties = sorted(
+                        r for r in set(list(self.explored) + list(self.visits))
+                        if r != here
+                        and static_cost(_doorstep(r.split("|")[0]), _goal,
+                                        {}, _links) == _pick[3]
+                        and (self._route(here, r) is not None))
+                    if _ties:
+                        route_line = (
+                            f"\nThe printed map puts {want_map} {_pick[3]} "
+                            f"leg(s) from this map, and you are standing on "
+                            f"a part of it you have walked. It CANNOT say "
+                            f"which part touches the way on — these other "
+                            f"walked parts are exactly as near by that "
+                            f"measure and are different places: "
+                            + ", ".join(_ties[:4])
+                            + (f" (+{len(_ties) - 4} more)"
+                               if len(_ties) > 4 else "")
+                            + ". Which of them the way on is actually "
+                              "through is not something the printed map "
+                              "knows.")
+                    else:
+                        route_line = (
+                            f"\nYou are STANDING on the closest ground you "
+                            f"have walked to {want_map} — the printed map "
+                            f"puts it {_pick[3]} leg(s) from here, and "
+                            f"nothing else you have covered gets nearer. "
+                            f"The way on is not on walked ground: it is "
+                            f"through something here you have not been "
+                            f"through yet.")
                 elif _pick:
                     _fk, _fd = _pick[2][0]
                     _st = (f"walk {_fk}" if not _fk[0].isdigit()
