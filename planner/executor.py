@@ -8088,6 +8088,33 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
         self._dead_why[sig] = str(det or "")[:160]
 
+    def _sig_of(self, obs, op, step):
+        """The strike signature, one formula for every caller."""
+        return (self._cur_target, self._where(obs), op,
+                step.get("name") or step.get("dir")
+                or (step.get("x"), step.get("y")),
+                step.get("item"), step.get("slot"), step.get("forget"),
+                step.get("floor"), step.get("move"))
+
+    def _gated(self, sig, op, step, trace):
+        """The 3-strikes refusal, shared by the generic path and the early
+        cross/walk_to handlers — those dispatch before the generic gate,
+        so a struck-out cross was still executed every round."""
+        if self._dead_ops.get(sig, 0) < 3:
+            return False
+        _args = ",".join(f"{k}={v}" for k, v in step.items()
+                         if k in ("x", "y", "dir", "name", "item",
+                                  "slot", "forget", "floor", "move"))
+        _why = self._dead_why.get(sig) or ""
+        trace.append(f"{op}({_args}): REFUSED — this exact action "
+                     "has already come to nothing 3 times in this "
+                     "subgoal from this area, with nothing about "
+                     "you changed since"
+                     + (f", each time: {_why}" if _why else "")
+                     + "; it cannot work from here as things stand. "
+                     "Whatever stopped it is what has to change.")
+        return True
+
     def _seam_proof(self, obs, step, det):
         """Record "this seam cannot be crossed from here" off a failed cross.
 
@@ -8307,6 +8334,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # ground, and ask again. Recall only.
             if op == "cross" and step.get("dir"):
                 _pre = self.settle() or obs
+                sig = self._sig_of(_pre, op, step)
+                if self._gated(sig, op, step, trace):
+                    continue
                 _r0 = (self._send_safe("cross", **step) or {})
                 _d0 = str((_r0.get("result") or {}).get("detail") or "")
                 if (_r0.get("result") or {}).get("ok"):
@@ -8376,6 +8406,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # edges before, that should def be allowed").
             if op == "walk_to" and step.get("x") is not None:
                 _pre = self.settle() or obs
+                sig = self._sig_of(_pre, op, step)
+                if self._gated(sig, op, step, trace):
+                    continue
                 _r0 = (self._send_safe("walk_to", **step) or {})
                 _d0 = str((_r0.get("result") or {}).get("detail") or "")
                 if (_r0.get("result") or {}).get("ok"):
@@ -8494,11 +8527,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # action has already failed 3 times" when it had never been
             # tried once (leg 33, 2026-08-22). `buy` stays special-cased
             # above: a COUNT is not a different action, a target is.
-            sig = (self._cur_target, self._where(obs), op,
-                   step.get("name") or step.get("dir")
-                   or (step.get("x"), step.get("y")),
-                   step.get("item"), step.get("slot"), step.get("forget"),
-                   step.get("floor"), step.get("move"))
+            sig = self._sig_of(obs, op, step)
             # THE LEDGER IS THE GUARD (EXPLORE_DESIGN §2, §6b). Five
             # refusals used to live here — the door you came in by, a map
             # entered twice for this goal, a room already fully searched,
@@ -8559,26 +8588,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     tried.add(step["name"])
                     self._stamp_touch(here_r)
                     self._mark_touch(here_r, step["name"], obs)
-            if self._dead_ops.get(sig, 0) >= 3:
-                # NAME THE OP. This printed the bare op name, so a macro
-                # holding two crosses or two interacts was told "cross:
-                # REFUSED" with no way to tell which one.
-                _args = ",".join(f"{k}={v}" for k, v in step.items()
-                                 if k in ("x", "y", "dir", "name", "item",
-                                          "slot", "forget", "floor", "move"))
-                # SAY WHAT STOPPED IT. "It cannot work from here" with no
-                # reason left the model re-proposing the gym door after a
-                # reload had regrown the bush in front of it — the three
-                # failures all said "couldn't reach the warp tile", and the
-                # ledger lists that bush as cuttable one line up.
-                _why = self._dead_why.get(sig) or ""
-                trace.append(f"{op}({_args}): REFUSED — this exact action "
-                             "has already come to nothing 3 times in this "
-                             "subgoal from this area, with nothing about "
-                             "you changed since"
-                             + (f", each time: {_why}" if _why else "")
-                             + "; it cannot work from here as things stand. "
-                             "Whatever stopped it is what has to change.")
+            if self._gated(sig, op, step, trace):
                 continue
             pre_obs = obs
             before = self._snapshot(obs)
