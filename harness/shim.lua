@@ -663,15 +663,50 @@ local function observe(G, seq, result)
           _hole[h.x .. "," .. h.y] = true
         end
         -- A LEDGE IS ONE-WAY, so a picture without them shows routes that
-        -- only exist downhill. The arrow is the direction it may be hopped
-        -- (field.ledges: tileset, input, ledgeTile — the engine's own).
-        local _ledge, _ts = {}, (map and map.def and map.def.tileset)
+        -- only exist downhill. But A TILE THAT MERELY LOOKS LIKE ONE IS
+        -- NOT ONE: the engine wants the tile you STAND on, the tile in
+        -- FRONT, the direction, and a walkable landing beyond
+        -- (ledge_landing). Matching ledgeTile alone drew arrows along the
+        -- shoreline, where no hop can ever happen (user, 2026-08-23:
+        -- "ledges at the waters edges dont count as ledges"). Same rule
+        -- the pathfinder uses, so the picture and the walk agree.
+        local _rules, _ts = {}, (map and map.def and map.def.tileset)
         for _, lg in ipairs((G.data and G.data.field
                              and G.data.field.ledges) or {}) do
-          if (lg.tileset or "OVERWORLD") == _ts then
+          if (lg.tileset or "OVERWORLD") == _ts
+             and lg.facing == lg.input then
             local _sym = ({ down = "v", up = "^",
                             left = "<", right = ">" })[lg.input]
-            if _sym then _ledge[lg.ledgeTile] = _sym end
+            if _sym then
+              _rules[#_rules + 1] = { dir = lg.input, sym = _sym,
+                                      stand = lg.standingTile,
+                                      tile = lg.ledgeTile }
+            end
+          end
+        end
+        local _ledge = {}
+        if #_rules > 0 and map.cellTile and map.isWalkableCell
+           and map.inBounds then
+          local _D = { down = {0, 1}, up = {0, -1},
+                       left = {-1, 0}, right = {1, 0} }
+          for cy = 0, _H - 1 do
+            for cx = 0, _W - 1 do
+              local _stand = map:cellTile(cx, cy)
+              for _, r in ipairs(_rules) do
+                if r.stand == _stand then
+                  local d = _D[r.dir]
+                  local fx, fy = cx + d[1], cy + d[2]
+                  if map:inBounds(fx, fy)
+                     and map:cellTile(fx, fy) == r.tile then
+                    local lx, ly = fx + d[1], fy + d[2]
+                    if map:inBounds(lx, ly)
+                       and map:isWalkableCell(lx, ly) then
+                      _ledge[fx .. "," .. fy] = r.sym
+                    end
+                  end
+                end
+              end
+            end
           end
         end
         -- FULL RESOLUTION WHEN IT FITS. Folded 2x2, a one-cell wall
@@ -699,8 +734,8 @@ local function observe(G, seq, result)
                   this = "o"
                 elseif _warp[k] then
                   this = "+"
-                elseif map.cellTile and _ledge[map:cellTile(cx, cy)] then
-                  this = _ledge[map:cellTile(cx, cy)]
+                elseif _ledge[k] then
+                  this = _ledge[k]
                 elseif _rc[k] then
                   -- water you can reach is not ground you can reach: while
                   -- surfing both would draw as "." and the one distinction
