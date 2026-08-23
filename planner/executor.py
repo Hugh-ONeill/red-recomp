@@ -7019,6 +7019,24 @@ class Executor:
         # the way to Mt Moon lay north through Pewter — a door already taken
         # 44 times. The graph can answer "which exit starts the journey", so
         # say it rather than leaving the model to infer it from visit counts.
+        # ...AND "FROM HERE" IS A CLAIM ABOUT WHERE YOU STAND. The route
+        # comes off the learned REGION graph, and a region name can cover
+        # two walkable parts of one floor (POKEMON_MANSION_1F's halves are
+        # both `1,1`, painted when a switch setting joined them). So the
+        # page said "THE KNOWN WAY TO POKEMON_MANSION_2F FROM HERE: take
+        # the door at (5,27)" while the party stood in the sealed half,
+        # which no walk connects to (5,27) — and `go` was sent into it
+        # round after round (2026-08-23). The first leg is checkable
+        # against this floor's own warp list; if no walk reaches it, the
+        # route is still real and it does not start here.
+        def _first_leg_blocked(key):
+            if not key or not key[0].isdigit():
+                return False        # a map EDGE, not a warp on this floor
+            for w in (m.get("warps") or []):
+                if f"{w.get('x')},{w.get('y')}" == key:
+                    return not w.get("reachable")
+            return False
+
         route_line = ""
         want_area = target.split(":", 1)[1] if target.startswith("area:") else ""
         want_map = target.split(":", 1)[1] if target.startswith("map:") else ""
@@ -7028,16 +7046,27 @@ class Executor:
                 first_key, first_dest = path[0]
                 step = (f"walk {first_key}" if not first_key[0].isdigit()
                         else f"the door at ({first_key})")
-                route_line = (
-                    f"\nTHE KNOWN WAY TO {want_area} FROM HERE: take {step} "
-                    f"to {first_dest} — {len(path)} leg(s) over ground you "
-                    f"have already walked ({{\"op\":\"go\",\"to\":"
-                    f"\"{want_area}\"}} walks all of them in one op). Take "
-                    f"it even if you have used it "
-                    f"before; an untried exit that leads somewhere else is "
-                    f"not progress toward this goal. That area is a SPECIFIC "
-                    f"ROOM, not the whole floor; arriving elsewhere on the "
-                    f"same floor is not arriving.")
+                if _first_leg_blocked(first_key):
+                    route_line = (
+                        f"\nA ROUTE TO {want_area} EXISTS AND IT DOES NOT START "
+                        f"HERE: its first leg is {step}, and NO WALK from "
+                        f"where you stand reaches that door. This floor has "
+                        f"more than one part and they answer to the same "
+                        f"name, so the atlas cannot tell them apart — "
+                        f"{{\"op\":\"go\"}} will try that door and fail. "
+                        f"A way out that you CAN reach from here is the "
+                        f"thing to look for.")
+                else:
+                    route_line = (
+                       f"\nTHE KNOWN WAY TO {want_area} FROM HERE: take {step} "
+                       f"to {first_dest} — {len(path)} leg(s) over ground you "
+                       f"have already walked ({{\"op\":\"go\",\"to\":"
+                       f"\"{want_area}\"}} walks all of them in one op). Take "
+                       f"it even if you have used it "
+                       f"before; an untried exit that leads somewhere else is "
+                       f"not progress toward this goal. That area is a SPECIFIC "
+                       f"ROOM, not the whole floor; arriving elsewhere on the "
+                       f"same floor is not arriving.")
         elif want_map and want_map != (m.get("id") or ""):
             best = None
             for region in set(list(self.explored) + list(self.visits)):
@@ -7050,14 +7079,25 @@ class Executor:
                 first_key, first_dest = best[0]
                 step = (f"walk {first_key}" if not first_key[0].isdigit()
                         else f"the door at ({first_key})")
-                route_line = (
-                    f"\nTHE KNOWN WAY TO {want_map} FROM HERE: take {step} "
-                    f"to {first_dest} — that is the first leg of a route you "
-                    f"have already walked ({len(best)} legs total), and "
-                    f"{{\"op\":\"go\",\"to\":\"{want_map}\"}} walks the "
-                    f"whole of it for you in one op. Take it even if you have "
-                    f"used it before; an untried exit that leads somewhere "
-                    f"else is not progress toward this goal.")
+                if _first_leg_blocked(first_key):
+                    route_line = (
+                        f"\nA ROUTE TO {want_map} EXISTS AND IT DOES NOT START "
+                        f"HERE: its first leg is {step}, and NO WALK from "
+                        f"where you stand reaches that door. This floor has "
+                        f"more than one part and they answer to the same "
+                        f"name, so the atlas cannot tell them apart — "
+                        f"{{\"op\":\"go\"}} will try that door and fail. "
+                        f"A way out that you CAN reach from here is the "
+                        f"thing to look for.")
+                else:
+                    route_line = (
+                       f"\nTHE KNOWN WAY TO {want_map} FROM HERE: take {step} "
+                       f"to {first_dest} — that is the first leg of a route you "
+                       f"have already walked ({len(best)} legs total), and "
+                       f"{{\"op\":\"go\",\"to\":\"{want_map}\"}} walks the "
+                       f"whole of it for you in one op. Take it even if you have "
+                       f"used it before; an untried exit that leads somewhere "
+                       f"else is not progress toward this goal.")
             else:
                 # NOTHING WALKED IS ON THAT MAP — which is not the same as
                 # "no door you have ever taken leads there", the sentence
