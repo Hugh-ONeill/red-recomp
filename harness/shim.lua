@@ -2146,6 +2146,36 @@ end
 -- (5,5) through the (25,15) ladder's tile went down the wrong hole, and
 -- the wrong landing was then recorded against (5,5) — severing the learned
 -- route east of Route 3. Only the walk's own destination may be a warp.
+-- PP IS A BATTLE FACT. The observation publishes every move's PP, which is
+-- true and, for a field move, beside the point: IsSurfingAllowed and its
+-- siblings check the badge, the bike flag, the current and what you face,
+-- and never once the PP (src/world/OverworldController.lua). Watching it
+-- read {"id":"SURF","pp":0} off its own party and conclude "SURF has 0 PP,
+-- so I need to heal first to restore PP, then surf west", then spend its
+-- rounds walking to a Pokemon Center for PP it does not need (user,
+-- 2026-08-23: "sure add it for next time"). The number is ours to publish
+-- and the rule is manual-tier; say it only where it is being acted on --
+-- beside a field move whose PP is zero -- and decide nothing.
+local function zero_pp_note(G, mv)
+  local want = tostring(mv or ""):upper()
+  for _, mon in ipairs((G.save or {}).party or {}) do
+    for _, m in ipairs(mon.moves or {}) do
+      local id = tostring(type(m) == "table" and m.id or m):upper()
+      if id == want then
+        local pp = type(m) == "table" and m.pp or nil
+        if pp ~= nil and tonumber(pp) == 0 then
+          return " (note: " .. want .. " is at 0 PP, which is a BATTLE "
+            .. "limit — using it out here from the party menu spends no PP "
+            .. "and is not blocked by having none; that is not what stopped "
+            .. "this)"
+        end
+        return ""
+      end
+    end
+  end
+  return ""
+end
+
 local function warp_block(G, tx, ty)
   local ow = G.overworld
   local md = ow.map and ow.map.def
@@ -5054,6 +5084,7 @@ function OPS.field_move(G, c)
           .. "place, not a mistake in how the move was asked for"
       end
       return false, mv .. " did not fire (the menus closed without it)"
+        .. zero_pp_note(G, mv)
         .. _extra
     end
   end
@@ -5072,6 +5103,7 @@ function OPS.field_move(G, c)
         .. "says there is no place to get off here. You are still surfing; "
         .. "from the water, water is walkable, and walk_to and cross take "
         .. "surf=true"
+        .. zero_pp_note(G, mv)
     end
   end
   return true, "used " .. mv .. (said and (" — " .. said) or "")
