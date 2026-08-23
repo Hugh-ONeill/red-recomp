@@ -2195,7 +2195,8 @@ local function bfs_to_edge(G, dir, skip, surf)
                    -- names the nearest water this body does not touch —
                    -- eight cycles mounted the island's sealed lagoon
                    -- while the open sea lay across the beach.
-                   local bx2, by2, bd2
+                   local bx2, by2, bd2   -- nearest other water at all
+                   local bx3, by3, bd3   -- nearest one you can STAND beside
                    local W3, H3 = map_dims_cells(G)
                    for yy = 0, math.max(0, H3 - 1) do
                      for xx = 0, math.max(0, W3 - 1) do
@@ -2210,18 +2211,46 @@ local function bfs_to_edge(G, dir, skip, surf)
                          if not bd2 or dd2 < bd2 then
                            bd2, bx2, by2 = dd2, xx, yy
                          end
+                         -- a seen neighbor is REACHED GROUND (swum water
+                         -- floods into water, so a seen neighbor of unseen
+                         -- water can only be standable land): only such a
+                         -- cell can be walked beside and mounted
+                         if seen[(xx + 1) .. "," .. yy]
+                            or seen[(xx - 1) .. "," .. yy]
+                            or seen[xx .. "," .. (yy + 1)]
+                            or seen[xx .. "," .. (yy - 1)] then
+                           if not bd3 or dd2 < bd3 then
+                             bd3, bx3, by3 = dd2, xx, yy
+                           end
+                         end
                        end
                      end
                    end
-                   if bx2 then
+                   if bx3 then
                      return (" This map holds OTHER water that this body "
-                       .. "does not touch: the nearest such water lies "
-                       .. "at (%d,%d), %d tile(s) from you in a straight "
-                       .. "line. {\"op\":\"walk_to\",\"x\":%d,"
-                       .. "\"y\":%d,\"surf\":true} walks toward it "
-                       .. "and says what stands in the way; a cross sent "
-                       .. "from beside THAT water searches from it.")
-                       :format(bx2, by2, bd2, bx2, by2)
+                       .. "does not touch, and ground you can reach "
+                       .. "stands beside some of it: the nearest such "
+                       .. "water lies at (%d,%d). {\"op\":\"field_move"
+                       .. "\",\"move\":\"SURF\",\"x\":%d,\"y\":%d} "
+                       .. "walks beside it and mounts it; a cross sent "
+                       .. "from that water searches from it.")
+                       :format(bx3, by3, bx3, by3)
+                   end
+                   if bx2 then
+                     -- the walk_to invitation used to stand here even when
+                     -- the search had already proven NO reached cell
+                     -- borders that body — the model read "walks toward
+                     -- it" as "I can reach it" and burned whole
+                     -- escalations on an op that cannot arrive
+                     return (" This map holds OTHER water that this body "
+                       .. "does not touch: the nearest lies at (%d,%d), "
+                       .. "%d tile(s) away in a straight line — but NO "
+                       .. "ground you can reach from here stands beside "
+                       .. "ANY of that water. No walk or swim from where "
+                       .. "you are arrives at it: it is reached from "
+                       .. "other ground, beyond one of the ways out of "
+                       .. "this walkable area.")
+                       :format(bx2, by2, bd2)
                    end
                    return ""
                  end)()))
