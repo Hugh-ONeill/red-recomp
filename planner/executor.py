@@ -1478,10 +1478,37 @@ class Executor:
         if here in targets:
             return False, [f"go: you are already in {here}"], []
         best = None
+        _reachable = []
         for t in targets:
             path = self._route(here, t)
-            if path and (best is None or len(path) < len(best[1])):
-                best = (t, path)
+            if path:
+                _reachable.append((t, len(path)))
+                if best is None or len(path) < len(best[1]):
+                    best = (t, path)
+        # A BARE MAP NAME HAS SEVERAL PARTS AND WE PICK ONE IN SILENCE.
+        # `go ROUTE_20` from inside Seafoam always lands on ROUTE_20|52,2 —
+        # one leg away — and never on ROUTE_20|58,9, six legs away, because
+        # this takes the shortest route and says nothing about the choice.
+        # Those two are opposite shores of a barrier: one is the way to
+        # Cinnabar and the other is where the run has failed to cross 184
+        # times. The model asked for a MAP and had the half chosen for it
+        # (user, 2026-08-23: "it prefers to go routes that have a smaller
+        # amount of legs, but theres no specific reason to"). Counting ops
+        # instead picks the same wrong shore; what was missing is not a
+        # better tiebreak, it is saying which part was taken and that the
+        # others are nameable. `go` already accepts "MAP|region".
+        _choice_note = ""
+        if best and "|" not in str(want) and len(_reachable) > 1:
+            _others = ", ".join(f"{r} ({n} leg(s))"
+                                for r, n in sorted(_reachable,
+                                                   key=lambda rn: rn[1])
+                                if r != best[0])
+            _choice_note = (
+                f"go: {want} has more than one part you have walked, and "
+                f"this took the nearest — {best[0]}, {len(best[1])} leg(s). "
+                f"The others are reachable too and are NOT the same place: "
+                f"{_others}. Name one ({{\"op\":\"go\",\"to\":"
+                f"\"MAP|region\"}}) when it matters which.")
         if not best:
             _rc = self._ride_chance(here, targets)
             if _rc:
@@ -1514,6 +1541,8 @@ class Executor:
         at = arrived or self._where(cur) or "an unexpected stop"
         tr = [f"go: walked {len(path)} leg(s) over walked ground toward "
               f"{region} — now at {at}"]
+        if _choice_note:
+            tr.append(_choice_note)
         if not ignore_done and pred_holds(sg.get("done_when"), cur):
             return True, tr, [dict(step)]
         if not self._same_area(self._where(cur), region):
