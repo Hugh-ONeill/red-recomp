@@ -4846,6 +4846,22 @@ def check_done(goal: str, start: str, model: str,
     # GAINED this leg already speaks (an item, a badge, an event).
     _gained_speaks = bool(re.search(r"items gained:|badges earned:|"
                                     r"events that fired:", gained or ""))
+    # ...AND ARRIVING SOMEWHERE LEAVES NO EVENT AT ALL. This guard is for a
+    # DEED that happens in a place; for a TRAVEL objective the place IS the
+    # deed, and Kanto writes no flag for standing on a shore. "Reach
+    # ROUTE_20|58,9, the shore of Route 20 on the far side of the Seafoam
+    # Islands" was refused because the events that mention Route 20 are a
+    # rival battle on Route 22 and a Snorlax on Route 12 — while the run
+    # had just crossed the whole island and was standing on that exact
+    # shore, its area predicate satisfied and its visit count up by one.
+    # The already-stood-in validator has drawn this same line all along
+    # ("Travel objectives are exempt — going back somewhere IS the deed
+    # there"); this one had not heard.
+    _TRAVEL_GOAL = ("go", "travel", "return", "reach", "head", "walk",
+                    "fly", "enter", "visit", "arrive")
+    if str(goal).strip().split()[:1] and \
+            str(goal).strip().split()[0].lower().rstrip(",:") in _TRAVEL_GOAL:
+        _gained_speaks = True
     _place = re.search(r"\b(ROUTE\s*\d+|[A-Z][a-z]+\s+(?:CITY|TOWN|ISLAND))\b",
                        goal, re.I)
     if _place and bearing and not _gained_speaks:
