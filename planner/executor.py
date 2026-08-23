@@ -10532,6 +10532,32 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self.log("repeat_allowed_after_battle", subgoal=sg["id"],
                          round=rnd, why=str(_seen.get("why"))[:160])
                 _seen = None
+            # A DOOR YOU CAN NOW REACH IS NOT THE DOOR THAT REFUSED YOU.
+            # The refusal says "same ops, same world, same answer" — and
+            # for a warp whose recorded answer was "couldn't reach the warp
+            # tile" that is checkable, not assumed. POKEMON_MANSION_1F's
+            # two halves share one region name (both are `1,1`, painted
+            # when a switch setting joined them), so a failure recorded in
+            # the main half — where (21,23) is walled off — was replayed
+            # against the sealed half, where the party was standing three
+            # cells from that same door with the observation reporting it
+            # reachable. The run was refused the op that walks into the
+            # basement, by a record of a different room (2026-08-23).
+            if _seen and any(w in str(_seen.get("why") or "").lower()
+                             for w in ("reach the warp tile",
+                                       "no path")):
+                _mm = (obs or {}).get("map") or {}
+                _want = {(st.get("x"), st.get("y")) for st in macro
+                         if isinstance(st, dict)
+                         and st.get("op") in ("use_warp", "walk_to")
+                         and st.get("x") is not None}
+                if any((w.get("x"), w.get("y")) in _want
+                       and w.get("reachable")
+                       for w in (_mm.get("warps") or [])):
+                    self.log("repeat_allowed_now_reachable",
+                             subgoal=sg["id"], round=rnd,
+                             why=str(_seen.get("why"))[:160])
+                    _seen = None
             if _seen:
                 _others = len({k for k in self._spent_macros
                                if k[0] == _mac_key[0]
