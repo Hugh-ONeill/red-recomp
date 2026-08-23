@@ -1583,6 +1583,29 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         if c.status == "untried" and c.kind in ("door", "seam") \
                 and _refused(c):
             words = "never crossed — trying it has turned you back before"
+        # ...AND UNREACHABLE IS ONLY EVER TRUE OF A SETTING, where the
+        # world has a lever that puts the walls back. The run had already
+        # looked at this door in both statue settings and been turned away
+        # by both; the line said only "you cannot walk to it from where
+        # you stand", so every cycle read as new and six subgoals went
+        # round the same circuit (2026-08-23).
+        if c.status == "unreachable" and c.kind in ("door", "seam"):
+            _seen_in = []
+            try:
+                _mid_now = str((obs.get("map") or {}).get("id") or "")
+                _seen_in = list((getattr(ex, "shut_settings", None)
+                                 or {}).get(_mid_now, {}).get(c.key) or [])
+            except Exception:
+                _seen_in = []
+            if len(_seen_in) > 1:
+                words += (" — and you have looked at it with the statues "
+                          "PRESSED and with them UNPRESSED, and no walk "
+                          "reached it either way")
+            elif _seen_in:
+                words += (" — looked at only with the statues "
+                          + _seen_in[0].upper()
+                          + "; the other setting has never been tried "
+                            "from here")
         if c.kind == "fixture" and c.key != "PC" and c.status in (
                 "touched", "inert", "worth_a_word"):
             words += " — a fixture; it can be pressed again"

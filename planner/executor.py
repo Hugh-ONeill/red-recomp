@@ -1031,6 +1031,8 @@ class Executor:
         self._ferried: dict = {}            # target -> {region: untried set}
         self.map_doors: dict = {}           # map id -> every doorway seen
         self.map_holes: dict = {}           # map id -> holes seen in its floor
+        self.shut_settings: dict = {}       # map -> door -> switch settings
+                                            # it was seen unreachable in
         self.map_forced: dict = {}          # map id -> cells the water bumps
                                             # you off (seen while standing
                                             # there; see note_frontier)
@@ -2480,6 +2482,10 @@ class Executor:
                                in (data.get("map_forced") or {}).items()}
             self.map_holes = {k: sorted(set(v)) for k, v
                               in (data.get("map_holes") or {}).items()}
+            self.shut_settings = {k: {k2: sorted(set(v2))
+                                      for k2, v2 in (v or {}).items()}
+                                  for k, v
+                                  in (data.get("shut_settings") or {}).items()}
             self.door_dests = data.get("door_dests") or {}
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
@@ -2683,6 +2689,10 @@ class Executor:
                                 for k, v in (self.map_forced or {}).items()},
                  "map_holes": {k: sorted(v)
                                for k, v in (self.map_holes or {}).items()},
+                 "shut_settings": {k: {k2: sorted(v2)
+                                       for k2, v2 in (v or {}).items()}
+                                   for k, v
+                                   in (self.shut_settings or {}).items()},
                  "door_dests": self.door_dests},
                 indent=1)
             tmp = self.MEMORY.with_suffix(".json.tmp")
@@ -2925,6 +2935,23 @@ class Executor:
             if _hs:
                 self.map_holes[_mid] = sorted(
                     set(self.map_holes.get(_mid, ())) | set(_hs))
+            # WHICH SETTING YOU LOOKED AT IT IN IS PART OF WHAT YOU SAW.
+            # A statue setting is world state the run can put back, so
+            # "unreachable" is only ever true OF A SETTING. The run pressed
+            # 1F's statue, walked to (21,23), found no path, pressed it
+            # back, walked there again, and went round that circuit for six
+            # subgoals — because every page said the same bare
+            # "you cannot walk to it from where you stand", with no memory
+            # that both answers were already in hand (2026-08-23).
+            _on = _m.get("switches_on")
+            if _on is not None:
+                _ss = self.shut_settings.setdefault(_mid, {})
+                for _w in (_m.get("warps") or []):
+                    if _w.get("x") is None or _w.get("reachable"):
+                        continue
+                    _k = f"{_w.get('x')},{_w.get('y')}"
+                    _ss[_k] = sorted(set(_ss.get(_k, ()))
+                                     | {"pressed" if _on else "unpressed"})
             _dd = self.door_dests.setdefault(_mid, {})
             for _w in (_m.get("warps") or []):
                 if _w.get("x") is not None and _w.get("dest") is not None:
