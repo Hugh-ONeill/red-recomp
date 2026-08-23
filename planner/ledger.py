@@ -1330,6 +1330,30 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                     "the water, water is walkable; walk_to and cross also "
                     "take surf=true"
                     if _knows else "; nobody in the party knows SURF"))
+    # ...AND WHETHER THIS FLOOR'S WATER STAYS PUT. Seafoam's currents
+    # carry a rider along a scripted sweep, and B4F's pool edge bumps one
+    # straight back off the two doors at (20,17)/(21,17) — so every list
+    # called those doors reachable, use_warp answered "no path", and the
+    # run aimed at them sixteen times in one subgoal. The engine's own
+    # current table says which cells do it; that they stop doing it once
+    # the plug boulders are down is the game's business, not ours to
+    # point at.
+    _cur = (m.get("currents") or {}) if isinstance(m.get("currents"), dict) \
+        else {}
+    _pushed, _carried = _cur.get("pushed") or [], _cur.get("carried") or []
+    if _pushed or _carried:
+        head += ". THIS FLOOR'S WATER MOVES YOU"
+        if _carried:
+            head += (": riding onto "
+                     + ", ".join(f"({c['x']},{c['y']})" for c in _carried[:6])
+                     + (" and more" if len(_carried) > 6 else "")
+                     + " sweeps you off along the current")
+        if _pushed:
+            head += ((", and " if _carried else ": ")
+                     + ", ".join(f"({c['x']},{c['y']})" for c in _pushed[:6])
+                     + (" and more" if len(_pushed) > 6 else "")
+                     + " pushes you straight back the way you came, so you "
+                     "cannot stand there while you are riding")
     lines = [head + "."]
     # EXITS ARE NEVER CUT. The cap is for the long tail of things and
     # people; a door or a seam is a way out and every one is shown.

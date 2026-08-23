@@ -375,6 +375,24 @@ local recent_text = nil
 -- loud ("I'm too sleepy to move", "you need the POKEDEX"), and every word
 -- of it was being dropped before the model could read it.
 local last_text = nil
+-- WHAT THE GAME HAS ALREADY REFUSED HERE. Set when a field move is turned
+-- back with the game's own words (OPS.field_move), read by every line that
+-- would otherwise recommend that move on this floor. Kept per MAP: Seafoam
+-- B4F's current refuses SURF, the same water elsewhere is rideable, and a
+-- refusal is only ever evidence about the place it was spoken in. Cleared
+-- the moment the party is actually surfing, so a changed world (boulders
+-- dropped into the current) is never contradicted by a stale memory.
+local SURF_REFUSED = nil
+local function surf_refused_here(G)
+  local ow = G and G.overworld
+  if not (SURF_REFUSED and ow and ow.map) then return nil end
+  if SURF_REFUSED.map ~= ow.map.id then return nil end
+  if ow.player and ow.player.surfing then
+    SURF_REFUSED = nil
+    return nil
+  end
+  return SURF_REFUSED.text
+end
 -- QUESTIONS THIS RUN HAS ACTUALLY BEEN SHOWN, keyed by who asked. An
 -- `answer` is only honoured for a question already quoted back to the
 -- model, because `answer="yes"` turned out to be boilerplate rather than
@@ -823,6 +841,27 @@ local function observe(G, seq, result)
       if _wn > 0 then
         o.map.water = { cells = _wn, x = _wx, y = _wy,
                         mount_x = _mx, mount_y = _my }
+      end
+    end
+    -- ...AND WHETHER THIS FLOOR'S WATER STAYS PUT. Known before an attempt
+    -- rather than after sixteen of them: seafoam_forced reads the engine's
+    -- own current table and event flags, so these cells stop being listed
+    -- the moment the plug boulders go down.
+    do
+      local _fc = seafoam_forced(G)
+      if _fc then
+        local _carried, _pushed = {}, {}
+        for k, kind in pairs(_fc) do
+          local _x, _y = k:match("^(-?%d+),(-?%d+)$")
+          local _t = (kind == "pushed") and _pushed or _carried
+          _t[#_t + 1] = { x = tonumber(_x), y = tonumber(_y) }
+        end
+        local function _bykey(a, b)
+          if a.y ~= b.y then return a.y < b.y end
+          return a.x < b.x
+        end
+        table.sort(_carried, _bykey); table.sort(_pushed, _bykey)
+        o.map.currents = { carried = _carried, pushed = _pushed }
       end
     end
     if md and md.warps then
@@ -1847,8 +1886,12 @@ local function bushes_blocking(G, tx, ty, reach)
         end
       end
     end
+    local _refused = surf_refused_here(G)
     txt[#txt + 1] = ("WATER at (%d,%d) — a walk will not cross water%s")
-      :format(wx_, wy_, _ks
+      :format(wx_, wy_, (_ks and _refused)
+        and (", and the game has already refused to let this party ride "
+             .. "here: it said \"" .. _refused .. "\"")
+        or _ks
         and (", but a party Pokemon knows SURF: walk_to and cross take "
              .. "surf=true to ride it, or {\"op\":\"field_move\","
              .. "\"move\":\"SURF\",\"x\":N,\"y\":N} beside a water tile "
@@ -1939,6 +1982,65 @@ region_reach = function(G) return warp_reach(G, true) end
 -- whether a thing across a channel is reachable AT ALL, as against
 -- reachable on foot (user, 2026-08-23: "articuno should read as
 -- reachable (over water)").
+-- WATER THAT MOVES YOU. Seafoam's currents are a scripted sweep, the same
+-- class of mechanic as the arrow tiles spinner_landing already models, and
+-- the harness modelled them not at all: the walker planned routes over
+-- them as ordinary water, got carried, re-planned, and died on its step
+-- budget — which it then reported as "step budget exhausted", our own
+-- bookkeeping dressed up as an answer about the game.
+--
+-- Worse, B4F's forcedExit coords ARE the two doors (20,17)/(21,17): while
+-- the party is surfing and the B3F plug boulders are not down, the engine
+-- plays a bump and scriptMoves you two cells back up
+-- (OverworldState:checkSeafoamCurrent). You cannot stand there at all, and
+-- every list the model reads called those doors "reachable: true" while
+-- use_warp answered "no path" — the harness contradicting itself about a
+-- door two tiles away, for hours (user, 2026-08-23).
+--
+-- Both are read straight from the engine's own field.seafoam table and
+-- its own event flags, so when the boulders go down these cells stop
+-- being forced and everything opens on its own. Nothing here says how to
+-- put them down.
+function seafoam_forced(G)
+  local ow = G and G.overworld
+  local mid = ow and ow.map and ow.map.id
+  local sf = mid and G.data and G.data.field and G.data.field.seafoam
+              and G.data.field.seafoam[mid]
+  if not sf then return nil end
+  local flags = (G.save and G.save.flags) or {}
+  local function allSet(events)
+    for _, e in ipairs(events or {}) do
+      if not flags[e] then return false end
+    end
+    return true
+  end
+  local out, any = {}, false
+  if sf.forcedExit and not allSet(sf.forcedExit.activeUntilEvents) then
+    for _, c in ipairs(sf.forcedExit.coords or {}) do
+      out[c.x .. "," .. c.y] = "pushed"
+      any = true
+    end
+  end
+  if not allSet(sf.currentsDisabledByEvents) then
+    for _, c in ipairs(sf.currents or {}) do
+      out[c.x .. "," .. c.y] = out[c.x .. "," .. c.y] or "carried"
+      any = true
+    end
+  end
+  if sf.entryCurrent then
+    local plugged = true
+    for _, h in ipairs((sf.pluggedByHolesOn or {}).holes or {}) do
+      if not flags[h.boulderEvent] then plugged = false end
+    end
+    if not plugged then
+      out[sf.entryCurrent.x .. "," .. sf.entryCurrent.y] =
+        out[sf.entryCurrent.x .. "," .. sf.entryCurrent.y] or "carried"
+      any = true
+    end
+  end
+  return any and out or nil
+end
+
 function warp_reach(G, no_ledges, surf)
   local okc, Collision = pcall(require, "src.world.Collision")
   local ow, p = G.overworld, G.overworld and G.overworld.player
@@ -1981,6 +2083,11 @@ function warp_reach(G, no_ledges, surf)
   for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
     THROUGH[key(w.x, w.y)] = true
   end
+  -- A CELL THE GAME SHOVES YOU OFF IS NOT A CELL YOU CAN REACH. While the
+  -- party rides, Seafoam's forced cells bump it straight back (see
+  -- seafoam_forced); calling them reachable is what let every list say
+  -- "(20,17) reachable: true" while use_warp answered "no path".
+  local FORCED = ((surf or (p and p.surfing)) and seafoam_forced(G)) or nil
   -- ...BUT NOT THE ONE YOU ARE STANDING ON. "A door is an endpoint, not
   -- a corridor" is about routing THROUGH a warp; the cell under your own
   -- feet is where you already are, and you can step off it in any
@@ -2009,6 +2116,10 @@ function warp_reach(G, no_ledges, surf)
               q[#q + 1] = { x = sx, y = sy }
             end
             seen[key(nx, ny)] = true
+          elseif FORCED and FORCED[key(nx, ny)] then
+            -- reached and refused: the ride carries you off it again, so
+            -- it is neither somewhere you end up nor somewhere you cross
+            seen[key(nx, ny)] = nil
           else
             seen[key(nx, ny)] = true
             if not (THROUGH and THROUGH[key(nx, ny)]) then
@@ -2043,6 +2154,16 @@ local function warp_block(G, tx, ty)
     if not (w.x == tx and w.y == ty) then
       blocked[w.x .. "," .. w.y] = true
     end
+  end
+  -- ...AND NEITHER IS WATER THAT CARRIES YOU. Routed over a Seafoam
+  -- current the walker aims, gets swept, re-aims and spends its whole
+  -- budget doing it — which use_warp then reported as "step budget
+  -- exhausted", a fact about our counter and not about the game. The
+  -- TARGET is left routable so aiming AT one still reports what the
+  -- water does rather than pretending the cell is not there.
+  local _forced = (ow.player and ow.player.surfing) and seafoam_forced(G)
+  for k in pairs(_forced or {}) do
+    if k ~= (tx .. "," .. ty) then blocked[k] = true end
   end
   return blocked
 end
@@ -3190,6 +3311,22 @@ function OPS.use_warp(G, c)
     return false, "you reached the door and it refused to open — the game "
       .. "said: \"" .. _wsaid .. "\". You stood on the mat; walking "
       .. "somewhere else and coming back will not change the answer."
+  end
+  -- THE WATER PUT YOU BACK, IT DID NOT FAIL TO CARRY YOU. Aimed at
+  -- B4F's (20,17)/(21,17) while riding, the walk is bumped two cells
+  -- north every time it arrives, so the only thing this could report was
+  -- its own dead step counter. What happens is on the screen: say it.
+  do
+    local _fc = (p and p.surfing) and seafoam_forced(G)
+    local _k = _fc and _fc[c.x .. "," .. c.y]
+    if _k then
+      return false, ("you got there and the water would not let you stay: "
+        .. "riding onto (%d,%d) %s. That is what this floor's water does "
+        .. "right now, not a failure of the walk")
+        :format(c.x, c.y,
+                _k == "pushed" and "pushes you straight back the way you came"
+                or "sweeps you off along the current")
+    end
   end
   return false, "couldn't reach the warp tile ("
     .. tostring(walk_why or "no reason recorded") .. ")"
@@ -4875,6 +5012,18 @@ function OPS.field_move(G, c)
       end
       local _txt_now = tostring(last_text or "")
       if _txt_now ~= "" and _txt_now ~= _txt_before then
+        -- ...AND THE REST OF THE PAGE MUST STOP RECOMMENDING IT. Seafoam
+        -- B4F answered SURF with "The current is much too fast!" and the
+        -- very next line of the same failure read "a party Pokemon knows
+        -- SURF: walk_to and cross take surf=true to ride it" — the
+        -- harness contradicting itself inside one message, and pushing
+        -- the one move the game had just refused. Remember the refusal
+        -- against THIS MAP so every water line can quote it instead.
+        if mv == "SURF" then
+          SURF_REFUSED = { map = ((G.overworld and G.overworld.map
+                                   and G.overworld.map.id) or nil),
+                           text = _txt_now }
+        end
         return false, mv .. " was REFUSED BY THE GAME, which said: \""
           .. _txt_now .. "\". That is the game's own answer about this "
           .. "place, not a mistake in how the move was asked for"
