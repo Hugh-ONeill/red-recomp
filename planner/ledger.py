@@ -1197,6 +1197,32 @@ FAIL_CHARS = 460
 _STOP_MARK = "Right where the walk stopped:"
 
 
+def _spent_both_note(obs, ex) -> str:
+    """What pressing again can still answer HERE — nothing, once every way
+    out of this floor that no walk reaches has been seen in both settings.
+    Only the doors this floor actually shows as unreachable count, and only
+    settings the run itself recorded."""
+    try:
+        m = (obs or {}).get("map") or {}
+        mid = str(m.get("id") or "")
+        seen = (getattr(ex, "shut_settings", None) or {}).get(mid) or {}
+        shut = [w for w in (m.get("warps") or [])
+                if w.get("x") is not None and not w.get("reachable")]
+        if not shut:
+            return ""
+        both = [w for w in shut
+                if len(seen.get(f"{w.get('x')},{w.get('y')}") or ()) > 1]
+        if len(both) != len(shut):
+            return ""
+        return (". EVERY way out of this floor that no walk reaches — "
+                + ", ".join(f"({w.get('x')},{w.get('y')})" for w in shut[:4])
+                + " — has ALREADY been looked at with this setting BOTH "
+                  "ways, and no walk reached any of them either way, so "
+                  "pressing it again cannot answer anything about THEM")
+    except Exception:
+        return ""
+
+
 def render(cands: list[Candidate], ex, obs: dict, target: str = "",
            limit: int = 24) -> str:
     """The ledger as the model reads it: numbered, local, ranked, bounded.
@@ -1437,6 +1463,14 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                    + " presses the first one"
                    + ". What "
                    "it changes is elsewhere on this floor or another"
+                 # ...AND WHETHER PRESSING IT AGAIN CAN STILL ANSWER
+                 # ANYTHING HERE. This paragraph hands the model a
+                 # ready-to-run op, and it is the only one the header
+                 # offers on a floor that is otherwise "done" — so it kept
+                 # being sent, long after both settings had been looked at
+                 # for every way out of this floor. That fact lived far
+                 # down the page beside the doors; say it where the op is.
+                 + (_spent_both_note(obs, ex))
                  + (". THEY ALL SHARE ONE SETTING, which is currently "
                     + ("PRESSED" if m.get("switches_on") else "UNPRESSED")
                     + " — pressing ANY of them flips that one setting for "
