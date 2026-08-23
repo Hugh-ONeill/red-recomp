@@ -684,7 +684,21 @@ local function observe(G, seq, result)
               end
             end
           end
-          if #_sw > 0 then o.map.switch_statues = _sw end
+          if #_sw > 0 then
+            o.map.switch_statues = _sw
+            -- ...AND WHICH WAY THEY ARE SET RIGHT NOW. The statues share
+            -- ONE state: pressing any of them flips the same wall blocks
+            -- on every floor (story6.lua's EVENT_MANSION_SWITCH_ON). The
+            -- run pressed 1F, found its door still shut, walked up and
+            -- pressed 2F — flipping the whole Mansion straight back — and
+            -- did that for a whole attempt, reporting "activated" each
+            -- time and getting further from the basement. Which walls are
+            -- open is on the screen; that the state is SHARED is what a
+            -- player learns pressing the second one. We had the state in
+            -- hand and stripped it before the model saw anything.
+            local _on = ((G.save or {}).flags or {}).EVENT_MANSION_SWITCH_ON
+            o.map.switches_on = _on and true or false
+          end
         end
       end
     end

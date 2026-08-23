@@ -1399,6 +1399,12 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  + ". A switch is PRESSED, and only while you are FACING "
                    "UP at it: walk to the cell BELOW it and interact. What "
                    "it changes is elsewhere on this floor or another"
+                 + (". THEY ALL SHARE ONE SETTING, which is currently "
+                    + ("PRESSED" if m.get("switches_on") else "UNPRESSED")
+                    + " — pressing ANY of them flips that one setting for "
+                      "every floor, so pressing a second one puts the "
+                      "first back"
+                    if m.get("switches_on") is not None else "")
                  + ("" if _reach else
                     " — none of these can be walked to from where you "
                     "stand right now"))
