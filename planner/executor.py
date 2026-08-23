@@ -5506,13 +5506,27 @@ class Executor:
                         and "couldn't reach" in _det):
                     _rode = True
                     _dx, _dy = key.split(",")
+                    # KEEP THE RIDE'S OWN VERDICT. This ran two ops and
+                    # surfaced only the second one's failure, so a ride
+                    # that never got onto the water at all was reported as
+                    # "couldn't reach the warp tile (no path — the ground
+                    # you can walk from here is 189 cell(s))" — a LAND
+                    # flood, which is the tell, and the reason the mount
+                    # failed went in the bin. Our own rule about not
+                    # hiding applies to our own diagnostics.
+                    _wres = self._send_safe("walk_to", x=int(_dx),
+                                            y=int(_dy), surf=True)
+                    _wdet = ((_wres or {}).get("result") or {}).get("detail")
+                    o = self.settle() or o
+                    _ures = self._send_safe("use_warp", x=int(_dx),
+                                            y=int(_dy))
+                    _udet = ((_ures or {}).get("result") or {}).get("detail")
+                    o = self.settle() or o
                     self.log("route_ride", subgoal=sg.get("id"),
-                             step=str(key), why=_det[:160])
-                    self._send_safe("walk_to", x=int(_dx), y=int(_dy),
-                                    surf=True)
-                    o = self.settle() or o
-                    self._send_safe("use_warp", x=int(_dx), y=int(_dy))
-                    o = self.settle() or o
+                             step=str(key), why=_det[:160],
+                             ride=str(_wdet)[:220],
+                             then=str(_udet)[:160],
+                             landed=(self._where(o) == nxt))
                     if self._where(o) == nxt:
                         break
                     continue
