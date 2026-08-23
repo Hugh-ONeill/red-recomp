@@ -476,7 +476,18 @@ local function observe(G, seq, result)
   local o = { seq = seq, result = result, events = events, frame = U.frame() }
   events = {}
   if recent_text then o.recent_text = recent_text end
-  if last_text then o.last_text = last_text end
+  -- LAST_TEXT IS HISTORY, AND IT WAS HANDED OVER LOOKING LIKE NOW. It is
+  -- deliberately sticky — it outlives the box that printed it so an op can
+  -- read what was said after the box closes — but it rides in
+  -- CURRENT_OBSERVATION, and the run twice concluded "the door is locked
+  -- because the old man's dialogue is still open (last_text shows his
+  -- speech)" while standing in free roam (user, 2026-08-23: "do the text
+  -- box thing too"). Whether a box is ON SCREEN is a different fact, and
+  -- now it travels with the words.
+  if last_text then
+    o.last_text = last_text
+    o.text_on_screen = false     -- overridden below when a box is really up
+  end
   o.text_seq = text_seq        -- see note_text: printed-line count, not words
   if G.overworld and top == G.overworld then
     recent_text = nil          -- free roam: stale prompt no longer applies
@@ -1251,6 +1262,7 @@ local function observe(G, seq, result)
     -- page currently on screen — the model reads at the same pace a player
     -- does and advances with A, no lookahead.
     o.mode = "dialog"
+    o.text_on_screen = true
     local page = top.pages[top.pageIndex] or {}
     o.dialog = { text = table.concat(page, "\n"),
                  page = top.pageIndex, pages = #top.pages,

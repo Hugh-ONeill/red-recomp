@@ -9860,7 +9860,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                        if (obs or {}).get("fly_towns") else "")
                     + f"{plan_echo}"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
-                    f"CURRENT_OBSERVATION: "
+                    + ("(last_text is WHAT WAS SAID LAST, not what is on "
+                       "screen now — text_on_screen says whether a box is "
+                       "actually up.)\n"
+                       if (obs or {}).get("last_text") is not None else "")
+                    + f"CURRENT_OBSERVATION: "
                     f"{json.dumps(obs, separators=(',', ':'))}\n"
                     "Author the op-list macro to achieve DONE_WHEN from here. "
                     "If ops in the feedback 'had no visible effect', they did "
