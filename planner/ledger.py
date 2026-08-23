@@ -896,11 +896,6 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
     # header fixed, plan_explore left behind.
     _stuck = [c for c in cands if c.status == "unreachable"
               and c.kind not in ("op", "door", "seam")]
-    if _stuck:
-        return ("everything you can REACH here is done, but "
-                + ", ".join(c.key for c in _stuck[:3])
-                + " sits on this floor where no walk from here goes — the "
-                "way in is what is missing, not the thing")
     # nearest area with something never taken OR never pressed, over
     # walked ground — leaving worked ground for ground that still has
     # something is the whole idea, so both kinds of "something" count
@@ -924,6 +919,12 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         _, region, left, things, path = best
         fk, fd = path[0]
         first = f"walk {fk}" if not fk[0].isdigit() else f"door ({fk})"
+        # THE NEAREST-AREA RECALL OUTRANKS THE UNREACHABLES NOTE. That note
+        # used to take item 1 whenever anything unreachable sat on the
+        # floor — and Route 20 always has sea trainers no walk reaches, so
+        # the one line naming walked ground that still has an exit never
+        # taken (Seafoam B4F, legs through the door already walked) could
+        # never be said there. Both facts fit; the walk leads.
         what = []
         if left:
             # name a seam as an EDGE and a door as a DOOR: "take one of
@@ -937,11 +938,22 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                         + " (never taken)")
         if things:
             what.append(f"press {', '.join(things[:3])}")
-        return (f"THIS AREA IS FULLY WORKED — every exit taken, everything "
-                f"pressed; nothing new can be found by staying. The nearest "
+        _head = ("THIS AREA IS FULLY WORKED — every exit taken, "
+                 "everything pressed; nothing new can be found by staying."
+                 if not _stuck else
+                 "Everything you can REACH here is done ("
+                 + ", ".join(c.key for c in _stuck[:3])
+                 + " sits where no walk from here goes — the way in is "
+                 "what is missing, not the thing).")
+        return (_head + f" The nearest "
                 f"ground with something never tried is {region} "
                 f"({len(path)} leg(s), first {first} to {fd}); explore "
                 f"walks there to " + " and ".join(what))
+    if _stuck:
+        return ("everything you can REACH here is done, but "
+                + ", ".join(c.key for c in _stuck[:3])
+                + " sits on this floor where no walk from here goes — the "
+                "way in is what is missing, not the thing")
     _refd = [c for c in cands if c.status == "untried"
              and c.kind in ("door", "seam") and _refused(c)]
     if _refd:
