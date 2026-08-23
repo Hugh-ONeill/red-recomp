@@ -4330,24 +4330,28 @@ function OPS.field_move(G, c)
   -- it like the lift panel: exact row first, loose second, and name the
   -- game's own offer on a miss (user, 2026-08-22: "do the fly op").
   if mv == "FLY" then
+    -- THE FLY PICKER IS THE TOWN MAP, NOT A LIST. PartyMenu's "fly" action
+    -- pushes Screens "TownMap" {fly=true} (src/ui/PartyMenu.lua; FlyMenu.lua
+    -- exists but nothing calls it) — the screen carries .fly, .flyMapIds
+    -- (visited fly towns, fly order) and .sel (1-based cursor); UP steps
+    -- FORWARD through the towns, A departs, B cancels. The first build of
+    -- this op waited for a ListMenu that never comes and reported "FLY
+    -- opened no destination list" on every use.
     local wantfly = tostring(c.to or ""):upper():gsub(" ", "_")
-    local lt
-    for _ = 1, 30 do
-      lt = ui_top(G)
-      if lt and lt.items and lt.title
-         and tostring(lt.title):upper():find("FLY") then break end
+    local tm
+    for _ = 1, 60 do
+      tm = G.stack:top()
+      if tm and tm.fly and tm.flyMapIds then break end
       U.wait(4)
     end
-    lt = ui_top(G)
-    if not (lt and lt.items and lt.title
-            and tostring(lt.title):upper():find("FLY")) then
+    tm = G.stack:top()
+    if not (tm and tm.fly and tm.flyMapIds) then
       ui_back_out(G)
-      return false, "FLY opened no destination list"
+      return false, "FLY opened no destination picker"
     end
     local offer, fidx, floose = {}, nil, nil
-    for i, it in ipairs(lt.items) do
-      local lab = tostring(it.value or it.label or "")
-                    :upper():gsub(" ", "_")
+    for i, mid in ipairs(tm.flyMapIds) do
+      local lab = tostring(mid):upper():gsub(" ", "_")
       offer[#offer + 1] = lab
       if lab == wantfly then
         fidx = fidx or i
@@ -4358,18 +4362,26 @@ function OPS.field_move(G, c)
     end
     fidx = fidx or floose
     if wantfly == "" then
-      ui_back_out(G)
+      U.tap(G, "b"); U.wait(6)
       return false, "FLY needs to=<a town you have visited>. It offers: "
         .. table.concat(offer, ", ")
     end
     if not fidx then
-      ui_back_out(G)
+      U.tap(G, "b"); U.wait(6)
       return false, ("no fly destination called %s — FLY goes only to "
-        .. "towns you have VISITED, and it offers: %s")
+        .. "towns you have VISITED (walking into a town once adds it), "
+        .. "and it offers: %s")
         :format(wantfly, table.concat(offer, ", "))
     end
+    for _ = 1, (#tm.flyMapIds * 2 + 2) do
+      if tm.sel == fidx then break end
+      U.tap(G, "up"); U.wait(4)      -- up steps FORWARD, wrapping
+    end
+    if tm.sel ~= fidx then
+      U.tap(G, "b"); U.wait(6)
+      return false, "the fly cursor would not land on " .. wantfly
+    end
     local _fromMap = (G.overworld.map or {}).id
-    ui_cursor_to(G, "index", fidx)
     U.tap(G, "a"); U.wait(10)
     for _ = 1, 200 do            -- ride the flight out
       if G.stack:top() == G.overworld
