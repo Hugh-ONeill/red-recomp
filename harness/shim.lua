@@ -539,7 +539,12 @@ local function observe(G, seq, result)
       local _wn, _wx, _wy, _wd = 0, nil, nil, nil
       local _mx, _my, _md2 = nil, nil, nil        -- mountable from reach
       if map.isWaterCell then
-        local _W, _H = map_dims_cells(G)
+        -- map_dims_cells is a local defined further down this file, so it
+        -- is nil up here; this is its body. NOT widthCells/heightCells —
+        -- the live map object leaves those nil on many maps, which is the
+        -- very reason that helper exists. Static map data, blocks x2.
+        local _W = (((md and md.width) or (map and map.width) or 0)) * 2
+        local _H = (((md and md.height) or (map and map.height) or 0)) * 2
         local _rc = reachable_cells()
         for _yy = 0, math.max(0, _H - 1) do
           for _xx = 0, math.max(0, _W - 1) do
