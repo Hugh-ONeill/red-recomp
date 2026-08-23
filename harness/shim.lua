@@ -602,6 +602,72 @@ local function observe(G, seq, result)
       end
       return _swim_memo or {}
     end
+    -- THE SHAPE OF THE PLACE IS ON THE SCREEN AND WAS IN NO OBSERVATION.
+    -- A player SEES that Route 20 is split by an island and that the only
+    -- opening on this side is a cave mouth; the model got "closest to the
+    -- left edge was 44,9, still 44 cells short", which is true and carries
+    -- no geometry at all, and butted the same wall for days (user,
+    -- 2026-08-23: "a human playing can visually see theres no path through
+    -- unless you go through seafoam islands"). This draws what is drawn:
+    -- where you stand, ground you can reach, water, doors, and everything
+    -- solid, folded 2x2 so a route fits in a few hundred characters.
+    -- Nothing here is labelled a way anywhere; it is the screen, as text.
+    do
+      local _W = (((md and md.width) or (map and map.width) or 0)) * 2
+      local _H = (((md and md.height) or (map and map.height) or 0)) * 2
+      if _W > 0 and _H > 0 and _W * _H <= 20000 then
+        local _rc = reachable_cells()
+        local _warp = {}
+        for _, w in ipairs((md and md.warps) or {}) do
+          _warp[w.x .. "," .. w.y] = true
+        end
+        local _rows, _step = {}, 2
+        for by = 0, _H - 1, _step do
+          local line = {}
+          for bx = 0, _W - 1, _step do
+            local ch = "#"
+            for dy = 0, _step - 1 do
+              for dx = 0, _step - 1 do
+                local cx, cy = bx + dx, by + dy
+                local k = cx .. "," .. cy
+                local this
+                if p and cx == p.cellX and cy == p.cellY then
+                  this = "@"
+                elseif _warp[k] then
+                  this = "+"
+                elseif _rc[k] then
+                  -- water you can reach is not ground you can reach: while
+                  -- surfing both would draw as "." and the one distinction
+                  -- this whole leg turns on would vanish from the picture
+                  this = (map.isWaterCell and map:isWaterCell(cx, cy))
+                         and "," or "."
+                elseif map.isWaterCell and map:isWaterCell(cx, cy) then
+                  this = "~"
+                end
+                -- @ beats a door beats ground beats reachable water beats
+                -- water you cannot reach
+                if this == "@" then ch = "@"
+                elseif this == "+" and ch ~= "@" then ch = "+"
+                elseif this == "." and ch ~= "@" and ch ~= "+" then ch = "."
+                elseif this == "," and (ch == "#" or ch == "~") then ch = ","
+                elseif this == "~" and ch == "#" then ch = "~"
+                end
+              end
+            end
+            line[#line + 1] = ch
+          end
+          _rows[#_rows + 1] = table.concat(line)
+        end
+        o.map.sketch = { rows = _rows, scale = _step,
+                         legend = "@ you, . ground you can reach, "
+                                  .. ", water you can reach, ~ water you "
+                                  .. "cannot reach from here, "
+                                  .. "+ a doorway, # solid or ground no "
+                                  .. "walk from here reaches; each "
+                                  .. "character is a 2x2 block of cells, "
+                                  .. "so cell x = column*2, cell y = row*2" }
+      end
+    end
     -- THE WATER ON THIS FLOOR IS ON THE SCREEN AND WAS IN NO OBSERVATION.
     -- Water reached the model only through refusals — a cross that failed,
     -- a target with a channel in front of it — so a party standing on

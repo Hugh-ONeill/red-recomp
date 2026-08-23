@@ -9873,12 +9873,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                        if (obs or {}).get("fly_towns") else "")
                     + f"{plan_echo}"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
+                    + (("THIS PLACE, AS IT IS DRAWN (" +
+                        str(((obs.get("map") or {}).get("sketch") or {})
+                            .get("legend") or "") + "):\n"
+                        + "\n".join(((obs.get("map") or {})
+                                     .get("sketch") or {}).get("rows") or [])
+                        + "\n")
+                       if ((obs or {}).get("map") or {}).get("sketch")
+                       else "")
                     + ("(last_text is WHAT WAS SAID LAST, not what is on "
                        "screen now — text_on_screen says whether a box is "
                        "actually up.)\n"
                        if (obs or {}).get("last_text") is not None else "")
                     + f"CURRENT_OBSERVATION: "
-                    f"{json.dumps(obs, separators=(',', ':'))}\n"
+                    f"{json.dumps(_obs_nosketch(obs), separators=(',', ':'))}\n"
                     "Author the op-list macro to achieve DONE_WHEN from here. "
                     "If ops in the feedback 'had no visible effect', they did "
                     "NOT do what you intended — try a different approach.")
@@ -11886,6 +11894,19 @@ def bootstrap(b: Bridge, cont: bool = False):
             return
     raise RuntimeError(
         f"bootstrap failed (stuck in mode={(b.obs() or {}).get('mode')})")
+
+
+def _obs_nosketch(obs):
+    """The observation without the drawn map — it is printed above the
+    JSON in words, and shipping the rows twice pays for them twice in a
+    prompt already near its cap."""
+    if not isinstance(obs, dict) or not (obs.get("map") or {}).get("sketch"):
+        return obs
+    o2 = dict(obs)
+    m2 = dict(o2.get("map") or {})
+    m2.pop("sketch", None)
+    o2["map"] = m2
+    return o2
 
 
 def _write_last_state(b, failed_plan=None, failed_subgoal=None):
