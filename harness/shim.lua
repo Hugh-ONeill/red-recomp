@@ -634,9 +634,26 @@ local function observe(G, seq, result)
       if map.warpPadOrHoleAt and _W > 0 and _H > 0 and _W * _H <= 20000 then
         local _rc = reachable_cells()
         local _holes = {}
+        -- A HOLE IS A WARP YOU FALL DOWN, NOT EVERY TILE THAT LOOKS
+        -- LIKE ONE. warpPadOrHoleAt is a LOOK-UP the engine consults
+        -- inside takeWarp — once you are already standing on a warp
+        -- entry — purely to pick the falling animation over the door
+        -- sound (OverworldController:takeWarp, line ~4079). Asked of
+        -- every cell instead, it answers "hole" for decorative rubble:
+        -- POKEMON_MANSION_2F reported 171 HOLES and 3F reported 40, on a
+        -- floor whose real drop-throughs are three script cells (user,
+        -- looking at the screen: "those arent holes btw theyre rubble").
+        -- I wrote that scan this morning and defended the number when it
+        -- was questioned. A cell is only a hole the party can fall down
+        -- if the map's own warp table has an entry there.
+        local _warp_at = {}
+        for _, w in ipairs((md and md.warps) or {}) do
+          _warp_at[w.x .. "," .. w.y] = true
+        end
         for cy = 0, _H - 1 do
           for cx = 0, _W - 1 do
-            if map:warpPadOrHoleAt(cx, cy) == "hole" then
+            if _warp_at[cx .. "," .. cy]
+               and map:warpPadOrHoleAt(cx, cy) == "hole" then
               _holes[#_holes + 1] = { x = cx, y = cy,
                                       reachable = _rc[cx .. "," .. cy]
                                                   and true or false }
@@ -644,6 +661,31 @@ local function observe(G, seq, result)
           end
         end
         if #_holes > 0 then o.map.holes = _holes end
+        -- ...AND THE SWITCH STATUES ARE ON THE SCREEN AND IN NO LIST.
+        -- The Mansion's doors are opened by pressing a statue while
+        -- FACING UP (data/scripts/story6.lua: one shared
+        -- EVENT_MANSION_SWITCH_ON flips wall blocks on all four floors).
+        -- They are not map objects and not signs — the two things this
+        -- observation carries — so the model has never been shown a
+        -- thing it is standing next to and can press, and the Super Nerd
+        -- tells it in words that switches exist. Tile 61 IS the statue:
+        -- it appears once per Mansion floor (twice on B1F) at exactly
+        -- the scripted coordinates, and elsewhere only in the Cinnabar
+        -- and Saffron gyms, which have one each. Say where they are;
+        -- pressing one is the model's call, as is which.
+        do
+          local _sw = {}
+          for cy = 0, _H - 1 do
+            for cx = 0, _W - 1 do
+              if map.cellTile and map:cellTile(cx, cy) == 61 then
+                _sw[#_sw + 1] = { x = cx, y = cy,
+                                  reachable = _rc[cx .. "," .. cy]
+                                              and true or false }
+              end
+            end
+          end
+          if #_sw > 0 then o.map.switch_statues = _sw end
+        end
       end
     end
     -- THE SHAPE OF THE PLACE IS ON THE SCREEN AND WAS IN NO OBSERVATION.

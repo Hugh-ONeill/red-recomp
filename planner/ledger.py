@@ -1382,6 +1382,26 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # current table says which cells do it; that they stop doing it once
     # the plug boulders are down is the game's business, not ours to
     # point at.
+    # A STATUE YOU CAN PRESS IS ON THE SCREEN AND WAS IN NO LIST. The
+    # Mansion's doors are opened by pressing one while FACING UP, the Super
+    # Nerd says so out loud, and the page carried objects and signs — which
+    # a switch statue is neither. The run read the hint, said "switches
+    # toggle sets of doors" for a whole leg, and had nothing to press.
+    # Where they are is on the screen; which to press, and when, stays the
+    # model's — a room with switches is never "finished", which this
+    # ledger has said for a long time about switches it could not see.
+    _sw = m.get("switch_statues") or []
+    if _sw:
+        _reach = [c for c in _sw if c.get("reachable")]
+        head += (f". THIS FLOOR HAS {len(_sw)} SWITCH STATUE(S): "
+                 + ", ".join(f"({c['x']},{c['y']})" for c in _sw[:6])
+                 + (f" (+{len(_sw) - 6} more)" if len(_sw) > 6 else "")
+                 + ". A switch is PRESSED, and only while you are FACING "
+                   "UP at it: walk to the cell BELOW it and interact. What "
+                   "it changes is elsewhere on this floor or another"
+                 + ("" if _reach else
+                    " — none of these can be walked to from where you "
+                    "stand right now"))
     _cur = (m.get("currents") or {}) if isinstance(m.get("currents"), dict) \
         else {}
     _pushed, _carried = _cur.get("pushed") or [], _cur.get("carried") or []
