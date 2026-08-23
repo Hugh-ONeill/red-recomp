@@ -461,11 +461,25 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             if _unreach and (m.get("warps") or []):
                 _others = ", ".join(f"({w0.get('x')},{w0.get('y')})"
                                     for w0 in _unreach[:6])
+                # ...BUT HOW THE OTHER ROOM IS ENTERED IS NOT RECORDED.
+                # This said "is entered by its OWN door from outside" — one
+                # true observation about Route 16's gate, promoted into a
+                # rule about every building in the game. In the Pokemon
+                # Mansion it is false: 1F's sealed room, the one holding the
+                # stairs down to B1F, has no outside door and is entered by
+                # FALLING INTO IT from 3F. The run read that sentence at 1F,
+                # walked out to Cinnabar to look for the door it promised,
+                # found none, came back, and did it again (2026-08-23).
+                # Say the shape of the fact and stop at the edge of it.
                 _pass += ("\nTHIS MAP HOLDS MORE THAN ONE ROOM: the door(s) "
                           + _others + " are on it but not reachable from "
-                          "where you stand — walls, not obstacles. A room "
-                          "you cannot walk to from inside the same building "
-                          "is entered by its OWN door from outside.")
+                          "where you stand — walls, not obstacles. HOW that "
+                          "other room is entered is NOT RECORDED. Some are "
+                          "entered by their own door from OUTSIDE the "
+                          "building; some are only entered from ANOTHER "
+                          "FLOOR, by stairs that land inside them or by a "
+                          "hole that drops you in. Which of those this is, "
+                          "this ledger does not know.")
     except (TypeError, ValueError):
         _pass = ""
     LAST_PASS_NOTE = _pass
@@ -1232,7 +1246,9 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                                  if getattr(c, "by_water", False) else "")
                               for c in _uw[:4])
                  + "), so this area is NOT finished: what is missing is a "
-                 "way to where they stand, and that is on this same floor")
+                 "way to where they stand. WHERE THAT WAY STARTS IS NOT "
+                 "RECORDED — it may be a corner of this floor you have not "
+                 "walked, and it may be another floor entirely")
     elif fully_worked(cands) and [c for c in cands
                                   if c.status == "unreachable"
                                   and c.kind not in ("op", "door", "seam")]:
