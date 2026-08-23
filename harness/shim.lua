@@ -526,6 +526,42 @@ local function observe(G, seq, result)
     end
     -- the floors this car's panel was seen to offer (see lift_floors)
     o.map.lift_floors = lift_floors[tostring(map.id)]
+    -- THE WATER ON THIS FLOOR IS ON THE SCREEN AND WAS IN NO OBSERVATION.
+    -- Water reached the model only through refusals — a cross that failed,
+    -- a target with a channel in front of it — so a party standing on
+    -- SEAFOAM_ISLANDS_B4F, which is mostly lake, was told the floor has
+    -- connections, objects and warps and nothing else, and planned as if
+    -- the room were dry (user, 2026-08-23: "it also doesnt seem to see the
+    -- water as water it can surf on"). A player sees the lake. Say how
+    -- much there is and name one tile that can be mounted from ground the
+    -- party can reach; WHERE to ride it is not ours to say.
+    do
+      local _wn, _wx, _wy, _wd = 0, nil, nil, nil
+      local _mx, _my, _md2 = nil, nil, nil        -- mountable from reach
+      if map.isWaterCell then
+        local _W, _H = map_dims_cells(G)
+        local _rc = reachable_cells()
+        for _yy = 0, math.max(0, _H - 1) do
+          for _xx = 0, math.max(0, _W - 1) do
+            if map:isWaterCell(_xx, _yy) then
+              _wn = _wn + 1
+              local _dd = math.abs(_xx - p.cellX) + math.abs(_yy - p.cellY)
+              if not _wd or _dd < _wd then _wd, _wx, _wy = _dd, _xx, _yy end
+              for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
+                if _rc[(_xx + d[1]) .. "," .. (_yy + d[2])]
+                   and (not _md2 or _dd < _md2) then
+                  _md2, _mx, _my = _dd, _xx, _yy
+                end
+              end
+            end
+          end
+        end
+      end
+      if _wn > 0 then
+        o.map.water = { cells = _wn, x = _wx, y = _wy,
+                        mount_x = _mx, mount_y = _my }
+      end
+    end
     -- ONE FILL, NOT TWO. `reach` here and `objreach` further down were
     -- the SAME call -- warp_reach(G), same arguments, same frame, same
     -- answer -- computed twice for every observation. On an outdoor map

@@ -1233,6 +1233,25 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  f"the fixtures ({', '.join(c.key for c in switches(cands)[:6])}) "
                  "can be pressed AGAIN — a room like this can be a puzzle "
                  "about which, rather than about finding one more thing")
+    _w = (m.get("water") or {}) if isinstance(m.get("water"), dict) else {}
+    if _w.get("cells"):
+        _knows = any("SURF" in [str(x.get("id") if isinstance(x, dict) else x)
+                                for x in (mon.get("moves") or [])]
+                     for mon in (obs.get("party") or []))
+        head += (f". THIS FLOOR HAS WATER: {_w['cells']} cell(s)")
+        if _w.get("mount_x") is not None:
+            head += (f", and ground you can reach touches it at "
+                     f"({_w['mount_x']},{_w['mount_y']})")
+        else:
+            head += (f", the nearest at ({_w.get('x')},{_w.get('y')}), but "
+                     f"no ground you can reach touches any of it")
+        head += (". A walk will not cross water"
+                 + (" — but a party Pokemon knows SURF: {\"op\":"
+                    "\"field_move\",\"move\":\"SURF\",\"x\":N,"
+                    "\"y\":N} beside a water tile steps onto it, and from "
+                    "the water, water is walkable; walk_to and cross also "
+                    "take surf=true"
+                    if _knows else "; nobody in the party knows SURF"))
     lines = [head + "."]
     # EXITS ARE NEVER CUT. The cap is for the long tail of things and
     # people; a door or a seam is a way out and every one is shown.
