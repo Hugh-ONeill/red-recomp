@@ -1467,6 +1467,10 @@ class Executor:
             if path and (best is None or len(path) < len(best[1])):
                 best = (t, path)
         if not best:
+            _rc = self._ride_chance(here, targets)
+            if _rc:
+                best = _rc          # one replay, ridden where it was swum
+        if not best:
             _bh = self._blocked_hop(here, targets)
             if _bh:
                 _t, _p, _src, _k, _dst = _bh
@@ -4218,6 +4222,50 @@ class Executor:
         # and the road is where the trigger was.
         out.sort(key=lambda p: p[0])
         return [t for _, t in out]
+
+    def _ride_chance(self, here, targets):
+        """One replay of a walked route whose only broken leg is a SWIM.
+
+        A hop stamped blocked_at makes _route refuse the whole chain, and
+        that is right for a road something really shut. But Seafoam's two
+        halves join through ONE swim (B3F|1,0 --25,14--> B2F|23,10), and
+        what broke it was US: `go` replays door hops on foot, the walk
+        could not reach a tile across water, and the edge took the stamp.
+        The world had not changed at all — our method had. Six walked hops
+        went dark on that, `route_ride` never fired once in four attempts
+        because the ride lives inside _walk_route and _route refuses
+        before any hop runs, and the mark that would expire it is a count
+        of badges/flags/items that does not move while the run circles the
+        island (user, 2026-08-23: "yeah do it").
+
+        So: where the broken leg is a DOOR hop, on a floor with water,
+        with SURF in the party, hand back the route anyway — ONCE per edge
+        per world mark. _walk_route then re-walks that leg riding, which
+        is how it was walked in the first place. If the ride fails too,
+        the edge takes its stamp again and this does not offer it a second
+        time; nothing here loops, and nothing about a road that is really
+        shut changes."""
+        _bh = self._blocked_hop(here, targets)
+        if not _bh:
+            return None
+        _t, _p, _src, _k, _dst = _bh
+        if not _is_door_key(_k):
+            return None
+        _o = self.b.obs() or {}
+        if not self._knows_move(_o, "SURF"):
+            return None
+        if not ((_o.get("map") or {}).get("water")):
+            return None
+        _tried = getattr(self, "_ride_tried", None)
+        if _tried is None:
+            _tried = self._ride_tried = set()
+        _sig = (_src, _k, str(getattr(self, "_mark_now", None)))
+        if _sig in _tried:
+            return None
+        _tried.add(_sig)
+        self.log("ride_chance", frm=_src, via=_k, to=_dst, target=_t,
+                 legs=len(_p))
+        return _t, _p
 
     def _blocked_hop(self, here, targets):
         """The one hop standing between here and there, when the only
