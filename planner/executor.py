@@ -9860,11 +9860,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                              kept=cut + 1, dropped=len(macro) - cut - 1)
                     macro = macro[:cut + 1]
                 # cross/use_warp path-find from wherever you stand; a walk_to
-                # prelude is never needed and walking onto a door mat
-                # teleports (the Pallet<->lab oscillation burned 8 rounds of
-                # go_to_route_2 on walk_to(12,11) = the lab door).
-                keep = [s for s in macro[:-1] if s.get("op") != "walk_to"]
-                stripped = len(macro) - 1 - len(keep)
+                # DIRECTLY before one is never needed and walking onto a door
+                # mat teleports (the Pallet<->lab oscillation burned 8 rounds
+                # of go_to_route_2 on walk_to(12,11) = the lab door). But a
+                # walk_to that sets up ANOTHER op is the model's own
+                # composition — stripping every walk_to in the macro broke
+                # [walk_to water's edge, field_move SURF, cross] and SURF
+                # fired on dry land. Strip only the trailing walk_to chain.
+                body = macro[:-1]
+                _j = -1
+                for _i, _s in enumerate(body):
+                    if _s.get("op") != "walk_to":
+                        _j = _i
+                keep = body[:_j + 1]
+                stripped = len(body) - len(keep)
                 if stripped:
                     self.log("escalate_stripped_walkto", subgoal=sg["id"],
                              round=rnd, dropped=stripped)
@@ -9919,9 +9928,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             "area: a door you have not used, the far side of "
                             "the map.)")
             if stripped:
-                trace.insert(0, f"(note: {stripped} leading walk_to op(s) "
-                             "dropped — cross/use_warp path-find on their "
-                             "own; never use door tiles as waypoints)")
+                trace.insert(0, f"(note: {stripped} walk_to op(s) directly "
+                             "before the cross/use_warp dropped — those "
+                             "path-find on their own; never use door tiles "
+                             "as waypoints)")
             progress.extend(clean)
             if ok and sg.get("no_verify"):
                 # grind-style subgoals are non-deterministic repetition: a
