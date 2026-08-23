@@ -9988,12 +9988,23 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             if _seen:
                 _others = len({k for k in self._spent_macros
                                if k[1] == str(_mk_now)})
+                # A REFUSAL IS ITSELF A THING THAT HAPPENED. Only actual
+                # runs bumped the count, so a fourth identical proposal
+                # still read "carried out 1x" and the page never showed
+                # the model how long it had been standing here sending
+                # the same thing (user, 2026-08-23).
+                _seen["refused"] = int(_seen.get("refused") or 0) + 1
                 self.log("escalate_repeat_refused", subgoal=sg["id"],
-                         round=rnd, macro=macro, seen=_seen["n"])
+                         round=rnd, macro=macro, seen=_seen["n"],
+                         refused=_seen["refused"])
                 feedback = (
                     "REFUSED WITHOUT RUNNING IT: this exact set of ops has "
                     f"already been carried out {_seen['n']}x in this "
-                    "escalation and NOTHING ABOUT THE WORLD HAS CHANGED "
+                    "escalation"
+                    + (f", and SENT AGAIN AND REFUSED {_seen['refused']} "
+                       "time(s) since without ever being carried out"
+                       if _seen["refused"] > 1 else "")
+                    + ", and NOTHING ABOUT THE WORLD HAS CHANGED "
                     "since — same ops, same world, same answer, which was: "
                     + (_seen["why"] or "it did not get you there")
                     + f". {_others} different set(s) of ops have now been "

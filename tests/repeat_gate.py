@@ -36,6 +36,14 @@ ck("the count of DIFFERENT spent macros is available to the refusal", others == 
 
 seen, _ = gate(FLY, M2); ck("a world that MOVED frees every macro again", seen is None)
 
+# a refusal is itself a thing that happened, and the message says so
+r = spent_macros[k]
+r["refused"] = int(r.get("refused") or 0) + 1
+ck("the first refusal is counted", r["refused"] == 1)
+r["refused"] += 1
+ck("...and repeat refusals accumulate past the run count",
+   r["refused"] == 2 and r["n"] == 1)
+
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("  ok    " if ok else "  FAIL  ") + n)
 if bad:
