@@ -10941,6 +10941,26 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             _verdict = ("new ground" if _fresh_ground else
                         "something changed" if _moved_world else
                         "NOTHING CHANGED")
+            # ...AND THE ANSWER THAT KILLED IT, IN THE SAME BREATH. The bare
+            # verdict let a refuted premise ride the echo for whole passes:
+            # "I've visited Cinnabar Island before, so FLY there" read back
+            # every round with only "NOTHING CHANGED" attached, while the
+            # refusal that named the real offer (PALLET_TOWN, ...) scrolled
+            # away with the round that earned it. The deed now travels with
+            # the words; repetition is collapsed, not replayed.
+            if _verdict == "NOTHING CHANGED":
+                _lf = next((str(s) for s in reversed(trace)
+                            if "FAILED" in str(s) or "REFUSED" in str(s)),
+                           "")[:240]
+                if _lf:
+                    _prev3 = (self._plans_said[-2][3]
+                              if len(self._plans_said) >= 2
+                              and len(self._plans_said[-2]) > 3 else "")
+                    if _lf in str(_prev3):
+                        _verdict = ("NOTHING CHANGED — the same answer as "
+                                    "the round before")
+                    else:
+                        _verdict = "NOTHING CHANGED — " + _lf
             if self._plans_said and len(self._plans_said[-1]) == 3 \
                     and self._plans_said[-1][0] == rnd:
                 _r0, _w0, _p0 = self._plans_said[-1]
