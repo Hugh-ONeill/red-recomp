@@ -8073,6 +8073,21 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         self.log("stopped_mid_attempt", saved=bool(r.get("ok")))
         sys.exit(0)
 
+    def _strike(self, sig, det):
+        """One failure (or ran-and-changed-nothing) against this exact
+        action. Counts live per world mark — the count resets the first
+        time the world moves after the last strike — and persist in the
+        memory file, so an attempt restart no longer wipes them. The early
+        cross/walk_to handlers `continue` before the generic failure
+        block, so they call this themselves; forgetting that is how cross
+        west failed 74 times with zero strikes banked."""
+        _mk = getattr(self, "_mark_now", None)
+        if self._dead_at.get(sig) != _mk:
+            self._dead_ops[sig] = 0
+            self._dead_at[sig] = _mk
+        self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
+        self._dead_why[sig] = str(det or "")[:160]
+
     def _seam_proof(self, obs, step, det):
         """Record "this seam cannot be crossed from here" off a failed cross.
 
@@ -8342,11 +8357,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         self._record_outcome(_pre, op, step,
                                              f"cross: FAILED — {_d0}")
                         self._seam_proof(obs, step, _d0)
+                        self._strike(sig, _d0)
                     continue
                 obs = self.settle() or _pre
                 trace.append(f"cross(dir={step['dir']}): FAILED — {_d0}")
                 self._record_outcome(_pre, op, step, f"cross: FAILED — {_d0}")
                 self._seam_proof(obs, step, _d0)
+                self._strike(sig, _d0)
                 continue
             # A BUILDING IN THE MIDDLE OF A MAP IS NOT A WALL IF YOU HAVE
             # WALKED THROUGH IT. walk_to BFSes one map's cells, so a route
@@ -8460,11 +8477,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                f"finish from" if _rides else ""))
                         self._record_outcome(_pre, op, step,
                                              f"walk_to: FAILED — {_d0}")
+                        self._strike(sig, _d0)
                     continue
                 obs = self.settle() or _pre
                 trace.append(f"walk_to({step.get('x')},{step.get('y')}): "
                              f"FAILED — {_d0}")
                 self._record_outcome(_pre, op, step, f"walk_to: FAILED — {_d0}")
+                self._strike(sig, _d0)
                 continue
             # EVERY PARAMETER THAT CHANGES THE ACTION IS PART OF ITS NAME.
             # This keyed on name/dir/(x,y) alone — all None for use_item —
@@ -8950,12 +8969,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self._dead_why.pop(sig, None)
                 self._dead_at.pop(sig, None)
             if _noeff:
-                _mk = getattr(self, "_mark_now", None)
-                if self._dead_at.get(sig) != _mk:
-                    self._dead_ops[sig] = 0
-                    self._dead_at[sig] = _mk
-                self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
-                self._dead_why[sig] = str(r.get("detail") or "")[:160]
+                self._strike(sig, r.get("detail"))
             if not r.get("ok"):
                 # THREE FAILURES ARE THREE FAILURES IN ONE WORLD. The
                 # refusal below is absolute and never expired, so an op
@@ -8964,12 +8978,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # for the rest of the subgoal — the same over-claim the
                 # dead-end brand made one layer up. Stamp the world mark
                 # with the count and start again when the world moves.
-                _mk = getattr(self, "_mark_now", None)
-                if self._dead_at.get(sig) != _mk:
-                    self._dead_ops[sig] = 0
-                    self._dead_at[sig] = _mk
-                self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
-                self._dead_why[sig] = str(r.get("detail") or "")[:160]
+                self._strike(sig, r.get("detail"))
                 note += f": FAILED — {r.get('detail')}"
                 # An interact that never happened leaves the thing UNTOUCHED.
                 # Without this the provisional mark stands, and a room whose
