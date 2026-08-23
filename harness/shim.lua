@@ -4593,6 +4593,18 @@ function OPS.field_move(G, c)
           table.concat(labels, ", "))
     end
     if not (t and (t.enemy or t.kind)) then
+      -- A SCREEN STILL UP IS NOT A MOVE THAT DID NOT FIRE. STRENGTH ends
+      -- in a TextBox — "CHARIZARD used STRENGTH. CHARIZARD can move
+      -- boulders." — and this branch backed out of that box and reported
+      -- FAILED while quoting the game saying it worked; the pushes that
+      -- followed then succeeded, so the page contradicted itself
+      -- (2026-08-23). The game's own words settle it: if it says the move
+      -- was used, it was used.
+      local _said0 = tostring(last_text or "")
+      if _said0:upper():find("USED " .. tostring(mv):upper(), 1, true) then
+        ui_back_out(G)
+        return true, "used " .. mv .. " — " .. _said0
+      end
       ui_back_out(G)
       if G.stack:top() ~= ow then
         return false, mv .. " left a screen up that would not close"
