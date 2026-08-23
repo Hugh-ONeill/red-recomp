@@ -9489,6 +9489,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         self._cur_sg = sg
         self._plan_said = ""      # a plan belongs to the subgoal it served
         self._plans_said = []
+        # EVERY MACRO THIS ESCALATION HAS ALREADY SPENT, keyed by (macro,
+        # world mark). The 3-strikes gate is per OP and needs three tries;
+        # a model that oscillates between two whole macros never reaches
+        # it, and both halves of the oscillation ran every round with the
+        # world standing still (leg 40: FLY-to-Cinnabar / SURF-cross-west,
+        # ~60 rounds). The same input in the same world gives the same
+        # answer — that is arithmetic, not a hint about where to go.
+        self._spent_macros: dict = {}
+        self._repeat_rounds = 0   # free refusals used this subgoal
         self._stale_rounds = 0    # the stale budget counts per subgoal
         self._stale_fp = None
         self._left_target = set() # target maps walked out of on purpose
@@ -9970,6 +9979,38 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     self.log("escalate_stripped_walkto", subgoal=sg["id"],
                              round=rnd, dropped=stripped)
                     macro = keep + [macro[-1]]
+            # AN EXACT REPEAT IN AN UNCHANGED WORLD IS ALREADY ANSWERED.
+            # Refused before dispatch, and the refusal states the whole
+            # standing count — what to do about it is the model's call.
+            _mk_now = getattr(self, "_mark_now", None)
+            _mac_key = (json.dumps(macro, sort_keys=True), str(_mk_now))
+            _seen = self._spent_macros.get(_mac_key)
+            if _seen:
+                _others = len({k for k in self._spent_macros
+                               if k[1] == str(_mk_now)})
+                self.log("escalate_repeat_refused", subgoal=sg["id"],
+                         round=rnd, macro=macro, seen=_seen["n"])
+                feedback = (
+                    "REFUSED WITHOUT RUNNING IT: this exact set of ops has "
+                    f"already been carried out {_seen['n']}x in this "
+                    "escalation and NOTHING ABOUT THE WORLD HAS CHANGED "
+                    "since — same ops, same world, same answer, which was: "
+                    + (_seen["why"] or "it did not get you there")
+                    + f". {_others} different set(s) of ops have now been "
+                    "spent against this step in this same unchanged world. "
+                    "Sending any of them again gets this message and "
+                    "nothing else; only ops you have NOT yet spent here "
+                    "can be carried out.")
+                # A REFUSAL IS NOT AN ATTEMPT — but it cannot be free for
+                # ever either, or a model that only ever repeats loops the
+                # escalation without end. The first two cost nothing (the
+                # round is spent on a conversation, not on the world);
+                # after that they are charged like any other round.
+                _rep = getattr(self, "_repeat_rounds", 0) + 1
+                self._repeat_rounds = _rep
+                if _rep > 2:
+                    spent += 1
+                continue
             self.log("escalate_proposal", subgoal=sg["id"], round=rnd,
                      macro=macro, plan=self._plan_said)
             self.status(subgoal=sg["id"], goal_text=goal, done_when=done,
@@ -9978,6 +10019,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         doing=json.dumps(macro)[:150])
             ok, trace, clean = self._run_traced(sg, macro,
                                                 ignore_done=redo)
+            if not ok:
+                # Keyed on the world mark it was spent in, so anything that
+                # MOVES the world (a badge, a flag, an item, a door) frees
+                # every macro again — the refusal only ever covers a world
+                # that has not moved.
+                _rec = self._spent_macros.setdefault(
+                    _mac_key, {"n": 0, "why": ""})
+                _rec["n"] += 1
+                _why = next((str(t) for t in reversed(trace)
+                             if "FAILED" in str(t) or "REFUSED" in str(t)), "")
+                if _why:
+                    _rec["why"] = _why[:240]
             if _decl_lines:
                 trace = list(_decl_lines) + list(trace)
             if ok and redo:

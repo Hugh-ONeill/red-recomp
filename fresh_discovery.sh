@@ -339,7 +339,17 @@ while :; do
     # run holds the evidence: the events it HAS recorded and the
     # objectives it has not reached. Bounded like the reorders, and the
     # model names the deed; the harness only places it.
-    if [ "$(cat run/outline_inserts 2>/dev/null | wc -l)" -lt 4 ] \
+    # BOUNDED PER LEG, NOT PER CHAIN. A global cap of 4 was spent by leg
+    # 36, so leg 40 stalled for 40+ plan versions without the model ever
+    # being ASKED whether a step was missing — the one rung its own
+    # Seafoam evidence could answer was silently skipped. ONE ask per
+    # leg (user, 2026-08-23), with a chain-wide ceiling so a runaway
+    # still cannot happen. An insert renumbers the legs below it, so a
+    # leg that stalls again AFTER something was placed in front of it is
+    # asking a different question and may ask once more.
+    _ins_leg=$(grep -c "^$i:" run/outline_inserts 2>/dev/null || true)
+    if [ "$(cat run/outline_inserts 2>/dev/null | wc -l)" -lt 12 ] \
+        && [ "${_ins_leg:-0}" -lt 1 ] \
         && missing=$(python planner/author.py --check-missing \
             --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
             --start "$(python planner/state_text.py)" --model "$MODEL"); then
