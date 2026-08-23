@@ -1411,9 +1411,15 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  + ", ".join(_one(c) for c in _sw[:6])
                  + (f" (+{len(_sw) - 6} more)" if len(_sw) > 6 else "")
                  + ". A switch is PRESSED, and only while you are FACING "
-                   "UP at it: walk to the cell BELOW it and interact. The "
-                   "statue's own cell is SOLID — it is drawn S in the "
-                   "picture and you never stand on it. What "
+                   "UP at it, which is why the cell below it is the one "
+                   "that has to be walkable. The statue's own cell is "
+                   "SOLID — drawn S, never stood on. AN INTERACT NAMES "
+                   "THE TILE YOU PRESS A AT, NEVER THE TILE YOU STAND ON, "
+                   "and it walks and faces you itself: "
+                   + ('{"op":"interact","x":%d,"y":%d,"answer":"yes"}'
+                      % (_sw[0]["x"], _sw[0]["y"]))
+                   + " presses the first one"
+                   + ". What "
                    "it changes is elsewhere on this floor or another"
                  + (". THEY ALL SHARE ONE SETTING, which is currently "
                     + ("PRESSED" if m.get("switches_on") else "UNPRESSED")
