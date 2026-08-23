@@ -335,12 +335,28 @@ def switches(cands: list) -> list:
             and c.status not in ("unreachable",)]
 
 
+def unreached_ways(cands: list) -> list:
+    """Ways out NEVER TAKEN that no walk from here reaches right now.
+
+    They are filed `unreachable`, not `untried`, so every "is this area
+    finished" test looked straight past them: Seafoam B2F announced
+    "THIS AREA IS FULLY WORKED — every exit taken" with two exits on the
+    floor that had never once been taken, listed four lines below it
+    (user, 2026-08-23: "it sees the current area as fully worked despite
+    the untaken hole"). An exit you cannot reach is not an exit you have
+    used; the ground is unfinished, and how to get to it stays the
+    model's."""
+    return [c for c in cands
+            if c.kind in ("door", "seam") and c.status == "unreachable"
+            and not c.dest]
+
+
 def fully_worked(cands: list) -> bool:
     """Nothing here is untried, untouched, unspoken, reopened or cuttable —
     and nothing here is a switch. (A bush nobody can cut yet is not
     unfinished business here; a room with switches is never finished, it
     is a puzzle about which and when.)"""
-    if switches(cands):
+    if switches(cands) or unreached_ways(cands):
         return False
     return not any(c.status in UNWORKED for c in cands if c.kind != "op")
 
@@ -959,7 +975,15 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                         + " (never taken)")
         if things:
             what.append(f"press {', '.join(things[:3])}")
-        _head = ("THIS AREA IS FULLY WORKED — every exit taken, "
+        _uw = unreached_ways(cands)
+        _head = ("EVERYTHING YOU CAN REACH HERE IS DONE, but "
+                 + ", ".join(c.label() for c in _uw[:3])
+                 + " on this floor "
+                 + ("has" if len(_uw) == 1 else "have")
+                 + " never been taken and no walk from here reaches "
+                 + ("it" if len(_uw) == 1 else "them") + "."
+                 if _uw else
+                 "THIS AREA IS FULLY WORKED — every exit taken, "
                  "everything pressed; nothing new can be found by staying."
                  if not _stuck else
                  "Everything you can REACH here is done ("
@@ -1122,6 +1146,14 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  "it reads on the panel — 1F, 5F, B4F, ROOF). The door here "
                  "is one doorway; where it opens depends on the floor you "
                  "rode to, so this car is never finished with")
+    elif unreached_ways(cands):
+        _uw = unreached_ways(cands)
+        head += (". EVERYTHING YOU CAN REACH HERE IS DONE — but "
+                 + str(len(_uw)) + " way(s) out of this area have never "
+                 "been taken and no walk from here reaches them ("
+                 + ", ".join(c.label() for c in _uw[:4])
+                 + "), so this area is NOT finished: what is missing is a "
+                 "way to where they stand, and that is on this same floor")
     elif fully_worked(cands) and [c for c in cands
                                   if c.status == "unreachable"
                                   and c.kind not in ("op", "door", "seam")]:
@@ -1290,6 +1322,16 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # on the ground that pressing A picks up, at no cost. Say that.
         # A SHUT DOOR IS FURNITURE, NOT SCENERY. It is drawn closed on the
         # screen; what pressing it does is the game's own conversation.
+        # A HOLE IS ONE-WAY AND THE LIST NEVER SAID SO. The blocker text
+        # says it when a hole happens to sit beside a thing ("you drop to
+        # the floor below and cannot climb back up it"); the doorways
+        # list, which is where the choice is actually made, called it a
+        # hole and stopped. A player sees the drop; the model was told a
+        # label (user, 2026-08-23: "it doesnt see them correctly").
+        if c.kind == "door" and getattr(c, "look", "") == "hole":
+            words = ("a HOLE in the floor: stepping on it DROPS you to the "
+                     "floor below and there is no climbing back up it, so "
+                     "it is a way DOWN and never a way back — " + words)
         if c.kind == "shut_door" and c.status in ("untouched", "touched",
                                                   "inert", "worth_a_word"):
             words = ("a CLOSED DOOR, drawn shut across the way — "
