@@ -2278,8 +2278,19 @@ local function bfs_dir_pass(G, tx, ty, wblock)
     if #fence < 6 then fence[#fence + 1] = b end
   end
   if #fence > 0 then
-    said = said .. ". Standing against that ground: " ..
-      table.concat(fence, ", ")
+    -- WHAT SITS AT THE EDGE IS NOT NECESSARILY WHAT STOPS YOU. This was
+    -- the only detail the no-path answer offered, so it read as the
+    -- reason: on Seafoam 1F the run spent attempts pushing a boulder that
+    -- was never in the way, because the two halves of that floor are
+    -- separate ground joined through the basement and nothing on the
+    -- floor joins them at all. Listing what stands at the boundary is
+    -- worth saying; letting it be mistaken for the cause is the same
+    -- fabricated-reason class as the rest of today. Say which it is, and
+    -- leave the reading to the model.
+    said = said .. ". At the EDGE of that ground stand: "
+      .. table.concat(fence, ", ")
+      .. " — that is what is beside the boundary, not a claim that any of "
+      .. "it is what stops you; ground can simply not join up"
   end
   return nil, said
 end
