@@ -526,6 +526,19 @@ local function observe(G, seq, result)
     end
     -- the floors this car's panel was seen to offer (see lift_floors)
     o.map.lift_floors = lift_floors[tostring(map.id)]
+    -- ONE FILL, NOT TWO. `reach` here and `objreach` further down were
+    -- the SAME call -- warp_reach(G), same arguments, same frame, same
+    -- answer -- computed twice for every observation. On an outdoor map
+    -- that is a second flood of the whole walkable component for nothing.
+    -- (The third fill, region_reach, is genuinely different: no_ledges.)
+    -- observe() never yields, so every cell it walks is time the heartbeat
+    -- file does not tick, and a stalled heartbeat is exactly the signature
+    -- of the yield starvation this harness was once wedged hunting.
+    local _reach_memo
+    local function reachable_cells()
+      if not _reach_memo then _reach_memo = warp_reach(G) or {} end
+      return _reach_memo
+    end
     -- THE WATER ON THIS FLOOR IS ON THE SCREEN AND WAS IN NO OBSERVATION.
     -- Water reached the model only through refusals — a cross that failed,
     -- a target with a channel in front of it — so a party standing on
@@ -566,19 +579,6 @@ local function observe(G, seq, result)
         o.map.water = { cells = _wn, x = _wx, y = _wy,
                         mount_x = _mx, mount_y = _my }
       end
-    end
-    -- ONE FILL, NOT TWO. `reach` here and `objreach` further down were
-    -- the SAME call -- warp_reach(G), same arguments, same frame, same
-    -- answer -- computed twice for every observation. On an outdoor map
-    -- that is a second flood of the whole walkable component for nothing.
-    -- (The third fill, region_reach, is genuinely different: no_ledges.)
-    -- observe() never yields, so every cell it walks is time the heartbeat
-    -- file does not tick, and a stalled heartbeat is exactly the signature
-    -- of the yield starvation this harness was once wedged hunting.
-    local _reach_memo
-    local function reachable_cells()
-      if not _reach_memo then _reach_memo = warp_reach(G) or {} end
-      return _reach_memo
     end
     if md and md.warps then
       o.map.warps = {}
