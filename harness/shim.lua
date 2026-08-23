@@ -660,6 +660,33 @@ local function observe(G, seq, result)
             end
           end
         end
+        -- ...AND A HOLE CAN BE DECLARED BY A SCRIPT INSTEAD OF THE WARP
+        -- TABLE. The Mansion's three drop cells are the only way into 1F's
+        -- sealed basement-stairs room, and they are not warp entries: an
+        -- onStep hook in data/scripts/story6.lua tests three coordinates.
+        -- So the two corrections above cancelled out into a new silence —
+        -- the rubble stopped being called holes, and the real holes stayed
+        -- unsayable. They are on the screen (a player sees three gaps in
+        -- the floor), so the harness owes them. story6.lua now exposes its
+        -- own list as data (M.POKEMON_MANSION_3F.holes) the way Seafoam's
+        -- currents are already data in field.lua; this reads that list.
+        -- WHERE a hole drops you is NOT stated: unwalked ground is not
+        -- ours to name, and the same is true of every untried door.
+        do
+          local okms, MS = pcall(require, "src.script.MapScripts")
+          local _view = okms and MS.get and MS.get(map.id) or nil
+          local _seen = {}
+          for _, h in ipairs(_holes) do _seen[h.x .. "," .. h.y] = true end
+          for _, h in ipairs((_view and _view.holes) or {}) do
+            local hx, hy = h[1] or h.x, h[2] or h.y
+            local k = hx and hy and (hx .. "," .. hy)
+            if k and not _seen[k] then
+              _seen[k] = true
+              _holes[#_holes + 1] = { x = hx, y = hy,
+                                      reachable = _rc[k] and true or false }
+            end
+          end
+        end
         if #_holes > 0 then o.map.holes = _holes end
         -- ...AND THE SWITCH STATUES ARE ON THE SCREEN AND IN NO LIST.
         -- The Mansion's doors are opened by pressing a statue while
