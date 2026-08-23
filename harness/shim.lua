@@ -2945,6 +2945,18 @@ function OPS.use_warp(G, c)
                 #here > 0 and table.concat(here, ", ") or "none")
     end
   end
+  -- REACHED AND REFUSED IS NOT UNREACHED. A door held shut by a script —
+  -- Viridian's gym before the seventh badge, which answers "The GYM's
+  -- doors are locked..." — came through as "couldn't reach the warp
+  -- tile", so the model went looking for whoever was standing in the way
+  -- and interrogated the old man four rounds running (2026-08-23). The
+  -- walk got there; the door said no. Say which.
+  local _wsaid = tostring(last_text or "")
+  if tostring(walk_why or ""):find("script", 1, true) and _wsaid ~= "" then
+    return false, "you reached the door and it refused to open — the game "
+      .. "said: \"" .. _wsaid .. "\". You stood on the mat; walking "
+      .. "somewhere else and coming back will not change the answer."
+  end
   return false, "couldn't reach the warp tile ("
     .. tostring(walk_why or "no reason recorded") .. ")"
 end
