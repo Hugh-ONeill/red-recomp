@@ -4404,7 +4404,15 @@ function OPS.field_move(G, c)
       if G.stack:top() ~= ow then
         return false, mv .. " left a screen up that would not close"
       end
+      local _extra = ""
+      if mv == "SURF" then
+        _extra = " — SURF only fires standing at the water's edge FACING"
+          .. " the water; name the water tile and this op walks there and"
+          .. " faces it for you:"
+          .. " {\"op\":\"field_move\",\"move\":\"SURF\",\"x\":..,\"y\":..}"
+      end
       return false, mv .. " did not fire (the menus closed without it)"
+        .. _extra
     end
   end
   U.wait(24)   -- the cut animation finishes after the text closes
