@@ -48,16 +48,30 @@ def head_for(switches):
                                 "switch_statues": switches}}
     return ledger.render([], _Ex(), obs).splitlines()[0]
 
-h = head_for([{"x": 2, "y": 11, "reachable": True}])
+# REACHABLE MEANS THE CELL YOU PRESS FROM. A statue tile is SOLID, so
+# flood-filling its own cell answered False for every statue on every
+# floor, and the line said "none of these can be walked to" one clause
+# after telling the model to walk below it and press. The shim now reports
+# press_x/press_y and measures reachability there.
+h = head_for([{"x": 2, "y": 11, "press_x": 2, "press_y": 12,
+               "reachable": True}])
 ck("the statue is named", "(2,11)" in h)
 ck("it says it is a switch statue", "SWITCH STATUE" in h)
 ck("it says press facing up", "FACING" in h and "UP" in h)
-ck("it says walk below it", "BELOW" in h)
+ck("it names the cell you press from", "(2,12)" in h)
+ck("it says the statue's own cell is solid", "SOLID" in h)
+ck("it gives the op form, aimed at the STATUE not the stand cell",
+   '"x":2,"y":11' in h.replace(" ", ""))
 ck("it does not say which to press or when",
    "you should" not in h.lower())
 
-h2 = head_for([{"x": 2, "y": 11, "reachable": False}])
-ck("an unreachable statue says so", "none of these can be walked to" in h2)
+# unreachable now means the PRESS cell cannot be walked to
+h2 = head_for([{"x": 2, "y": 11, "press_x": 2, "press_y": 12,
+                "reachable": False}])
+ck("an unreachable press cell says so",
+   "CANNOT WALK TO" in h2.upper())
+ck("...and it is not claimed of the statue's own cell",
+   "none of these can be walked to" not in h2)
 
 ck("no statues, no line", "SWITCH STATUE" not in head_for([]))
 
