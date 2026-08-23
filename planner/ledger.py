@@ -1131,7 +1131,21 @@ _STATUS_WORDS = {
     "came_in_by": "the door you came in by; taken {n}x",
     "spent": "reached for {n}x and never once got through",
     "shut": "SHUT — walked into {n}x and turned back every time",
-    "sealed": "proven uncrossable from this area",
+    # HOW MANY TIMES IT HAS BEEN REACHED FOR IS THE POINT. Every other
+    # entry on the page carries a count -- "taken 14x", "pressed 7x" -- and
+    # this one, the most-repeated action in the run, carried none, because n
+    # counts times TAKEN and a way that never once worked has n=0. So the
+    # page numbered everything the run had managed and went silent on
+    # everything it had failed at, and `walk west` looked no more worn than
+    # an untried door while the outcomes ledger held 184 attempts from this
+    # very spot against this very goal (user: "tried this so many times i
+    # have a hard time believing it can see that clearly and still choose to
+    # do the same thing with no caveats"). The count is ours, it is about
+    # the run's own actions, and it was being kept back. "spent" beside it
+    # has said it this way all along.
+    "sealed": "reached for {n}x from here and never once got through — "
+              "proven uncrossable from this area",
+    "sealed_untried": "proven uncrossable from this area",
     "dead": "KNOWN DEAD END for this goal",
     "unreachable": "you cannot walk to it from where you stand",
     "lift_door": "the way out of this car — always open, and where it lets "
@@ -1493,7 +1507,10 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         if c.kind == "op":
             lines.append(f" {i}. explore — {c.note}")
             continue
-        words = _STATUS_WORDS.get(c.status, c.status).format(n=c.n)
+        _st = c.status
+        if _st == "sealed" and not c.n:
+            _st = "sealed_untried"
+        words = _STATUS_WORDS.get(_st, _st).format(n=c.n)
         # A WAY THAT HAS REFUSED YOU IS NOT "NEVER TAKEN". The status stays
         # "untried" because the crossing never completed, but printing
         # "never taken from here" beside its own FAILED note called a
@@ -1527,7 +1544,10 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         if c.kind == "shut_door" and c.status in ("untouched", "touched",
                                                   "inert", "worth_a_word"):
             words = ("a CLOSED DOOR, drawn shut across the way — "
-                     + _STATUS_WORDS.get(c.status, c.status).format(n=c.n))
+                     + _STATUS_WORDS.get(
+                         "sealed_untried" if (c.status == "sealed"
+                                              and not c.n) else c.status,
+                         c.status).format(n=c.n))
         if c.kind == "item" and c.status == "untouched":
             # ...AND "CANNOT WALK TO" MUST NOT OUTLIVE ITS TRUTH. Since the
             # pad recall (2026-08-22), a press at an unwalkable item is
