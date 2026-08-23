@@ -3895,6 +3895,24 @@ class Executor:
                 if str(_w.get("dest") or "") != _smap:
                     continue
                 _back = self.explored.setdefault(dst, {})
+                # ...AND ARRIVING THROUGH A DOOR OUTRANKS A SELF-LOOP.
+                # A door stepped through that fires nothing is recorded
+                # "back here", which is honest about that moment and then
+                # permanent: this writer only ever filled an ABSENT entry,
+                # so once the no-fire record existed the ledger went on
+                # calling the door a loop after the run had come out
+                # through it. Seafoam B2F's (25,11) — the one ladder
+                # joining the island's two halves — read
+                # "-> SEAFOAM_ISLANDS_B2F|23,10", itself, while the walk
+                # up it was in this very ledger from the other side.
+                # Coming out of a door proves where it goes; a step that
+                # did nothing proves only that it did nothing.
+                _ex = _back.get(_ak)
+                if _ex is not None and _ex.get("to") == dst:
+                    _ex["to"] = src
+                    self.log("reverse_edge", frm=dst, via=_ak, to=src,
+                             fixed="self-loop")
+                    self._save_memory()
                 if _ak not in _back:
                     # n=0, NOT 1. This edge is learned by ARRIVING
                     # through it, which proves where it goes but is not a
