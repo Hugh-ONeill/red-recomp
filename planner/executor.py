@@ -1467,6 +1467,16 @@ class Executor:
             if path and (best is None or len(path) < len(best[1])):
                 best = (t, path)
         if not best:
+            _bh = self._blocked_hop(here, targets)
+            if _bh:
+                _t, _p, _src, _k, _dst = _bh
+                return False, [
+                    f"go: you HAVE walked a way from {here} to {_t} "
+                    f"({len(_p)} leg(s)), and it is not being replayed "
+                    f"because one leg of it would not land the last time "
+                    f"it was tried in this world state: {_src} --{_k}--> "
+                    f"{_dst}. Walking the legs yourself is still open, and "
+                    f"whatever stopped that one is what has to change"], []
             return False, [f"go: no walked way from {here} to {want} is "
                            f"known — you have never walked a connected "
                            f"chain of exits between them (or a hop on it "
@@ -4208,6 +4218,32 @@ class Executor:
         # and the road is where the trigger was.
         out.sort(key=lambda p: p[0])
         return [t for _, t in out]
+
+    def _blocked_hop(self, here, targets):
+        """The one hop standing between here and there, when the only
+        thing wrong with a walked route is that a leg of it failed in
+        THIS world state.
+
+        A stamped hop makes _route return nothing, and both `go` refusals
+        then said only "no walked way ... is known". Seafoam's two halves
+        join through ONE swim (B3F|1,0 --25,14--> B2F|23,10); it failed
+        once, took the stamp, and every route between the island's halves
+        went dark at once — six walked hops refused as if never walked,
+        while the model was told it had never found a way. Which hop is
+        down is a fact about the run's own record, and knowing it is the
+        difference between "there is no way" and "one leg of the way I
+        know is not working right now"."""
+        for _t in targets:
+            _p = self._route(here, _t, ignore_blocked=True)
+            if not _p:
+                continue
+            _cur = here
+            for _k, _dst in _p:
+                _e = (self.explored.get(_cur) or {}).get(_k) or {}
+                if _e.get("blocked_at") == getattr(self, "_mark_now", None):
+                    return _t, _p, _cur, _k, _dst
+                _cur = _dst
+        return None
 
     def _route(self, frm: str, to: str, avoid: set | None = None,
                ignore_blocked: bool = False):
@@ -8352,10 +8388,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                      or len(_pth) < len(_best[1])):
                             _best = (_t, _pth)
                     if not _best:
-                        trace.append(
-                            f"{op}: no walked way from {_hr} to {_want} is "
-                            f"known — you have never walked a connected "
-                            f"chain of exits between them")
+                        _bh2 = self._blocked_hop(_hr, (_pref or _known))
+                        if _bh2:
+                            _t2, _p2, _s2, _k2, _d2 = _bh2
+                            trace.append(
+                                f"{op}: you HAVE walked a way from {_hr} to "
+                                f"{_t2} ({len(_p2)} leg(s)), not replayed "
+                                f"because one leg would not land the last "
+                                f"time it was tried in this world state: "
+                                f"{_s2} --{_k2}--> {_d2}")
+                        else:
+                            trace.append(
+                                f"{op}: no walked way from {_hr} to {_want} "
+                                f"is known — you have never walked a "
+                                f"connected chain of exits between them")
                         continue
                     self.log("prewalk", subgoal=sg.get("id"), op=op,
                              to=_best[0], legs=len(_best[1]))
