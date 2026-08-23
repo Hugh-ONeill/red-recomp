@@ -526,6 +526,35 @@ local function observe(G, seq, result)
     end
     -- the floors this car's panel was seen to offer (see lift_floors)
     o.map.lift_floors = lift_floors[tostring(map.id)]
+    -- WHERE FLY CAN GO IS A SCREEN, AND IT WAS ONLY EVER SHOWN AFTER A
+    -- REFUSAL. The fly picker lists the towns the save records as visited
+    -- (src/ui/TownMap.lua buildFlyList: flyOrder, filtered to visited fly
+    -- towns holding a fly warp) — the same standing an elevator panel's
+    -- floors and a vending machine's rows have, both of which are printed
+    -- because a player reads them off the screen. Planning blind, the run
+    -- guessed destinations that are not on it and spent rounds being told
+    -- so (FLY to CINNABAR_ISLAND, twice; user, 2026-08-23: "add the
+    -- standing fly list so it knows it cant fly to cinnabar"). The list
+    -- is stated; which row is worth taking is not.
+    do
+      local okM, MapM = pcall(require, "src.world.Map")
+      local fd = G.data and G.data.field
+      local visited = (G.save and G.save.visited) or {}
+      if okM and fd and fd.flyOrder then
+        local fly, seen2 = {}, {}
+        for _, mid in ipairs(fd.flyOrder) do
+          local def = G.data.maps and G.data.maps[mid]
+          if visited[mid] and def and not seen2[mid]
+             and (not (fd.flyWarps and next(fd.flyWarps))
+                  or fd.flyWarps[mid])
+             and MapM.isFlyTown(def) then
+            seen2[mid] = true
+            fly[#fly + 1] = tostring(mid)
+          end
+        end
+        if #fly > 0 then o.fly_towns = fly end
+      end
+    end
     -- ONE FILL, NOT TWO. `reach` here and `objreach` further down were
     -- the SAME call -- warp_reach(G), same arguments, same frame, same
     -- answer -- computed twice for every observation. On an outdoor map

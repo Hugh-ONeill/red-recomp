@@ -9851,7 +9851,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
                     f"{atlas or 'nothing yet'}\n"
-                    f"{plan_echo}"
+                    + (("FLY GOES ONLY TO THESE, the towns the fly screen "
+                        "lists because you have stood in them: "
+                        + ", ".join(obs.get("fly_towns") or [])
+                        + ". Anywhere else is refused, however near it is "
+                        "on the printed map. Which of them is worth flying "
+                        "to, or whether to fly at all, is yours.\n")
+                       if (obs or {}).get("fly_towns") else "")
+                    + f"{plan_echo}"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
                     f"CURRENT_OBSERVATION: "
                     f"{json.dumps(obs, separators=(',', ':'))}\n"
