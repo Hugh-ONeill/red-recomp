@@ -1013,9 +1013,21 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                  + ", ".join(c.key for c in _stuck[:3])
                  + " sits where no walk from here goes — the way in is "
                  "what is missing, not the thing).")
-        _more = []
-        for _r2, _reg2, _left2, _things2, _path2 in found[1:4]:
+        # ONE PER FIRST LEG. Ranked purely by distance, all three slots
+        # went to places behind the SAME first step — Safari Zone Gate,
+        # the Fuchsia Center and Route 18, every one of them "first walk
+        # east" — so the page listed three ways of saying east and Seafoam,
+        # the only other direction with anything left, still never
+        # appeared. The first leg is the choice actually being made; list
+        # each one once, nearest example first.
+        _more, _legs_seen = [], {path[0][0]}
+        for _r2, _reg2, _left2, _things2, _path2 in found[1:]:
+            if len(_more) >= 3:
+                break
             _fk2, _fd2 = _path2[0]
+            if _fk2 in _legs_seen:
+                continue
+            _legs_seen.add(_fk2)
             _first2 = (f"walk {_fk2}" if not _fk2[0].isdigit()
                        else f"door ({_fk2})")
             _has = []
