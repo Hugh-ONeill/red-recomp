@@ -861,9 +861,13 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                     f"{_used[-1].n}x for the most-used) — going back "
                     f"through the one you have leaned on least is how a "
                     f"circuit breaks")
-        if exits:
-            return (f"take {exits[0].label()} — untried from here, though "
-                    f"it turned you back last time")
+        # A WAY THAT REFUSED YOU IS NEVER ITEM 1 WHILE ANYTHING ELSE IS
+        # LEFT ANYWHERE. This used to return "take walk west — untried
+        # from here, though it turned you back last time", endorsing a
+        # proven wall over the nearest-area recall two steps below — on
+        # Route 20 the Seafoam door the run had walked through sat unnamed
+        # while item 1 sent it at the wall a 30th time. Fall through; the
+        # world-exhausted line owns the "world does change" retry.
         return None
 
     # A PERSON IS NOT A WAY OUT. The kind of thing that answers the goal
@@ -938,6 +942,15 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                 f"ground with something never tried is {region} "
                 f"({len(path)} leg(s), first {first} to {fd}); explore "
                 f"walks there to " + " and ".join(what))
+    _refd = [c for c in cands if c.status == "untried"
+             and c.kind in ("door", "seam") and _refused(c)]
+    if _refd:
+        return ("THIS AREA IS FULLY WORKED and so is everywhere you can "
+                "walk to — all that remains here is a way that has refused "
+                f"you before: {_refd[0].label()}. The world does change, so "
+                "retrying it costs only a step; otherwise something you "
+                "have done must be undone or something you carry must be "
+                "used to open new ground")
     return ("THIS AREA IS FULLY WORKED and so is everywhere you can walk to "
             "— something you have done must be undone or something you "
             "carry must be used to open new ground")
@@ -1219,6 +1232,14 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
             lines.append(f" {i}. explore — {c.note}")
             continue
         words = _STATUS_WORDS.get(c.status, c.status).format(n=c.n)
+        # A WAY THAT HAS REFUSED YOU IS NOT "NEVER TAKEN". The status stays
+        # "untried" because the crossing never completed, but printing
+        # "never taken from here" beside its own FAILED note called a
+        # proven wall fresh ground — and the closing line then blessed it
+        # as one of the only entries that could find anything new here.
+        if c.status == "untried" and c.kind in ("door", "seam") \
+                and _refused(c):
+            words = "never crossed — trying it has turned you back before"
         if c.kind == "fixture" and c.key != "PC" and c.status in (
                 "touched", "inert", "worth_a_word"):
             words += " — a fixture; it can be pressed again"

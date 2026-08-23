@@ -79,7 +79,8 @@ def ledger_exits(mem: str):
     for m in LEDGER_LINE.finditer(mem or ""):
         key = m.group(1) or m.group(2)
         rest = m.group(3) or ""
-        if "never taken from here" in rest or "turned you back once" in rest:
+        if ("never taken from here" in rest or "turned you back once" in rest
+                or "never crossed" in rest):
             untried.add(key)
         else:
             taken.add(key)
