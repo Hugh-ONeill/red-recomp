@@ -3788,7 +3788,20 @@ class Executor:
             for k in [key] + self._twin_keys(before_obs, step):
                 e = node.setdefault(k, {"n": 0, "to": dst})
                 e["n"] += 1
-                e["to"] = dst
+                # A ROAD YOU HAVE WALKED IS NOT UNWALKED BY ONE REFUSAL.
+                # This overwrote `to` unconditionally, so an edge that had
+                # carried the run somewhere real was rewritten as a
+                # self-loop the first time anything turned it back — Route
+                # 20's east edge went from "ROUTE_19|13,0" to "back here,
+                # shut", the graph forgot a road it had crossed twice, and
+                # the ledger printed "-> UNKNOWN" about a road the run had
+                # walked (2026-08-23). Being turned back TODAY is news
+                # about today; where the road goes is still where it goes.
+                # The refusal is still recorded below, and it still expires
+                # with the world mark.
+                _prev_to = e.get("to")
+                if not (_prev_to and _prev_to != src):
+                    e["to"] = dst
                 # A BLOCKED UNKNOWN IS NOT AN EXPLORED ONE. This door was
                 # walked into and refused — somebody stood in it, or a
                 # script turned you back — which is a different fact from a
