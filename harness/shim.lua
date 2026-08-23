@@ -4673,6 +4673,22 @@ function OPS.field_move(G, c)
     end
   end
   U.wait(24)   -- the cut animation finishes after the text closes
+  -- "THERE'S NO PLACE TO GET OFF!" IS THE GAME SAYING NOTHING HAPPENED.
+  -- That line only prints when you are ALREADY on the water: SURF then
+  -- tries to DISMOUNT, finds no land beside you, and leaves you exactly
+  -- where you were. Reported as ok, it read as a successful mount, so the
+  -- run pressed SURF down a whole column of tiles believing it was
+  -- getting on the water each time (99,4 through 99,9; 2026-08-23).
+  do
+    local _s = tostring(said or "")
+    if _s:lower():find("no place to get off", 1, true) then
+      return false, "nothing happened: you are ALREADY on the water, and "
+        .. "SURF pressed while surfing is how you get OFF it — the game "
+        .. "says there is no place to get off here. You are still surfing; "
+        .. "from the water, water is walkable, and walk_to and cross take "
+        .. "surf=true"
+    end
+  end
   return true, "used " .. mv .. (said and (" — " .. said) or "")
 end
 
