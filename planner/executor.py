@@ -11422,7 +11422,24 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             for step in sg.get("macro", []):
                 step = dict(step)
                 when = step.pop("when", None)
-                op = step.pop("op")
+                # A MALFORMED STEP FAILS THE MACRO, IT DOES NOT KILL THE RUN.
+                # This was step.pop("op") — an authored macro step with no
+                # "op" key raised KeyError out of run_subgoal, through
+                # _attempt and run_plan, and took the whole executor
+                # process down with it, burning the attempt and rebooting
+                # the game (three times in this run's log; the last killed
+                # leg 42's enter_seafoam_b3f mid-crossing). The comment
+                # above this loop already states the rule for a macro that
+                # is wrong: it fails here and escalates, where the words go
+                # to the model. A step the plan language cannot express is
+                # exactly that kind of wrong.
+                op = step.pop("op", None)
+                if not op:
+                    self.log("step_malformed", subgoal=sg["id"],
+                             attempt=attempt, step=json.dumps(step)[:200])
+                    print(f"   step has no \"op\": {json.dumps(step)[:120]}"
+                          f" — failing this subgoal so it escalates")
+                    return False
                 obs = self.settle()
                 if obs and obs.get("mode") == "battle":
                     obs = self.handle_battle(sg, obs)

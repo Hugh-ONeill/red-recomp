@@ -1262,6 +1262,24 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                 _path = ex._route(here, _reg)
             except Exception:
                 _path = None
+            # A ROUTE WITH ONE HOP DOWN IS STILL A ROUTE YOU WALKED. _route
+            # skips hops stamped blocked in THIS world state, which is
+            # right, and then this said "no walked route from here is
+            # known" — the harness denying its own record. Leg 42's chain
+            # out of Seafoam is eight walked hops, and ONE of them
+            # (B3F|1,0 --25,14--> B2F|23,10, the swim across B3F) had
+            # failed once and carried the stamp; the page told the model it
+            # had never found a way there, about ground it had crossed
+            # twice that day. `go`'s own refusal has said the honest
+            # version all along ("or a hop on it has failed in this world
+            # state"). Say which it is: nothing known, or something known
+            # that would not land just now.
+            _stale = None
+            if not _path:
+                try:
+                    _stale = ex._route(here, _reg, ignore_blocked=True)
+                except Exception:
+                    _stale = None
             head += ("ground you HAVE stood in before: "
                      + ", ".join(_seen_in[_reg][:4]) + f" are in {_reg}, "
                      "which you have visited "
@@ -1283,6 +1301,18 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                          f"({len(_path)} leg(s) total), or "
                          "{\"op\":\"go\",\"to\":\"" + str(_reg)
                          + "\"} walks the whole walked route for you")
+            elif _stale:
+                _sk = str(_stale[0][0])
+                _sleg = (f"the door at ({_sk})" if _sk[:1].isdigit()
+                         else "the lift to " + _sk.split(":", 1)[1]
+                         if _sk.startswith("lift:") else f"walk {_sk}")
+                head += (f"; you HAVE walked a route there — {len(_stale)} "
+                         f"leg(s), starting with {_sleg} to {_stale[0][1]} — "
+                         "but a hop on it would not land the last time it "
+                         "was tried in this world state, so it is not being "
+                         "replayed for you. Walking it a leg at a time is "
+                         "still yours to do, and what stopped that hop is "
+                         "what has to change")
             else:
                 head += ("; no walked route from here is known — how you "
                          "got in before is in your own record")
