@@ -4251,10 +4251,11 @@ function OPS.field_move(G, c)
                   { p.cellX, p.cellY + 1, "down" },
                   { p.cellX - 1, p.cellY, "left" },
                   { p.cellX + 1, p.cellY, "right" } }
+    local _Coll = require("src.world.Collision")
     local _already, _first
     for _, a in ipairs(_nb) do
       if ow.map.isWaterCell and ow.map:isWaterCell(a[1], a[2])
-         and not Collision.occupied(ow.entities, a[1], a[2], p) then
+         and not _Coll.occupied(ow.entities, a[1], a[2], p) then
         if p.facing == a[3] then _already = true end
         _first = _first or a[3]
       end
