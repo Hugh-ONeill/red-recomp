@@ -1288,6 +1288,19 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  f"the fixtures ({', '.join(c.key for c in switches(cands)[:6])}) "
                  "can be pressed AGAIN — a room like this can be a puzzle "
                  "about which, rather than about finding one more thing")
+    _holes = m.get("holes") if isinstance(m.get("holes"), list) else []
+    if _holes:
+        # A HOLE IS NOT IN THE WARP TABLE, so it was in no doorway list and
+        # could not be chosen. It is taken by WALKING ONTO IT.
+        _hr = [h for h in _holes if h.get("reachable")]
+        _hx = ", ".join(f"({h.get('x')},{h.get('y')})" for h in _holes[:6])
+        head += (f". THIS FLOOR HAS {len(_holes)} HOLE(S) IN IT, at {_hx}"
+                 + (f" — {len(_hr)} of them you can walk to"
+                    if _hr and len(_hr) != len(_holes) else "")
+                 + ". A hole is not a doorway and takes no use_warp: you "
+                 "step ONTO it and DROP to the floor below, and there is no "
+                 "climbing back up it. {\"op\":\"walk_to\",\"x\":N,"
+                 "\"y\":N} onto one is how it is taken")
     _w = (m.get("water") or {}) if isinstance(m.get("water"), dict) else {}
     if _w.get("cells"):
         _knows = any("SURF" in [str(x.get("id") if isinstance(x, dict) else x)

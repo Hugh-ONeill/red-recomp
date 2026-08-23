@@ -602,6 +602,32 @@ local function observe(G, seq, result)
       end
       return _swim_memo or {}
     end
+    -- A HOLE IS A WAY DOWN AND IT IS IN NO LIST. The doorway list is
+    -- built from the map's WARP TABLE, and a Seafoam hole is not a warp
+    -- entry: you fall by STEPPING ON THE TILE. So two ways down that a
+    -- player sees on 1F have never appeared in any list the model reads,
+    -- and could not be chosen (user, 2026-08-23: "1F has two holes").
+    -- The tile is the game's own (Map.warpPadOrHoleAt, the same test the
+    -- engine uses); walking onto it is how it is taken, and that it only
+    -- goes down is the fact the ledger owes beside it.
+    do
+      local _W = (((md and md.width) or (map and map.width) or 0)) * 2
+      local _H = (((md and md.height) or (map and map.height) or 0)) * 2
+      if map.warpPadOrHoleAt and _W > 0 and _H > 0 and _W * _H <= 20000 then
+        local _rc = reachable_cells()
+        local _holes = {}
+        for cy = 0, _H - 1 do
+          for cx = 0, _W - 1 do
+            if map:warpPadOrHoleAt(cx, cy) == "hole" then
+              _holes[#_holes + 1] = { x = cx, y = cy,
+                                      reachable = _rc[cx .. "," .. cy]
+                                                  and true or false }
+            end
+          end
+        end
+        if #_holes > 0 then o.map.holes = _holes end
+      end
+    end
     -- THE SHAPE OF THE PLACE IS ON THE SCREEN AND WAS IN NO OBSERVATION.
     -- A player SEES that Route 20 is split by an island and that the only
     -- opening on this side is a cave mouth; the model got "closest to the
