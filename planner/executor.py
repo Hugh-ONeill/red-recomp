@@ -9983,11 +9983,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # Refused before dispatch, and the refusal states the whole
             # standing count — what to do about it is the model's call.
             _mk_now = getattr(self, "_mark_now", None)
-            _mac_key = (json.dumps(macro, sort_keys=True), str(_mk_now))
+            # WHERE YOU STOOD IS PART OF WHAT YOU DID. Keyed on the ops
+            # alone, a use_warp(25,3) that failed on one Seafoam floor
+            # refused the SAME coordinates on another floor that has its
+            # own (25,3) — the map-qualification bug the item names had,
+            # in a new place. The strike ledger keys on region already;
+            # this now does too, so a refusal only ever covers the ground
+            # that earned it.
+            _mac_key = (self._where(obs) or "?",
+                        json.dumps(macro, sort_keys=True), str(_mk_now))
             _seen = self._spent_macros.get(_mac_key)
             if _seen:
                 _others = len({k for k in self._spent_macros
-                               if k[1] == str(_mk_now)})
+                               if k[0] == _mac_key[0]
+                               and k[2] == str(_mk_now)})
                 # A REFUSAL IS ITSELF A THING THAT HAPPENED. Only actual
                 # runs bumped the count, so a fourth identical proposal
                 # still read "carried out 1x" and the page never showed
@@ -10008,7 +10017,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     "since — same ops, same world, same answer, which was: "
                     + (_seen["why"] or "it did not get you there")
                     + f". {_others} different set(s) of ops have now been "
-                    "spent against this step in this same unchanged world. "
+                    "spent from this same spot in this same unchanged "
+                    "world. "
                     "Sending any of them again gets this message and "
                     "nothing else; only ops you have NOT yet spent here "
                     "can be carried out.")
