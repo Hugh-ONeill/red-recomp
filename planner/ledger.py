@@ -1472,6 +1472,29 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # Where they are is on the screen; which to press, and when, stays the
     # model's — a room with switches is never "finished", which this
     # ledger has said for a long time about switches it could not see.
+    # A SWITCH IN THE FLOOR IS NOT A STATUE: nothing presses it, a BOULDER
+    # has to come and sit on it. Said here for the same reason the statues
+    # are — it is on the screen and was in no list — and the barrier it
+    # opens is said with it, because a player watches that wall go.
+    _bsw = m.get("boulder_switches") or []
+    if _bsw:
+        def _one_bsw(c):
+            _at = f"({c['x']},{c['y']})"
+            _op = ("" if c.get("opens_x") is None else
+                   f", which opens the way at ({c['opens_x']},{c['opens_y']})")
+            if c.get("held"):
+                return _at + _op + " — a BOULDER IS ON IT NOW"
+            return (_at + _op
+                    + ("" if c.get("reachable") else
+                       " — no walk from here reaches that cell"))
+        head += (f". THIS FLOOR HAS {len(_bsw)} SWITCH(ES) IN THE FLOOR: "
+                 + ", ".join(_one_bsw(c) for c in _bsw[:6])
+                 + ". Nothing presses one: a BOULDER has to be standing on "
+                   "it, and it stays open only while the boulder stays "
+                   "there. Boulders move one cell at a time with "
+                   "{\"op\":\"push\",\"x\":N,\"y\":N,\"dir\":\"...\"} "
+                   "and STRENGTH switched on for this map first. WHICH "
+                   "boulder, and by what route, is yours")
     _sw = m.get("switch_statues") or []
     if _sw:
         # REACHABLE MEANS THE CELL YOU PRESS FROM. The statue itself is a

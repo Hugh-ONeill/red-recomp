@@ -8448,10 +8448,12 @@ a cave or on any floor of a building it is not in the menu at all, however
 well the Pokemon knows it (`map.outdoor` in the observation says which you
 are). Nothing carries you off a floor from inside — walk out first. TELEPORT
 is the same; FLASH is listed only where it is DARK),
-{"op":"push","x":N,"y":N,"dir":"up|down|left|right"} (shove the
-kind:"boulder" at that tile ONE cell the way you say. It walks you to the
-side you have to push from and shoves; WHICH WAY the rock should go is
-yours. STRENGTH must be switched on for THIS map first
+{"op":"push","x":N,"y":N,"to_x":N,"to_y":N} (send the kind:"boulder" at
+(x,y) to the cell (to_x,to_y). WHERE it should end up is yours; every shove
+in between is worked out for you — which side to stand on each time, and in
+what order — and it answers plainly if no sequence of shoves can put it
+there. {"op":"push","x":N,"y":N,"dir":"up|down|left|right"} still shoves it
+ONE cell the way you say, if you would rather place them yourself. STRENGTH must be switched on for THIS map first
 ({"op":"field_move","move":"STRENGTH"}) — the game switches it off again
 every time you change map),
 {"op":"toss","item":"TM_BIDE","count":N} (throw away bag items — count

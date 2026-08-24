@@ -770,6 +770,38 @@ local function observe(G, seq, result)
             end
           end
           if #_mach > 0 then o.map.quiz_machines = _mach end
+          -- ...AND A SWITCH IN THE FLOOR THAT A BOULDER HOLDS DOWN. Third
+          -- of the same family as the Mansion's statues and the gym's quiz
+          -- machines: a coordinate a map script tests, in no list the
+          -- observation carries. Victory Road showed three boulders it
+          -- could push and no reason to push any of them anywhere, so the
+          -- run reached for SURF on a floor with no water (user,
+          -- 2026-08-24: "it thinks it needs to surf but it needs to use
+          -- strength"). The BARRIER is owed too — a player sees the wall
+          -- open when the boulder lands (user: "the block it removes is
+          -- also visible to the player so it should be visible to us as
+          -- well") — and the engine's own two coordinate systems are kept
+          -- straight here: the switch is a CELL, the barrier a BLOCK.
+          local _bsw = {}
+          for _, _c in ipairs((_view and _view.boulder_switches) or {}) do
+            local sx, sy, bx, by = _c[1], _c[2], _c[3], _c[4]
+            if sx and sy then
+              local _held = false
+              for _, _n in ipairs((ow and ow.npcs) or {}) do
+                if ((_n.def or {}).sprite) == "SPRITE_BOULDER"
+                   and _n.cellX == sx and _n.cellY == sy then
+                  _held = true
+                end
+              end
+              _bsw[#_bsw + 1] = {
+                x = sx, y = sy, held = _held,
+                reachable = _rc[sx .. "," .. sy] and true or false,
+                opens_x = bx and bx * 2 or nil,
+                opens_y = by and by * 2 or nil,
+              }
+            end
+          end
+          if #_bsw > 0 then o.map.boulder_switches = _bsw end
           if #_sw > 0 then
             o.map.switch_statues = _sw
             -- ...AND A STATUE IS A FIXTURE, not just a paragraph. Named
@@ -4862,6 +4894,93 @@ end
 -- WHICH WAY IT GOES IS THE MODEL'S. This walks to the cell the push has
 -- to be made from, faces the rock and shoves — it never picks a
 -- direction, the same line field_move draws.
+-- WHERE THE BOULDER GOES IS THE DECISION; GETTING IT THERE IS MECHANICS.
+-- One-cell pushes make the model spell out a route it cannot see the
+-- consequences of — every shove needs the player on the far side, and
+-- reaching that side changes as the boulder moves. That is a solver's job,
+-- and the same split walk_to already has: the model names a destination and
+-- the harness does the walking (user, 2026-08-24: "the model determines the
+-- location to push it to and the harness figures out the mechanics behind
+-- pushing it there"). Nothing here chooses WHICH boulder or WHERE — it is
+-- asked, and answers whether that is possible and how.
+local function _cell_free(G, cx, cy, skip)
+  local ow = G.overworld
+  local map = ow and ow.map
+  if not (map and map.inBounds and map:inBounds(cx, cy)) then return false end
+  if not (map.isWalkableCell and map:isWalkableCell(cx, cy)) then return false end
+  for _, npc in ipairs((ow and ow.npcs) or {}) do
+    if npc ~= skip and npc.cellX == cx and npc.cellY == cy then
+      return false
+    end
+  end
+  return true
+end
+
+-- cells the player can walk to, with the boulder treated as a wall
+local function _reach_with_rock(G, px, py, bx, by, rock)
+  local seen, q = { [px .. "," .. py] = true }, { { px, py } }
+  local head = 1
+  while head <= #q do
+    local cur = q[head]; head = head + 1
+    for _, d in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
+      local nx, ny = cur[1] + d[1], cur[2] + d[2]
+      local k = nx .. "," .. ny
+      if not seen[k] and not (nx == bx and ny == by)
+         and _cell_free(G, nx, ny, rock) then
+        seen[k] = true
+        q[#q + 1] = { nx, ny }
+      end
+    end
+  end
+  return seen
+end
+
+-- BFS over where the BOULDER can be, each step a legal shove
+local function solve_push(G, rock, tx, ty)
+  local ow = G.overworld
+  local p = ow.player
+  local start = { bx = rock.cellX, by = rock.cellY,
+                  px = p.cellX, py = p.cellY }
+  if start.bx == tx and start.by == ty then
+    return {}, nil
+  end
+  local DIRV = { up = { 0, -1 }, down = { 0, 1 },
+                 left = { -1, 0 }, right = { 1, 0 } }
+  local seen = { [start.bx .. "," .. start.by .. "|"
+                 .. start.px .. "," .. start.py] = true }
+  local q, head = { { start, {} } }, 1
+  local budget = 4000
+  while head <= #q and budget > 0 do
+    local node = q[head]; head = head + 1
+    local st, path = node[1], node[2]
+    local reach = _reach_with_rock(G, st.px, st.py, st.bx, st.by, rock)
+    for dir, d in pairs(DIRV) do
+      budget = budget - 1
+      -- the player must stand OPPOSITE the way the boulder is to go...
+      local sx, sy = st.bx - d[1], st.by - d[2]
+      -- ...and the cell the boulder lands on must be free
+      local nx, ny = st.bx + d[1], st.by + d[2]
+      if reach[sx .. "," .. sy] and _cell_free(G, nx, ny, rock) then
+        local nst = { bx = nx, by = ny, px = st.bx, py = st.by }
+        local key = nx .. "," .. ny .. "|" .. st.bx .. "," .. st.by
+        if not seen[key] then
+          local npath = { table.unpack(path) }
+          npath[#npath + 1] = dir
+          if nx == tx and ny == ty then return npath, nil end
+          seen[key] = true
+          q[#q + 1] = { nst, npath }
+        end
+      end
+    end
+  end
+  if budget <= 0 then
+    return nil, "gave up looking for a way to shove it there"
+  end
+  return nil, ("no sequence of shoves puts it on (%d,%d) — every route "
+    .. "needs a cell to stand on that no walk reaches, or a cell the "
+    .. "boulder cannot enter"):format(tx, ty)
+end
+
 function OPS.push(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close: "
@@ -4869,11 +4988,16 @@ function OPS.push(G, c)
   end
   local ow = G.overworld
   local p = ow.player
-  if not (c.x and c.y and c.dir) then
-    return false, "push needs x, y and dir (the way the BOULDER should go)"
+  local _to_x, _to_y = tonumber(c.to_x), tonumber(c.to_y)
+  if not (c.x and c.y) or not (c.dir or (_to_x and _to_y)) then
+    return false, "push needs x, y and either dir (one cell, the way the "
+      .. "BOULDER should go) or to_x,to_y (the cell the BOULDER should end "
+      .. "up on — the shoving is worked out for you)"
   end
-  local d = DIRS[c.dir]
-  if not d then return false, "push dir must be up, down, left or right" end
+  local d = c.dir and DIRS[c.dir]
+  if c.dir and not d then
+    return false, "push dir must be up, down, left or right"
+  end
   local rock
   for _, npc in ipairs(ow.npcs or {}) do
     if npc.cellX == c.x and npc.cellY == c.y then rock = npc end
@@ -4891,6 +5015,28 @@ function OPS.push(G, c)
       .. "party menu ({\"op\":\"field_move\",\"move\":\"STRENGTH\"}) "
       .. "and the game switches it off again every time you change map, so "
       .. "it has to be on for THIS map before any boulder here will move."
+  end
+  -- ...OR THE MODEL NAMED A DESTINATION AND THE ROUTE IS OURS TO FIND.
+  if _to_x and _to_y then
+    local seq, why = solve_push(G, rock, _to_x, _to_y)
+    if not seq then return false, why end
+    if #seq == 0 then
+      return true, ("the boulder is already on (%d,%d)"):format(_to_x, _to_y)
+    end
+    local moved = 0
+    for _, dir in ipairs(seq) do
+      local ok2, why2 = OPS.push(G, { x = rock.cellX, y = rock.cellY,
+                                      dir = dir })
+      if not ok2 then
+        return false, ("shoved it %d of %d cell(s) toward (%d,%d) and then "
+          .. "stopped: %s. It is at (%d,%d) now")
+          :format(moved, #seq, _to_x, _to_y, tostring(why2),
+                  rock.cellX, rock.cellY)
+      end
+      moved = moved + 1
+    end
+    return true, ("pushed the boulder from (%d,%d) to (%d,%d) in %d shove(s)")
+      :format(c.x, c.y, rock.cellX, rock.cellY, moved)
   end
   -- stand on the far side of the rock from where it is going
   local sx, sy = c.x - d[1], c.y - d[2]
