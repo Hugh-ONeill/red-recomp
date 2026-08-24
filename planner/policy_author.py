@@ -304,12 +304,25 @@ class Gym:
     """Boots the game, replays the plan to capture eval checkpoints, then
     scores candidate specs with reseeded restore trials."""
 
-    def __init__(self, plan_path: Path, run_id: str, model: str = ""):
+    def __init__(self, plan_path: Path, run_id: str, model: str = "",
+                 from_save: Path | None = None, arena: str = "brock"):
         self.plan_path = plan_path
         self.run_id = run_id
         self.model = model
         self.game = None
         self.rival_ok = False
+        # THE ARENA HAS TO BE THE FIGHT YOU CARE ABOUT. This gym replays
+        # plans/brock.json and scores candidates on the L5 rival and the
+        # walk to the Boulder Badge, which is why v1 came back healing with
+        # POTION below 30% — true of a Charmander, useless to a level-50
+        # party carrying hyper potions, and `battle_item` fired ONCE in
+        # 6041 battle turns as a result (user, 2026-08-24: "yeah we never
+        # did make that policy v2"). `--from-save` boots an ISOLATED copy
+        # of a real save — never the campaign's own game — and `--arena e4`
+        # scores a candidate on the Elite Four instead.
+        self.from_save = from_save
+        self.arena = arena
+        self.run_dir = RUN
 
     def _load_plan(self):
         self.plan = json.loads(self.plan_path.read_text())
@@ -319,24 +332,33 @@ class Gym:
         self._load_plan()   # fresh copy: setup escalation mutates in-memory
         if (RUN / "obs.json").exists():
             (RUN / "obs.json").unlink()
-        self.game = subprocess.Popen(
-            [str(REPO / "run.sh"), "200"], cwd=REPO,
-            start_new_session=True)
+        if self.from_save:
+            # contract.py's isolation: own love identity, own bridge dir,
+            # a COPY of the save. The campaign's game is untouchable.
+            sys.path.insert(0, str(REPO / "tests"))
+            from contract import start_game            # noqa: E402
+            self.run_dir = REPO / "run/policyarena"
+            self.game = start_game(self.run_dir, self.from_save, "200")
+            os.environ["RED_BRIDGE_DIR"] = str(self.run_dir)
+        else:
+            self.game = subprocess.Popen(
+                [str(REPO / "run.sh"), "200"], cwd=REPO,
+                start_new_session=True)
         atexit.register(self.shutdown)
         for _ in range(60):
-            if (RUN / "obs.json").exists():
+            if (self.run_dir / "obs.json").exists():
                 break
             time.sleep(1)
         else:
             raise RuntimeError("game did not come up")
-        self.b = Bridge()
+        self.b = Bridge(self.run_dir) if self.from_save else Bridge()
         ex_mod.SCORE_BATTLES = True
         # escalation available during SETUP only (plan_path=None: authored
         # fixes stay in-memory, the plan file is never touched by eval)
         self.ex = ex_mod.Executor(self.b, plan=self.plan, plan_path=None,
                                   can_escalate=bool(self.model),
                                   model=self.model, run_id=self.run_id)
-        ex_mod.bootstrap(self.b)
+        ex_mod.bootstrap(self.b, cont=bool(self.from_save))
 
     def shutdown(self):
         if self.game and self.game.poll() is None:
@@ -344,6 +366,94 @@ class Gym:
                 os.killpg(self.game.pid, signal.SIGTERM)
             except Exception:
                 pass
+
+    # ------------------------------------------------------ the E4 arena
+    E4_ROOMS = ["LORELEIS_ROOM", "BRUNOS_ROOM", "AGATHAS_ROOM",
+                "LANCES_ROOM", "CHAMPIONS_ROOM"]
+
+    def prepare_e4(self):
+        """Checkpoint the save exactly as it stands, and score from there.
+
+        THE SAVEPOINT IS THE CONTROL SURFACE (user, 2026-08-24: "can we
+        just control everything from a savepoint?"). The first version of
+        this walked back down the room chain and healed, which bakes an
+        assumption about where the save sits into the gym; park the save
+        where you want the trial to begin instead and this stays four
+        lines. Whatever the save holds — which room, what HP, which party
+        — is the arena, restored fresh for every candidate.
+        """
+        obs = self.ex.settle()
+        here = ((obs or {}).get("map") or {}).get("id")
+        party = [f"{p.get('species')} L{p.get('level')} "
+                 f"{p.get('hp')}/{p.get('max_hp')}"
+                 for p in (obs.get("party") or [])]
+        print(f"[gym] arena: {here}")
+        for p in party:
+            print(f"[gym]   {p}")
+        self.b.send("checkpoint_capture", token="eval_e4")
+        self.rival_ok = False
+
+    def eval_spec_e4(self, spec: dict, k: int = 3) -> dict:
+        """How far up the Elite Four does this policy get, from healed?"""
+        ex_mod.set_active_spec(spec)
+        res = {"rival_wins": 0, "rival_trials": 0, "pewter": 0, "badge": 0,
+               "gauntlet_trials": 0, "blackouts": 0, "agree": 0,
+               "scored": 0, "dmg_gap": 0.0, "rival_detail": [],
+               "gauntlet_detail": [], "rooms": 0}
+        for _ in range(k):
+            self.b.send("checkpoint_restore", token="eval_e4", reseed=True)
+            res["gauntlet_trials"] += 1
+            start = LOG.stat().st_size
+            got = 0
+            cleared = 0
+            try:
+                for _ in range(len(self.E4_ROOMS)):
+                    obs = self.ex.settle()
+                    here = ((obs or {}).get("map") or {}).get("id")
+                    if here not in self.E4_ROOMS:
+                        break            # blacked out, or fell out of the run
+                    got = max(got, self.E4_ROOMS.index(here) + 1)
+                    # THE LEADER IS AN NPC AND YOU CANNOT WALK ONTO ONE.
+                    # This walked to (5,2), which is exactly where Bruno
+                    # STANDS, so the walk failed, no fight started, and
+                    # every trial scored "reached room 2" without a single
+                    # punch thrown. Press him instead.
+                    boss = next((o.get("name") for o in
+                                 ((obs.get("map") or {}).get("objects") or [])
+                                 if o.get("kind") in ("trainer", "npc")
+                                 and o.get("name")), None)
+                    if boss:
+                        self.b.send("interact", name=boss)
+                        obs = self.ex.settle()
+                    while (obs or {}).get("mode") == "battle":
+                        obs = self.ex.handle_battle(
+                            {"id": "e4", "done_when": {}}, obs)
+                        obs = self.ex.settle()
+                    # beaten? the north door opens
+                    self.b.send("use_warp", x=4, y=0)
+                    obs = self.ex.settle()
+                    nxt = ((obs or {}).get("map") or {}).get("id")
+                    if nxt == here:
+                        break            # still shut: the leader stands
+                    cleared += 1
+            except TimeoutError:
+                pass
+            obs = self.ex.settle()
+            alive = [p for p in (obs.get("party") or [])
+                     if (p.get("hp") or 0) > 0]
+            res["rooms"] += cleared
+            res["gauntlet_detail"].append(
+                f"cleared {cleared} room(s), stopped in "
+                f"{((obs.get('map') or {}).get('id'))} with "
+                f"{len(alive)}/{len(obs.get('party') or [])} standing")
+            for d in self._log_delta(start):
+                if d.get("kind") == "blackout":
+                    res["blackouts"] += 1
+                elif d.get("kind") == "oracle_score":
+                    res["scored"] += 1
+                    res["agree"] += 1 if d.get("agree") else 0
+                    res["dmg_gap"] += d.get("dmg_gap") or 0.0
+        return res
 
     def prepare(self):
         """Replay the plan, capturing eval checkpoints at the two decisive
@@ -407,6 +517,12 @@ class Gym:
                     sg["macro"] = ops
                 ok = True
         return ok
+
+    def score(self, spec: dict) -> dict:
+        """Whichever arena this gym was built for."""
+        if self.arena == "e4":
+            return self.eval_spec_e4(spec)
+        return self.eval_spec(spec)
 
     def eval_spec(self, spec: dict, k_rival: int = 6,
                   k_gauntlet: int = 3) -> dict:
@@ -472,6 +588,17 @@ def feedback_text(name: str, r: dict) -> str:
     ag = f"{r['agree']}/{r['scored']}" if r["scored"] else "n/a"
     rv = (f"{r['rival_wins']}/{r['rival_trials']}" if r["rival_trials"]
           else "not evaluable")
+    if r.get("rooms") or r.get("gauntlet_detail") and not r.get("pewter") \
+            and not r.get("rival_trials"):
+        # the E4 arena measures one thing: how far up the rooms it got
+        n = max(1, r.get("gauntlet_trials", 1))
+        out = (f"{name}: Elite Four rooms cleared "
+               f"{r.get('rooms', 0)}/{n * 5} across {n} trial(s), "
+               f"blackouts {r['blackouts']}; oracle agreement {ag}, "
+               f"damage left on the table {r['dmg_gap']:.0f}")
+        for i, g in enumerate(r.get("gauntlet_detail") or []):
+            out += f"\n  trial {i+1}: {g}"
+        return out
     out = (f"{name}: rival wins {rv}; gauntlet: reached Pewter "
            f"{r['pewter']}/{r['gauntlet_trials']}, Boulder Badge "
            f"{r['badge']}/{r['gauntlet_trials']}, blackouts "
@@ -485,7 +612,9 @@ def feedback_text(name: str, r: dict) -> str:
 
 
 def rank_key(r: dict):
-    return (r["badge"], r["pewter"],
+    # ROOMS is the E4 arena's own measure and is absent from a brock run,
+    # so it simply sorts first when it is there.
+    return (r.get("rooms", 0), r["badge"], r["pewter"],
             r["rival_wins"] / max(1, r["rival_trials"]),
             -r["blackouts"], -r["dmg_gap"])
 
@@ -501,15 +630,27 @@ def main():
     ap.add_argument("--eval-only", type=Path, default=None,
                     help="skip authoring: evaluate this spec artifact (plus "
                          "the baseline) and report")
+    ap.add_argument("--from-save", type=Path, default=None,
+                    help="boot an ISOLATED COPY of this save and use it as "
+                         "the arena, instead of replaying --plan. Make one "
+                         "with planner/make_savepoint.py")
+    ap.add_argument("--arena", default="brock", choices=("brock", "e4"),
+                    help="brock: the L5 rival and the Boulder Badge run. "
+                         "e4: how far up the Elite Four a candidate gets "
+                         "from the savepoint")
     args = ap.parse_args()
 
-    gym = Gym(args.plan, args.run_id, model=args.model)
+    gym = Gym(args.plan, args.run_id, model=args.model,
+              from_save=args.from_save, arena=args.arena)
     for attempt in (1, 2):
         try:
             print(f"[gym] booting + replaying to the eval checkpoints "
                   f"(attempt {attempt})...")
             gym.boot()
-            gym.prepare()
+            if args.arena == "e4":
+                gym.prepare_e4()
+            else:
+                gym.prepare()
             break
         except Exception as e:
             print(f"[gym] setup attempt {attempt} failed: {e}")
@@ -529,9 +670,9 @@ def main():
     if args.eval_only:
         spec = battle_policy.load_spec(args.eval_only)
         print(f"[eval-only] {spec.get('name')}")
-        r = gym.eval_spec(spec)
+        r = gym.score(spec)
         print(feedback_text(spec.get("name", "artifact"), r))
-        base = gym.eval_spec(battle_policy.DEFAULT_SPEC)
+        base = gym.score(battle_policy.DEFAULT_SPEC)
         print(feedback_text("baseline typed_v0", base))
         gym.shutdown()
         return
@@ -554,7 +695,7 @@ def main():
         spec.setdefault("name", f"model_r{rnd}")
         print(f"[round {rnd}] evaluating {spec['name']}: "
               f"{json.dumps(spec, separators=(',', ':'))[:200]}")
-        r = gym.eval_spec(spec)
+        r = gym.score(spec)
         candidates.append((spec, r))
         fb = feedback_text(f"candidate #{rnd} ({spec['name']})", r)
         print(f"[round {rnd}] {fb}")
@@ -568,7 +709,7 @@ def main():
         sys.exit("no valid candidates authored")
     # baseline for reference (not a candidate): the hand-seeded spec
     print("[baseline] evaluating hand-seeded typed_v0 for reference...")
-    base = gym.eval_spec(battle_policy.DEFAULT_SPEC)
+    base = gym.score(battle_policy.DEFAULT_SPEC)
     print("[baseline] " + feedback_text("typed_v0", base))
 
     best_spec, best_r = max(candidates, key=lambda c: rank_key(c[1]))
