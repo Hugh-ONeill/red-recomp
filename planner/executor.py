@@ -10107,6 +10107,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         redo_from = self._pos(self.settle()) if redo else None
         pardon = False        # one free revisit after a blackout (recovery)
         visits: dict = {}     # round-end maps: re-entering one = circling
+        _visit_marks: dict = {}   # ...and the world mark on the FIRST visit,
+                                  # so a shuttle can be told it bought nothing
         while spent < rounds and rnd < rounds * 3:
             # A ROUND BOUNDARY IS THE OTHER SAFE POINT. Checking only
             # between ops was not enough: an escalation spends most of its
@@ -10246,6 +10248,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             sig0 = self._snapshot(start)
             if rnd == 1 and sig0[0]:
                 visits[sig0[0]] = 1
+                _visit_marks[sig0[0]] = str(getattr(self, "_mark_now", None))
             obs = model_view(start, holding_map=self._holding_town_map(start),
                              walked_dest=self._walked_dest)
             atlas = self._atlas_text(
@@ -11470,6 +11473,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # map) is not circling (brock23 spent its whole budget on
                 # level-up rounds counted as "revisits")
                 visits[sig1[0]] = visits.get(sig1[0], 0) + 1
+                # ...AND WHETHER ANYTHING CAME OF THE LAST N VISITS. The
+                # count alone is what a shuttle looks like from inside it:
+                # 1F -> B1F -> 1F -> B1F, every op succeeding, so nothing
+                # is ever recorded as spent and no gate closes (that is the
+                # cost of f0f8b87, which had to stop the gate refusing the
+                # only exit out of a sealed half). The world mark is the
+                # same evidence the repeat gate uses, one level up: if it
+                # has not moved since the first visit, the trips have
+                # bought nothing. Still a count, not a command.
+                _mk_here = str(getattr(self, "_mark_now", None))
+                _first_mk = _visit_marks.setdefault(sig1[0], _mk_here)
                 if visits[sig1[0]] >= 2:
                     spent += 1   # back on a map already visited: circling
                     mover = next((s for s in reversed(clean)
@@ -11489,6 +11503,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     loop_note = (
                         f"\nThis is visit #{visits[sig1[0]]} to {sig1[0]} "
                         f"during this subgoal."
+                        + (" The world mark is what it was on visit #1 — no "
+                           "badge, flag, item or door has changed since, so "
+                           "the trips between here and there have bought "
+                           "nothing."
+                           if _first_mk == _mk_here else "")
                         if USE_LEDGER else
                         f"\nWARNING: you are going in CIRCLES — this is visit "
                         f"#{visits[sig1[0]]} to {sig1[0]} during this subgoal. "
