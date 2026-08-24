@@ -71,8 +71,16 @@ DSL_DOC = """SPEC DSL (JSON object; every key optional; no other keys):
   battle_items: list of in-battle heal rules, each:
       {"item": "POTION", "hp_below": 0.0-1.0, "max_uses": 1-6}
     (use the item — costing the turn — when own hp fraction is below
-     hp_below; at most max_uses per battle; only if the bag has it)
+     hp_below; at most max_uses per battle; only if the bag has it.
+     IT IS A LIST, AND NAMING ONE ITEM IS HOW THESE RULES DIE. A rule
+     naming an item you have run out of does nothing at all: v1 named
+     POTION and by the Elite Four the party carried none, so `battle_item`
+     fired ONCE in 6041 battle turns while three MAX_REVIVEs sat in the
+     bag; v2 named HYPER_POTION and went dead the same way two fights
+     later. Name every healing item you would actually spend, strongest
+     last, and the party keeps healing as the bag empties.)
   field_heal: null or {"item": "POTION", "hp_below": 0.0-1.0}
+    (one item only here — so pick one you will still have)
     (after a battle ends while traveling: if own hp fraction is below
      hp_below and the item is in the bag, use it in the FIELD — no turn
      cost — before walking on)
