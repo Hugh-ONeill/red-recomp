@@ -2191,6 +2191,27 @@ class Executor:
             f"nothing about whether the way it was walking is open. "
             f"Whatever you were doing on {was_map} is still to do, and "
             f"you are no longer standing there.")
+        # DEEDS CAN BE UNDONE. The plan's earlier steps were passed on
+        # their own conditions; if a condition is false again now (the
+        # league resets every beaten flag when you wake in its lobby), the
+        # plan is behind where it thinks it is. Say which, and regress.
+        idx = getattr(self, "_cur_sg_idx", None)
+        sgs = ((self.plan or {}).get("subgoals") or []) if idx is not None else []
+        undone = []
+        for i, sg in enumerate(sgs[:idx]):
+            dw = sg.get("done_when") or {}
+            try:
+                if (pred_keys(dw) & {"flag", "badge"}) and not pred_holds(dw, o):
+                    undone.append((i, sg["id"]))
+            except Exception:
+                continue
+        if undone:
+            self._wipe_note += (
+                " STEPS OF YOUR PLAN THAT HAD BEEN DONE ARE UNDONE — their "
+                "conditions are false again: "
+                + ", ".join(n for _, n in undone) + ".")
+            self._plan_regress = undone[0][0]
+            self.log("plan_deeds_undone", undone=[n for _, n in undone])
         return self._wipe_note
 
     def _note(self, obs):
@@ -4804,6 +4825,36 @@ class Executor:
                          frm=here, want=want)
                 self._faint_at = None
                 return None
+            # RECALL ONLY RETRACES GROUND IT CAN RETRACE BACK OUT OF. The
+            # walk-back is harness-driven navigation, and navigation must not
+            # commit the run to anything: a door the run has crossed 19 times
+            # and never once come back out of (the lobby into Lorelei's room,
+            # which locks behind you) is a decision, not a route. Wiped at
+            # Lance, healed at the lobby with an EMPTY bag and a mart beside
+            # it, the run was walked straight back through that door before
+            # the model was asked anything (2026-08-24). Stop at the last
+            # reversible spot and say so; what to do there is the model's.
+            prev_r = here
+            cut = None
+            for i, (key, nxt) in enumerate(path):
+                back_edges = self.explored.get(nxt) or {}
+                rev = any((v or {}).get("to") == prev_r
+                          or (v or {}).get("to") in AREA_ALIASES.get(prev_r, ())
+                          for v in back_edges.values())
+                if not rev:
+                    cut = (i, prev_r, key, nxt,
+                           ((self.explored.get(prev_r) or {}).get(key) or {}).get("n", 0))
+                    break
+                prev_r = nxt
+            if cut is not None:
+                path = path[:cut[0]]
+                self._return_halt = cut[1:]
+                self.log("blackout_return_halted", subgoal=sg.get("id"),
+                         at=cut[1], door=cut[2], into=cut[3],
+                         crossings=cut[4], walked=cut[0])
+                if not path:
+                    self._faint_at = None
+                    return None
             for key, nxt in path:
                 # A wild encounter EATS a hop: the walk stops where the
                 # battle started, and counting that as a mis-landing made
@@ -4843,6 +4894,11 @@ class Executor:
                     self.log("blackout_return_replan", subgoal=sg.get("id"),
                              wanted=nxt, got=got, attempt=attempt)
                     break          # re-plan from wherever we actually are
+            else:
+                if cut is not None:
+                    # walked the reversible prefix; the rest is a decision
+                    self._faint_at = None
+                    return None
         self.log("blackout_return_lost", subgoal=sg.get("id"),
                  want=want, gave_up_after=total)
         self._faint_at = None
@@ -10468,6 +10524,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         _visit_marks: dict = {}   # ...and the world mark on the FIRST visit,
                                   # so a shuttle can be told it bought nothing
         while spent < rounds and rnd < rounds * 3:
+            if getattr(self, "_plan_regress", None) is not None:
+                # an earlier deed came undone (see _watch_for_a_wipe): this
+                # step's rounds would be spent on a plan that is behind
+                self.log("escalate_regress", subgoal=sg.get("id"),
+                         to_index=self._plan_regress)
+                break
             # A ROUND BOUNDARY IS THE OTHER SAFE POINT. Checking only
             # between ops was not enough: an escalation spends most of its
             # wall clock inside a model call, a Python signal handler
@@ -11505,6 +11567,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                    f"walked back to {back}, where you were. "
                                    f"You are HEALED, and whatever beat you "
                                    f"is still standing where it was.")
+                _halt = getattr(self, "_return_halt", None)
+                if _halt:
+                    self._return_halt = None
+                    _at, _door, _into, _n = _halt
+                    cur = self.settle() or cur
+                    stuck_note += (f"\nYou were NOT walked back to where you "
+                                   f"fell. The way on from {_at} is the door "
+                                   f"at {_door} into {_into}, which you have "
+                                   f"gone through {_n}x and never once come "
+                                   f"back out of — the harness will not "
+                                   f"take a one-way door for you. You stand "
+                                   f"at {self._where(cur)}, healed.")
             sig1 = self._snapshot(cur)
             here_now = self._where(cur)
             self._stuck_in[here_now] = self._stuck_in.get(here_now, 0) + 1
@@ -12683,7 +12757,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     break
             except Exception:
                 continue
-        for idx, sg in enumerate(subgoals):
+        idx = -1
+        self._plan_regress = None
+        while idx + 1 < len(subgoals):
+            idx += 1
+            sg = subgoals[idx]
+            self._cur_sg_idx = idx
             if idx < resume:
                 # A POSITION CANNOT VOUCH FOR AN ACHIEVEMENT BEFORE IT.
                 # This block already refuses to use a flag as resume
@@ -12849,6 +12928,21 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             moved2 = False
                         if moved2:
                             ok = self._attempt(sg)
+            # REGRESS when an earlier deed came undone (a blackout in the
+            # league resets every beaten flag): the plan resumes at the
+            # first step whose condition is false again. Not a failure of
+            # this step — it never got a fair run.
+            _rg = getattr(self, "_plan_regress", None)
+            if _rg is not None:
+                self._plan_regress = None
+                if _rg < idx:
+                    print(f"   <- regressing to {subgoals[_rg]['id']}: its "
+                          f"condition is false again")
+                    self.log("plan_regress", frm=sg["id"],
+                             to=subgoals[_rg]["id"])
+                    resume = 0
+                    idx = _rg - 1
+                    continue
             # A plan is not dead because ONE subgoal is: a side objective
             # (the fossil fight), an unaffordable shop, or a step the world
             # already satisfied differently should not end the run. Carry on
