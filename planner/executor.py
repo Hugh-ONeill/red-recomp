@@ -6591,6 +6591,31 @@ class Executor:
                 "somewhere wild is where to go. To level ONE Pokemon, "
                 "put it in slot 1 first ({\"op\":\"party_swap\"}) — the lead "
                 "is who gets sent out, and only what fights, earns.")
+            # WHO IS IN THE PARTY IS PART OF A LEVEL CONDITION. The storage
+            # line exists, and it was written into the CATCH branch only —
+            # so on a "every party member is at least level N" goal, the
+            # one page where the decision is made never mentioned the box.
+            # The run set about dragging a L22 TENTACOOL to 50 with a L32
+            # HITMONLEE sitting in storage, and a boxed Pokemon neither
+            # counts toward the condition nor has to meet it (user,
+            # 2026-08-24: "its just a dumb idea to train this crappy
+            # tentacool instead of grabbing one of the stronger mons out of
+            # the box"). Which of them should be in the party is the
+            # model's call; that the party is changeable is a fact.
+            _stored2 = [m for m in ((obs or {}).get("pc_mons") or [])
+                        if isinstance(m, dict) and m.get("species")]
+            if _stored2:
+                lines.append(
+                    "WHO IS IN THE PARTY IS ALSO A CHOICE. A boxed Pokemon "
+                    "is not a party member: it does not count toward this "
+                    "condition and does not have to meet it. In storage: "
+                    + ", ".join(f"{m.get('species')} L{m.get('level')} "
+                                f"(box {m.get('box')}, #{m.get('index')})"
+                                for m in _stored2[:8])
+                    + ". {\"op\":\"pc_withdraw\",\"index\":N,\"box\":B} "
+                      "takes one into the party and "
+                      "{\"op\":\"pc_deposit\",\"slot\":N} sends one the "
+                      "other way, both at any Pokemon Center.")
         # the ONE navigational fact that still matters: a run with no
         # healing behind it is one wipe from losing the walk as well
         rs = (obs or {}).get("respawn") or {}
