@@ -1484,7 +1484,10 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         def _one_bsw(c):
             _at = f"({c['x']},{c['y']})"
             _op = ("" if c.get("opens_x") is None else
-                   f", which opens the way at ({c['opens_x']},{c['opens_y']})")
+                   f", which opens the way at ({c['opens_x']},{c['opens_y']})"
+                   + ("" if c.get("open_now") is None else
+                      " — THAT WAY IS OPEN RIGHT NOW" if c["open_now"]
+                      else " — that way is SHUT right now"))
             if c.get("held"):
                 return _at + _op + " — a BOULDER IS ON IT NOW"
             # WHETHER *YOU* CAN STAND THERE IS THE WRONG TEST. A boulder
@@ -1516,6 +1519,23 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                    "it answers plainly if no sequence of shoves can get it "
                    "there. STRENGTH has to be on for this map first. WHICH "
                    "boulder, and where, is yours")
+    # ...AND WHERE THEY WERE WHEN YOU WALKED IN. A shove cannot be undone,
+    # and a boulder parked in the wrong cell can make a floor unsolvable —
+    # so what the floor looked like on arrival is the one fact that says
+    # whether that is recoverable.
+    _now_rocks = sorted(f"{o.get('x')},{o.get('y')}"
+                        for o in (m.get("objects") or [])
+                        if isinstance(o, dict) and o.get("kind") == "boulder")
+    _was_rocks = list((getattr(ex, "boulder_start", None) or {})
+                      .get(str(m.get("id") or "")) or [])
+    if _now_rocks and _was_rocks and _now_rocks != _was_rocks:
+        head += (". THE BOULDERS HERE HAVE MOVED SINCE YOU WALKED IN: they "
+                 "were at " + ", ".join(f"({c})" for c in _was_rocks[:6])
+                 + " and they are at "
+                 + ", ".join(f"({c})" for c in _now_rocks[:6])
+                 + " now. A shove cannot be taken back, and this floor put "
+                   "them back where they started the last time you walked "
+                   "onto it")
     _sw = m.get("switch_statues") or []
     if _sw:
         # REACHABLE MEANS THE CELL YOU PRESS FROM. The statue itself is a

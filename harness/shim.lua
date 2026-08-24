@@ -793,11 +793,26 @@ local function observe(G, seq, result)
                   _held = true
                 end
               end
+              -- IS THE WAY OPEN RIGHT NOW? `held` is whether a boulder
+              -- sits on the switch, and after a map reload that is false
+              -- even when the way is open — the landing sets something
+              -- that outlives the boulder. And it can go the other way
+              -- too: this game clears the 1F switch when you enter 2F, so
+              -- a way that was open is shut again when you come back down
+              -- (user, 2026-08-24: "not anymore for some reason, its gotta
+              -- solve it again"). The barrier is a BLOCK that was swapped,
+              -- so its cell's own walkability is the honest answer, and it
+              -- is on the screen.
+              local _ox = bx and bx * 2 or nil
+              local _oy = by and by * 2 or nil
+              local _open = nil
+              if _ox and map.isWalkableCell then
+                _open = map:isWalkableCell(_ox, _oy) and true or false
+              end
               _bsw[#_bsw + 1] = {
                 x = sx, y = sy, held = _held,
                 reachable = _rc[sx .. "," .. sy] and true or false,
-                opens_x = bx and bx * 2 or nil,
-                opens_y = by and by * 2 or nil,
+                opens_x = _ox, opens_y = _oy, open_now = _open,
               }
             end
           end

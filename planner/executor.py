@@ -1151,6 +1151,7 @@ class Executor:
         self._shelves: dict = {}     # mart map -> [items it sells], as seen
         self._plan_hist: dict = {}   # target -> [(round, where, plan)] last 8
         self._last_overworld_map = None
+        self.boulder_start: dict = {}   # map -> boulder cells ON ARRIVAL
         self._known_flags = None            # None until the first obs
         self._last_said = ""                # dedupe repeated dialogue
         # A RESUMED SAVE ARRIVES MID-SENTENCE. The loaded game still holds
@@ -2173,7 +2174,25 @@ class Executor:
         self._watch_for_a_wipe(obs)
         if (obs or {}).get("mode") == "overworld" and \
                 ((obs or {}).get("map") or {}).get("id"):
-            self._last_overworld_map = obs["map"]["id"]
+            # WHERE THE BOULDERS STAND WHEN YOU WALK IN. A shove is not
+            # undoable and a boulder can be shoved into a place that kills
+            # the puzzle — Victory Road 1F's row-16 corridor is the only
+            # way between the halves, so a boulder parked in it with the
+            # player on the wrong side can never be pushed again. The floor
+            # RELOADING puts them all back, which this run has now watched
+            # happen twice; nothing recorded it, so the one lever out of a
+            # dead position was invisible (user, 2026-08-24: "not anymore
+            # for some reason, its gotta solve it agian"). Snapshot on
+            # ARRIVAL; what it means is the model's to read.
+            _mid_now = obs["map"]["id"]
+            if _mid_now != self._last_overworld_map:
+                _rocks = sorted(
+                    f"{o.get('x')},{o.get('y')}"
+                    for o in ((obs.get("map") or {}).get("objects") or [])
+                    if isinstance(o, dict) and o.get("kind") == "boulder")
+                if _rocks:
+                    self.boulder_start[_mid_now] = _rocks
+            self._last_overworld_map = _mid_now
             self._note_intra(obs)
         self.note_frontier(obs)
         self.note_region_anchors(obs)
@@ -2411,6 +2430,7 @@ class Executor:
             self._offered = data.get("offered") or {}
             self._wild_lv = data.get("wild_lv") or {}
             self._grind_exp = data.get("grind_exp") or {}
+            self.boulder_start = data.get("boulder_start") or {}
             self._cut_bushes = data.get("cut_bushes") or {}
             self._shelves = data.get("shelves") or {}
             # MEMORY THAT OUTLIVES THE ATTEMPT. The outcome ledger and the
@@ -2772,6 +2792,7 @@ class Executor:
                  "offered": getattr(self, "_offered", {}),
                  "wild_lv": getattr(self, "_wild_lv", {}),
                  "grind_exp": getattr(self, "_grind_exp", {}),
+                 "boulder_start": getattr(self, "boulder_start", {}),
                  "cut_bushes": getattr(self, "_cut_bushes", {}),
                  "shelves": getattr(self, "_shelves", {}),
                  "outcomes": getattr(self, "_outcomes", {}),
