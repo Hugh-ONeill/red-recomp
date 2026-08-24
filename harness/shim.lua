@@ -4964,7 +4964,14 @@ local function solve_push(G, rock, tx, ty)
         local nst = { bx = nx, by = ny, px = st.bx, py = st.by }
         local key = nx .. "," .. ny .. "|" .. st.bx .. "," .. st.by
         if not seen[key] then
-          local npath = { table.unpack(path) }
+          -- LOVE RUNS LUAJIT, WHERE table.unpack DOES NOT EXIST. This
+          -- file has defined UNPACK = table.unpack or unpack since line
+          -- 53 for exactly that reason and I reached past it; the solver
+          -- died on its first real call with "attempt to call field
+          -- 'unpack' (a nil value)" (2026-08-24). A list copy needs
+          -- neither.
+          local npath = {}
+          for _i = 1, #path do npath[_i] = path[_i] end
           npath[#npath + 1] = dir
           if nx == tx and ny == ty then return npath, nil end
           seen[key] = true
