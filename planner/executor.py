@@ -8315,7 +8315,10 @@ used — in a single action, however many legs it is. AREA as the ledger names
 it, e.g. "POKEMON_TOWER_6F|10,2", or a bare map id like "LAVENDER_TOWN" for
 the nearest walked part of it. Walked ground only: it fails plainly if no
 chain of taken exits joins here to there, and then the way is genuinely not
-known yet. PREFER THIS to re-deriving a journey door by door — a nine-leg
+known yet. IT DOES NOT LEVITATE: its first move is a WALK to the first door
+of the route, so if no walk from where you stand reaches that door, go fails
+right there. Being unable to walk to something is not a reason to reach for
+go — it is the one thing go cannot fix. PREFER THIS to re-deriving a journey door by door — a nine-leg
 walk costs you one round instead of nine, and the rounds are the budget. A
 map-changing op, so LAST in your macro),
 BLOCKERS: the ledger lists WAYS THAT TURNED YOU BACK anywhere you have been

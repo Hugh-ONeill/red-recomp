@@ -1560,8 +1560,19 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         head += (". THIS FLOOR HAS ANOTHER PART YOU HAVE WALKED: "
                  + "; ".join(_bits)
                  + (f" (and {len(_kin) - 3} more)" if len(_kin) > 3 else "")
-                 + ". No walk from here need reach it — {\"op\":\"go\","
-                 "\"to\":\"AREA\"} replays a route you have walked")
+                 # GO DOES NOT LEVITATE. This said "no walk from here
+                 # need reach it", which is true of the DESTINATION and
+                 # false of the route's first door — go's first move is a
+                 # walk to that door. The run read the two sentences
+                 # together and drew the conclusion we had written for it:
+                 # "because i cannot walk from here ill use the go
+                 # command" (user, 2026-08-23), sending go into 1F's
+                 # sealed half round after round.
+                 + ". You need no walk from here to the PLACE — "
+                 "{\"op\":\"go\",\"to\":\"AREA\"} replays a route "
+                 "you have walked. But its first move is a WALK to the "
+                 "first door of that route, so it can only start if a "
+                 "walk from where you stand reaches THAT door")
     lines = [head + "."]
     # EXITS ARE NEVER CUT. The cap is for the long tail of things and
     # people; a door or a seam is a way out and every one is shown.
