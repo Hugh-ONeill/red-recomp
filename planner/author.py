@@ -1382,10 +1382,22 @@ def observed_text(path: Path) -> str:
             collapsed.append((0 if unpressed else 1, label))
         collapsed.sort(key=lambda t: (t[0], _rank(t[1].split(" x")[0]
                                                   .rstrip("*")), t[1]))
+        _coll_rank = list(collapsed)
         collapsed = [t[1] for t in collapsed]
         shown, extra = collapsed[:8], len(collapsed) - 8
-        seen.append(f"  {region}: {', '.join(shown)}"
-                    + (f" (+{extra} more)" if extra > 0 else ""))
+        # NEAREST FIRST, UNPRESSED FIRST — the frontier block's rule, which
+        # this block never got. Bounded ALPHABETICALLY at [:40] out of 239
+        # areas, POKEMON_MANSION_B1F lost its place to BIKE_SHOP,
+        # BILLS_HOUSE and BLUES_HOUSE, so the author planning "retrieve the
+        # Secret Key" — while the party stood in B1F with two item balls
+        # there it had never picked up — was shown neither ball and wrote a
+        # tour of the building instead (user, watching: "its swinging
+        # between trying to explore the basement and trying to go upstairs
+        # on phantom missions").
+        seen.append((0 if any(t[0] == 0 for t in _coll_rank) else 1,
+                     _hops.get(region, 999), region,
+                     f"  {region}: {', '.join(shown)}"
+                     + (f" (+{extra} more)" if extra > 0 else "")))
     dead = []
     for tgt, regions in (d.get("dead_ends") or {}).items():
         for region, n in regions.items():
@@ -1405,12 +1417,26 @@ def observed_text(path: Path) -> str:
     # is shorter and unusable: it is not a code, and the validator would
     # bounce it. The whole list costs ~2KB of a 22KB budget; hiding half
     # the map to save that is a bad trade.
+    _seen_lines = []
+    if seen:
+        seen.sort(key=lambda t: (t[0], t[1], t[2]))
+        _shown_seen, _cut = seen[:40], max(0, len(seen) - 40)
+        _seen_lines.append(
+            "\n\nWHAT WAS SEEN IN EACH AREA, NEAREST FIRST AND ANYTHING "
+            "NEVER PRESSED BEFORE THE REST (so you can aim a subgoal at the "
+            "RIGHT part of a map — the same map id can have several "
+            "unconnected parts, and only one of them holds the thing you "
+            "need; * = this run has never pressed it)"
+            + (f", first {len(_shown_seen)} of {len(seen)} areas"
+               if _cut else "") + ":")
+        _seen_lines.extend(t[3] for t in _shown_seen)
     _grouped = ", ".join(areas)
     out = ("\n\nAREA CODES you may use with the \"area\" predicate (these are "
            "the enclosed areas actually walked; a map with several is split "
            "into parts that cannot be walked between, listed after its "
            "name):\n  " + _grouped
            + "\n".join(_frontier_lines)
+           + "\n".join(_seen_lines)
            + "\n\nWHAT PREVIOUS RUNS ACTUALLY WALKED (evidence — trust this "
            "over your memory of the game; MAP|region means one connected "
            "area, so the SAME map id appearing with DIFFERENT regions is a "
@@ -1493,16 +1519,6 @@ def observed_text(path: Path) -> str:
             out += ("\n\nEVERY PRINTED WAY INTO A PLACE YOU HAVE NEVER "
                     "REACHED, and what has happened at each:\n"
                     + "\n".join(walls))
-    if seen:
-        # Same cliff, same remedy: bounded, and it says what it dropped.
-        shown_seen, cut = seen[:40], max(0, len(seen) - 40)
-        out += ("\n\nWHAT WAS SEEN IN EACH AREA (so you can aim a subgoal "
-                "at the RIGHT part of a map — the same map id can have "
-                "several unconnected parts, and only one of them holds the "
-                "thing you need; * = this run has never pressed it)"
-                + (f", first {len(shown_seen)} of {len(seen)} areas"
-                   if cut else "")
-                + ":\n" + "\n".join(shown_seen))
     fired = [f"  {f} fired in {region}"
              for f, region in sorted((d.get("flag_sites") or {}).items())]
     hints = d.get("hints") or {}
@@ -1664,8 +1680,15 @@ def _fit(text: str, budget: int = EVIDENCE_BUDGET,
         if near:
             body.sort(key=lambda l: 0 if any(m in l for m in near) else 1)
         kept, cut = body[:keep_n], len(body) - keep_n
+        # ORDER IS INFORMATION; DO NOT RE-ALPHABETISE IT. The near-first
+        # sort above is stable, so `kept` arrives in whatever order the
+        # block was built in — and for the sightings block that order IS
+        # the message: nearest first, anything never pressed before the
+        # rest. sorted() threw it away and handed the model BIKE_SHOP,
+        # BILLS_HOUSE, BLUES_HOUSE while the two item balls in the room
+        # the party was standing in sat below the cut (2026-08-23).
         blocks[i] = "\n".join(
-            [head] + sorted(kept)
+            [head] + kept
             + [f"  ... {cut} line(s) about ground far from here not shown ..."])
         text = "\n\n".join(blocks)
     return text
