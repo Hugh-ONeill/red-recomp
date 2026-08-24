@@ -2325,8 +2325,26 @@ function warp_reach(G, no_ledges, surf)
     for dn, d in pairs(DIRS) do
       local nx, ny = cur.x + d[1], cur.y + d[2]
       if not seen[key(nx, ny)] then
+        -- SURFING IS NOT A GENERAL PASS. Collision.canMove reads
+        -- `mover.surfing` twice: it lets a rider enter WATER, and it swaps
+        -- the tile-pair list from LAND to WATER — and the land list is
+        -- what makes a cave a maze (CAVERN's elevation pairs). Setting it
+        -- for the whole fill therefore walked the swim flood straight
+        -- through Victory Road's ledges on a floor with NO WATER ON IT,
+        -- and the ledger told the run its stairs were reachable "but the
+        -- WATER does: a party Pokemon knows SURF" — which is why it kept
+        -- reaching for SURF instead of the boulder (user, 2026-08-24: "it
+        -- thinks it needs to surf but it needs to use strength"). You ride
+        -- only when you are ON water or stepping ONTO it; everywhere else
+        -- the land rules still hold.
+        local _wet = nil
+        if surf and ow.map.isWaterCell
+           and (ow.map:isWaterCell(cur.x, cur.y)
+                or ow.map:isWaterCell(nx, ny)) then
+          _wet = true
+        end
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y,
-                                     surfing = surf or nil },
+                                     surfing = _wet },
                                    { __index = p })
         if Collision.canMove(ow.map, NOBODY, probe, dn) then
           -- an arrow tile is not somewhere you stand: you arrive and are
