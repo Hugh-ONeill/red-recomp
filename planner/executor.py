@@ -2471,10 +2471,21 @@ class Executor:
                         elif _r.get("kind") == "battle_start" and _cur \
                                 and _r.get("policy") in ("catch", "traversal",
                                                          "fight"):
-                            _sp = str(_r.get("foe") or "").split(" L")[0]
+                            _foe = str(_r.get("foe") or "")
+                            _sp = _foe.split(" L")[0]
                             if _sp and _sp != "None":
                                 bk = self._offered.setdefault(_cur, {})
                                 bk[_sp] = bk.get(_sp, 0) + 1
+                            # NO LEVEL BACKFILL FROM THIS PASS. battle_start
+                            # does not say whether a battle was WILD, and
+                            # `policy` does not separate them — traversal
+                            # covers foes to L50, which are trainers. A
+                            # range built from it would report the rival on
+                            # ROUTE_22 (L47) as what the grass there holds,
+                            # which is the opposite of the point. The live
+                            # path counts only kind == "wild"; `wild_lv`
+                            # stays empty until it has watched some, and
+                            # says nothing until then.
                     if self._offered:
                         print(f"[memory] encounter tally backfilled for "
                               f"{len(self._offered)} map(s) from the journal")
