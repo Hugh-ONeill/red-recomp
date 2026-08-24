@@ -436,8 +436,19 @@ while :; do
     # fatal. Live case: "the party holds a WATER or GRASS type" sat before
     # Vermilion, where wild water Pokemon need a rod nobody has yet, and
     # the upkeep rule saved the chain by dropping it for good. Deferring
-    # beats dropping. Bounded twice over: six pushes per chain, and no
+    # beats dropping. Bounded twice over: a chain ceiling, and no
     # objective put off more than twice (author.py refuses the third).
+    # ...AND THE CEILING IS A CHAIN CEILING, WHICH IS THE BUG THE INSERT
+    # RUNG ABOVE ALREADY FIXED. Six was spent by the early churn — 11
+    # pushes stood on the file by leg 51 — so from about leg 30 onward
+    # this rung was simply dead, and "every party member is at least level
+    # 50" sat in front of Victory Road with no way to be set aside: 27
+    # grinds banking 481 exp each against a L23, and nothing but a rewrite
+    # or a false crossing-off to get past it (user, 2026-08-24: "i was
+    # really banking on it just skipping this leg and trying out victory
+    # road"). The per-OBJECTIVE cap of two is the real guard against
+    # churn; the chain ceiling only has to stop a runaway, so it is set
+    # where a 54-leg outline can still use it late.
     # grep -c prints "0" AND exits 1 when the file exists with no match.
     # A bare `|| echo 0` yields TWO lines; piping that through `head -1`
     # yields SIGPIPE on the echo, which under `set -o pipefail` + `set -e`
@@ -445,7 +456,7 @@ while :; do
     # substitution already captures grep's "0", and the `||` only has to
     # stop the non-zero status from tripping set -e.
     pushed=$(grep -Fc "$leg" run/outline_pushes 2>/dev/null) || pushed=0
-    if [ "$(cat run/outline_pushes 2>/dev/null | wc -l)" -lt 6 ] \
+    if [ "$(cat run/outline_pushes 2>/dev/null | wc -l)" -lt 20 ] \
         && at=$(python planner/author.py --check-later \
             --goal "$leg" --outline-path plans/outline.txt --leg "$i" \
             --pushed "$pushed" \
