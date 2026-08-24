@@ -4930,10 +4930,18 @@ end
 -- concluded the whole boulder was a dead end (user, 2026-08-24: "it keeps
 -- thinking the boulder1 move failed so it wont try it again"). Every step
 -- below now asks Collision.canMove, the same call the walk uses.
+-- THE MOVER NEVER BLOCKS ITSELF. ow.entities is {player} .. npcs, and the
+-- probe below is a fresh table, so Collision.occupied does not recognise it
+-- as the mover and the PLAYER'S REAL CELL stayed solid for the whole
+-- search. In a corridor — which is most of Victory Road — that severs the
+-- floor, and the solver reported "no sequence of shoves" for a boulder with
+-- two legal first moves (2026-08-24, measured: up and down both legal, no
+-- route found). Drop the player as well as whatever else is asked.
 local function _movers(G, skip)
   local out = {}
+  local me = G.overworld and G.overworld.player
   for _, e in ipairs((G.overworld and G.overworld.entities) or {}) do
-    if e ~= skip then out[#out + 1] = e end
+    if e ~= skip and e ~= me then out[#out + 1] = e end
   end
   return out
 end
@@ -4955,6 +4963,19 @@ local function _reach_with_rock(G, px, py, bx, by, rock)
   local head = 1
   local DIRN = { up = { 0, -1 }, down = { 0, 1 },
                  left = { -1, 0 }, right = { 1, 0 } }
+  -- A DOOR IS AN ENDPOINT, NOT A CORRIDOR — the same rule warp_reach has
+  -- kept since Route 7's gate, and without it this search planned stand
+  -- cells the WALKER then refused: "to push it down you have to stand at
+  -- (5,14) and that is not ground you can walk to from here", with the
+  -- party standing on Victory Road's own doormat at the time. A warp cell
+  -- can be stepped onto and is not expanded FROM; the cell you start on is
+  -- exempt, or you could never leave a doorway.
+  local THRU = {}
+  local ow0 = G.overworld
+  for _, w in ipairs(((ow0 and ow0.map and ow0.map.def) or {}).warps or {}) do
+    THRU[w.x .. "," .. w.y] = true
+  end
+  THRU[px .. "," .. py] = nil
   while head <= #q do
     local cur = q[head]; head = head + 1
     for dir, d in pairs(DIRN) do
@@ -4968,7 +4989,7 @@ local function _reach_with_rock(G, px, py, bx, by, rock)
       if not seen[k] and not (nx == bx and ny == by)
          and _can_step(G, cur[1], cur[2], dir, rock) then
         seen[k] = true
-        q[#q + 1] = { nx, ny }
+        if not THRU[k] then q[#q + 1] = { nx, ny } end
       end
     end
   end
@@ -5025,6 +5046,28 @@ local function solve_push(G, rock, tx, ty)
   end
   if budget <= 0 then
     return nil, "gave up looking for a way to shove it there"
+  end
+  do
+    -- WHICH WAYS IT CAN GO AT ALL. "No sequence of shoves" alone leaves the
+    -- model unable to tell a walled-in boulder from one whose route merely
+    -- does not end where it asked, so say what the first shove could be.
+    -- These are the same two tests the search runs: can you get to the
+    -- pushing side, and will the rock move that way.
+    local ok_dirs = {}
+    local r0 = _reach_with_rock(G, start.px, start.py, start.bx, start.by,
+                                rock)
+    for dir, d in pairs(DIRV) do
+      local sx, sy = start.bx - d[1], start.by - d[2]
+      if r0[sx .. "," .. sy] and _can_step(G, start.bx, start.by, dir, rock)
+      then
+        ok_dirs[#ok_dirs + 1] = dir
+      end
+    end
+    return nil, ("no sequence of shoves puts it on (%d,%d)"):format(tx, ty)
+      .. (#ok_dirs == 0
+          and " — and it cannot be shoved ANY way from where it sits"
+          or (" — it can be shoved " .. table.concat(ok_dirs, " or ")
+              .. " from where it sits, but no run of shoves ends there"))
   end
   return nil, ("no sequence of shoves puts it on (%d,%d) — every route "
     .. "needs a cell to stand on that no walk reaches, or a cell the "
@@ -5090,16 +5133,36 @@ function OPS.push(G, c)
   end
   -- stand on the far side of the rock from where it is going
   local sx, sy = c.x - d[1], c.y - d[2]
+  local _wwhy
   if p.cellX ~= sx or p.cellY ~= sy then
-    OPS.walk_to(G, { x = sx, y = sy,
-                     max_steps = _approach_budget(p, sx, sy) })
+    local _wok
+    _wok, _wwhy = OPS.walk_to(G, { x = sx, y = sy,
+                                   max_steps = _approach_budget(p, sx, sy) })
   end
   if p.cellX ~= sx or p.cellY ~= sy then
+    -- A WALK THE GRASS INTERRUPTED IS NOT A WALK THAT WAS REFUSED. Victory
+    -- Road is wild ground end to end and a shove route is dozens of steps,
+    -- so a battle lands in the middle of the approach constantly. Reporting
+    -- that as "not ground you can walk to from here" is a claim about the
+    -- MAP, and it is false — the run read it as a walled-off boulder and
+    -- gave up on the only boulder that can reach the switch (2026-08-24).
+    if not need_overworld(G)
+       or tostring(_wwhy or ""):find("interrupted") then
+      return false, ("could not get to (%d,%d) to push it %s: something "
+        .. "interrupted the walk (%s). The ground is fine; send it again")
+        :format(sx, sy, c.dir, tostring(_wwhy or _screen_name(G)))
+    end
     return false, ("to push it %s you have to stand at (%d,%d) and that is "
       .. "not ground you can walk to from here"):format(c.dir, sx, sy)
   end
   local bx0, by0 = rock.cellX, rock.cellY
-  for _ = 1, 3 do                    -- first shove arms it, second moves it
+  -- THREE TAPS ASSUMED THE PLAYER WAS ALREADY FACING THE ROCK. Gen 1
+  -- spends a press TURNING when it is not, then one arming STRENGTH, then
+  -- one moving — so an approach that ends facing the wrong way ran out of
+  -- taps and reported "shoved it down and it did not move", which reads as
+  -- a wall (measured 2026-08-24: player at (5,14), (5,16) empty and
+  -- walkable, shove refused).
+  for _ = 1, 6 do
     U.tap(G, c.dir); U.wait(12)
     if rock.cellX ~= bx0 or rock.cellY ~= by0 then break end
   end

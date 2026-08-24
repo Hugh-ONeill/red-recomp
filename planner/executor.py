@@ -9700,6 +9700,34 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # subtract it (user, 2026-08-24: "can we add up exp and see if
             # we can distinguish productive from non-productive"). The
             # number is stated; what it is worth is the model's read.
+            # A SHOVE ROUTE CROSSES WILD GROUND, AND WILD GROUND FIGHTS
+            # BACK. Victory Road is wild end to end and a solved push is
+            # dozens of walking steps, so a battle lands in the middle of
+            # the approach almost every time. The shim cannot fight it —
+            # the box stays open until someone acts — so it returns with
+            # the boulder part-moved, and without this the run read that as
+            # the boulder being stuck and abandoned the only one that can
+            # reach the switch (user, 2026-08-24: "the player should be
+            # able to walk where the algo wants it to"). Fight what is in
+            # the way and send the same push again; it re-solves from
+            # wherever the boulder now is, so every retry resumes.
+            if (op == "push" and step.get("to_x") is not None
+                    and not (r or {}).get("ok")
+                    and "interrupted the walk" in str(
+                        (r or {}).get("detail") or "")):
+                _o2 = obs
+                _fought = False
+                while _o2 and _o2.get("mode") == "battle":
+                    _o2 = self.handle_battle(sg, _o2)
+                    _o2 = self.settle()
+                    _fought = True
+                if _fought:
+                    self.log("push_retry_after_battle", subgoal=sg.get("id"),
+                             step=dict(step))
+                    r = self.b.send("push", **step)
+                    obs = self.settle()
+                    _det = str((r or {}).get("detail") or "")
+                    note = f"push({','.join(f'{k}={v}' for k, v in step.items())})"
             if op == "grind":
                 def _pexp(_o):
                     return sum(int(p.get("exp") or 0)
