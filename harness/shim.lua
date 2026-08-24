@@ -829,6 +829,42 @@ local function observe(G, seq, result)
             end
           end
           if #_bsw > 0 then o.map.boulder_switches = _bsw end
+          -- ...AND A HOLE A BOULDER CAN BE SENT DOWN. Victory Road 3F's
+          -- (23,15) is in no warp table and is BOTH: the player falls
+          -- through it, and a boulder shoved onto it drops to 2F beside
+          -- that floor's second switch — which is the only way a boulder
+          -- reaches that switch at all (user, 2026-08-24: "does it know it
+          -- can push boulders down holes? ... the last puzzle requires
+          -- this i think"). The player half rides the same `holes` list
+          -- the Mansion uses; this is the boulder half.
+          local _bh = {}
+          for _, _c in ipairs((_view and _view.boulder_holes) or {}) do
+            local hx, hy = _c[1] or _c.x, _c[2] or _c.y
+            if hx and hy then
+              _bh[#_bh + 1] = { x = hx, y = hy,
+                                reachable = _rc[hx .. "," .. hy]
+                                            and true or false }
+            end
+          end
+          -- ...AND SEAFOAM'S BOULDER HOLES ARE ALREADY GENERATED DATA.
+          -- field.seafoam[map].holes is the very table the currents come
+          -- from, one field over: each row is the cell a boulder is shoved
+          -- into, with the event it fires and where it lands. Nothing had
+          -- ever read it, so the island's whole puzzle — plug the holes,
+          -- kill the current — was invisible while the run fought the
+          -- current for days.
+          do
+            local _sf = ((G.data and G.data.field and G.data.field.seafoam)
+                         or {})[tostring(map.id)]
+            for _, _h in ipairs((_sf and _sf.holes) or {}) do
+              if _h.x and _h.y then
+                _bh[#_bh + 1] = { x = _h.x, y = _h.y,
+                                  reachable = _rc[_h.x .. "," .. _h.y]
+                                              and true or false }
+              end
+            end
+          end
+          if #_bh > 0 then o.map.boulder_holes = _bh end
           if #_sw > 0 then
             o.map.switch_statues = _sw
             -- ...AND A STATUE IS A FIXTURE, not just a paragraph. Named

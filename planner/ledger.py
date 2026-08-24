@@ -1536,6 +1536,14 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  + " now. A shove cannot be taken back, and this floor put "
                    "them back where they started the last time you walked "
                    "onto it")
+    _bh = m.get("boulder_holes") or []
+    if _bh:
+        head += (". A BOULDER CAN BE SENT DOWN A HOLE ON THIS FLOOR: "
+                 + ", ".join(f"({c['x']},{c['y']})" for c in _bh[:4])
+                 + ". Shove one onto it and it goes down to the floor "
+                   "below — the same hole you would fall through yourself. "
+                   "Where it lands, and whether that is any use, is not "
+                   "recorded here")
     _sw = m.get("switch_statues") or []
     if _sw:
         # REACHABLE MEANS THE CELL YOU PRESS FROM. The statue itself is a
