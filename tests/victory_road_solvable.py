@@ -37,15 +37,49 @@ for cy=0,H-1 do
   end
   walk[#walk+1] = table.concat(row)
 end
+local tiles = {}
+for cy=0,H-1 do
+  local row = {}
+  for cx=0,W-1 do
+    local tx,ty = cx*2, cy*2+1
+    local bx,by = math.floor(tx/4), math.floor(ty/4)
+    local bi = m.blocks[by*m.width+bx+1]
+    local blk = bi and set.blocks[bi+1]
+    row[#row+1] = tostring(blk and blk[(ty%4)*4+(tx%4)+1] or -1)
+  end
+  tiles[#tiles+1] = table.concat(row, ",")
+end
 print(table.concat(walk, "\n"))
+print("--TILES--")
+print(table.concat(tiles, "\n"))
 '''
 out = subprocess.run(["lua5.4","-e",lua], cwd=GAME, capture_output=True, text=True)
-grid = [l for l in out.stdout.splitlines() if l]
+_parts = out.stdout.split("--TILES--")
+grid = [l for l in _parts[0].splitlines() if l]
+TILES = [[int(v) for v in row.split(",")]
+         for row in (_parts[1].splitlines() if len(_parts) > 1 else []) if row]
+# THE ENGINE ALSO ENFORCES TILE PAIRS (elevation), and in a CAVERN that is
+# what makes Victory Road a maze. Approximating collision as "walkable +
+# empty" is what made the shim's first solver plan an 18-shove route whose
+# FIRST shove the game refused.
+PAIRS = {(32, 5), (65, 5), (42, 5), (5, 33)}
+
+
+def pair_blocked(x0, y0, x1, y1):
+    try:
+        a, b = TILES[y0][x0], TILES[y1][x1]
+    except IndexError:
+        return False
+    return (a, b) in PAIRS or (b, a) in PAIRS
 if not grid:
     print("could not read the map:", out.stderr[:200]); sys.exit(1)
 H, W = len(grid), len(grid[0])
 def free(x,y,rocks):
     return 0<=x<W and 0<=y<H and grid[y][x]=='1' and (x,y) not in rocks
+
+
+def step_ok(x0, y0, x1, y1, rocks):
+    return free(x1, y1, rocks) and not pair_blocked(x0, y0, x1, y1)
 
 ROCKS = {(5,16),(14,2),(2,10)}
 START_P = (8,15)
@@ -62,12 +96,13 @@ def solve(bx,by,px,py,target,others):
             cx,cy=dq.popleft()
             for dx,dy in ((0,-1),(0,1),(-1,0),(1,0)):
                 nx,ny=cx+dx,cy+dy
-                if (nx,ny) not in R and (nx,ny)!=(bx,by) and free(nx,ny,others):
+                if ((nx,ny) not in R and (nx,ny)!=(bx,by)
+                        and step_ok(cx,cy,nx,ny,others)):
                     R.add((nx,ny)); dq.append((nx,ny))
         for name,(dx,dy) in (("up",(0,-1)),("down",(0,1)),("left",(-1,0)),("right",(1,0))):
             sx,sy=bx-dx,by-dy
             nx,ny=bx+dx,by+dy
-            if (sx,sy) in R and free(nx,ny,others):
+            if (sx,sy) in R and step_ok(bx,by,nx,ny,others):
                 st=((nx,ny),(bx,by))
                 if st not in seen:
                     if (nx,ny)==target: return path+[name]

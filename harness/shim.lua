@@ -4921,30 +4921,52 @@ end
 -- location to push it to and the harness figures out the mechanics behind
 -- pushing it there"). Nothing here chooses WHICH boulder or WHERE — it is
 -- asked, and answers whether that is possible and how.
-local function _cell_free(G, cx, cy, skip)
-  local ow = G.overworld
-  local map = ow and ow.map
-  if not (map and map.inBounds and map:inBounds(cx, cy)) then return false end
-  if not (map.isWalkableCell and map:isWalkableCell(cx, cy)) then return false end
-  for _, npc in ipairs((ow and ow.npcs) or {}) do
-    if npc ~= skip and npc.cellX == cx and npc.cellY == cy then
-      return false
-    end
+-- ASK THE GAME, DO NOT APPROXIMATE IT. The first version tested
+-- isWalkableCell plus "no NPC here", which is most of the rule and not the
+-- rule: Collision also enforces the TILE-PAIR (elevation) list, and in a
+-- CAVERN that list is what makes Victory Road a maze. So the solver
+-- happily planned an 18-shove route whose FIRST shove the game refused —
+-- "shoved it 0 of 18 cell(s) ... and it did not move" — and the run
+-- concluded the whole boulder was a dead end (user, 2026-08-24: "it keeps
+-- thinking the boulder1 move failed so it wont try it again"). Every step
+-- below now asks Collision.canMove, the same call the walk uses.
+local function _movers(G, skip)
+  local out = {}
+  for _, e in ipairs((G.overworld and G.overworld.entities) or {}) do
+    if e ~= skip then out[#out + 1] = e end
   end
-  return true
+  return out
+end
+
+-- can a thing standing at (cx,cy) step one cell in `dir`?
+local function _can_step(G, cx, cy, dir, skip)
+  local okc, Collision = pcall(require, "src.world.Collision")
+  local ow = G.overworld
+  if not (okc and ow and ow.map) then return false end
+  local probe = setmetatable({ cellX = cx, cellY = cy, surfing = nil },
+                             { __index = ow.player })
+  return Collision.canMove(ow.map, _movers(G, skip), probe, dir) and true
+    or false
 end
 
 -- cells the player can walk to, with the boulder treated as a wall
 local function _reach_with_rock(G, px, py, bx, by, rock)
   local seen, q = { [px .. "," .. py] = true }, { { px, py } }
   local head = 1
+  local DIRN = { up = { 0, -1 }, down = { 0, 1 },
+                 left = { -1, 0 }, right = { 1, 0 } }
   while head <= #q do
     local cur = q[head]; head = head + 1
-    for _, d in ipairs({ { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } }) do
+    for dir, d in pairs(DIRN) do
       local nx, ny = cur[1] + d[1], cur[2] + d[2]
       local k = nx .. "," .. ny
+      -- the boulder is a wall to the walker, and the walker obeys the
+      -- same collision the game gives it
+      -- the rock is excluded from the entity list because during this
+      -- search it is at a SIMULATED cell, not the one the game still has
+      -- it in; (bx,by) below is that simulated cell and is the wall
       if not seen[k] and not (nx == bx and ny == by)
-         and _cell_free(G, nx, ny, rock) then
+         and _can_step(G, cur[1], cur[2], dir, rock) then
         seen[k] = true
         q[#q + 1] = { nx, ny }
       end
@@ -4978,7 +5000,10 @@ local function solve_push(G, rock, tx, ty)
       local sx, sy = st.bx - d[1], st.by - d[2]
       -- ...and the cell the boulder lands on must be free
       local nx, ny = st.bx + d[1], st.by + d[2]
-      if reach[sx .. "," .. sy] and _cell_free(G, nx, ny, rock) then
+      -- the BOULDER's own step has to be legal for the boulder: same
+      -- collision, with the boulder itself excluded from the obstacles
+      if reach[sx .. "," .. sy]
+         and _can_step(G, st.bx, st.by, dir, rock) then
         local nst = { bx = nx, by = ny, px = st.bx, py = st.by }
         local key = nx .. "," .. ny .. "|" .. st.bx .. "," .. st.by
         if not seen[key] then
