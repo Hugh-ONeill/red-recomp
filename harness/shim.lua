@@ -4986,10 +4986,17 @@ local function _reach_with_rock(G, px, py, bx, by, rock)
       -- the rock is excluded from the entity list because during this
       -- search it is at a SIMULATED cell, not the one the game still has
       -- it in; (bx,by) below is that simulated cell and is the wall
-      if not seen[k] and not (nx == bx and ny == by)
+      -- ...AND A WARP CELL IS NOT A CELL YOU STAND ON. A mat FIRES ON
+      -- ARRIVAL, so a stand cell that is a doorway does not push a
+      -- boulder, it ends the trip: the solver picked Victory Road's own
+      -- doormat as the place to shove from and the party came out on
+      -- ROUTE_23 mid-route (user, 2026-08-24: "Something odd going on").
+      -- OPS.interact learned this in August and the lesson is the same
+      -- one. Not reachable, not expanded, not offered.
+      if not seen[k] and not THRU[k] and not (nx == bx and ny == by)
          and _can_step(G, cur[1], cur[2], dir, rock) then
         seen[k] = true
-        if not THRU[k] then q[#q + 1] = { nx, ny } end
+        q[#q + 1] = { nx, ny }
       end
     end
   end

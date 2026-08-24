@@ -66,9 +66,17 @@ free = page([{"x": 17, "y": 13, "held": False, "reachable": True,
               "opens_x": 8, "opens_y": 12}])
 ck("the page names the switch cell", "(17,13)" in free)
 ck("...and the barrier it opens", "opens the way at (8,12)" in free)
-ck("...and that a boulder is what works it", "a BOULDER has to be standing" in free)
-ck("...and that it only holds while the boulder stays",
-   "only while the boulder stays" in free)
+ck("...and that a boulder is what works it", "a BOULDER has to be shoved onto" in free)
+# THE OPPOSITE, ACTUALLY. Measured on VICTORY_ROAD_1F: the boulder landed,
+# the barrier opened, the floor reloaded with the boulders back at their
+# start cells, and the way was STILL open — the landing sets something that
+# outlives the boulder. The old wording claimed the reverse.
+ck("...and does not claim it closes when the boulder leaves",
+   "only while the boulder stays" not in free)
+ck("...and says the way outlives the boulder",
+   "stays open after the boulder has gone" in free)
+ck("...without inventing what unsets it",
+   "not recorded here" in free)
 ck("it does not say which boulder to use",
    "WHICH boulder, and where, is yours" in free)
 
