@@ -1216,6 +1216,14 @@ class Executor:
             return False                       # it never happened
         if ASKING in str(r.get("detail") or ""):
             return False                       # it asked; nothing answered
+        # ...AND A BALL YOU COULD NOT CARRY IS STILL LYING THERE. The full
+        # bag answers "No more room for items!" and the ball does not move;
+        # recording that as a touch made B1F's (5,13) and (5,4) — one of
+        # them the Secret Key — indistinguishable from the ten balls this
+        # run actually collected. Fourth condition, both places, as the
+        # touch rule at the top of this file asks.
+        if "No more room for items" in str(r.get("detail") or ""):
+            return False                       # it answered; nothing moved
         self._tried_objs.setdefault(region, set()).add(name)
         self._stamp_touch(region)
         self._mark_touch(region, name, res_obs)
@@ -9503,6 +9511,22 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # answered. Same rule as ASKING: it is not a touch until it is.
             if ("asked WHICH POKEMON" in str(r.get("detail") or "")
                     and "backed out" in str(r.get("detail") or "")
+                    and op == "interact" and step.get("name")):
+                self._retract_touch(self._where(pre_obs), step["name"])
+            # ...NOR IS A BALL YOU COULD NOT CARRY. THE FOURTH CONDITION.
+            # Pressing an item ball with a full bag answers "No more room
+            # for items!" and LEAVES THE BALL WHERE IT IS — nothing was
+            # taken, so nothing was touched. It was recorded anyway, so
+            # POKEMON_MANSION_B1F's (5,13) and (5,4) — one of which holds
+            # the Secret Key — sat in the author's evidence with no * on
+            # them, reading exactly like the ten balls this run actually
+            # collected, while the leg they belong to was replanned as a
+            # tour of the upstairs floors (user, 2026-08-23: "it definitly
+            # sees the items in the basement right?"). The touch rule at
+            # the top of this file says a touch is an interaction that
+            # COMPLETED, and asks that a fourth condition be added in both
+            # places; this is it.
+            if ("No more room for items" in str(r.get("detail") or "")
                     and op == "interact" and step.get("name")):
                 self._retract_touch(self._where(pre_obs), step["name"])
             # AN OP THAT RAN AND CHANGED NOTHING IS SPENT, NOT SUCCEEDED.
