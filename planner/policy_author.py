@@ -437,18 +437,32 @@ class Gym:
                         obs = self.ex.handle_battle(
                             {"id": "e4", "done_when": {}}, obs)
                         obs = self.ex.settle()
-                    # beaten? the north door opens
+                    # beaten? the north door opens. A ROOM IS CLEARED ONLY
+                    # BY WALKING INTO THE NEXT ONE. Counting any map change
+                    # counted DYING as progress: a blackout warps the party
+                    # to the lobby and heals it, so the policy with
+                    # `battle_items: []` — no healing at all — scored 8/15
+                    # while every trial ended "in INDIGO_PLATEAU_LOBBY with
+                    # 6/6 standing" from an arena that starts with two
+                    # fainted (2026-08-24). Fastest to die, highest score.
+                    want = self.E4_ROOMS[self.E4_ROOMS.index(here) + 1] \
+                        if here != self.E4_ROOMS[-1] else None
                     self.b.send("use_warp", x=4, y=0)
                     obs = self.ex.settle()
                     nxt = ((obs or {}).get("map") or {}).get("id")
-                    if nxt == here:
-                        break            # still shut: the leader stands
+                    if not want or nxt != want:
+                        break            # the leader stands, or we were
+                        # carried out of the gauntlet altogether
                     cleared += 1
             except TimeoutError:
                 pass
             obs = self.ex.settle()
             alive = [p for p in (obs.get("party") or [])
                      if (p.get("hp") or 0) > 0]
+            # ...AND LANDING OUTSIDE THE ROOMS IS A LOSS, not a finish.
+            _end = ((obs.get("map") or {}).get("id"))
+            if _end not in self.E4_ROOMS:
+                res["blackouts"] += 1
             res["rooms"] += cleared
             res["gauntlet_detail"].append(
                 f"cleared {cleared} room(s), stopped in "
