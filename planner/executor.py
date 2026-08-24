@@ -10701,6 +10701,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # cells from that same door with the observation reporting it
             # reachable. The run was refused the op that walks into the
             # basement, by a record of a different room (2026-08-23).
+            # A GRIND IS THE ONE OP WHOSE POINT IS REPETITION. It is
+            # "pace this ground until DONE_WHEN is met", and what it earns
+            # — experience — is invisible to the world mark, which counts
+            # badges, flags and bag kinds and nothing else. So a second
+            # identical grind reads as "same ops, same world, same answer"
+            # when the answer was several levels, and whether it was banned
+            # at all came down to whether its trace happened to say
+            # "moved": "ok (party changed, moved, ...)" survived, "ok (turn
+            # resolved (timeout advancing text))" was filed as spent. Six
+            # grinds were refused on ROUTE_22 that way (user, 2026-08-24:
+            # "we shouldnt be refusing repeated grinds").
+            if _seen and any(isinstance(st, dict) and st.get("op") == "grind"
+                             for st in macro):
+                _seen = None
             if _seen and (not str(_seen.get("why") or "").strip()
                           or any(w in str(_seen.get("why") or "").lower()
                                  for w in ("reach the warp tile",
@@ -10790,7 +10804,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                          if "FAILED" in str(t) or "REFUSED" in str(t)), "")
             _did = any(w in str(t) for t in trace
                        for w in ("map->", "moved", "warped"))
-            if not ok and (_why or not _did):
+            _grinds = any(isinstance(st, dict) and st.get("op") == "grind"
+                          for st in macro)
+            if not ok and (_why or not _did) and not _grinds:
                 # Keyed on the world mark it was spent in, so anything that
                 # MOVES the world (a badge, a flag, an item, a door) frees
                 # every macro again — the refusal only ever covers a world
