@@ -8443,7 +8443,11 @@ no x,y it just switches the move on, which is what STRENGTH and FLASH
 need. FLY takes to=<town> instead of a tile:
 {"op":"field_move","move":"FLY","to":"PALLET_TOWN"} flies to any town
 you have VISITED — a wrong name is refused with the list of towns FLY
-itself offers),
+itself offers. FLY IS ONLY EVER LISTED WHILE YOU ARE OUTSIDE: indoors, in
+a cave or on any floor of a building it is not in the menu at all, however
+well the Pokemon knows it (`map.outdoor` in the observation says which you
+are). Nothing carries you off a floor from inside — walk out first. TELEPORT
+is the same; FLASH is listed only where it is DARK),
 {"op":"push","x":N,"y":N,"dir":"up|down|left|right"} (shove the
 kind:"boulder" at that tile ONE cell the way you say. It walks you to the
 side you have to push from and shoves; WHICH WAY the rock should go is

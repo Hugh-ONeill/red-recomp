@@ -5087,6 +5087,33 @@ function OPS.field_move(G, c)
         .. " is in your badge case, and it is not there yet; a gym "
         .. "leader's badge is what changes this"
     end
+    -- ...AND THE MENU HAS TWO MORE LIST-TIME GATES THE BADGE ONE DOES
+    -- NOT COVER. PartyMenu offers FLY and TELEPORT only when the map is
+    -- OUTSIDE, and FLASH only where it is DARK (src/ui/PartyMenu.lua,
+    -- CheckIfInOutsideMap). Told only "FLY was not offered (it lists:
+    -- CUT, STATS, SWITCH)", the run reads that its FARFETCHD — which
+    -- knows both — has somehow lost one move, and tries again: 134 FLY
+    -- attempts stand in this run's journal, most of them from indoors
+    -- (user, 2026-08-24: "its not realizing we cant fly inside"). Which
+    -- gate is shut is the game's own rule and the map is in hand.
+    if _extra == "" and (mv == "FLY" or mv == "TELEPORT") then
+      local okm2, MapM2 = pcall(require, "src.world.Map")
+      local okf2, FD2 = pcall(require, "src.world.FieldDefaults")
+      local _md2 = ow and ow.map and ow.map.def
+      if okm2 and okf2 and _md2 and MapM2.isOutside then
+        local okv2, out2 = pcall(MapM2.isOutside, _md2,
+          FD2.field and FD2.field(G.data, "outsideTilesets"))
+        if okv2 and not out2 then
+          _extra = " — the menu lists " .. mv .. " only while you are "
+            .. "OUTSIDE, and this map is not: no move takes you off a "
+            .. "floor from indoors. Walk out first, then use it"
+        end
+      end
+    end
+    if _extra == "" and mv == "FLASH" and ow and not ow.dark then
+      _extra = " — the menu lists FLASH only where it is DARK, and it is "
+        .. "not dark here"
+    end
     return false, mv .. " was not offered in the menu (it lists: "
       .. table.concat(seen, ", ") .. ")" .. _extra
   end
