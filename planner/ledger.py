@@ -1487,9 +1487,17 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                    f", which opens the way at ({c['opens_x']},{c['opens_y']})")
             if c.get("held"):
                 return _at + _op + " — a BOULDER IS ON IT NOW"
+            # WHETHER *YOU* CAN STAND THERE IS THE WRONG TEST. A boulder
+            # has to arrive on it; you never do. Saying "no walk from here
+            # reaches that cell" about a switch reads as "this one is out
+            # of play" and sends the run looking elsewhere, when the only
+            # question is whether some sequence of shoves gets a boulder
+            # there — which push to_x/to_y answers for real.
             return (_at + _op
                     + ("" if c.get("reachable") else
-                       " — no walk from here reaches that cell"))
+                       " — no walk from here reaches that cell, which does "
+                       "not matter: it is the BOULDER that has to end up "
+                       "on it, not you"))
         head += (f". THIS FLOOR HAS {len(_bsw)} SWITCH(ES) IN THE FLOOR: "
                  + ", ".join(_one_bsw(c) for c in _bsw[:6])
                  + ". Nothing presses one: a BOULDER has to be standing on "

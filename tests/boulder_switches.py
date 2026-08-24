@@ -89,6 +89,11 @@ ck("a switch already held says so", "a BOULDER IS ON IT NOW" in held)
 far = page([{"x": 17, "y": 13, "held": False, "reachable": False,
              "opens_x": 8, "opens_y": 12}])
 ck("an unreachable switch says so", "no walk from here reaches that cell" in far)
+# ...AND SAYS IT DOES NOT MATTER. Player-reachability is the wrong test for
+# a switch a BOULDER has to arrive on; the bare clause reads as "this one is
+# out of play" and sends the run looking elsewhere.
+ck("...and that it is the boulder that must get there, not the player",
+   "it is the BOULDER that has to end up on it, not you" in far)
 
 ck("no switches, no line", "SWITCH(ES) IN THE FLOOR" not in page([]))
 
