@@ -750,17 +750,7 @@ local function observe(G, seq, result)
                 reachable = _rc[cx .. "," .. (cy + 1)] and true or false }
             end
           end
-          if #_mach > 0 then
-            o.map.objects = o.map.objects or {}
-            for _, _m2 in ipairs(_mach) do
-              o.map.objects[#o.map.objects + 1] = {
-                x = _m2.x, y = _m2.y, kind = "fixture",
-                name = ("QUIZ_%s_%d_%d")
-                       :format(tostring(map.id), _m2.x, _m2.y),
-                reachable = _m2.reachable,
-              }
-            end
-          end
+          if #_mach > 0 then o.map.quiz_machines = _mach end
           if #_sw > 0 then
             o.map.switch_statues = _sw
             -- ...AND A STATUE IS A FIXTURE, not just a paragraph. Named
@@ -774,15 +764,6 @@ local function observe(G, seq, result)
             -- 2026-08-24: "we might need to treat them as fixtures").
             -- Same minting convention as DOOR_<MAP>_x_y: the tile IS the
             -- thing, and reachability is the PRESS cell's, as everywhere.
-            o.map.objects = o.map.objects or {}
-            for _, _st in ipairs(_sw) do
-              o.map.objects[#o.map.objects + 1] = {
-                x = _st.x, y = _st.y, kind = "fixture",
-                name = ("SWITCH_%s_%d_%d")
-                       :format(tostring(map.id), _st.x, _st.y),
-                reachable = _st.reachable and true or false,
-              }
-            end
             -- ...AND WHICH WAY THEY ARE SET RIGHT NOW. The statues share
             -- ONE state: pressing any of them flips the same wall blocks
             -- on every floor (story6.lua's EVENT_MANSION_SWITCH_ON). The
@@ -1598,6 +1579,29 @@ local function observe(G, seq, result)
               }
             end
           end
+        end
+      end
+    end
+    -- A STATUE AND A QUIZ MACHINE ARE FIXTURES, and this is where the
+    -- object list finally exists — it is rebuilt from scratch further up
+    -- (o.map.objects = {}), so minting them beside the scan that FINDS
+    -- them silently threw them away. Named only in a header, a statue was
+    -- in no candidate row: the list could say "Everything you can REACH
+    -- here is done" with a pressable statue in the room, explore never
+    -- picked one, and the "fixtures can be pressed AGAIN" wording —
+    -- written for exactly this puzzle — could not see them (user,
+    -- 2026-08-24: "we might need to treat them as fixtures").
+    do
+      local _mid2 = tostring(((o.map or {}).id) or "")
+      for _, _pair in ipairs({ { "SWITCH", o.map.switch_statues },
+                               { "QUIZ", o.map.quiz_machines } }) do
+        for _, _f in ipairs(_pair[2] or {}) do
+          o.map.objects = o.map.objects or {}
+          o.map.objects[#o.map.objects + 1] = {
+            x = _f.x, y = _f.y, kind = "fixture",
+            name = ("%s_%s_%d_%d"):format(_pair[1], _mid2, _f.x, _f.y),
+            reachable = _f.reachable and true or false,
+          }
         end
       end
     end
