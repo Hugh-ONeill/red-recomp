@@ -251,6 +251,25 @@ local function party(G)
         m.types = {}
         for k, t in ipairs(def.types) do m.types[k] = tostring(t) end
       end
+      -- HOW MUCH MORE IT NEEDS. `exp` was published and the number it is
+      -- measured against never was, so the run could be told a grind
+      -- "earned 412 exp" with nothing to weigh that against — 412 is most
+      -- of a level at L15 and a rounding error at L45, and the difference
+      -- is the whole decision (user, 2026-08-24: "can we say how much exp
+      -- is needed for a lvl up so it has some kind of comparison to
+      -- measure against"). The game's own curve answers it:
+      -- Growth.expForLevel is what the engine levels by.
+      local okg, Growth = pcall(require, "src.pokemon.Growth")
+      if okg and Growth and Growth.expForLevel and def and mon.level then
+        local nxt = tonumber(mon.level) + 1
+        if nxt <= 100 then
+          local need = Growth.expForLevel(def.growthRate, nxt,
+                                          G.data and G.data.growth_rates)
+          if need then
+            m.exp_next_level = math.max(0, need - (tonumber(mon.exp) or 0))
+          end
+        end
+      end
     end
     out[i] = m
   end

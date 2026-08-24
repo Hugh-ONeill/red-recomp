@@ -227,6 +227,29 @@ def _wild_level_note(ex, mid, obs) -> str:
         return ""
 
 
+def _exp_needed_note(obs) -> str:
+    """How much more experience each member needs for its NEXT level.
+
+    `exp` was published and the number it is measured against never was, so
+    "earned 412 exp" had nothing to weigh against: 412 is most of a level at
+    L15 and a rounding error at L45 (user, 2026-08-24: "can we say how much
+    exp is needed for a lvl up so it has some kind of comparison to measure
+    against"). The engine's own curve answers it. Stated per member and per
+    party; what it means for where to fight is the model's."""
+    try:
+        rows = [p for p in ((obs or {}).get("party") or [])
+                if isinstance(p, dict) and p.get("exp_next_level") is not None]
+        if not rows:
+            return ""
+        parts = [f"{p.get('species')} L{p.get('level')} needs "
+                 f"{int(p['exp_next_level'])}" for p in rows[:6]]
+        return (". TO GAIN ONE LEVEL EACH NEEDS, from where it is now: "
+                + ", ".join(parts)
+                + f" (the party together, {sum(int(p['exp_next_level']) for p in rows)})")
+    except Exception:
+        return ""
+
+
 def _grind_yield_note(ex, mid) -> str:
     """What grinding on THIS map has actually paid, in experience.
 
@@ -6508,6 +6531,7 @@ class Executor:
                     + ", ".join(f"{sp} x{n}" for sp, n in _top)
                     + _wild_level_note(self, _mid, obs)
                     + _grind_yield_note(self, _mid)
+                    + _exp_needed_note(obs)
                     + ". A floor whose wilds never include the thing you "
                       "want is a floor to leave, or ground of a different "
                       "kind — water, for one — to reach.")
