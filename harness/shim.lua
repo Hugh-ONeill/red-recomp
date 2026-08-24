@@ -695,16 +695,25 @@ local function observe(G, seq, result)
         -- They are not map objects and not signs — the two things this
         -- observation carries — so the model has never been shown a
         -- thing it is standing next to and can press, and the Super Nerd
-        -- tells it in words that switches exist. Tile 61 IS the statue:
-        -- it appears once per Mansion floor (twice on B1F) at exactly
-        -- the scripted coordinates, and elsewhere only in the Cinnabar
-        -- and Saffron gyms, which have one each. Say where they are;
+        -- tells it in words that switches exist. Say where they are;
         -- pressing one is the model's call, as is which.
         do
           local _sw = {}
-          for cy = 0, _H - 1 do
-            for cx = 0, _W - 1 do
-              if map.cellTile and map:cellTile(cx, cy) == 61 then
+          -- A STATUE IS MADE BY A SCRIPT, NOT BY A TILE. This matched
+          -- collision tile 61, which I claimed "appears once per Mansion
+          -- floor and elsewhere only in the Cinnabar and Saffron gyms".
+          -- That was written from memory and never checked: tile 61 is in
+          -- FIFTY-FOUR maps — BLUES_HOUSE, DAYCARE, AGATHAS_ROOM, four
+          -- cells of FUCHSIA_CITY, CELADON_CITY, PEWTER_CITY — and
+          -- CINNABAR_GYM at (17,13), which the very next leg walks into
+          -- (user, 2026-08-24: "are we sure it doesnt appear in every
+          -- gym?"). Only a map script makes a cell a switch, so the script
+          -- is what says where they are; story6.lua exposes its own list.
+          local _okms, _MS = pcall(require, "src.script.MapScripts")
+          local _view = _okms and _MS.get and _MS.get(map.id) or nil
+          for _, _c in ipairs((_view and _view.switches) or {}) do
+            local cx, cy = _c[1] or _c.x, _c[2] or _c.y
+            if cx and cy then
                 -- A STATUE IS SOLID. You do not stand on it — you stand
                 -- BELOW it and face up (onInteract tests facing == "up").
                 -- So its own cell is never in the walkable component, and
@@ -718,16 +727,62 @@ local function observe(G, seq, result)
                 -- party could have walked to, and the model left the floor
                 -- because we told it it could not). The cell you PRESS
                 -- FROM is the one whose reachability is the question.
-                local _px, _py = cx, cy + 1
-                _sw[#_sw + 1] = { x = cx, y = cy,
-                                  press_x = _px, press_y = _py,
-                                  reachable = _rc[_px .. "," .. _py]
-                                              and true or false }
-              end
+              local _px, _py = cx, cy + 1
+              _sw[#_sw + 1] = { x = cx, y = cy,
+                                press_x = _px, press_y = _py,
+                                reachable = _rc[_px .. "," .. _py]
+                                            and true or false }
+            end
+          end
+          -- ...AND THE SAME FOR ANY OTHER PRESS-FROM-BELOW MACHINE. The
+          -- Cinnabar Gym's six quiz machines are the statues' twin: not a
+          -- map object, not a sign, pressed while facing up, and invisible
+          -- to everything the observation carries. They are NOT switches —
+          -- no shared setting — so they get no statue header, only a
+          -- fixture row apiece. Where they stand is on the screen; what to
+          -- answer is the puzzle and story6.lua does not export it.
+          local _mach = {}
+          for _, _c in ipairs((_view and _view.machines) or {}) do
+            local cx, cy = _c[1] or _c.x, _c[2] or _c.y
+            if cx and cy then
+              _mach[#_mach + 1] = {
+                x = cx, y = cy,
+                reachable = _rc[cx .. "," .. (cy + 1)] and true or false }
+            end
+          end
+          if #_mach > 0 then
+            o.map.objects = o.map.objects or {}
+            for _, _m2 in ipairs(_mach) do
+              o.map.objects[#o.map.objects + 1] = {
+                x = _m2.x, y = _m2.y, kind = "fixture",
+                name = ("QUIZ_%s_%d_%d")
+                       :format(tostring((ow.map or {}).id), _m2.x, _m2.y),
+                reachable = _m2.reachable,
+              }
             end
           end
           if #_sw > 0 then
             o.map.switch_statues = _sw
+            -- ...AND A STATUE IS A FIXTURE, not just a paragraph. Named
+            -- only in the header, a statue was in no candidate row: the
+            -- list could say "Everything you can REACH here is done" with
+            -- a pressable statue standing in the room, `explore` never
+            -- picked one, and the "fixtures can be pressed AGAIN" wording
+            -- — written for exactly this kind of puzzle — could not see
+            -- them. The run shuttled 1F <-> B1F for a whole subgoal with
+            -- two pressable statues on the floor it kept leaving (user,
+            -- 2026-08-24: "we might need to treat them as fixtures").
+            -- Same minting convention as DOOR_<MAP>_x_y: the tile IS the
+            -- thing, and reachability is the PRESS cell's, as everywhere.
+            o.map.objects = o.map.objects or {}
+            for _, _st in ipairs(_sw) do
+              o.map.objects[#o.map.objects + 1] = {
+                x = _st.x, y = _st.y, kind = "fixture",
+                name = ("SWITCH_%s_%d_%d")
+                       :format(tostring((ow.map or {}).id), _st.x, _st.y),
+                reachable = _st.reachable and true or false,
+              }
+            end
             -- ...AND WHICH WAY THEY ARE SET RIGHT NOW. The statues share
             -- ONE state: pressing any of them flips the same wall blocks
             -- on every floor (story6.lua's EVENT_MANSION_SWITCH_ON). The
@@ -6780,7 +6835,22 @@ function OPS.interact(G, c)
     -- A DOOR NAME IS A TILE OF THIS MAP. DOOR_<MAP>_x_y is minted from
     -- the map's own card-key shutter tiles (see observe); pressing it is
     -- pressing that tile — no object lookup, the tile IS the thing.
+    -- A SWITCH NAME IS A TILE OF THIS MAP, same as a door's.
     if not ix then
+      local smp, sx, sy = tostring(c.name):match("^SWITCH_(.-)_(%d+)_(%d+)$")
+      if not sx then
+        smp, sx, sy = tostring(c.name):match("^QUIZ_(.-)_(%d+)_(%d+)$")
+      end
+      if sx then
+        if smp ~= tostring((ow.map or {}).id) then
+          return false, ("that name is a fixture on %s, and you are "
+            .. "on %s — go there first (use_warp/go take map=).")
+            :format(smp, tostring((ow.map or {}).id))
+        end
+        tx, ty = tonumber(sx), tonumber(sy)
+      end
+    end
+    if not ix and not tx then
       local dmp, dx, dy = tostring(c.name):match("^DOOR_(.-)_(%d+)_(%d+)$")
       if dx then
         if dmp ~= tostring((ow.map or {}).id) then
