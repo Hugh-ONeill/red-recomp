@@ -382,6 +382,14 @@ class Gym:
     # ------------------------------------------------------ the E4 arena
     E4_ROOMS = ["LORELEIS_ROOM", "BRUNOS_ROOM", "AGATHAS_ROOM",
                 "LANCES_ROOM", "CHAMPIONS_ROOM"]
+    # THE SCORE IS THE FLAGS. Counting map arrivals raced the champion's
+    # win against Oak's Hall of Fame walk-in (the observation has no map
+    # inside a screen), so a trial that beat all five could score 3. The
+    # save's own beaten flags are in every observation, in every mode.
+    E4_FLAGS = ["EVENT_BEAT_LORELEIS_ROOM_TRAINER_0",
+                "EVENT_BEAT_BRUNOS_ROOM_TRAINER_0",
+                "EVENT_BEAT_AGATHAS_ROOM_TRAINER_0",
+                "EVENT_BEAT_LANCE", "EVENT_BEAT_CHAMPION_RIVAL"]
 
     def prepare_e4(self):
         """Checkpoint the save exactly as it stands, and score from there.
@@ -405,6 +413,14 @@ class Gym:
         self.b.send("checkpoint_capture", token="eval_e4")
         self.rival_ok = False
 
+    def _ride(self, obs):
+        """Fight until the overworld: an observation in battle carries no
+        map, and the champion attacks on entry ("stopped in None")."""
+        while (obs or {}).get("mode") == "battle":
+            obs = self.ex.handle_battle({"id": "e4", "done_when": {}}, obs)
+            obs = self.ex.settle()
+        return obs
+
     def eval_spec_e4(self, spec: dict, k: int = 3) -> dict:
         """How far up the Elite Four does this policy get, from healed?"""
         ex_mod.set_active_spec(spec)
@@ -413,14 +429,18 @@ class Gym:
                "scored": 0, "dmg_gap": 0.0, "rival_detail": [],
                "gauntlet_detail": [], "rooms": 0}
         for _ in range(k):
-            self.b.send("checkpoint_restore", token="eval_e4", reseed=True)
+            r = self.b.send("checkpoint_restore", token="eval_e4",
+                            reseed=True, force=True)
+            rr = (r or {}).get("result") or {}
+            if not rr.get("ok"):
+                raise RuntimeError(f"arena restore failed: {rr.get('detail')}")
             res["gauntlet_trials"] += 1
             start = LOG.stat().st_size
             got = 0
             cleared = 0
             try:
                 for _ in range(len(self.E4_ROOMS)):
-                    obs = self.ex.settle()
+                    obs = self._ride(self.ex.settle())
                     here = ((obs or {}).get("map") or {}).get("id")
                     if here not in self.E4_ROOMS:
                         break            # blacked out, or fell out of the run
@@ -437,10 +457,13 @@ class Gym:
                     if boss:
                         self.b.send("interact", name=boss)
                         obs = self.ex.settle()
-                    while (obs or {}).get("mode") == "battle":
-                        obs = self.ex.handle_battle(
-                            {"id": "e4", "done_when": {}}, obs)
-                        obs = self.ex.settle()
+                    obs = self._ride(obs)
+                    # the champion has no next room: he counts when his
+                    # flag is up and the party still stands
+                    if here == self.E4_ROOMS[-1]:
+                        if "EVENT_BEAT_CHAMPION_RIVAL" in (obs.get("flags") or []):
+                            cleared += 1
+                        break
                     # beaten? the north door opens. A ROOM IS CLEARED ONLY
                     # BY WALKING INTO THE NEXT ONE. Counting any map change
                     # counted DYING as progress: a blackout warps the party
@@ -451,8 +474,11 @@ class Gym:
                     # fainted (2026-08-24). Fastest to die, highest score.
                     want = self.E4_ROOMS[self.E4_ROOMS.index(here) + 1] \
                         if here != self.E4_ROOMS[-1] else None
-                    self.b.send("use_warp", x=4, y=0)
-                    obs = self.ex.settle()
+                    # every E4 room exits at (4,0)/(5,0) except Lance's,
+                    # whose north warps sit at (5,0)/(6,0) (story.lua): with
+                    # a fixed (4,0) a beaten Lance never counted (2026-08-24)
+                    self.b.send("use_warp", x=5, y=0)
+                    obs = self._ride(self.ex.settle())
                     nxt = ((obs or {}).get("map") or {}).get("id")
                     if not want or nxt != want:
                         break            # the leader stands, or we were
@@ -460,18 +486,22 @@ class Gym:
                     cleared += 1
             except TimeoutError:
                 pass
-            obs = self.ex.settle()
+            obs = self._ride(self.ex.settle())
             alive = [p for p in (obs.get("party") or [])
                      if (p.get("hp") or 0) > 0]
-            # ...AND LANDING OUTSIDE THE ROOMS IS A LOSS, not a finish.
+            flags = set(obs.get("flags") or [])
+            cleared = sum(1 for f in self.E4_FLAGS if f in flags)
+            champion = self.E4_FLAGS[-1] in flags
+            # ...AND LANDING OUTSIDE THE ROOMS IS A LOSS, not a finish
+            # (a blackout warps to the lobby); the champion's win ends in
+            # the Hall of Fame, which is a screen, not a map
             _end = ((obs.get("map") or {}).get("id"))
-            if _end not in self.E4_ROOMS:
+            if not champion and _end not in self.E4_ROOMS:
                 res["blackouts"] += 1
             res["rooms"] += cleared
             res["gauntlet_detail"].append(
-                f"cleared {cleared} room(s), stopped in "
-                f"{((obs.get('map') or {}).get('id'))} with "
-                f"{len(alive)}/{len(obs.get('party') or [])} standing")
+                f"beat {cleared}/5 ({'CHAMPION' if champion else 'stopped in ' + str(_end)}) "
+                f"with {len(alive)}/{len(obs.get('party') or [])} standing")
             for d in self._log_delta(start):
                 if d.get("kind") == "blackout":
                     res["blackouts"] += 1

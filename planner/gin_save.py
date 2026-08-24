@@ -16,6 +16,7 @@ Spec (JSON):
    "start": {"map": "LORELEIS_ROOM", "x": 4, "y": 11, "facing": "up"},
    "clear_flags": ["EVENT_BEAT_LORELEIS_ROOM_TRAINER_0", ...],
    "clear_trainers": ["LORELEIS_ROOM_obj_1", ...],
+   "set_flags": [...], "set_trainers": [...],
    "money": 50000}
 
   gin_save.py --base run/arena_e4.lua --spec plans/arena_team.json --out run/arena_lorelei.lua
@@ -243,6 +244,10 @@ def main():
         save["money"] = int(spec["money"])
     for f in spec.get("clear_flags", []):
         save.get("flags", {}).pop(f, None)
+    for f in spec.get("set_flags", []):
+        save.setdefault("flags", {})[f] = True
+    for t in spec.get("set_trainers", []):
+        save.setdefault("defeatedTrainers", {})[t] = True
     for t in spec.get("clear_trainers", []):
         save.get("defeatedTrainers", {}).pop(t, None)
     st = spec.get("start")

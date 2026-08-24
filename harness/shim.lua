@@ -8208,8 +8208,49 @@ function OPS.checkpoint_restore(G, c)
   if not ok then return false, "no Checkpoint module" end
   local ck = saved_checkpoints[c.token or "default"]
   if not ck then return false, "no checkpoint " .. (c.token or "default") end
-  local rok, err = pcall(Checkpoint.restore, G, ck)
-  if not rok then return false, "restore failed: " .. tostring(err) end
+  -- force=true (LAB ONLY): a trial can end inside a screen or a queued
+  -- cutscene (the champion's win queues Oak's Hall of Fame walk-in, which
+  -- ends in a soft reset to the title), and Checkpoint.inspect refuses to
+  -- restore over any of that. Clear the busy state first; the restore
+  -- rebuilds the stack from the overworld anyway (Game:restoreCheckpointSave).
+  if c.force then
+    local ow = G.overworld
+    if ow then
+      if ow.runner then ow.runner.co = nil end
+      ow.pendingScripts, ow.scriptMoves = {}, {}
+      ow.parallelRunners, ow.parallelQueue = {}, {}
+      ow.transitioning = false
+      for _, f in ipairs({ "engaging", "emote", "teleportOut", "dustAnim",
+                           "cutAnim", "fishPose", "pikaHop", "healAnim",
+                           "flyAnim", "flyArrive" }) do ow[f] = nil end
+      if ow.player then
+        ow.player.moving = false
+        ow.player.targetX, ow.player.targetY = nil, nil
+      end
+      local st = G.stack
+      local on_stack = false
+      for _, x in ipairs((st and st.states) or {}) do
+        if x == ow then on_stack = true end
+      end
+      if st and on_stack then
+        while st:top() and st:top() ~= ow do st:pop() end
+      elseif st then
+        -- the overworld itself is gone (title screen): put it back on the
+        -- checkpoint's own map so inspect sees a settled overworld
+        while st:top() do st:pop() end
+        local rt = ck.runtime and ck.runtime.overworld or {}
+        st:push(ow, rt.map, rt.x, rt.y, rt.facing, { via = "checkpoint" })
+      end
+    end
+  end
+  -- Checkpoint.restore RETURNS (false, code, message) on a refusal; pcall's
+  -- own ok only says it did not throw. Reporting "restored" on a refusal
+  -- made every trial after a Hall of Fame a ghost (2026-08-24).
+  local rok, ok2, code, msg = pcall(Checkpoint.restore, G, ck)
+  if not rok then return false, "restore failed: " .. tostring(ok2) end
+  if not ok2 then
+    return false, ("restore refused: %s %s"):format(tostring(code), tostring(msg))
+  end
   -- reseed=true: Checkpoint.restore puts back the CAPTURED rng state, so a
   -- replay would repeat the same luck. CLAIM_RULES forbids luck foresight
   -- on refinement replays, and policy-eval trials need fresh rolls — so
