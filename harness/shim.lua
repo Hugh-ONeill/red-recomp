@@ -5164,6 +5164,20 @@ function OPS.push(G, c)
       end
       moved = moved + 1
     end
+    -- SAY OK ONLY IF IT IS ACTUALLY THERE. The loop reported success on
+    -- the strength of each shove answering ok, and a shove can answer ok
+    -- without the rock ending where the route wanted — so the op returned
+    -- "ok" with the boulder somewhere else entirely and the run believed
+    -- the switch was done (user, 2026-08-24: "but i dont think it did";
+    -- EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH was not set). The boulder's
+    -- own cell is the only thing worth reporting.
+    if rock.cellX ~= _to_x or rock.cellY ~= _to_y then
+      return false, ("meant to put the boulder on (%d,%d) and it is at "
+        .. "(%d,%d): %d shove(s) went in, then it stopped moving the way "
+        .. "the route wanted. Send it again and the rest is re-worked out "
+        .. "from where it now sits")
+        :format(_to_x, _to_y, rock.cellX, rock.cellY, moved)
+    end
     return true, ("pushed the boulder from (%d,%d) to (%d,%d) in %d shove(s)")
       :format(c.x, c.y, rock.cellX, rock.cellY, moved)
   end
