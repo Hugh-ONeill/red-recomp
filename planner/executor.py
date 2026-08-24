@@ -1743,6 +1743,30 @@ class Executor:
             return _run(*_thing_op(c))
         if exits:
             return _exit_op(exits[0])
+        # A BOULDER IS UNFINISHED BUSINESS THIS OP CANNOT FINISH. `pushable`
+        # is in UNWORKED, so a floor with one is correctly NOT "fully
+        # worked" — but explore's `things` list is untouched/unspoken/
+        # cuttable only, so the boulder gives it nothing to do and it walks
+        # off the floor instead: Victory Road 1F, with its switch unpressed
+        # and its one workable boulder standing there, was left for PEWTER
+        # CITY (user, 2026-08-24: "explore took it to pewter instead of
+        # going to the ladder"). A push needs a DESTINATION and choosing
+        # one is not this op's to make, so say that and stop, rather than
+        # walking away from the thing that is actually in the way.
+        _rocks_here = [c for c in cands
+                       if c.status == "pushable" and c.reachable]
+        if _rocks_here:
+            _names = ", ".join(f"{c.key} at ({c.x},{c.y})"
+                               for c in _rocks_here[:4])
+            return False, [
+                "explore: everything here that can be PRESSED or TAKEN is "
+                "done, and what is left on this floor is a BOULDER: "
+                + _names
+                + ". A boulder is not pressed, it is shoved somewhere, and "
+                  "WHERE is a choice this op cannot make for you — "
+                  '{"op":"push","x":N,"y":N,"to_x":N,"to_y":N} '
+                  "takes the destination and works the shoving out. "
+                  "Walking off this floor leaves it exactly as it is."], []
         # nowhere here: the nearest area over walked ground with a way never
         # taken or a thing never pressed (same rule as ledger.plan_explore)
         here = self._where(obs)
