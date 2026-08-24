@@ -204,6 +204,29 @@ except (OSError, ValueError):
 SERVICE_SUFFIXES = ("POKECENTER", "MART", "SHOP", "ELEVATOR")
 
 
+def _wild_level_note(ex, mid, obs) -> str:
+    """What level the wilds on THIS map have actually been, beside what the
+    party is. Both numbers are the run's own — 2125 battles were logged with
+    the foe's level in every one and no page could say so — and whether the
+    gap makes grinding here worth a round is the model's read, not stated
+    here (user, 2026-08-24: "uhoh, its going to try to grind in rt 22")."""
+    try:
+        wl = (getattr(ex, "_wild_lv", None) or {}).get(mid) or {}
+        lo, hi, n = wl.get("lo"), wl.get("hi"), wl.get("n")
+        if not (lo and hi and n):
+            return ""
+        lead = ""
+        lvls = [int(p["level"]) for p in ((obs or {}).get("party") or [])
+                if isinstance(p, dict) and p.get("level")]
+        if lvls:
+            lead = f", and your party is L{min(lvls)}-L{max(lvls)}"
+        return (". THE WILDS YOU HAVE FOUGHT HERE WERE "
+                + (f"L{lo}" if lo == hi else f"L{lo}-L{hi}")
+                + f" across {n} battle(s){lead}")
+    except Exception:
+        return ""
+
+
 def _is_service(region: str) -> bool:
     return str(region).split("|")[0].endswith(SERVICE_SUFFIXES)
 
@@ -983,6 +1006,7 @@ class Executor:
         self._came_from = None      # the region we were in a moment ago
         self._reversals = 0
         self._dead_visits = 0
+        self._wild_lv: dict = {}   # map -> {lo, hi, n} of wild levels FOUGHT
         # THE OUTCOME LEDGER (EXPLORE_DESIGN §3, §6b): per "target|area",
         # per exit key or object name, how many times THIS subgoal did it
         # and what happened last, verbatim from the trace. Read by
@@ -2343,6 +2367,7 @@ class Executor:
             # no stamp and are shown undated.
             self.hints_at = data.get("hints_at") or {}
             self._offered = data.get("offered") or {}
+            self._wild_lv = data.get("wild_lv") or {}
             self._cut_bushes = data.get("cut_bushes") or {}
             self._shelves = data.get("shelves") or {}
             # MEMORY THAT OUTLIVES THE ATTEMPT. The outcome ledger and the
@@ -2691,6 +2716,7 @@ class Executor:
                      self, "_blockers_backfilled", False)),
                  "hints_at": getattr(self, "hints_at", {}),
                  "offered": getattr(self, "_offered", {}),
+                 "wild_lv": getattr(self, "_wild_lv", {}),
                  "cut_bushes": getattr(self, "_cut_bushes", {}),
                  "shelves": getattr(self, "_shelves", {}),
                  "outcomes": getattr(self, "_outcomes", {}),
@@ -6448,6 +6474,7 @@ class Executor:
                     f"WHAT THE WILD GROUND HERE HAS OFFERED, in {_tot} wild "
                     f"encounter(s) on {_mid}: "
                     + ", ".join(f"{sp} x{n}" for sp, n in _top)
+                    + _wild_level_note(self, _mid, obs)
                     + ". A floor whose wilds never include the thing you "
                       "want is a floor to leave, or ground of a different "
                       "kind — water, for one — to reach.")
@@ -8047,6 +8074,21 @@ class Executor:
             _m = getattr(self, "_last_overworld_map", None) or "?"
             book = self._offered.setdefault(_m, {})
             book[str(foe["species"])] = book.get(str(foe["species"]), 0) + 1
+            # ...AND AT WHAT LEVEL. The species tally says whether the
+            # thing you want lives here; it cannot say whether fighting
+            # here is worth a round. A level-43 party walking back to
+            # ROUTE_22 to grind on L2-L6 wilds is a whole leg spent for
+            # nothing, and the run has ALREADY fought them there — 2125
+            # battles recorded, every one with the foe's level in it, and
+            # no page could say so (user, 2026-08-24: "uhoh, its going to
+            # try to grind in rt 22"). What the number means for this
+            # party is the model's read.
+            _lv = foe.get("level")
+            if isinstance(_lv, int) and _lv > 0:
+                _wl = self._wild_lv.setdefault(_m, {})
+                _wl["lo"] = min(_wl.get("lo", _lv), _lv)
+                _wl["hi"] = max(_wl.get("hi", _lv), _lv)
+                _wl["n"] = int(_wl.get("n", 0)) + 1
         # THE GHOST CANNOT BE FOUGHT, AND ONLY TRYING SHOWS IT. The policy
         # flees the tower's fixed GHOST without a word, so the model was
         # left planning to "fight the Ghost to completion" — a thing the
