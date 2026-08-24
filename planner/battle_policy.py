@@ -36,7 +36,8 @@ SPEC DSL v1 (all keys optional; unknown keys are validation errors):
             and to write down as conditions.
   flee_wild: { when_traversal: bool   flee wilds during traversal subgoals
                hp_below: float|null } flee ANY wild when own hp frac below
-  battle_items: [ { item: str          use a healing item IN battle (costs
+  battle_items: [ { item: str, target: "self"|"fainted" (def self)
+                                       use a healing item IN battle (costs
                     hp_below: float    the turn) when own hp frac < this
                     max_uses: int } ]  per battle (default 2)
   field_heal: { item: str, hp_below: float } | null
@@ -168,6 +169,9 @@ def validate_spec(spec) -> list:
                 if "max_uses" in r and not (isinstance(r["max_uses"], int)
                                             and 1 <= r["max_uses"] <= 6):
                     probs.append(f"battle_items[{i}].max_uses int in [1,6]")
+                if "target" in r and r["target"] not in ("self", "fainted"):
+                    probs.append(f"battle_items[{i}].target must be "
+                                 "self/fainted")
     if "field_heal" in spec and spec["field_heal"] is not None:
         fh = spec["field_heal"]
         if not isinstance(fh, dict) or not fh.get("item"):
@@ -453,11 +457,24 @@ def choose(obs: dict, spec: dict | None = None,
             continue
         if items_used.get(item, 0) >= rule.get("max_uses", 2):
             continue
-        if _hp_frac(me) >= rule.get("hp_below", 0.3):
+        # A REVIVE IS FOR SOMEONE ELSE. Every rule gated on the ACTIVE
+        # mon's HP and the op then targeted whoever was first in the
+        # party, so "bring a fainted one back" could not be written at
+        # all — and a party that loses bodies in a five-room gauntlet has
+        # no other way to keep them (user, 2026-08-24: "its gotta use
+        # those revives if it wants to win"). `target: "fainted"` fires
+        # while ANY party member is down; the harness picks which.
+        target = str(rule.get("target") or "self")
+        if target == "fainted":
+            if not any((p.get("hp") or 0) <= 0
+                       for p in (obs.get("party") or [])):
+                continue
+        elif _hp_frac(me) >= rule.get("hp_below", 0.3):
             continue
         items_used[item] = items_used.get(item, 0) + 1
-        return {"op": "battle_item", "item": item,
-                "_why": f"heal with {item}"}
+        return {"op": "battle_item", "item": item, "target": target,
+                "_why": (f"revive with {item}" if target == "fainted"
+                         else f"heal with {item}")}
     scored = [score_move(m, me, foe, spec, ctx.get("journal")) for m in moves]
     damaging = [s for s in scored if (s["power"] or 0) > 0]
     # CATCH intent on a wild foe: weaken with the gentlest non-KO move to

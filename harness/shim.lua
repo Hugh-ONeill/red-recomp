@@ -7880,7 +7880,30 @@ function OPS.battle_item(G, c)
   U.tap(G, "a"); U.wait(10)
   local pm = ui_top(G)                             -- party target picker
   if pm and pm.onSwitch ~= nil and pm.index ~= nil then
-    ui_cursor_to(G, "index", c.slot or 1)
+    -- WHO THE ITEM IS FOR. This defaulted to SLOT 1, which is the mon at
+    -- the front of the party and not necessarily the one that is out — so
+    -- a heal fired for a hurt active mon was spent on whoever happened to
+    -- be listed first. And a REVIVE could never be expressed at all: the
+    -- rule fires on the ACTIVE mon's HP and then targets slot 1 (user,
+    -- 2026-08-24: "its gotta use those revives if it wants to win").
+    -- Default to the mon actually battling — BattleState.player.mon IS a
+    -- party table, so identity finds its slot — and let the caller ask for
+    -- the first FAINTED one instead.
+    local slot = c.slot
+    if not slot then
+      local party = (G.save and G.save.party) or {}
+      if c.target == "fainted" then
+        for i, mon in ipairs(party) do
+          if (mon.hp or 0) <= 0 then slot = i break end
+        end
+      else
+        local active = b and b.player and b.player.mon
+        for i, mon in ipairs(party) do
+          if mon == active then slot = i break end
+        end
+      end
+    end
+    ui_cursor_to(G, "index", slot or 1)
     U.tap(G, "a"); U.wait(12)
   end
   for _ = 1, 150 do        -- drain the heal text until battle takes input

@@ -78,7 +78,11 @@ DSL_DOC = """SPEC DSL (JSON object; every key optional; no other keys):
      fired ONCE in 6041 battle turns while three MAX_REVIVEs sat in the
      bag; v2 named HYPER_POTION and went dead the same way two fights
      later. Name every healing item you would actually spend, strongest
-     last, and the party keeps healing as the bag empties.)
+     last, and the party keeps healing as the bag empties.
+     A rule may add "target": "fainted" — then it fires while ANY party
+     member is DOWN and brings one back (REVIVE, MAX_REVIVE) instead of
+     firing on the active mon's own HP. A gauntlet with no Pokemon Center
+     in it is lost by running out of BODIES, not only out of HP.)
   field_heal: null or {"item": "POTION", "hp_below": 0.0-1.0}
     (one item only here — so pick one you will still have)
     (after a battle ends while traveling: if own hp fraction is below
