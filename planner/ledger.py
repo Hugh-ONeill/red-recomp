@@ -1457,13 +1457,29 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # It read that and left the Mansion floor by floor.
         _reach = [c for c in _sw if c.get("reachable")]
 
+        # EVERY STATUE GETS ITS OWN OP, and the reachable ones come first.
+        # The op form was minted from _sw[0] alone, and on POKEMON_MANSION_
+        # B1F that is (20,3) — whose press cell no walk reaches. So the one
+        # runnable line on the page aimed at the statue the party CANNOT
+        # use, while (18,25), three cells from where it stood, was named
+        # and left without an op; the run sent interact at (18,26), the
+        # cell it stands on, and went back to hunting for stairs (user,
+        # watching, 2026-08-23: "its obsessed with getting to the
+        # second/third floors when its already where it needs to be in the
+        # basement it just needs to recognize and flip the second statues
+        # lock").
+        _sw = sorted(_sw, key=lambda c: (0 if c.get("reachable") else 1,
+                                         c.get("y") or 0, c.get("x") or 0))
+
         def _one(c):
             if c.get("press_x") is None:
                 return f"({c['x']},{c['y']})"
             return (f"({c['x']},{c['y']}), pressed from "
                     f"({c['press_x']},{c['press_y']})"
-                    + ("" if c.get("reachable") else " — WHICH YOU CANNOT "
-                       "WALK TO FROM WHERE YOU STAND RIGHT NOW"))
+                    + ('{"op":"interact","x":%d,"y":%d,"answer":"yes"}'
+                       % (c["x"], c["y"])).join((" with ", ""))
+                    + ("" if c.get("reachable") else " — BUT NO WALK FROM "
+                       "WHERE YOU STAND REACHES THAT PRESS CELL RIGHT NOW"))
 
         head += (f". THIS FLOOR HAS {len(_sw)} SWITCH STATUE(S): "
                  + ", ".join(_one(c) for c in _sw[:6])
@@ -1473,11 +1489,8 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                    "that has to be walkable. The statue's own cell is "
                    "SOLID — drawn S, never stood on. AN INTERACT NAMES "
                    "THE TILE YOU PRESS A AT, NEVER THE TILE YOU STAND ON, "
-                   "and it walks and faces you itself: "
-                   + ('{"op":"interact","x":%d,"y":%d,"answer":"yes"}'
-                      % (_sw[0]["x"], _sw[0]["y"]))
-                   + " presses the first one"
-                   + ". What "
+                   "and it walks and faces you itself — each op above "
+                   "presses the statue beside it. What "
                    "it changes is elsewhere on this floor or another"
                  # ...AND WHETHER PRESSING IT AGAIN CAN STILL ANSWER
                  # ANYTHING HERE. This paragraph hands the model a

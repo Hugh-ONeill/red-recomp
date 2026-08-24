@@ -62,6 +62,20 @@ ck("it names the cell you press from", "(2,12)" in h)
 ck("it says the statue's own cell is solid", "SOLID" in h)
 ck("it gives the op form, aimed at the STATUE not the stand cell",
    '"x":2,"y":11' in h.replace(" ", ""))
+
+# EVERY statue gets its own op, reachable ones first — the op used to be
+# minted from _sw[0] alone, which on B1F is the statue no walk reaches.
+h3 = head_for([{"x": 20, "y": 3, "press_x": 20, "press_y": 4,
+                "reachable": False},
+               {"x": 18, "y": 25, "press_x": 18, "press_y": 26,
+                "reachable": True}])
+ck("the reachable statue is listed first",
+   h3.index("(18,25)") < h3.index("(20,3)"))
+ck("the reachable statue gets its own op",
+   '"x":18,"y":25' in h3.replace(" ", ""))
+ck("the unreachable statue also gets its op, with the caveat",
+   '"x":20,"y":3' in h3.replace(" ", "")
+   and "NO WALK FROM WHERE YOU STAND REACHES" in h3.upper())
 ck("it does not say which to press or when",
    "you should" not in h.lower())
 
@@ -69,7 +83,7 @@ ck("it does not say which to press or when",
 h2 = head_for([{"x": 2, "y": 11, "press_x": 2, "press_y": 12,
                 "reachable": False}])
 ck("an unreachable press cell says so",
-   "CANNOT WALK TO" in h2.upper())
+   "NO WALK FROM WHERE YOU STAND REACHES THAT PRESS CELL" in h2.upper())
 ck("...and it is not claimed of the statue's own cell",
    "none of these can be walked to" not in h2)
 
