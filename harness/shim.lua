@@ -756,7 +756,7 @@ local function observe(G, seq, result)
               o.map.objects[#o.map.objects + 1] = {
                 x = _m2.x, y = _m2.y, kind = "fixture",
                 name = ("QUIZ_%s_%d_%d")
-                       :format(tostring((ow.map or {}).id), _m2.x, _m2.y),
+                       :format(tostring(map.id), _m2.x, _m2.y),
                 reachable = _m2.reachable,
               }
             end
@@ -779,7 +779,7 @@ local function observe(G, seq, result)
               o.map.objects[#o.map.objects + 1] = {
                 x = _st.x, y = _st.y, kind = "fixture",
                 name = ("SWITCH_%s_%d_%d")
-                       :format(tostring((ow.map or {}).id), _st.x, _st.y),
+                       :format(tostring(map.id), _st.x, _st.y),
                 reachable = _st.reachable and true or false,
               }
             end
