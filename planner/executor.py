@@ -9737,12 +9737,23 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # that moved it 10 of 18 cells has BANKED those ten; refusing to
             # continue throws them away and the position may not be
             # recoverable, since a shove cannot be undone.
+            # DO NOT ASK THE OP WHETHER IT WORKED; ASK THE FLOOR. A push
+            # interrupted by a wild battle comes back ok — the party moved,
+            # the battle was fled, and the step reads "ok (moved, fled)"
+            # with the boulder halfway (user, 2026-08-24: "not continuing
+            # after battle"). Whether the boulder is on the cell it was
+            # sent to is a thing the observation states, and it is the only
+            # thing this op was for.
+            def _rock_on(_o, _x, _y):
+                return any(isinstance(t, dict) and t.get("kind") == "boulder"
+                           and t.get("x") == _x and t.get("y") == _y
+                           for t in (((_o or {}).get("map") or {})
+                                     .get("objects") or []))
+
             _pdet = str((r or {}).get("detail") or "")
             if (op == "push" and step.get("to_x") is not None
-                    and not (r or {}).get("ok")
-                    and ("interrupted the walk" in _pdet
-                         or "interrupted before it moved" in _pdet
-                         or "shoved it " in _pdet)):
+                    and not _rock_on(obs, step.get("to_x"),
+                                     step.get("to_y"))):
                 _o2 = obs
                 _fought = False
                 while _o2 and _o2.get("mode") == "battle":
@@ -9753,13 +9764,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # a route that banked ten of eighteen cells continues from
                 # there, battle pending or not
                 _tries = 0
-                while _tries < 3:
+                while _tries < 4:
                     self.log("push_retry_after_battle", subgoal=sg.get("id"),
                              step=dict(step), attempt=_tries + 1)
                     r = self.b.send("push", **step)
                     obs = self.settle()
                     _tries += 1
-                    if (r or {}).get("ok"):
+                    # the floor, again — not the op's own verdict
+                    if _rock_on(obs, step.get("to_x"), step.get("to_y")):
                         break
                     _fought = False
                     while obs and obs.get("mode") == "battle":
@@ -9769,8 +9781,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     if not _fought:
                         break
                 if _tries:
-                    _det = str((r or {}).get("detail") or "")
-                    note = f"push({','.join(f'{k}={v}' for k, v in step.items())})"
+                    _arrived = _rock_on(obs, step.get("to_x"),
+                                        step.get("to_y"))
+                    note = (f"push({','.join(f'{k}={v}' for k, v in step.items())})"
+                            + (f" — resumed {_tries}x"
+                               if _arrived else
+                               f" — resumed {_tries}x and it is still not "
+                               f"on ({step.get('to_x')},{step.get('to_y')})"))
             if op == "grind":
                 def _pexp(_o):
                     return sum(int(p.get("exp") or 0)
