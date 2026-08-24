@@ -6670,6 +6670,48 @@ class Executor:
 
     BAG_SLOTS = 20          # gen 1's bag is twenty distinct items
 
+    def _policy_heal_line(self, obs) -> str:
+        """A healing rule that names an item you do not carry never fires.
+
+        The battle policy heals with a NAMED item, and this run's was
+        authored in a `partyauthor` evaluation — Pewter, the early rival —
+        where POTION is what a party holds. It was never revisited, so by
+        the Elite Four the rule read `POTION below 30% HP` against a bag of
+        HYPER_POTION, MAX_POTION and three MAX_REVIVEs, and `battle_item`
+        fired ONCE in 6041 battle turns. The party walked into the gauntlet
+        unable to use its own medicine, blacked out, and paid the toll —
+        repeatedly (user, 2026-08-24: "its gone through a few times and
+        lost 90% of its money").
+
+        The policy is the model's own file. This says only that the rule
+        cannot fire and what IS carried; rewriting it is not the harness's
+        to do."""
+        try:
+            spec = ACTIVE_SPEC or {}
+            rules = spec.get("battle_items") or []
+            if not rules:
+                return ""
+            bag = (obs or {}).get("bag") or {}
+            dead = [str(r.get("item")) for r in rules
+                    if isinstance(r, dict) and r.get("item")
+                    and not bag.get(str(r.get("item")))]
+            if not dead or len(dead) < len(rules):
+                return ""          # at least one rule can still fire
+            held = sorted(k for k in bag
+                          if any(w in k for w in ("POTION", "RESTORE",
+                                                  "REVIVE", "HEAL",
+                                                  "ELIXER", "ETHER")))
+            return ("\nYOUR BATTLE POLICY CANNOT HEAL YOU RIGHT NOW: it "
+                    "reaches for " + ", ".join(dead)
+                    + " in a fight and you are carrying none. "
+                    + ("What you ARE carrying: " + ", ".join(held)
+                       + ". " if held else "You carry no healing items "
+                                           "at all. ")
+                    + "The rule is in your own battle policy; nothing here "
+                      "changes it for you.")
+        except Exception:
+            return ""
+
     def _bag_line(self, obs, sg) -> str:
         """A FULL BAG REFUSES A GIFT, and only an op failing ever said so.
         20/20 has blocked three legs this run (the Lift Key, the Silph
@@ -7983,6 +8025,8 @@ class Executor:
                     + shut_line
                     + hint_line + remote_line + _elsewhere_str
                     + self._bag_line(obs, sg_for_bag)
+                + self._policy_heal_line(obs)
+                    + self._policy_heal_line(obs)
                     + self.blockers_text(obs))
         loot_line += remote_line
         if not (untried or tried):
