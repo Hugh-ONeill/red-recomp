@@ -1033,6 +1033,8 @@ class Executor:
         self.map_holes: dict = {}           # map id -> holes seen in its floor
         self.shut_settings: dict = {}       # map -> door -> switch settings
                                             # it was seen unreachable in
+        self.reach_settings: dict = {}      # map -> thing -> switch settings
+                                            # it was seen REACHABLE in
         self.map_forced: dict = {}          # map id -> cells the water bumps
                                             # you off (seen while standing
                                             # there; see note_frontier)
@@ -2494,6 +2496,10 @@ class Executor:
                                       for k2, v2 in (v or {}).items()}
                                   for k, v
                                   in (data.get("shut_settings") or {}).items()}
+            self.reach_settings = {k: {k2: sorted(set(v2))
+                                       for k2, v2 in (v or {}).items()}
+                                   for k, v
+                                   in (data.get("reach_settings") or {}).items()}
             self.door_dests = data.get("door_dests") or {}
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
@@ -2701,6 +2707,10 @@ class Executor:
                                        for k2, v2 in (v or {}).items()}
                                    for k, v
                                    in (self.shut_settings or {}).items()},
+                 "reach_settings": {k: {k2: sorted(v2)
+                                        for k2, v2 in (v or {}).items()}
+                                    for k, v
+                                    in (self.reach_settings or {}).items()},
                  "door_dests": self.door_dests},
                 indent=1)
             tmp = self.MEMORY.with_suffix(".json.tmp")
@@ -2959,6 +2969,23 @@ class Executor:
                         continue
                     _k = f"{_w.get('x')},{_w.get('y')}"
                     _ss[_k] = sorted(set(_ss.get(_k, ()))
+                                     | {"pressed" if _on else "unpressed"})
+                # ...AND A THING YOU HAVE STOOD BESIDE IS NOT OUT OF REACH.
+                # Doors learned this; things never did. B1F's two item
+                # balls read "not walkable-to right now" on 73 pages and
+                # were plainly reachable on 8 — the run HAD walked to them
+                # and pressed them — but nothing on the page remembered
+                # that, so it concluded "I have exhausted all
+                # possibilities in the basement ... the items there remain
+                # unreachable" and left to look for the Secret Key
+                # elsewhere (2026-08-24). Which setting reached it is the
+                # fact that was missing.
+                _rs = self.reach_settings.setdefault(_mid, {})
+                for _o in (_m.get("objects") or []):
+                    if not _o.get("name") or not _o.get("reachable"):
+                        continue
+                    _n = str(_o["name"])
+                    _rs[_n] = sorted(set(_rs.get(_n, ()))
                                      | {"pressed" if _on else "unpressed"})
             _dd = self.door_dests.setdefault(_mid, {})
             for _w in (_m.get("warps") or []):

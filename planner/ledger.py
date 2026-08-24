@@ -1213,6 +1213,30 @@ FAIL_CHARS = 460
 _STOP_MARK = "Right where the walk stopped:"
 
 
+def _reached_before(obs, ex, name) -> str:
+    """Which statue setting the run has REACHED this thing in, if any.
+
+    The mirror of the door line. Standing where no walk reaches a thing,
+    the page said only "not walkable-to right now" — true, and silent about
+    the eight pages on which the very same ball was walkable. The run read
+    the silence as a wall and left the Mansion to look for the Secret Key
+    somewhere else (2026-08-24)."""
+    try:
+        mid = str(((obs or {}).get("map") or {}).get("id") or "")
+        seen = ((getattr(ex, "reach_settings", None) or {})
+                .get(mid, {}).get(str(name)) or [])
+        if not seen:
+            return ""
+        return (" — BUT YOU HAVE REACHED IT BEFORE, with the statues "
+                + " and ".join(w.upper() for w in seen)
+                + ("; it is the setting that moves, not the thing"
+                   if len(seen) < 2 else
+                   "; so no walk reaching it now is about where you STAND, "
+                   "not about the thing"))
+    except Exception:
+        return ""
+
+
 def _spent_both_note(obs, ex) -> str:
     """What pressing again can still answer HERE — nothing, once every way
     out of this floor that no walk reaches has been seen in both settings.
@@ -1680,6 +1704,8 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                           + _seen_in[0].upper()
                           + "; the other setting has never been tried "
                             "from here")
+        if c.status == "unreachable" and c.kind not in ("door", "seam"):
+            words += _reached_before(obs, ex, c.key)
         if getattr(c, "spoke", ""):
             words += (" — trying it said: \"" + str(c.spoke)[:120] + "\"")
         if c.kind == "fixture" and c.key != "PC" and c.status in (
@@ -1737,7 +1763,8 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                         if _bagfull else
                         "pressing A takes it and it costs nothing")
                      + ("" if c.reachable else
-                        "; not walkable-to right now, but pressing it is "
+                        _reached_before(obs, ex, c.key)
+                        + "; not walkable-to right now, but pressing it is "
                         "still WORTH SENDING — if a pad or door you have "
                         "ridden before arrives on this map, the press "
                         "rides it again and tries from where it sets "
