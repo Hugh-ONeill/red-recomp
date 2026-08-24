@@ -1,0 +1,94 @@
+{
+  "party": [
+    {
+      "species": "CHARIZARD",
+      "level": 65,
+      "nickname": "CHARIZARD",
+      "moves": [
+        "FLAMETHROWER",
+        "SLASH",
+        "EARTHQUAKE",
+        "FIRE_BLAST"
+      ]
+    },
+    {
+      "species": "STARMIE",
+      "level": 65,
+      "nickname": "STARMIE",
+      "moves": [
+        "SURF",
+        "PSYCHIC_M",
+        "THUNDERBOLT",
+        "RECOVER"
+      ]
+    },
+    {
+      "species": "ALAKAZAM",
+      "level": 65,
+      "nickname": "ALAKAZAM",
+      "moves": [
+        "PSYCHIC_M",
+        "RECOVER",
+        "THUNDER_WAVE",
+        "SEISMIC_TOSS"
+      ]
+    },
+    {
+      "species": "SNORLAX",
+      "level": 65,
+      "nickname": "SNORLAX",
+      "moves": [
+        "BODY_SLAM",
+        "EARTHQUAKE",
+        "REST",
+        "HYPER_BEAM"
+      ]
+    },
+    {
+      "species": "JOLTEON",
+      "level": 65,
+      "nickname": "JOLTEON",
+      "moves": [
+        "THUNDERBOLT",
+        "THUNDER_WAVE",
+        "DOUBLE_KICK",
+        "PIN_MISSILE"
+      ]
+    },
+    {
+      "species": "LAPRAS",
+      "level": 65,
+      "nickname": "LAPRAS",
+      "moves": [
+        "ICE_BEAM",
+        "SURF",
+        "THUNDERBOLT",
+        "BODY_SLAM"
+      ]
+    }
+  ],
+  "bag": {
+    "FULL_RESTORE": 10,
+    "MAX_POTION": 6,
+    "MAX_REVIVE": 6,
+    "REVIVE": 4,
+    "FULL_HEAL": 6,
+    "ELIXER": 4,
+    "MAX_ELIXER": 2
+  },
+  "money": 50000,
+  "start": {
+    "map": "LORELEIS_ROOM",
+    "x": 4,
+    "y": 10,
+    "facing": "up"
+  },
+  "clear_flags": [
+    "EVENT_BEAT_LORELEIS_ROOM_TRAINER_0",
+    "EVENT_AUTOWALKED_INTO_LORELEIS_ROOM",
+    "EVENT_AUTOWALKED_INTO_BRUNOS_ROOM"
+  ],
+  "clear_trainers": [
+    "LORELEIS_ROOM_obj_1"
+  ]
+}
