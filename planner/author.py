@@ -4128,6 +4128,38 @@ def _badge_not_earned(goal: str, start: str) -> str | None:
     return None
 
 
+def _levels_not_reached(goal: str, start: str) -> str | None:
+    """A level bar this objective names that the party does not clear.
+
+    Fourth of the family with _never_stood_in, _badge_not_earned and
+    _item_not_held, and added for the gap they left: those three cover
+    places, badges and items, so a level objective was the one kind judged
+    purely by the model doing arithmetic across six members. "every party
+    member is at least level 50" is the longest, dullest leg in the outline
+    and the easiest to wave through, and a leg crossed off never comes
+    back — the Elite Four would be reached underlevelled with no record of
+    why (2026-08-24).
+
+    Only the unambiguous scope is checked: EVERY / ALL / EACH party member.
+    A goal that names a bar without saying who must clear it is left to the
+    judge, because guessing its scope would be the same mistake one layer
+    down. Levels are in the state text ("NIDOQUEEN L46 (POISON/GROUND)"),
+    so this needs no knowledge of the game at all.
+    """
+    m = re.search(r"\b(every|all|each)\b[^.]{0,40}?"
+                  r"\bat least level\s+(\d+)", goal or "", re.I)
+    if not m:
+        return None
+    want = int(m.group(2))
+    lv = [int(x) for x in re.findall(r"\bL(\d+)\b", start or "")]
+    if not lv:
+        return None                      # no levels to read: not our call
+    low = min(lv)
+    if low >= want:
+        return None
+    return f"level {want} for every party member, and one of them is L{low}"
+
+
 def _item_not_held(goal: str, start: str) -> str | None:
     """An item this objective names by name that is not in the bag.
 
@@ -4849,6 +4881,10 @@ def check_done(goal: str, start: str, model: str,
     if badge:
         print(f"[check-done] refused: this objective names {badge} and the "
               f"run is not wearing it")
+        return False
+    levels = _levels_not_reached(goal, start)
+    if levels:
+        print(f"[check-done] refused: this objective names {levels}")
         return False
     item = _item_not_held(goal, start)
     if item:
