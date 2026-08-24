@@ -4521,6 +4521,51 @@ class Executor:
                 _cur = _dst
         return None
 
+    def _wild_elsewhere_note(self, here_map, obs) -> str:
+        """What the wild ground on OTHER maps has paid, for comparison.
+
+        Every note about fighting described the map underfoot and nothing
+        else, so a party grinding L2-L5 wilds for 481 exp a grind had no way
+        to know that ground it has already walked pays several times that
+        per battle (user, 2026-08-24: "it doesnt have a comparison with an
+        actually good place to train like the mansion where each battle
+        earns as much as a full grind here"). These are the run's own
+        battles, on ground it has already stood on. Ordered by how far away
+        they are, not by how good they look; which is worth the walk is the
+        model's read.
+        """
+        try:
+            rows = []
+            for _m, _wl in (self._wild_lv or {}).items():
+                if _m == here_map or not _wl.get("n"):
+                    continue
+                _hop = None
+                for _r in (self.explored or {}):
+                    if _r.split("|")[0] != _m:
+                        continue
+                    _p = self._route(self._where(obs), _r) if obs else None
+                    if _p is not None and (_hop is None or len(_p) < _hop):
+                        _hop = len(_p)
+                _g = (self._grind_exp or {}).get(_m) or {}
+                _per = (int(_g.get("exp", 0)) // int(_g["n"])) if _g.get("n") \
+                    else None
+                rows.append((_hop if _hop is not None else 99, _m, _wl, _per))
+            if not rows:
+                return ""
+            rows.sort()
+            _bits = []
+            for _hop, _m, _wl, _per in rows[:5]:
+                _lv = (f"L{_wl['lo']}" if _wl["lo"] == _wl["hi"]
+                       else f"L{_wl['lo']}-L{_wl['hi']}")
+                _bits.append(
+                    f"{_m} {_lv} in {_wl['n']} battle(s)"
+                    + (f", {_per} exp per grind" if _per is not None else "")
+                    + (f", {_hop} walked leg(s) away" if _hop < 99 else ""))
+            return (". WILD GROUND ELSEWHERE YOU HAVE ALREADY FOUGHT ON: "
+                    + "; ".join(_bits))
+        except Exception:
+            return ""
+
     def _route(self, frm: str, to: str, avoid: set | None = None,
                ignore_blocked: bool = False):
         """Shortest path over the LEARNED region graph, as (exit_key, dest)
@@ -6532,6 +6577,7 @@ class Executor:
                     + _wild_level_note(self, _mid, obs)
                     + _grind_yield_note(self, _mid)
                     + _exp_needed_note(obs)
+                    + self._wild_elsewhere_note(_mid, obs)
                     + ". A floor whose wilds never include the thing you "
                       "want is a floor to leave, or ground of a different "
                       "kind — water, for one — to reach.")
