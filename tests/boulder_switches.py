@@ -70,7 +70,17 @@ ck("...and that a boulder is what works it", "a BOULDER has to be standing" in f
 ck("...and that it only holds while the boulder stays",
    "only while the boulder stays" in free)
 ck("it does not say which boulder to use",
-   "WHICH boulder, and by what route, is yours" in free)
+   "WHICH boulder, and where, is yours" in free)
+
+# ...AND IT TEACHES THE DESTINATION FORM, NOT THE ONE-CELL ONE. The first
+# version of this line said "Boulders move one cell at a time with
+# {"op":"push",...,"dir":...}" — written before push learned to solve a
+# route, and left standing next to the switch it describes, which is the
+# nearest instruction to the decision. The run went on spelling out single
+# shoves (user, 2026-08-24: "its trying to solve it push by push still").
+ck("the switch line names the destination form", '"to_x"' in free)
+ck("...and does not teach the one-cell form beside it",
+   '"dir":"..."' not in free)
 
 held = page([{"x": 17, "y": 13, "held": True, "reachable": True,
               "opens_x": 8, "opens_y": 12}])

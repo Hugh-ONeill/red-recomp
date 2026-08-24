@@ -1196,8 +1196,11 @@ _STATUS_WORDS = {
                 "knows STRENGTH. Switch STRENGTH on from the party menu "
                 "first ({{\"op\":\"field_move\",\"move\":\"STRENGTH\"}})"
                 " — the game turns it off again on every map load — then "
-                "push with {{\"op\":\"push\",\"x\":N,\"y\":N,"
-                "\"dir\":\"up|down|left|right\"}}",
+                "say where it should END UP and the shoving is worked out "
+                "for you: {{\"op\":\"push\",\"x\":N,\"y\":N,"
+                "\"to_x\":N,\"to_y\":N}}. A bare "
+                "{{\"dir\":\"up|down|left|right\"}} instead shoves it "
+                "one single cell",
     "boulder": "a BOULDER — it is pushed, not pressed, and STRENGTH is what "
                "pushes it; nobody in the party knows STRENGTH yet",
 }
@@ -1491,10 +1494,13 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  + ", ".join(_one_bsw(c) for c in _bsw[:6])
                  + ". Nothing presses one: a BOULDER has to be standing on "
                    "it, and it stays open only while the boulder stays "
-                   "there. Boulders move one cell at a time with "
-                   "{\"op\":\"push\",\"x\":N,\"y\":N,\"dir\":\"...\"} "
-                   "and STRENGTH switched on for this map first. WHICH "
-                   "boulder, and by what route, is yours")
+                   "there. NAME THE CELL IT SHOULD END UP ON and the "
+                   "shoving is worked out for you: {\"op\":\"push\","
+                   "\"x\":N,\"y\":N,\"to_x\":N,\"to_y\":N} — which "
+                   "side to stand on for each shove and in what order, and "
+                   "it answers plainly if no sequence of shoves can get it "
+                   "there. STRENGTH has to be on for this map first. WHICH "
+                   "boulder, and where, is yours")
     _sw = m.get("switch_statues") or []
     if _sw:
         # REACHABLE MEANS THE CELL YOU PRESS FROM. The statue itself is a
