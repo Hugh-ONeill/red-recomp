@@ -40,6 +40,27 @@ def sw(mapid):
 
 
 ck("1F exports its switch and barrier", sw("VICTORY_ROAD_1F") == "17,13>4,6")
+
+# ...AND THE TWO BLOCK IDS THE BARRIER SWAPS BETWEEN. A block is 2x2 cells
+# and the solid part need not be the top-left one, so testing that corner's
+# walkability reported the way OPEN while it was shut (user, 2026-08-24:
+# "it reads it as open when its shut though"). The script knows both ids.
+def ids(mapid):
+    return lua(f'local l = M.{mapid}.boulder_switches '
+               'local t = {} for _, c in ipairs(l or {}) do '
+               't[#t+1] = string.format("%02X/%02X", c[5] or 0, c[6] or 0) end '
+               'print(table.concat(t, " "))')
+
+
+ck("1F exports open/shut block ids", ids("VICTORY_ROAD_1F") == "1D/25")
+ck("2F exports a different pair for its first switch",
+   ids("VICTORY_ROAD_2F").startswith("15/37"))
+shim_src = (pathlib.Path("/home/wiz/Developer/red-recomp/harness/shim.lua")
+            .read_text())
+ck("the shim compares the block id, not a corner's walkability",
+   "map:blockAt(bx, by)" in shim_src)
+ck("...and says nothing when neither id matches",
+   "_open = nil" in shim_src)
 ck("2F exports both of its switches",
    sw("VICTORY_ROAD_2F") == "1,16>3,4 9,16>11,7")
 ck("3F exports its switch", sw("VICTORY_ROAD_3F") == "3,5>3,5")

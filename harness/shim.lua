@@ -805,9 +805,21 @@ local function observe(G, seq, result)
               -- is on the screen.
               local _ox = bx and bx * 2 or nil
               local _oy = by and by * 2 or nil
+              -- ASK THE BLOCK, NOT ONE OF ITS CORNERS. A block is 2x2
+              -- cells and the barrier's solid part need not be the
+              -- top-left one, so isWalkableCell(bx*2, by*2) reported the
+              -- way OPEN while it was shut (user, 2026-08-24: "it reads it
+              -- as open when its shut though"). The script swaps between
+              -- two known block ids; compare against those.
+              local _openId, _shutId = _c[5], _c[6]
               local _open = nil
-              if _ox and map.isWalkableCell then
-                _open = map:isWalkableCell(_ox, _oy) and true or false
+              if _openId and map.blockAt then
+                local _cur = map:blockAt(bx, by)
+                if _cur == _openId then
+                  _open = true
+                elseif _cur == _shutId then
+                  _open = false
+                end
               end
               _bsw[#_bsw + 1] = {
                 x = sx, y = sy, held = _held,
