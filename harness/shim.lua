@@ -5013,17 +5013,19 @@ local function _reach_with_rock(G, px, py, bx, by, rock)
       -- the rock is excluded from the entity list because during this
       -- search it is at a SIMULATED cell, not the one the game still has
       -- it in; (bx,by) below is that simulated cell and is the wall
-      -- ...AND A WARP CELL IS NOT A CELL YOU STAND ON. A mat FIRES ON
-      -- ARRIVAL, so a stand cell that is a doorway does not push a
-      -- boulder, it ends the trip: the solver picked Victory Road's own
-      -- doormat as the place to shove from and the party came out on
-      -- ROUTE_23 mid-route (user, 2026-08-24: "Something odd going on").
-      -- OPS.interact learned this in August and the lesson is the same
-      -- one. Not reachable, not expanded, not offered.
-      if not seen[k] and not THRU[k] and not (nx == bx and ny == by)
+      -- A WARP CELL CAN BE STOOD ON; IT IS ONLY NOT A CORRIDOR. I barred
+      -- them as stand cells after the party came out on ROUTE_23 mid-push,
+      -- generalising from OPS.interact's note about BUILDING doors firing
+      -- on arrival — and that is not true of this mat (user, 2026-08-24:
+      -- "stepping on the doormat doesnt warp you"). Barring them removed
+      -- the only route onto Victory Road 1F's switch: measured, every
+      -- sequence that reaches it needs a doormat as a shoving cell. So the
+      -- rule is warp_reach's rule and no more — step onto one, do not
+      -- route THROUGH one.
+      if not seen[k] and not (nx == bx and ny == by)
          and _can_step(G, cur[1], cur[2], dir, rock) then
         seen[k] = true
-        q[#q + 1] = { nx, ny }
+        if not THRU[k] then q[#q + 1] = { nx, ny } end
       end
     end
   end
@@ -5201,6 +5203,17 @@ function OPS.push(G, c)
     if rock.cellX ~= bx0 or rock.cellY ~= by0 then break end
   end
   if rock.cellX == bx0 and rock.cellY == by0 then
+    -- A SHOVE THE GRASS INTERRUPTED IS NOT A SHOVE THE WALL REFUSED. Ten
+    -- shoves of a route can land cleanly and the eleventh meet a wild
+    -- Pokemon between the taps; calling that "something is behind it" is a
+    -- claim about the MAP, and it is the claim that made a half-finished
+    -- route look like a dead end (2026-08-24, measured: the boulder walked
+    -- from (5,15) to (12,14) and then "did not move").
+    if not need_overworld(G) then
+      return false, ("shoved it %s and something interrupted before it "
+        .. "moved (%s) — the way may well be clear; send it again")
+        :format(c.dir, _screen_name(G))
+    end
     return false, ("shoved it %s and it did not move — something is behind "
       .. "it, or that is not a way it can go"):format(c.dir)
   end

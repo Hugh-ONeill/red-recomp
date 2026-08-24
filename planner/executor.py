@@ -9732,21 +9732,43 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # able to walk where the algo wants it to"). Fight what is in
             # the way and send the same push again; it re-solves from
             # wherever the boulder now is, so every retry resumes.
+            # ...AND A ROUTE THAT GOT PART WAY IS WORTH RESUMING. Each
+            # re-send re-solves from wherever the boulder now is, so a push
+            # that moved it 10 of 18 cells has BANKED those ten; refusing to
+            # continue throws them away and the position may not be
+            # recoverable, since a shove cannot be undone.
+            _pdet = str((r or {}).get("detail") or "")
             if (op == "push" and step.get("to_x") is not None
                     and not (r or {}).get("ok")
-                    and "interrupted the walk" in str(
-                        (r or {}).get("detail") or "")):
+                    and ("interrupted the walk" in _pdet
+                         or "interrupted before it moved" in _pdet
+                         or "shoved it " in _pdet)):
                 _o2 = obs
                 _fought = False
                 while _o2 and _o2.get("mode") == "battle":
                     _o2 = self.handle_battle(sg, _o2)
                     _o2 = self.settle()
                     _fought = True
-                if _fought:
+                # at least one re-solve whenever the outer test matched —
+                # a route that banked ten of eighteen cells continues from
+                # there, battle pending or not
+                _tries = 0
+                while _tries < 3:
                     self.log("push_retry_after_battle", subgoal=sg.get("id"),
-                             step=dict(step))
+                             step=dict(step), attempt=_tries + 1)
                     r = self.b.send("push", **step)
                     obs = self.settle()
+                    _tries += 1
+                    if (r or {}).get("ok"):
+                        break
+                    _fought = False
+                    while obs and obs.get("mode") == "battle":
+                        obs = self.handle_battle(sg, obs)
+                        obs = self.settle()
+                        _fought = True
+                    if not _fought:
+                        break
+                if _tries:
                     _det = str((r or {}).get("detail") or "")
                     note = f"push({','.join(f'{k}={v}' for k, v in step.items())})"
             if op == "grind":
