@@ -34,7 +34,8 @@ def records(ok, trace, macro):
                  if "FAILED" in str(t) or "REFUSED" in str(t)), "")
     _did = any(w in str(t) for t in trace
                for w in ("map->", "moved", "warped"))
-    return bool(not ok and (_why or not _did) and not grinds(macro))
+    _dry = any("earned 0 exp" in str(t) for t in trace)
+    return bool(not ok and (_why or not _did) and (not grinds(macro) or _dry))
 
 
 G = [{"op": "grind", "intent": "train"}]
@@ -45,7 +46,18 @@ ck("a quiet grind is not spent", not records(False, quiet, G))
 ck("a moving grind is not spent", not records(False, moved, G))
 ck("a failed grind is not spent either",
    not records(False, ["grind: FAILED — nothing wild lives here"], G))
-ck("a grind is never refused as a repeat", grinds(G))
+
+# ...BUT A GRIND THAT EARNED NOTHING IS SPENT. The blanket exemption was
+# the right shape and the wrong test: on ground with no wilds it would let
+# a grind repeat for ever. Party exp is in the observation, so the trace
+# carries the number and the gate reads it (user, 2026-08-24: "can we add
+# up exp and see if we can distinguish productive from non-productive").
+paid = ["grind(intent=train) earned 3480 exp: ok (moved, battle ended)"]
+dry = ["grind(intent=train) earned 0 exp: ok (turn resolved)"]
+ck("a grind that PAID is not spent", not records(False, paid, G))
+ck("a grind that earned 0 exp IS spent", records(False, dry, G))
+ck("...and the zero is what gets recorded as the reason",
+   "earned 0 exp" in next((str(t) for t in dry if "earned 0" in str(t)), ""))
 
 # a macro that merely travels is still gated
 W = [{"op": "use_warp", "x": 1, "y": 2}]

@@ -227,6 +227,24 @@ def _wild_level_note(ex, mid, obs) -> str:
         return ""
 
 
+def _grind_yield_note(ex, mid) -> str:
+    """What grinding on THIS map has actually paid, in experience.
+
+    The counterpart to the level range: the levels say what you are fighting,
+    this says what came of it. Both are the run's own arithmetic and neither
+    says whether to stay."""
+    try:
+        g = (getattr(ex, "_grind_exp", None) or {}).get(mid) or {}
+        exp, n = int(g.get("exp", 0)), int(g.get("n", 0))
+        if not n:
+            return ""
+        return (f". GRINDING HERE HAS EARNED {exp} exp across {n} grind(s)"
+                + (f", {exp // n} per grind" if n > 1 else "")
+                + (" — none of them earned anything" if exp == 0 else ""))
+    except Exception:
+        return ""
+
+
 def _is_service(region: str) -> bool:
     return str(region).split("|")[0].endswith(SERVICE_SUFFIXES)
 
@@ -1007,6 +1025,7 @@ class Executor:
         self._reversals = 0
         self._dead_visits = 0
         self._wild_lv: dict = {}   # map -> {lo, hi, n} of wild levels FOUGHT
+        self._grind_exp: dict = {}  # map -> {exp, n} actually earned grinding
         # THE OUTCOME LEDGER (EXPLORE_DESIGN §3, §6b): per "target|area",
         # per exit key or object name, how many times THIS subgoal did it
         # and what happened last, verbatim from the trace. Read by
@@ -2368,6 +2387,7 @@ class Executor:
             self.hints_at = data.get("hints_at") or {}
             self._offered = data.get("offered") or {}
             self._wild_lv = data.get("wild_lv") or {}
+            self._grind_exp = data.get("grind_exp") or {}
             self._cut_bushes = data.get("cut_bushes") or {}
             self._shelves = data.get("shelves") or {}
             # MEMORY THAT OUTLIVES THE ATTEMPT. The outcome ledger and the
@@ -2728,6 +2748,7 @@ class Executor:
                  "hints_at": getattr(self, "hints_at", {}),
                  "offered": getattr(self, "_offered", {}),
                  "wild_lv": getattr(self, "_wild_lv", {}),
+                 "grind_exp": getattr(self, "_grind_exp", {}),
                  "cut_bushes": getattr(self, "_cut_bushes", {}),
                  "shelves": getattr(self, "_shelves", {}),
                  "outcomes": getattr(self, "_outcomes", {}),
@@ -6486,6 +6507,7 @@ class Executor:
                     f"encounter(s) on {_mid}: "
                     + ", ".join(f"{sp} x{n}" for sp, n in _top)
                     + _wild_level_note(self, _mid, obs)
+                    + _grind_yield_note(self, _mid)
                     + ". A floor whose wilds never include the thing you "
                       "want is a floor to leave, or ground of a different "
                       "kind — water, for one — to reach.")
@@ -9569,6 +9591,27 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         self._save_memory()
             self._said_ready = True
             note = f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
+            # WHAT THE GRIND ACTUALLY EARNED. Levels are a coarse readout —
+            # a grind can bank three thousand experience and show no
+            # level-up at all — and the world mark cannot see experience,
+            # so a productive grind and a useless one were the same event
+            # to every gate in this file. Party exp is in the observation;
+            # subtract it (user, 2026-08-24: "can we add up exp and see if
+            # we can distinguish productive from non-productive"). The
+            # number is stated; what it is worth is the model's read.
+            if op == "grind":
+                def _pexp(_o):
+                    return sum(int(p.get("exp") or 0)
+                               for p in ((_o or {}).get("party") or [])
+                               if isinstance(p, dict))
+                _gain = _pexp(obs) - _pexp(pre_obs)
+                if _gain < 0:
+                    _gain = 0        # a faint/heal reshuffled the party
+                note += f" earned {_gain} exp"
+                _gm = getattr(self, "_last_overworld_map", None) or "?"
+                _gb = self._grind_exp.setdefault(_gm, {})
+                _gb["exp"] = int(_gb.get("exp", 0)) + _gain
+                _gb["n"] = int(_gb.get("n", 0)) + 1
             # A DECLINED QUESTION IS NOT A TOUCH, however the state moved.
             # This retraction used to live in the "nothing changed" branch,
             # but reaching a fossil means WALKING to it, so the snapshot had
@@ -10712,8 +10755,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # resolved (timeout advancing text))" was filed as spent. Six
             # grinds were refused on ROUTE_22 that way (user, 2026-08-24:
             # "we shouldnt be refusing repeated grinds").
-            if _seen and any(isinstance(st, dict) and st.get("op") == "grind"
-                             for st in macro):
+            if (_seen and any(isinstance(st, dict) and st.get("op") == "grind"
+                              for st in macro)
+                    and "earned 0 exp" not in str(_seen.get("why") or "")):
                 _seen = None
             if _seen and (not str(_seen.get("why") or "").strip()
                           or any(w in str(_seen.get("why") or "").lower()
@@ -10804,9 +10848,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                          if "FAILED" in str(t) or "REFUSED" in str(t)), "")
             _did = any(w in str(t) for t in trace
                        for w in ("map->", "moved", "warped"))
+            # A GRIND THAT EARNED NOTHING IS SPENT; ONE THAT EARNED
+            # SOMETHING NEVER IS. The blanket exemption was the right shape
+            # and the wrong test — it would have let a grind on ground with
+            # no wilds repeat for ever. The trace now carries the number.
             _grinds = any(isinstance(st, dict) and st.get("op") == "grind"
                           for st in macro)
-            if not ok and (_why or not _did) and not _grinds:
+            _dry = any("earned 0 exp" in str(t) for t in trace)
+            if not ok and (_why or not _did) and (not _grinds or _dry):
+                if _grinds and _dry:
+                    _why = _why or next(
+                        (str(t) for t in trace if "earned 0 exp" in str(t)),
+                        "")
                 # Keyed on the world mark it was spent in, so anything that
                 # MOVES the world (a badge, a flag, an item, a door) frees
                 # every macro again — the refusal only ever covers a world
