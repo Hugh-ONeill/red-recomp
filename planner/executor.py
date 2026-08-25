@@ -598,6 +598,18 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             got = f"{m.get('id')}|{m.get('region')}"
             if got != want and got not in AREA_ALIASES.get(want, ()):
                 return False
+        elif key == "not_area":
+            # A PART OF A MAP OTHER THAN THE ONE YOU KNOW. A split map's
+            # far half has no region name until someone stands on it, so a
+            # plan could not say "the other side of Route 10" — {"map":
+            # "ROUTE_10"} was satisfied by the half it started in (the
+            # split-route class, 2026-08-25). Pair it with "map".
+            m = (obs.get("map") or {})
+            got = f"{m.get('id')}|{m.get('region')}"
+            wants = want if isinstance(want, (list, tuple)) else [want]
+            for w in wants:
+                if got == w or got in AREA_ALIASES.get(str(w), ()):
+                    return False
         elif key == "party_min_level":
             # EVERY party member at least this level. lead_level could only
             # see slot 1, so "train the backup" was inexpressible: the model
@@ -13075,7 +13087,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # positional. One flag branch would satisfy the whole
                 # predicate from an achievement earned hours ago, which is
                 # the teleport this block exists to prevent.
-                if not pred_keys(dw) <= {"map", "area", "player_at"}:
+                if not pred_keys(dw) <= {"map", "area", "player_at", "not_area"}:
                     continue
             elif not ("map" in dw or "area" in dw):
                 continue
@@ -13111,7 +13123,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # resume point is honored only if it actually HOLDS.
                 dw0 = sg.get("done_when")
                 positional = (isinstance(dw0, dict)
-                              and pred_keys(dw0) <= {"map", "area",
+                              and pred_keys(dw0) <= {"map", "area", "not_area",
                                                      "player_at"})
                 if positional or (dw0 and pred_holds(dw0, at0)):
                     print(f"== subgoal: {sg['id']} (holds from where the "

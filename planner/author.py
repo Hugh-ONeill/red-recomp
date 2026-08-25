@@ -129,6 +129,13 @@ PREDICATES = {
     "player_at": "standing within radius R of a tile, e.g. "
                  "{\"player_at\":{\"x\":27,\"y\":3,\"radius\":4}}. Combine it "
                  "with map when a map predicate alone cannot say WHERE",
+    "not_area": "a part of a map OTHER THAN a named one, for a map whose far "
+        "side has no area code yet because nobody has stood on it: "
+        "{\"map\":\"ROUTE_10\",\"not_area\":\"ROUTE_10|0,4\"} means "
+        "standing on ROUTE_10 anywhere except the part coded 0,4. Always "
+        "pair it with map. Use it for a step that must END on a different "
+        "part of a map it starts on (a tunnel or cave crossed to the far "
+        "side), or a plain map predicate is already true where you begin",
     "area": "a SPECIFIC ENCLOSED AREA rather than a whole map, written "
         "\"MAP|region\" (e.g. {\"area\":\"MT_MOON_B2F|20,5\"}). A floor can "
         "be several rooms that cannot walk to each other, so {\"map\":...} "
@@ -1326,6 +1333,22 @@ def observed_text(path: Path) -> str:
     # time — present in the code, absent from every prompt. What is still
     # unopened outranks an exhaustive list of what is not.
     _frontier_lines = []
+    # PARTS OF THE MAPS YOU HAVE WALKED. A map can be several places that
+    # cannot walk to each other; the plan can name the ones you have stood
+    # on (area codes) and can name "not that one" for a far side nobody has
+    # stood on (not_area). Which parts exist, per map, from your own record.
+    _parts = {}
+    for r in set(list(exp) + list(d.get("visits") or {})):
+        if "|" in r:
+            _parts.setdefault(r.split("|")[0], set()).add(r)
+    _multi = {m: sorted(ps) for m, ps in _parts.items() if len(ps) > 1}
+    if _multi:
+        _frontier_lines.append(
+            "\n\nMAPS YOU HAVE WALKED THAT HAVE MORE THAN ONE PART (parts "
+            "that cannot walk to each other; these are the area codes you "
+            "may use, and \"not_area\" names any part other than one of them):")
+        for m, ps in sorted(_multi.items())[:12]:
+            _frontier_lines.append(f"  {m}: " + ", ".join(ps[:6]))
     if _left:
         _frontier_lines.append(
             "\n\nGROUND YOU HAVE WALKED THAT STILL HAS A WAY OUT NOBODY HAS "
