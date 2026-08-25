@@ -2341,6 +2341,9 @@ class Executor:
             self.contested = data.get("contested", {})
             self._bad_seam = {tuple(x) for x in data.get("bad_seam", [])
                               if len(x) == 3}
+            _nb = self._backfill_reverse_seams()
+            if _nb:
+                print(f"[memory] {_nb} seam(s) given their way back")
             self.seen_far = data.get("seen_far", {}) or {}
             self._battle_regions = set(data.get("battle_regions") or ())
             # Money-dependent proofs do not survive a restart. "Fully
@@ -3940,6 +3943,29 @@ class Executor:
                     self._doorsteps_learned.append((inside, out))
                     break
 
+    def _backfill_reverse_seams(self) -> int:
+        """Every walked seam gets its reverse (see note_transition); graphs
+        written before that rule existed get it here, once, at load."""
+        _OPPS = {"north": "south", "south": "north",
+                 "east": "west", "west": "east"}
+        bad = getattr(self, "_bad_seam", None) or set()
+        added = 0
+        for src, exits in list((self.explored or {}).items()):
+            for k, e in list((exits or {}).items()):
+                dst = (e or {}).get("to")
+                if k not in _OPPS or not dst or dst == src:
+                    continue
+                if (e or {}).get("shut") or (e or {}).get("inferred"):
+                    continue
+                rk = _OPPS[k]
+                if (dst, rk, src) in bad:
+                    continue
+                bn = self.explored.setdefault(dst, {})
+                if rk not in bn:
+                    bn[rk] = {"n": 0, "to": src, "inferred": True}
+                    added += 1
+        return added
+
     def note_transition(self, before_obs, step, after_obs, reason="",
                         op_detail=""):
         """Record: from this area, that exit led there."""
@@ -4360,6 +4386,29 @@ class Executor:
                 del node[key]
                 self._save_memory()
                 return
+        # A SEAM IS DOUBLE-EDGED. Crossing Viridian's north edge onto Route
+        # 2 is the same walk as crossing Route 2's south edge back; the map
+        # data is symmetric and nothing scripts a refusal on an edge. The
+        # walked graph recorded only the direction taken, so Route 2's
+        # south seam read "never taken from here" with its destination
+        # unknown, the walk-back's reversibility test found no way back,
+        # and _route had to re-infer the reverse on every call (user,
+        # 2026-08-25: "south rt2 seam should be viridian automatically
+        # since its coming from there"). Doors already got this on arrival
+        # (reverse_edge above); this is the same for edges. n stays 0 —
+        # it has not been crossed from that side — and the ledger says so.
+        _OPPS = {"north": "south", "south": "north",
+                 "east": "west", "west": "east"}
+        if str(key) in _OPPS and dst != src:
+            _rk = _OPPS[str(key)]
+            if (dst, _rk, src) not in (getattr(self, "_bad_seam", None) or set()):
+                _bn = self.explored.setdefault(dst, {})
+                _be = _bn.get(_rk)
+                if _be is None:
+                    _bn[_rk] = {"n": 0, "to": src, "inferred": True}
+                    self.log("reverse_seam", frm=dst, via=_rk, to=src)
+                elif _be.get("inferred") and _be.get("to") != src:
+                    _be["to"] = src
         for k in [key] + self._twin_keys(before_obs, step):
             e = node.setdefault(k, {"n": 0, "to": dst})
             e["n"] += 1

@@ -70,6 +70,7 @@ STATUS_RANK = {
     "worth_a_word": 3,  # pressed when the world was different (weak lead:
                         # a sign says the same thing for ever)
     "came_in_by": 3,    # the door you arrived through (also "taken")
+    "back": 3,          # a seam's reverse: you came onto this map across it
     "spent": 4,         # reached for 2+ times in this world, never through
     "shut": 4,          # walked into, turned back
     "inert": 4,         # pressed, world unchanged, same world now
@@ -678,6 +679,11 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         elif d in spent:
             c.status = "spent"
             c.n = spent[d]
+        elif d in taken and rec.get("inferred") and not int(rec.get("n") or 0):
+            # the reverse of a crossing made from the far side (executor
+            # note_transition): its destination is the map you came from
+            c.status = "back"
+            c.dest = c.dest or rec.get("to")
         elif d in taken:
             bad = ex.dead_for(target, rec.get("to") or "") if target else 0
             _dest2 = rec.get("to") or ""
@@ -1159,6 +1165,8 @@ _STATUS_WORDS = {
     "reopened": "turned you back once, but the world has moved since",
     "taken": "taken {n}x",
     "came_in_by": "the door you came in by; taken {n}x",
+    "back": "the way back: you came onto this map across this edge, and "
+            "have not crossed it from this side",
     "spent": "reached for {n}x and never once got through",
     "shut": "SHUT — walked into {n}x and turned back every time",
     # HOW MANY TIMES IT HAS BEEN REACHED FOR IS THE POINT. Every other
