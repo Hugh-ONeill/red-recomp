@@ -1358,6 +1358,19 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # page (executor coverage_text): the first-listed thing is taken 54%
     # of the time, and a page that opened "FULLY WORKED" over a floor with
     # a door never on screen sent the run back out the way it came.
+    _su = m.get("seen_unreached")
+    if isinstance(_su, dict) and int(_su.get("n") or 0) > 0:
+        _near = ", ".join(f"({c.get('x')},{c.get('y')})"
+                          for c in (_su.get("near") or [])[:3])
+        _from = [f for f in (_su.get("from") or []) if f.get("region")]
+        head += (f". GROUND YOU HAVE SEEN BUT CANNOT WALK TO FROM HERE: "
+                 f"{int(_su['n'])} cell(s), nearest {_near}"
+                 + ("; ground you have stood on in "
+                    + ", ".join(f"{f['region']} (reaches {f.get('n')} of them)"
+                                for f in _from[:2])
+                    + " does reach it" if _from else
+                    "; no part of this map you have stood in reaches it — "
+                    "the way onto it is not known"))
     _fr = m.get("frontier") or []
     if _fr:
         _fn = int(((m.get("seen") or {}).get("frontier_n")) or len(_fr))

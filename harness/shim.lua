@@ -614,6 +614,64 @@ local function seen_filter(G, o)
   m.seen = { n = mask.n or 0, frontier_n = #front }
   m.frontier = fl
   last_frontier = fl
+  -- GROUND YOU HAVE SEEN BUT CANNOT WALK TO FROM HERE. Cerulean's fence at
+  -- column 35 walls the city off from the east corridor that is the only
+  -- tree-free way onto the southern strip and the ledge down to Route 5;
+  -- the corridor had been on screen, walkable, and unreachable from the
+  -- player, and nothing said so — the run went looking for CUT (user,
+  -- 2026-08-25). Say how much such ground there is, the nearest of it,
+  -- and which part of this map the run HAS stood in reaches it (a seen-
+  -- only flood from a remembered cell of each other region: recall over
+  -- ground already looked at, never a route through unseen ground).
+  do
+    local ow2 = G.overworld
+    local unreached, un_n = {}, 0
+    local px, py = (ow2.player and ow2.player.cellX) or 0,
+                   (ow2.player and ow2.player.cellY) or 0
+    for k, v in pairs(mask) do
+      if v == true and not dist[k] then
+        local x, y = k:match("^(-?%d+),(-?%d+)$")
+        x, y = tonumber(x), tonumber(y)
+        if x and ow2.map.isWalkableCell and ow2.map:isWalkableCell(x, y) then
+          un_n = un_n + 1
+          unreached[#unreached + 1] = { x = x, y = y,
+                                        d = math.abs(x - px) + math.abs(y - py) }
+        end
+      end
+    end
+    if un_n > 0 then
+      table.sort(unreached, function(a, b) return a.d < b.d end)
+      local near = {}
+      for i = 1, math.min(3, #unreached) do
+        near[i] = { x = unreached[i].x, y = unreached[i].y }
+      end
+      local from = {}
+      local here_name = m.region
+      local starts = {}
+      for cell, name in pairs(region_of[m.id] or {}) do
+        if name ~= here_name and not starts[name] then starts[name] = cell end
+      end
+      local tried = 0
+      for name, cell in pairs(starts) do
+        tried = tried + 1
+        if tried > 8 then break end
+        local cx, cy = cell:match("^(-?%d+),(-?%d+)$")
+        cx, cy = tonumber(cx), tonumber(cy)
+        if cx and mask[cell] then
+          local d2 = seen_reach(G, cx, cy)
+          local hit = 0
+          for _, u in ipairs(unreached) do
+            if d2[u.x .. "," .. u.y] then hit = hit + 1 end
+          end
+          if hit > 0 then
+            from[#from + 1] = { region = m.id .. "|" .. name, n = hit }
+          end
+        end
+      end
+      table.sort(from, function(a, b) return a.n > b.n end)
+      m.seen_unreached = { n = un_n, near = near, from = from }
+    end
+  end
 end
 
 -- ------------------------------------------------ the footprint, on screen
@@ -2880,11 +2938,15 @@ end
 -- that neighbour (and four or five more beyond it) on screen. Nearest
 -- first by walked distance, ties north then west; the ordering is
 -- mechanical and goal-blind, which is the whole point of it.
-seen_reach = function(G)
+seen_reach = function(G, sx, sy)
   local okc, Collision = pcall(require, "src.world.Collision")
   local ow, p = G.overworld, G.overworld and G.overworld.player
   if not (okc and ow and p and ow.map and ow.map.id and p.cellX) then
     return {}, {}
+  end
+  -- from another stand-point (a remembered region's cell) when asked
+  if sx and sy then
+    p = setmetatable({ cellX = sx, cellY = sy }, { __index = p })
   end
   local mask = SEEN[ow.map.id] or {}
   local W, H = seen_dims(G, ow.map)
