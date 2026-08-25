@@ -121,7 +121,7 @@ if [ "$done_legs" = 0 ]; then
   # these budgets belong to a chain, not to the directory
   : > run/outline_reorders
   rm -f run/outline_skips run/outline_inserts run/outline_rewordings \
-        run/outline_void \
+        run/outline_void run/outline_wording_asked \
         run/leg_audit_redo run/outline_upkeep_missed \
         run/outline_pushes \
         run/outline_pulls run/outline_pulls_failed
@@ -280,9 +280,87 @@ while :; do
     echo "=== leg $i: keeping the baseline taken when this leg began ==="
   fi
 
+  # "DO THESE GOALS MAKE SENSE AFTER EVIDENCE OF FAILURE, AND IF THEY DO,
+  # IS THERE A DIFFERENT WAY?" (user, 2026-08-25, watching leg 3 "Retrieve
+  # the Pokemon from the Poke Mart" spend attempt after attempt on a
+  # sentence describing nothing). Two questions, and the chain already
+  # asked both — in the wrong order. The evidence-based rewrite between
+  # attempts is the DIFFERENT WAY; the wording rung (reword / done under
+  # another name / VOID) is DOES IT MAKE SENSE, and it ran only after every
+  # attempt was spent. Now: one attempt, then the sense question once, then
+  # the remaining attempts only if the model stands by the objective. The
+  # ask is the model's, the verdict is the model's; the harness only moved
+  # the question forward. Budget and once-per-leg are unchanged.
+  wording_rung() {
+    grep -Fxq "$leg" run/outline_wording_asked 2>/dev/null && return 1
+    [ "$(cat run/outline_rewordings 2>/dev/null | wc -l)" -lt 3 ] || return 1
+    echo "$leg" >> run/outline_wording_asked
+    set +e
+    said=$(python planner/author.py --check-wording \
+        --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
+        --start "$(python planner/state_text.py)" \
+        --observed run/explored.json \
+        --journal run/executor_log.jsonl --model "$AUTHOR_MODEL")
+    wrc=$?
+    set -e
+    if [ $wrc = 0 ] && [ -n "$said" ]; then
+      python planner/reword_leg.py "$i" "$said"
+      return 0
+    fi
+    # EXIT 4: the restatement the model gave names something the run has
+    # ALREADY DONE. Both halves of that came from the model — what the
+    # objective means, and that the meaning is satisfied — so the leg is
+    # SPENT, not stuck, and stopping the chain on it throws away the
+    # answer while keeping the problem. This is the case that killed two
+    # runs: leg 7 "Reach Vermilion City" one night, leg 3 "Retrieve the
+    # Pokemon from the Poke Mart" the next.
+    if [ $wrc = 4 ]; then
+      echo "=== leg $i/${#LEGS[@]} is done under another name — " \
+           "crossing it off: $leg ===" >&2
+      echo "$leg" >> run/outline_skips
+      echo "$i" > "$PROGRESS"
+      sweep_ahead "$i"
+      return 0
+    fi
+    # EXIT 5: VOID — the model says the sentence describes nothing that
+    # is there ("there is no Pokemon to retrieve"). Its verdict, its
+    # reason (run/outline_void); the line is crossed off the same way a
+    # done-under-another-name is, and the objectives after it stand.
+    if [ $wrc = 5 ]; then
+      echo "=== leg $i/${#LEGS[@]} is VOID by the model's own account — " \
+           "crossing it off: $leg ===" >&2
+      echo "$leg" >> run/outline_skips
+      echo "$i" > "$PROGRESS"
+      sweep_ahead "$i"
+      return 0
+    fi
+    return 1
+  }
+  run_campaign() {
+    env RED_HEADED="${RED_HEADED:-1}" RED_SPEED="${RED_SPEED:-200}" \
+        RED_CONTINUE="$1" ./campaign.sh "$2" "$plan" -- --escalate
+  }
   cont=0; [ "$i" -gt 1 ] && cont=1
-  if ! env RED_HEADED="${RED_HEADED:-1}" RED_SPEED="${RED_SPEED:-200}" \
-      RED_CONTINUE=$cont ./campaign.sh "$ATTEMPTS" "$plan" -- --escalate; then
+  failed=0
+  set +e
+  run_campaign "$cont" 1
+  crc=$?
+  set -e
+  if [ "$crc" = 1 ]; then
+    # the first attempt failed on its own merits (not a boot failure):
+    # ask whether the objective still makes sense before spending more
+    if wording_rung; then continue; fi
+    # the rewrite inside campaign.sh already produced the next version
+    plan=$(python planner/find_plan.py "$leg" 2>/dev/null || echo "$plan")
+    if [ "$ATTEMPTS" -gt 1 ]; then
+      run_campaign 1 $((ATTEMPTS - 1)) || failed=1
+    else
+      failed=1
+    fi
+  elif [ "$crc" != 0 ]; then
+    failed=1
+  fi
+  if [ "$failed" = 1 ]; then
     # A leg can exhaust its attempts long after its aim was achieved (the
     # fossil leg failed three rewrites HOLDING the fossil). Whether the
     # objective is in fact done is the model's judgment to make; the chain
@@ -386,49 +464,8 @@ while :; do
     # asks once and applies an answer it did not shape. The restatement
     # still has to clear the already-done check, which is what stops a
     # hard leg being reworded into one that is finished.
-    if [ "$(cat run/outline_rewordings 2>/dev/null | wc -l)" -lt 3 ]; then
-      set +e
-      said=$(python planner/author.py --check-wording \
-          --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
-          --start "$(python planner/state_text.py)" \
-          --observed run/explored.json \
-          --journal run/executor_log.jsonl --model "$AUTHOR_MODEL")
-      wrc=$?
-      set -e
-      if [ $wrc = 0 ] && [ -n "$said" ]; then
-        python planner/reword_leg.py "$i" "$said"
-        continue
-      fi
-      # EXIT 4: the restatement the model gave names something the run has
-      # ALREADY DONE. Both halves of that came from the model — what the
-      # objective means, and that the meaning is satisfied — so the leg is
-      # SPENT, not stuck, and stopping the chain on it throws away the
-      # answer while keeping the problem. This is the case that killed two
-      # runs: leg 7 "Reach Vermilion City" one night, leg 3 "Retrieve the
-      # Pokemon from the Poke Mart" the next. A leg that is genuinely
-      # blocked reaches the exit below unchanged.
-      if [ $wrc = 4 ]; then
-        echo "=== leg $i/${#LEGS[@]} is done under another name — " \
-             "crossing it off: $leg ===" >&2
-        echo "$leg" >> run/outline_skips
-        echo "$i" > "$PROGRESS"
-        sweep_ahead "$i"
-        continue
-      fi
-      # EXIT 5: VOID — the model says the sentence describes nothing that
-      # is there ("there is no Pokemon to retrieve"). Its verdict, its
-      # reason (run/outline_void); the line is crossed off the same way a
-      # done-under-another-name is, and the objectives after it stand.
-      # The first live case halted the chain on exactly this answer.
-      if [ $wrc = 5 ]; then
-        echo "=== leg $i/${#LEGS[@]} is VOID by the model's own account — " \
-             "crossing it off: $leg ===" >&2
-        echo "$leg" >> run/outline_skips
-        echo "$i" > "$PROGRESS"
-        sweep_ahead "$i"
-        continue
-      fi
-    fi
+    # the sense question, if this leg has not been asked it yet
+    if wording_rung; then continue; fi
     # RIGHT, BUT NOT YET. Every rung above asks whether something ELSE
     # must happen first; none can say "this one, later". An outline's
     # ordering mistakes are almost all TOO EARLY — a model writing a
