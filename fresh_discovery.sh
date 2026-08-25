@@ -292,7 +292,11 @@ while :; do
   # ask is the model's, the verdict is the model's; the harness only moved
   # the question forward. Budget and once-per-leg are unchanged.
   wording_rung() {
-    grep -Fxq "$leg" run/outline_wording_asked 2>/dev/null && return 1
+    # asked once after the first failed attempt and once more at the
+    # ladder, after the remaining attempts and their rewrites have added
+    # evidence (leg 19's first ask reworded a wrong fact into another;
+    # the second is where VOID has something to stand on)
+    [ "$(grep -Fxc "$leg" run/outline_wording_asked 2>/dev/null || echo 0)" -ge 2 ] && return 1
     [ "$(cat run/outline_rewordings 2>/dev/null | wc -l)" -lt 3 ] || return 1
     echo "$leg" >> run/outline_wording_asked
     set +e
@@ -443,7 +447,11 @@ while :; do
         && [ "${_ins_leg:-0}" -lt 1 ] \
         && missing=$(python planner/author.py --check-missing \
             --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
-            --start "$(python planner/state_text.py)" --model "$AUTHOR_MODEL"); then
+            --start "$(python planner/state_text.py)" --model "$AUTHOR_MODEL") \
+        && python planner/insert_guard.py "$missing" "$leg" plans/outline.txt; then
+      # (insert_guard: a prerequisite that restates the objective itself,
+      # or any outline line, is refused — leg 19 inserted its own wording
+      # in front of itself, 2026-08-25)
       echo "=== leg $i needs something first: $missing ==="
       python planner/insert_leg.py "$i" "$missing"
       echo "LEG=$leg|$missing" >> run/outline_inserts
