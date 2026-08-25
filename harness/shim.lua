@@ -647,9 +647,19 @@ local function seen_filter(G, o)
       end
       local from = {}
       local here_name = m.region
+      -- START FROM A CELL THAT HAS BEEN ON SCREEN. A region's fingerprint
+      -- cell is the smallest cell of its full walkable component and may
+      -- never have been in view; picking whichever cell came first skipped
+      -- Rock Tunnel's middle pocket entirely ("no part of this map you have
+      -- stood in reaches it" over 209 cells, with that pocket stood in).
       local starts = {}
       for cell, name in pairs(region_of[m.id] or {}) do
-        if name ~= here_name and not starts[name] then starts[name] = cell end
+        if name ~= here_name and mask[cell] == true
+           and (not starts[name] or not mask[starts[name]]) then
+          starts[name] = cell
+        elseif name ~= here_name and not starts[name] then
+          starts[name] = cell
+        end
       end
       local tried = 0
       for name, cell in pairs(starts) do
