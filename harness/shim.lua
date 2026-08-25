@@ -563,8 +563,22 @@ local function seen_filter(G, o)
       w.why = w.why or "no ground you have seen joins here to it"
     end
   end
+  -- A THING BEHIND A COUNTER IS REACHED FROM TWO CELLS AWAY (the mart
+  -- clerk, the nurse, the Game Corner desk: adjacent_reachable's `over`
+  -- rule). Downgrading on the four neighbours alone told the run
+  -- "nothing in VIRIDIAN_MART serves this goal" with the clerk in plain
+  -- view (2026-08-25, leg 2). Only ever a downgrade: the observation's
+  -- own counter test already said yes; this asks only whether the
+  -- standing cell it would use is on seen, reachable ground.
+  local function near2(x, y)
+    if near(x, y) then return true end
+    for _, d in pairs(SDIRS) do
+      if dist[(x + 2 * d[1]) .. "," .. (y + 2 * d[2])] then return true end
+    end
+    return false
+  end
   for _, ob in ipairs(m.objects or {}) do
-    if ob.reachable and not ob.by_water and not near(ob.x, ob.y) then
+    if ob.reachable and not ob.by_water and not near2(ob.x, ob.y) then
       ob.reachable = false
       ob.why = ob.why or "no ground you have seen joins here to it"
     end
