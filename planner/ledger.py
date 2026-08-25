@@ -1347,10 +1347,17 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     _fr = m.get("frontier") or []
     if _fr:
         _fn = int(((m.get("seen") or {}).get("frontier_n")) or len(_fr))
+        # how far the farthest listed spot is, in walked steps: "6 spots"
+        # reads like work, and in a house it is four steps (user,
+        # 2026-08-25: "why not check out the full house?")
+        _far = max((int(f.get("d") or 0) for f in _fr), default=0)
         head += (f". NOT ALL OF THIS FLOOR HAS BEEN ON SCREEN: the ground "
                  f"you have looked at ends at ({_fr[0].get('x')},"
                  f"{_fr[0].get('y')})"
                  + (f" and {_fn - 1} more spot(s)" if _fn > 1 else "")
+                 + (f", the farthest {_far} step(s) from you"
+                    if _far and _fn <= len(_fr) else
+                    f", the nearest {int(_fr[0].get('d') or 0)} step(s) from you")
                  + "; what is past them is not known")
     _sh = shelf_of(ex, here)
     if _sh:

@@ -8322,10 +8322,12 @@ class Executor:
             spots = ", ".join(f"({f.get('x')},{f.get('y')}) {side(f)}"
                               for f in fr[:6])
             n = int(sn.get("frontier_n") or len(fr))
+            far = max((int(f.get("d") or 0) for f in fr), default=0)
             lines.append(
                 f"GROUND ON THIS FLOOR HAS NOT ALL BEEN ON SCREEN. From where "
                 f"you stand, the ground you have looked at ends at {spots}"
                 + (f" and {n - 6} more such spot(s)" if n > 6 else "")
+                + (f" (the farthest listed is {far} step(s) away)" if far else "")
                 + ". What lies past any of them is not known. "
                   "{\"op\":\"explore\"} walks to the nearest and keeps "
                   "walking until something new comes into view; add "
