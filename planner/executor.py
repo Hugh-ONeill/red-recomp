@@ -69,6 +69,14 @@ try:
         (Path(__file__).with_name("map_edges.json")).read_text())
 except (OSError, ValueError):
     MAP_EDGES = {}
+# ...AND ONLY A PLAYER HOLDING THE TOWN MAP HAS UNFOLDED IT. static_cost
+# walked this table unconditionally, so "the printed map puts ROUTE_12 1
+# leg from ROUTE_13" was said to a run that had never been handed the map
+# and had never walked that seam — and the recall line pulled it south
+# toward a Snorlax for a subgoal its own plan had got wrong (2026-08-25).
+# _note sets this from the bag every observation; without the map the
+# distances run over walked links only.
+PRINTED_MAP_HELD = False
 
 _HOPS: dict = {}
 
@@ -143,7 +151,8 @@ def static_cost(a: str, b: str, toll: dict, extra: dict | None = None):
         # had gone Route 5 to Route 6 underground 110 times. A connection
         # you have personally walked is the strongest evidence there is,
         # and leaving it out priced the open road above the shut one.
-        for m2 in set((MAP_EDGES.get(m) or {}).values()) \
+        for m2 in (set((MAP_EDGES.get(m) or {}).values())
+                   if PRINTED_MAP_HELD else set()) \
                 | set((extra or {}).get(m) or ()):
             c = cost + 1 + toll.get((m, m2), 0)
             if c < best.get(m2, 1 << 30):
@@ -2261,6 +2270,8 @@ class Executor:
         return self._wipe_note
 
     def _note(self, obs):
+        global PRINTED_MAP_HELD
+        PRINTED_MAP_HELD = bool(self._holding_town_map(obs))
         self._mark_now = self._world_mark(obs)
         self._watch_for_a_wipe(obs)
         if (obs or {}).get("mode") == "overworld" and \
@@ -7666,6 +7677,13 @@ class Executor:
                         f"{_st} to {_pick[2][0][1]}, {len(_pick[2])} leg(s) "
                         f"over ground you have already covered. What lies "
                         f"beyond that edge you have not seen.")
+                elif not self._holding_town_map(obs):
+                    route_line = (
+                        f"\nNothing you have walked is ON {want_map}, and you "
+                        f"carry no TOWN MAP: how {want_map} joins any ground "
+                        f"you have walked is not known to you. What people "
+                        f"have said and what you find at the edges is all "
+                        f"there is.")
         # Rooms already fully worked: nothing left to find in them, but you
         # may still walk through — that distinction is why they are not
         # dead ends. Read the ROOM-level ledger, not the per-target one:
