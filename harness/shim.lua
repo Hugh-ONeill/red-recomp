@@ -4538,6 +4538,14 @@ function OPS.cross(G, c)
       said = said .. " Right where the walk stopped: "
         .. table.concat(blockers, ", ") .. "."
     end
+    -- A BUSH GROWS BACK WHEN THE MAP RELOADS, and this text named ledges,
+    -- people and doors at the edge but never the bush — so `go` along a
+    -- route the party had cut its way through stopped on Route 9 twice
+    -- with "no walkable path", and the walker's re-cut (which reads
+    -- CUT_TREE ... (x,y) off this very text) never fired (2026-08-25).
+    for _, b in ipairs(bushes_blocking(G, ex or 0, ey or 0, seen_cells or {})) do
+      if #fence < 6 then fence[#fence + 1] = b end
+    end
     if #fence > 0 then
       said = said .. (" The ground you can reach from here is only %d "
         .. "cell(s), and standing at its edge: %s."):format(
