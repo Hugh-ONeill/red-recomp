@@ -11350,8 +11350,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # shows nothing happened at all.
             _why = next((str(t) for t in reversed(trace)
                          if "FAILED" in str(t) or "REFUSED" in str(t)), "")
+            # A SEAM CROSSING SAYS "crossed", not "moved": the cross that
+            # took the party from Cerulean onto Route 24 to train was filed
+            # as a spent macro, and the same cross was then refused as a
+            # repeat seven rounds running (2026-08-25).
             _did = any(w in str(t) for t in trace
-                       for w in ("map->", "moved", "warped"))
+                       for w in ("map->", "moved", "warped", "crossed"))
             # A GRIND THAT EARNED NOTHING IS SPENT; ONE THAT EARNED
             # SOMETHING NEVER IS. The blanket exemption was the right shape
             # and the wrong test — it would have let a grind on ground with
@@ -11778,14 +11782,24 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             elif _tk1.startswith(("map:", "area:")):
                 _tmaps = {_tk1.split(":", 1)[1].split("|")[0]}
             _m0 = sig0[0]
-            if (_m0 in _tmaps and sig1[0] and sig1[0] != _m0
-                    and any(c.get("op") in ("cross", "use_warp")
-                            for c in clean)):
+            # WALKING OUT OF THE TARGET'S MAPS BY YOUR OWN HAND IS A
+            # DECISION, and the top-of-round walk-back must not undo it.
+            # It registered only the one map just left, so leaving the gym
+            # (round 1) then the city (round 2) to go and train on Route 24
+            # was walked straight back to the city at round 3, and the
+            # model's "go north and grind" was undone every round (user,
+            # 2026-08-25: "the goal text keeps dragging it back to Misty").
+            # Every map of the target is left on purpose together; the
+            # model's own ops are the evidence, not the distilled list.
+            if (_m0 in _tmaps and sig1[0] and sig1[0] not in _tmaps
+                    and any(isinstance(st, dict)
+                            and st.get("op") in ("cross", "use_warp", "go")
+                            for st in macro)):
                 if not hasattr(self, "_left_target"):
                     self._left_target = set()
-                self._left_target.add(_m0)
+                self._left_target |= set(_tmaps)
                 self.log("left_target_on_purpose", subgoal=sg["id"],
-                         round=rnd, left=_m0, now=sig1[0])
+                         round=rnd, left=sorted(_tmaps), now=sig1[0])
             # NB: do not reset stuck_note here — the blackout walk-back note
             # is appended above and a reset at this point deleted it before
             # it was ever sent, so the round after a wipe never learned it
