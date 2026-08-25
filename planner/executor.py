@@ -7327,16 +7327,25 @@ class Executor:
                 _c = self._route(here, _r2)
                 if _c is not None and (_p is None or len(_c) < len(_p)):
                     _p = _c
-            _urows.append((len(_p) if _p is not None else 99, _um, int(_un)))
+            _urows.append((len(_p) if _p is not None else 99, -int(_un), _um))
         if _urows:
+            # nearest first, then the MOST unseen ground, then the name: a
+            # cap of three sorted by name dropped CERULEAN_TRASHED_HOUSE —
+            # the one with the back door — behind BIKE_SHOP and the
+            # BADGE_HOUSE at the same distance (user, 2026-08-25). Every
+            # house has a few unseen top rows (the screen reaches four rows
+            # up from the mat), so the list is wider and the rest counted.
             _urows.sort()
+            _shown = _urows[:8]
             floor_away += (
                 "\nFLOORS YOU HAVE WALKED WITH GROUND NEVER ON SCREEN: "
                 + "; ".join(
-                    f"{_m} ({_n} spot(s) where the ground you looked at ends"
+                    f"{_m} ({-_n} spot(s) where the ground you looked at ends"
                     + (f", {_d} walked leg(s) away" if _d < 99
                        else ", no walked route from here") + ")"
-                    for _d, _m, _n in _urows[:3])
+                    for _d, _n, _m in _shown)
+                + (f"; and {len(_urows) - len(_shown)} more floor(s)"
+                   if len(_urows) > len(_shown) else "")
                 + ". What is past those spots is not known.")
         # ...AND A FLOOR WHOSE DOORS ARE ALL TAKEN CAN STILL HAVE A WAY
         # DOWN IN IT. The rows above are built from doorways only, so a
