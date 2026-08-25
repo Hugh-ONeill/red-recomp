@@ -2345,6 +2345,7 @@ class Executor:
             if _nb:
                 print(f"[memory] {_nb} seam(s) given their way back")
             self.seen_far = data.get("seen_far", {}) or {}
+            self.map_seen = data.get("map_seen", {}) or {}
             self._battle_regions = set(data.get("battle_regions") or ())
             # Money-dependent proofs do not survive a restart. "Fully
             # worked" recorded in a shop with an empty wallet is a fact
@@ -2841,6 +2842,7 @@ class Executor:
                  "touched": {r: sorted(s)
                              for r, s in self._tried_objs.items()},
                  "seen_far": getattr(self, "seen_far", {}),
+                 "map_seen": getattr(self, "map_seen", {}),
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
                  "no_cross_at": self._no_cross_at,
@@ -7294,6 +7296,36 @@ class Executor:
                           + ". A door never taken on ground you have stood "
                             "on is reached by going back there; how to reach "
                             "a part never stood on is not known.")
+        # ...AND A FLOOR WITH GROUND NEVER ON SCREEN IS NOT FINISHED EITHER.
+        # The rows above count doorways, and under the footprint a doorway
+        # that has never been on screen is not counted anywhere — so from
+        # Viridian the page never mentioned VIRIDIAN_FOREST, whose north
+        # door had never been in view, and the run concluded the forest
+        # was fully explored (user, 2026-08-25). Recall of the run's own
+        # last look at that floor: how many spots its seen ground ended at.
+        _urows = []
+        _here_map0 = str(here).split("|")[0]
+        for _um, _un in (getattr(self, "map_seen", None) or {}).items():
+            if not _un or _um == _here_map0:
+                continue
+            _p = None
+            for _r2 in set(list(self.explored or {}) + list(self.visits or {})):
+                if _r2.split("|")[0] != _um:
+                    continue
+                _c = self._route(here, _r2)
+                if _c is not None and (_p is None or len(_c) < len(_p)):
+                    _p = _c
+            _urows.append((len(_p) if _p is not None else 99, _um, int(_un)))
+        if _urows:
+            _urows.sort()
+            floor_away += (
+                "\nFLOORS YOU HAVE WALKED WITH GROUND NEVER ON SCREEN: "
+                + "; ".join(
+                    f"{_m} ({_n} spot(s) where the ground you looked at ends"
+                    + (f", {_d} walked leg(s) away" if _d < 99
+                       else ", no walked route from here") + ")"
+                    for _d, _m, _n in _urows[:3])
+                + ". What is past those spots is not known.")
         # ...AND A FLOOR WHOSE DOORS ARE ALL TAKEN CAN STILL HAVE A WAY
         # DOWN IN IT. The rows above are built from doorways only, so a
         # floor with no untried door never appears — POKEMON_MANSION_3F,

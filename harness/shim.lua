@@ -425,6 +425,7 @@ local function real_water(map, x, y)
   return true
 end
 local SEEN = {}                 -- map id -> { n = count, ["x,y"] = true }
+local last_frontier = {}        -- the last observation's frontier, for the overlay
 local seen_dirty, seen_wrote = false, 0
 local seen_lmap, seen_lx, seen_ly = nil, nil, nil
 local seen_reach                -- assigned after warp_reach (shares its helpers)
@@ -602,6 +603,96 @@ local function seen_filter(G, o)
   end
   m.seen = { n = mask.n or 0, frontier_n = #front }
   m.frontier = fl
+  last_frontier = fl
+end
+
+-- ------------------------------------------------ the footprint, on screen
+-- What the run has seen, drawn over the game for whoever is watching
+-- (user, 2026-08-25: "show the seen footprint as a bright red outline").
+-- Never-seen ground is dimmed, the seen/unseen boundary is a red line,
+-- and the frontier spots of the last observation are yellow boxes. Drawn
+-- AFTER the game presents, in window space: the world canvas goes
+-- through the palette shader, and a red rectangle drawn into it would
+-- come out a Game Boy shade. Placement mirrors Renderer:endFrame (fit
+-- scale, centred). Watchers only; the model never sees the screen.
+-- RED_SEEN_OVERLAY=0 turns it off; {"op":"overlay","on":false} too.
+local overlay_on = (os.getenv("RED_SEEN_OVERLAY") or "1") ~= "0"
+local overlay_G, overlay_wrapped = nil, false
+local function draw_seen_overlay()
+  local G = overlay_G
+  if not (overlay_on and G and G.overworld and G.stack
+          and G.stack:top() == G.overworld) then return end
+  local ow = G.overworld
+  local map, cam = ow.map, ow.camera
+  if not (map and map.id and cam and cam.x) then return end
+  local mask = SEEN[map.id]
+  if not mask then return end
+  local R = G.renderer
+  if not (R and R.fitScale and R.uiSize) then return end
+  local okS, Sp = pcall(R.fitScale, R)
+  if not (okS and Sp) then return end
+  local uiw, uih = R:uiSize()
+  local ww, wh = love.graphics.getDimensions()
+  local pw, ph = love.graphics.getPixelDimensions()
+  local dpi = (ww > 0) and (pw / ww) or 1
+  local ox = math.floor((pw - uiw * Sp) / 2) / dpi
+  local oy = math.floor((ph - uih * Sp) / 2) / dpi
+  local S = Sp / dpi
+  local W, H = seen_dims(G, map)
+  if W <= 0 or H <= 0 then return end
+  local x0 = math.floor(cam.x / 16) - 1
+  local y0 = math.floor(cam.y / 16) - 1
+  local x1 = x0 + math.ceil(uiw / 16) + 2
+  local y1 = y0 + math.ceil(uih / 16) + 2
+  local function px(cx, cy)
+    return ox + (cx * 16 - cam.x) * S, oy + (cy * 16 - cam.y) * S
+  end
+  local s = 16 * S
+  love.graphics.push("all")
+  love.graphics.setScissor(ox, oy, uiw * S, uih * S)
+  love.graphics.setColor(0, 0, 0, 0.45)
+  for cy = y0, y1 do
+    for cx = x0, x1 do
+      if cx >= 0 and cy >= 0 and cx < W and cy < H
+         and not mask[cx .. "," .. cy] then
+        local X, Y = px(cx, cy)
+        love.graphics.rectangle("fill", X, Y, s, s)
+      end
+    end
+  end
+  love.graphics.setColor(1, 0.1, 0.1, 0.95)
+  love.graphics.setLineWidth(math.max(1, S))
+  for cy = y0, y1 do
+    for cx = x0, x1 do
+      if mask[cx .. "," .. cy] then
+        local X, Y = px(cx, cy)
+        if cy > 0 and not mask[cx .. "," .. (cy - 1)] then
+          love.graphics.line(X, Y, X + s, Y) end
+        if cy < H - 1 and not mask[cx .. "," .. (cy + 1)] then
+          love.graphics.line(X, Y + s, X + s, Y + s) end
+        if cx > 0 and not mask[(cx - 1) .. "," .. cy] then
+          love.graphics.line(X, Y, X, Y + s) end
+        if cx < W - 1 and not mask[(cx + 1) .. "," .. cy] then
+          love.graphics.line(X + s, Y, X + s, Y + s) end
+      end
+    end
+  end
+  love.graphics.setColor(1, 0.85, 0.1, 0.9)
+  for _, f in ipairs(last_frontier or {}) do
+    local X, Y = px(f.x, f.y)
+    love.graphics.rectangle("line", X + s * 0.25, Y + s * 0.25, s * 0.5, s * 0.5)
+  end
+  love.graphics.pop()
+end
+local function overlay_install(G)
+  overlay_G = G
+  if overlay_wrapped or type(love.draw) ~= "function" then return end
+  overlay_wrapped = true
+  local _draw = love.draw
+  love.draw = function(...)
+    _draw(...)
+    pcall(draw_seen_overlay)
+  end
 end
 local recent_text = nil
 -- The LAST thing anybody said, kept after the box closes. recent_text is
@@ -8520,6 +8611,11 @@ function OPS.sweep(G, c)
   return true, detail
 end
 
+function OPS.overlay(G, c)
+  overlay_on = not (c.on == false or c.seen == false)
+  return true, "seen-footprint overlay " .. (overlay_on and "on" or "off")
+end
+
 function OPS.save_game(G)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close: "
@@ -8798,6 +8894,7 @@ end
 return function(G)
   U.wait(10)
   seen_load()
+  overlay_install(G)
   local seq = 0
   local result = { op = "boot", ok = true }
   while true do
