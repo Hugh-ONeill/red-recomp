@@ -1872,8 +1872,19 @@ class Executor:
             path = self._route(here, region)
             if not path:
                 continue
-            r = ((0 if left else 1 if unseen else 2) if _map_goal else 0,
-                 len(path), -(len(left) + len(unpressed) + unseen), region)
+            # WHAT THE MODEL ASKED FOR RANKS FIRST. explore with an
+            # `until` is a sweep intent: unseen ground before untried
+            # exits before things. Without it, from Rock Tunnel's fully
+            # seen entrance pocket, "nearest with something untried" was
+            # Route 9's bush at 1 leg over the tunnel's own unfinished
+            # pockets at 3, and explore walked the party out of the
+            # tunnel it had been asked to explore (2026-08-25).
+            _sweep_intent = bool(_params.get("until") or _params.get("steps"))
+            if _sweep_intent:
+                _pri = 0 if unseen else 1 if left else 2
+            else:
+                _pri = (0 if left else 1 if unseen else 2) if _map_goal else 0
+            r = (_pri, len(path), -(len(left) + len(unpressed) + unseen), region)
             if best is None or r < best[0]:
                 best = (r, region, left, unpressed, path, unseen)
         if not best:
