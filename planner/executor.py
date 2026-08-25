@@ -1097,6 +1097,7 @@ class Executor:
         self._ferried: dict = {}            # target -> {region: untried set}
         self.map_doors: dict = {}           # map id -> every doorway seen
         self.map_holes: dict = {}           # map id -> holes seen in its floor
+        self.map_seen: dict = {}            # map id -> frontier count at last look
         self.shut_settings: dict = {}       # map -> door -> switch settings
                                             # it was seen unreachable in
         self.reach_settings: dict = {}      # map -> thing -> switch settings
@@ -1650,6 +1651,24 @@ class Executor:
 
         Returns (done, trace_lines, clean_ops)."""
         target = self._cur_target or ""
+        # UNSEEN GROUND FIRST. With the footprint, the ledger only holds
+        # what has been on screen, so "everything here is done" can only
+        # be true of a floor with no frontier. The coverage step is the
+        # shim's sweep: nearest unseen ground, goal-blind, back at the
+        # first new thing in view (or whatever `until` the model set).
+        _m = (obs or {}).get("map") or {}
+        _params = getattr(self, "_explore_params", None) or {}
+        if (_m.get("frontier") and not _params.get("no_sweep")
+                and _params.get("until") != "doors_only"):
+            self.log("explore_step", subgoal=sg.get("id"), step="sweep",
+                     frontier=int((_m.get("seen") or {}).get("frontier_n")
+                                  or len(_m.get("frontier") or [])))
+            _st = {"op": "sweep"}
+            for _k in ("until", "steps"):
+                if _params.get(_k) is not None:
+                    _st[_k] = _params[_k]
+            ok, tr, cl = self._run_traced(sg, [_st], ignore_done=ignore_done)
+            return ok, [f"explore (sweeping unseen ground): {t}" for t in tr], cl
         cands = ledger.build(self, obs, target,
                              outcomes=self._outcomes_here(obs),
                              want_explore=False)
@@ -3069,6 +3088,14 @@ class Executor:
                     for w in (_m.get("warps") or [])}
             if _all:
                 self.map_doors[_mid] = set(self.map_doors.get(_mid, ())) | _all
+            # THE FOOTPRINT: how much of this map is still unseen from
+            # ground you can reach (shim seen_filter). A map with a
+            # frontier is not finished whatever its doors say.
+            _sn = _m.get("seen")
+            if isinstance(_sn, dict):
+                if not hasattr(self, "map_seen"):
+                    self.map_seen = {}
+                self.map_seen[_mid] = int(_sn.get("frontier_n") or 0)
             # the destinations ride along, unprinted (see door_dests above);
             # the claim rule forbids SAYING them, not knowing which two
             # tiles are one door
@@ -3273,7 +3300,8 @@ class Executor:
                 walked |= {k for k, e in ex2.items()
                            if not (e or {}).get("shut")
                            and (e or {}).get("to") != r2}
-            if set(self.map_doors.get(mid, ())) - walked:
+            if (set(self.map_doors.get(mid, ())) - walked
+                    or (getattr(self, "map_seen", None) or {}).get(mid)):
                 del rooms[r]
         return rooms
 
@@ -3288,6 +3316,8 @@ class Executor:
         """
         if not mid:
             return False
+        if (getattr(self, "map_seen", None) or {}).get(mid):
+            return True          # ground on it has never been on screen
         walked = set()
         for r2, ex2 in (self.explored or {}).items():
             if r2.split("|")[0] != mid:
@@ -8156,7 +8186,55 @@ class Executor:
                 + hint_line + loot_line + _elsewhere_str
                 + self._bag_line(obs, sg_for_bag)
                 + self.blockers_text(obs))
+        out += self.coverage_text(obs)
         return move_head + out
+
+    def coverage_text(self, obs) -> str:
+        """What this floor has and has not shown you (the footprint).
+
+        Says where the ground you have looked at ends, as spots you could
+        walk to, nearest first, with the compass side each lies on. Never
+        what is past them. The percentage of the map is NOT said: the
+        map's size is not something a player standing on it knows."""
+        m = (obs or {}).get("map") or {}
+        sn = m.get("seen")
+        if not isinstance(sn, dict):
+            return ""
+        p = (obs or {}).get("player") or {}
+        px, py = p.get("x"), p.get("y")
+        fr = m.get("frontier") or []
+        lines = []
+        if m.get("dark"):
+            lines.append(
+                "IT IS DARK HERE. Floor, walls, ledges, water and doorways "
+                "can still be made out; WHO or WHAT stands on this floor "
+                "cannot, until FLASH is used. No people or things are "
+                "listed for this floor while it is dark.")
+        if fr:
+            def side(f):
+                dx = (f.get("x") or 0) - (px or 0)
+                dy = (f.get("y") or 0) - (py or 0)
+                if abs(dx) >= abs(dy):
+                    return "east" if dx > 0 else "west"
+                return "south" if dy > 0 else "north"
+            spots = ", ".join(f"({f.get('x')},{f.get('y')}) {side(f)}"
+                              for f in fr[:6])
+            n = int(sn.get("frontier_n") or len(fr))
+            lines.append(
+                f"GROUND ON THIS FLOOR HAS NOT ALL BEEN ON SCREEN. From where "
+                f"you stand, the ground you have looked at ends at {spots}"
+                + (f" and {n - 6} more such spot(s)" if n > 6 else "")
+                + ". What lies past any of them is not known. "
+                  "{\"op\":\"explore\"} walks to the nearest and keeps "
+                  "walking until something new comes into view; add "
+                  "\"until\":\"door\"|\"person\"|\"item\"|\"sign\"|"
+                  "\"map_change\" to keep walking past ordinary sightings, "
+                  "\"steps\":N to bound it, or walk_to one of the spots "
+                  "yourself.")
+        elif int(sn.get("n") or 0) > 0:
+            lines.append("Every cell of this floor that ground you can reach "
+                         "touches has been on screen.")
+        return ("\n" + "\n".join(lines)) if lines else ""
 
     # Every map the run has ever entered, in one line of the escalation
     # prompt, growing all game — 39 maps was already 910 tokens at leg 8 of
@@ -8659,14 +8737,20 @@ another name. Say why in your plan; the reason is recorded. It is refused
 on a plan's LAST step, which is the objective itself, and the plan is
 judged on the objective at the end regardless — skipping does not make
 anything true),
-{"op":"explore"} (the systematic search step, done for you: it presses
-the first thing HERE never pressed; if nothing, takes an exit HERE never
-taken; if nothing, walks you over ground you have already walked to the
-nearest area that still has one and takes or presses it there. It knows
-nothing about where anything leads. It reports what it did and found. It
-is the right move when the ledger says the area is fully worked and you
-have no better idea of your own; a map-changing op, so it must be the
-LAST op of your macro),
+{"op":"explore"} (the systematic search step, done for you. YOU ONLY KNOW
+WHAT HAS BEEN ON SCREEN: doors, people and things exist in the ledger
+once they have been in view. If this floor still has ground you have not
+looked at, explore walks to the nearest edge of what you have seen and
+keeps walking until something NEW comes into view, then stops and tells
+you what — add "until":"door"|"person"|"item"|"sign"|"map_change" (or a
+list) to keep walking past ordinary sightings, "steps":N to bound the
+walk. Once the floor has been seen from all ground you can reach, it
+presses the first thing HERE never pressed; if nothing, takes an exit
+HERE never taken; if nothing, walks you over ground you have already
+walked to the nearest area that still has one and takes or presses it
+there. It knows nothing about where anything leads and prefers no
+direction for what might be that way. It reports what it did and found.
+A map-changing op, so it must be the LAST op of your macro),
 {"op":"go","to":AREA} (add "surf":true — like "intent" on grind — to say
 "if the way on is water, get on it"; the harness then finds the water beside
 ground it can reach and uses SURF, and water becomes walkable. Without it,
@@ -8877,7 +8961,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 tuple((m.get("species"),
                        tuple(str(mv.get("id") if isinstance(mv, dict)
                                  else mv) for mv in (m.get("moves") or [])))
-                      for m in (obs or {}).get("party") or []))
+                      for m in (obs or {}).get("party") or []),
+                # GROUND NEWLY ON SCREEN IS PROGRESS. A sweep that ends
+                # where it began has still changed what the run knows;
+                # without this every honest sweep of a big floor read as
+                # "ran but had NO visible effect". Trailing, no index shifts.
+                (((obs or {}).get("map") or {}).get("seen") or {}).get("n"))
 
     # SAVE ON THE WAY OUT. Both save points sit at the END of an attempt —
     # one for a plan that succeeded, one after the loop "to keep what it
@@ -9073,7 +9162,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # ledger ranks first and runs it through this same loop, so
             # every rule below applies to it unchanged.
             if op == "explore":
+                self._explore_params = {k: v for k, v in step.items()
+                                        if k != "op"}
                 _ok, _tr, _cl = self._explore_step(sg, obs, ignore_done)
+                self._explore_params = None
                 trace.extend(_tr)
                 clean.extend(_cl)
                 if _ok:
@@ -9478,7 +9570,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 continue
             pre_obs = obs
             before = self._snapshot(obs)
-            traversal = op in ("cross", "walk_to", "use_warp", "grind")
+            traversal = op in ("cross", "walk_to", "use_warp", "grind", "sweep")
             blackout = None
             ghosted = None
             low_hp_flee = ""
@@ -12506,7 +12598,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # Traversal steps (cross/walk_to) get cut short by wild
                 # battles in grass — fight the battle, then RE-RUN the step so
                 # the traversal resumes instead of burning a whole attempt.
-                traversal = op in ("cross", "walk_to", "use_warp", "grind")
+                traversal = op in ("cross", "walk_to", "use_warp", "grind", "sweep")
                 for _ in range(12):
                     pre_obs = obs
                     try:

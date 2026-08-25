@@ -77,6 +77,7 @@ local function hb_write(label)
 end
 -- assigned further down, once the text buffers it writes into exist
 local note_text
+local seen_paint               -- the footprint painter; assigned with SEEN
 coroutine.yield = function(...)
   local co = coroutine.running()
   if wd.co and co == wd.co then
@@ -89,6 +90,9 @@ coroutine.yield = function(...)
     -- refusal ever survived, which is the half that explains nothing.
     -- Cheap by construction: nothing is built unless the page changed.
     local g = wd.G
+    -- THE SCREEN IS PAINTED EVERY FRAME THE PARTY IS ON IT. What has been
+    -- on screen is the footprint; nothing else is "seen".
+    if g and seen_paint then seen_paint(g) end
     local top = g and g.stack and g.stack:top()
     if top and top.pages and top.pageIndex and note_text
         and (top ~= wd.pagetop or top.pageIndex ~= wd.pageidx) then
@@ -387,6 +391,192 @@ end
 -- map id -> { "x,y" = region name }. Names are minted once and never
 -- rewritten, so a region cannot be renamed by the world opening up.
 local region_of = {}
+
+-- ===================================================================
+-- THE FOOTPRINT: what the screen has actually shown.
+--
+-- Every list below (warps, objects, holes, seams, the sketch, the water
+-- count) used to be read straight off the map table, so the run "knew"
+-- Route 10's southern exits while standing at its northern end and knew
+-- a ladder in a Rock Tunnel pocket it had never approached. That is the
+-- largest thing the harness still knew that a player could not (TODO
+-- "VISIBILITY RADIUS", 2026-08-15; the user's design). Now: a cell is SEEN
+-- once it has been inside the viewport, and a thing exists in the eyes
+-- only when its cell is seen. The viewport is the engine's own
+-- (src/render/Camera.lua follow(): the player sits at (64,60)px of a
+-- 160x144 view, so the screen holds cells cx-4..cx+5 by cy-4..cy+4; gen 1
+-- draws void past the map edge, which is nothing to see). Darkness is a
+-- PALETTE shift, not a viewport mask (src/render/PaletteFX.lua): terrain,
+-- warps and edges are still seen in a dark cave; who or what stands
+-- there is not, until FLASH (user ruling 2026-08-18).
+-- Persisted to BRIDGE/seen.json (a Lua chunk) so a reboot keeps it; a
+-- fresh chain clears it with the rest of the ledgers.
+-- ===================================================================
+local SEEN = {}                 -- map id -> { n = count, ["x,y"] = true }
+local seen_dirty, seen_wrote = false, 0
+local seen_lmap, seen_lx, seen_ly = nil, nil, nil
+local seen_reach                -- assigned after warp_reach (shares its helpers)
+local SEEN_FILE = BRIDGE .. "/seen.json"
+local SDIRS = { up = { 0, -1 }, down = { 0, 1 }, left = { -1, 0 }, right = { 1, 0 } }
+local VIEW_L, VIEW_R, VIEW_U, VIEW_D = 4, 5, 4, 4
+local function seen_dims(G, map)
+  local md = map and map.id and G.data and G.data.maps and G.data.maps[map.id]
+  local wb = (md and md.width) or (map and map.width) or 0
+  local hb = (md and md.height) or (map and map.height) or 0
+  return wb * 2, hb * 2
+end
+local function seen_of(mid)
+  local t = SEEN[mid]
+  if not t then t = { n = 0 }; SEEN[mid] = t end
+  return t
+end
+seen_paint = function(G)
+  local ow = G and G.overworld
+  local p, map = ow and ow.player, ow and ow.map
+  if not (p and map and map.id and p.cellX and p.cellY) then return end
+  if ow.transitioning then return end
+  if seen_lmap == map.id and seen_lx == p.cellX and seen_ly == p.cellY then
+    return
+  end
+  seen_lmap, seen_lx, seen_ly = map.id, p.cellX, p.cellY
+  local W, H = seen_dims(G, map)
+  if W <= 0 or H <= 0 then return end
+  local t = seen_of(map.id)
+  for y = p.cellY - VIEW_U, p.cellY + VIEW_D do
+    if y >= 0 and y < H then
+      for x = p.cellX - VIEW_L, p.cellX + VIEW_R do
+        if x >= 0 and x < W then
+          local k = x .. "," .. y
+          if not t[k] then t[k] = true; t.n = t.n + 1; seen_dirty = true end
+        end
+      end
+    end
+  end
+end
+local function seen_save(force)
+  if not seen_dirty then return end
+  if not force and os.time() - seen_wrote < 5 then return end
+  local parts = { "return {\n" }
+  local mids = {}
+  for mid in pairs(SEEN) do mids[#mids + 1] = mid end
+  table.sort(mids)
+  for _, mid in ipairs(mids) do
+    local cells = {}
+    for k, v in pairs(SEEN[mid]) do
+      if v == true and k ~= "n" then cells[#cells + 1] = k end
+    end
+    table.sort(cells)
+    for i, c in ipairs(cells) do cells[i] = ("%q"):format(c) end
+    parts[#parts + 1] = ("  [%q] = { %s },\n"):format(mid, table.concat(cells, ","))
+  end
+  parts[#parts + 1] = "}\n"
+  local f = io.open(SEEN_FILE .. ".tmp", "w")
+  if not f then return end
+  f:write(table.concat(parts)); f:close()
+  os.rename(SEEN_FILE .. ".tmp", SEEN_FILE)
+  seen_dirty, seen_wrote = false, os.time()
+end
+local function seen_load()
+  local f = io.open(SEEN_FILE, "r")
+  if not f then return end
+  local body = f:read("*a"); f:close()
+  local chunk = body and load(body, "seen", "t", {})
+  local ok, t = pcall(chunk or function() end)
+  if not (ok and type(t) == "table") then return end
+  for mid, cells in pairs(t) do
+    local st = seen_of(mid)
+    for _, k in ipairs(cells) do
+      if not st[k] then st[k] = true; st.n = st.n + 1 end
+    end
+  end
+end
+-- The observation, cut down to the footprint. Runs once per observation
+-- after the map block is built: every positioned list keeps only entries
+-- on seen cells; a seam is listed once any cell on that edge has been on
+-- screen; `reachable` is DOWNGRADED (never raised) to reach over seen
+-- ground; the frontier (seen, reachable, beside unseen ground) rides
+-- along, nearest first. In the dark without FLASH the objects go
+-- entirely: silhouettes are not positions.
+local function seen_filter(G, o)
+  local m = o.map
+  if not (m and m.id) then return end
+  local ow = G.overworld
+  local mask = SEEN[m.id] or { n = 0 }
+  local W, H = seen_dims(G, ow and ow.map)
+  local function seen(x, y)
+    return x ~= nil and y ~= nil and mask[x .. "," .. y] == true
+  end
+  local function keep_xy(list)
+    if type(list) ~= "table" then return list end
+    local out = {}
+    for _, e in ipairs(list) do
+      local x = type(e) == "table" and (e.x or e[1]) or nil
+      local y = type(e) == "table" and (e.y or e[2]) or nil
+      if seen(x, y) then out[#out + 1] = e end
+    end
+    return out
+  end
+  local dark = ow and ow.dark and not (G.save and G.save.flashLit)
+  m.dark = dark and true or nil
+  m.warps = keep_xy(m.warps)
+  if dark then m.objects = {} else m.objects = keep_xy(m.objects) end
+  for _, key in ipairs({ "holes", "boulder_holes", "boulder_switches",
+                         "switch_statues", "quiz_machines" }) do
+    if m[key] then
+      local kept = keep_xy(m[key])
+      m[key] = (#kept > 0) and kept or nil
+    end
+  end
+  if type(m.currents) == "table" then
+    m.currents.carried = keep_xy(m.currents.carried)
+    m.currents.pushed = keep_xy(m.currents.pushed)
+  end
+  if type(m.connections) == "table" then
+    local on = {}
+    for k, v in pairs(mask) do
+      if v == true then
+        local x, y = k:match("^(-?%d+),(-?%d+)$")
+        x, y = tonumber(x), tonumber(y)
+        if y == 0 then on.north = true end
+        if y == H - 1 then on.south = true end
+        if x == 0 then on.west = true end
+        if x == W - 1 then on.east = true end
+      end
+    end
+    for d in pairs(m.connections) do
+      if not on[d] then m.connections[d] = nil end
+    end
+  end
+  local dist, front = {}, {}
+  if seen_reach then dist, front = seen_reach(G) end
+  local function near(x, y)
+    if x == nil or y == nil then return false end
+    if dist[x .. "," .. y] then return true end
+    for _, d in pairs(SDIRS) do
+      if dist[(x + d[1]) .. "," .. (y + d[2])] then return true end
+    end
+    return false
+  end
+  for _, w in ipairs(m.warps or {}) do
+    if w.reachable and not w.by_water and not near(w.x, w.y) then
+      w.reachable = false
+      w.why = w.why or "no ground you have seen joins here to it"
+    end
+  end
+  for _, ob in ipairs(m.objects or {}) do
+    if ob.reachable and not ob.by_water and not near(ob.x, ob.y) then
+      ob.reachable = false
+      ob.why = ob.why or "no ground you have seen joins here to it"
+    end
+  end
+  local fl = {}
+  for i, f in ipairs(front) do
+    if i > 24 then break end
+    fl[i] = { x = f.x, y = f.y, d = f.d }
+  end
+  m.seen = { n = mask.n or 0, frontier_n = #front }
+  m.frontier = fl
+end
 local recent_text = nil
 -- The LAST thing anybody said, kept after the box closes. recent_text is
 -- wiped the moment control returns, which is correct for "is a prompt open
@@ -531,6 +721,7 @@ local function observe(G, seq, result)
     o.recent_text = nil
     text_run = nil             -- that speech is over; the next starts clean
     o.mode = "overworld"
+    seen_paint(G)
     local p = G.overworld.player or {}
     o.player = { x = p.cellX, y = p.cellY, facing = p.facing,
                  moving = p.moving and true or false }
@@ -990,15 +1181,18 @@ local function observe(G, seq, result)
         -- resolution"). Draw cell-for-cell while the picture stays inside
         -- a few hundred tokens; fold only for maps too big for that.
         local _step = ((_W * _H) <= 2400) and 1 or 2
+        local _smask = SEEN[map.id] or {}
         local _rows = {}
         for by = 0, _H - 1, _step do
           local line = {}
           for bx = 0, _W - 1, _step do
-            local ch = "#"
+            local ch = " "               -- never on screen
             for dy = 0, _step - 1 do
               for dx = 0, _step - 1 do
                 local cx, cy = bx + dx, by + dy
                 local k = cx .. "," .. cy
+                if _smask[k] then
+                if ch == " " then ch = "#" end
                 local this
                 if p and cx == p.cellX and cy == p.cellY then
                   this = "@"
@@ -1037,6 +1231,7 @@ local function observe(G, seq, result)
                 elseif this == "," and (ch == "#" or ch == "~") then ch = ","
                 elseif this == "~" and ch == "#" then ch = "~"
                 end
+                end                      -- seen cell
               end
             end
             line[#line + 1] = ch
@@ -1045,8 +1240,8 @@ local function observe(G, seq, result)
         end
         o.map.sketch = { rows = _rows, scale = _step,
                          legend = (_step == 1
-                                   and "@ you, . ground you can reach, "
-                                   or "@ you, . ground you can reach, ")
+                                   and "@ you, ' ' never on screen, . ground you can reach, "
+                                   or "@ you, ' ' never on screen, . ground you can reach, ")
                                   .. ", water you can reach, ~ water you "
                                   .. "cannot reach from here, "
                                   .. "O a boulder, o a hole, "
@@ -1087,7 +1282,8 @@ local function observe(G, seq, result)
         local _rc = reachable_cells()
         for _yy = 0, math.max(0, _H - 1) do
           for _xx = 0, math.max(0, _W - 1) do
-            if map:isWaterCell(_xx, _yy) then
+            if map:isWaterCell(_xx, _yy)
+               and (SEEN[map.id] or {})[_xx .. "," .. _yy] then
               _wn = _wn + 1
               local _dd = math.abs(_xx - p.cellX) + math.abs(_yy - p.cellY)
               if not _wd or _dd < _wd then _wd, _wx, _wy = _dd, _xx, _yy end
@@ -1934,6 +2130,8 @@ local function observe(G, seq, result)
                     outdoor = lh.outdoor and lh.outdoor.id or nil }
     end
   end
+  if o.mode == "overworld" and o.map then seen_filter(G, o) end
+  seen_save()
   o.money = G.save and G.save.money
   -- Set event flags, for the EXECUTOR's done_when predicates (SPD tier 0).
   -- Instrumentation, not model eyes: the model-facing obs builder must strip
@@ -2478,6 +2676,73 @@ local function zero_pp_note(G, mv)
     end
   end
   return ""
+end
+
+-- Reach over SEEN ground only, and the FRONTIER: seen cells you can
+-- stand on that have an unseen in-bounds neighbour. Walking to one puts
+-- that neighbour (and four or five more beyond it) on screen. Nearest
+-- first by walked distance, ties north then west; the ordering is
+-- mechanical and goal-blind, which is the whole point of it.
+seen_reach = function(G)
+  local okc, Collision = pcall(require, "src.world.Collision")
+  local ow, p = G.overworld, G.overworld and G.overworld.player
+  if not (okc and ow and p and ow.map and ow.map.id and p.cellX) then
+    return {}, {}
+  end
+  local mask = SEEN[ow.map.id] or {}
+  local W, H = seen_dims(G, ow.map)
+  local key = function(x, y) return x .. "," .. y end
+  local STATIC = {}
+  for _, e in ipairs(ow.entities or {}) do
+    local mv = (e.def and e.def.movement) or "STAY"
+    if mv ~= "WALK" then STATIC[#STATIC + 1] = e end
+  end
+  local THROUGH = {}
+  for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
+    THROUGH[key(w.x, w.y)] = true
+  end
+  local start = key(p.cellX, p.cellY)
+  THROUGH[start] = nil
+  local dist = { [start] = 0 }
+  local q, head = { { x = p.cellX, y = p.cellY } }, 1
+  local front = {}
+  while q[head] do
+    local cur = q[head]; head = head + 1
+    local ck = key(cur.x, cur.y)
+    local edge = false
+    for dn, d in pairs(DIRS) do
+      local nx, ny = cur.x + d[1], cur.y + d[2]
+      local nk = key(nx, ny)
+      if nx >= 0 and ny >= 0 and nx < W and ny < H and not mask[nk] then
+        edge = true
+      elseif mask[nk] and not dist[nk] and not THROUGH[ck] then
+        local probe = setmetatable({ cellX = cur.x, cellY = cur.y,
+                                     surfing = nil }, { __index = p })
+        if Collision.canMove(ow.map, STATIC, probe, dn) then
+          dist[nk] = dist[ck] + 1
+          q[#q + 1] = { x = nx, y = ny }
+        else
+          local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dn)
+          if lx then
+            local lk = key(lx, ly)
+            if mask[lk] and not dist[lk] then
+              dist[lk] = dist[ck] + 1
+              q[#q + 1] = { x = lx, y = ly }
+            end
+          end
+        end
+      end
+    end
+    if edge and not THROUGH[ck] then
+      front[#front + 1] = { x = cur.x, y = cur.y, d = dist[ck] }
+    end
+  end
+  table.sort(front, function(a, b)
+    if a.d ~= b.d then return a.d < b.d end
+    if a.y ~= b.y then return a.y < b.y end
+    return a.x < b.x
+  end)
+  return dist, front
 end
 
 local function warp_block(G, tx, ty)
@@ -8086,6 +8351,150 @@ end
 -- Save the game via the START menu (a PLAYER action — this is the claim-
 -- clean persistence, unlike dev checkpoints): START -> SAVE -> YES ->
 -- ride the save text. The title's CONTINUE loads it next boot.
+-- {"op":"sweep"} — THE COVERAGE STEP. Walk to the nearest edge of the
+-- ground you have seen and keep going until something new comes into
+-- view, or until `until` says otherwise: "anything_new" (default),
+-- "door", "person", "item", "sign", "boulder", "map_change", or a list of
+-- those; `steps` bounds the walk. Which frontier is next is mechanical
+-- (seen_reach: nearest, then north, then west) and knows nothing of the
+-- goal; the walk itself crosses SEEN ground only, so nothing unseen is
+-- routed through. It reports what came into view and why it stopped. A
+-- battle interrupts it like any walk; the executor resumes it.
+function OPS.sweep(G, c)
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
+  end
+  local ow = G.overworld
+  local p = ow.player
+  local map0 = ow.map and ow.map.id
+  if not map0 then return false, "no map" end
+  local W, H = seen_dims(G, ow.map)
+  if W <= 0 or H <= 0 then return false, "map has no dimensions" end
+  local wants = {}
+  local u = c["until"]
+  if type(u) == "string" then wants[u:lower()] = true
+  elseif type(u) == "table" then
+    for _, s in ipairs(u) do wants[tostring(s):lower()] = true end
+  end
+  if next(wants) == nil then wants.anything_new = true end
+  local budget = tonumber(c.steps) or tonumber(c.max_steps) or 300
+  seen_paint(G)
+  local mask = seen_of(map0)
+  local before, nbefore = {}, 0
+  for k, v in pairs(mask) do
+    if v == true then before[k] = true; nbefore = nbefore + 1 end
+  end
+  local dark = ow.dark and not (G.save and G.save.flashLit)
+  local warps = {}
+  for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
+    warps[w.x .. "," .. w.y] = true
+  end
+  local function came_into_view()
+    local out, edge = {}, {}
+    for k, v in pairs(mask) do
+      if v == true and not before[k] then
+        local x, y = k:match("^(-?%d+),(-?%d+)$")
+        x, y = tonumber(x), tonumber(y)
+        if warps[k] then
+          out[#out + 1] = { kind = "door", x = x, y = y,
+                            text = ("a doorway at (%d,%d)"):format(x, y) }
+        end
+        if y == 0 then edge.north = true end
+        if y == H - 1 then edge.south = true end
+        if x == 0 then edge.west = true end
+        if x == W - 1 then edge.east = true end
+      end
+    end
+    for d in pairs((ow.map.def and ow.map.def.connections) or {}) do
+      if edge[d] then
+        out[#out + 1] = { kind = "way", text = "this map's edge to the " .. d }
+      end
+    end
+    if not dark then
+      for _, npc in ipairs(ow.npcs or {}) do
+        local k = (npc.cellX or -1) .. "," .. (npc.cellY or -1)
+        if mask[k] == true and not before[k] then
+          local d = npc.def or {}
+          local name = d.name or "?"
+          local kind = "person"
+          if name:find("POKE_BALL") or d.item then
+            kind = "item"
+            name = ("ITEM_%s_%d_%d"):format(map0, npc.cellX or 0, npc.cellY or 0)
+          elseif d.trainerClass then kind = "trainer"
+          elseif d.sprite == "SPRITE_BOULDER" then kind = "boulder"
+          elseif name:find("SIGN") or (d.text and not d.sprite) then kind = "sign"
+          end
+          out[#out + 1] = { kind = kind, x = npc.cellX, y = npc.cellY,
+                            text = ("%s (%s) at (%d,%d)"):format(
+                              name, kind, npc.cellX or 0, npc.cellY or 0) }
+        end
+      end
+    end
+    return out
+  end
+  local function fired(things)
+    if #things == 0 then return false end
+    if wants.anything_new then return true end
+    for _, t in ipairs(things) do
+      if wants[t.kind] then return true end
+      if wants.person and t.kind == "trainer" then return true end
+      if wants.door and t.kind == "way" then return true end
+    end
+    return false
+  end
+  local steps, hops, tried, why = 0, 0, {}, nil
+  while true do
+    if G.stack:top() ~= ow then why = "interrupted (battle or script)"; break end
+    if (ow.map and ow.map.id) ~= map0 then
+      why = "warped to " .. tostring(ow.map and ow.map.id); break
+    end
+    if fired(came_into_view()) then why = "something new came into view"; break end
+    if steps >= budget then why = ("step budget (%d) spent"):format(budget); break end
+    local _, front = seen_reach(G)
+    local target
+    for _, f in ipairs(front) do
+      local k = f.x .. "," .. f.y
+      if not tried[k] and not (f.x == p.cellX and f.y == p.cellY) then
+        target = f; tried[k] = true; break
+      end
+    end
+    if not target then why = "nothing more to see from ground you can reach"; break end
+    local avoid = {}
+    for k, v in pairs(warp_block(G, target.x, target.y)) do avoid[k] = v end
+    for y = 0, H - 1 do
+      for x = 0, W - 1 do
+        local k = x .. "," .. y
+        if not mask[k] then avoid[k] = true end
+      end
+    end
+    for _ = 1, budget - steps do
+      if p.cellX == target.x and p.cellY == target.y then break end
+      if G.stack:top() ~= ow or (ow.map and ow.map.id) ~= map0 then break end
+      local dir = bfs_dir_pass(G, target.x, target.y, avoid)
+      if not dir then break end
+      local x0, y0 = p.cellX, p.cellY
+      walk(G, dir, 1)
+      steps = steps + 1
+      if p.cellX == x0 and p.cellY == y0 then break end     -- bumped
+    end
+    hops = hops + 1
+    if hops > 200 then why = "hop budget spent"; break end
+  end
+  local things = came_into_view()
+  local parts = {}
+  for i, t in ipairs(things) do
+    if i > 12 then parts[#parts + 1] = ("(+%d more)"):format(#things - 12); break end
+    parts[#parts + 1] = t.text
+  end
+  local detail = ("swept %d step(s), %d cell(s) newly on screen; %s — stopped: %s")
+    :format(steps, (mask.n or 0) - nbefore,
+            #parts > 0 and ("came into view: " .. table.concat(parts, "; "))
+                        or "nothing new came into view", tostring(why))
+  seen_save(true)
+  return true, detail
+end
+
 function OPS.save_game(G)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close: "
@@ -8180,6 +8589,7 @@ function OPS.save_game(G)
     return false, ("save file never changed (top=%s)"):format(
       tostring((ui_top(G) or {}).screenId or "overworld"))
   end
+  seen_save(true)
   return true, ("saved (file written%s)"):format(
     ui_top(G) == G.overworld and "" or ", menu still open")
 end
@@ -8362,6 +8772,7 @@ end
 -- ------------------------------------------------------------ bridge loop
 return function(G)
   U.wait(10)
+  seen_load()
   local seq = 0
   local result = { op = "boot", ok = true }
   while true do

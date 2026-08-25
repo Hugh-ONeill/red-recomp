@@ -76,6 +76,20 @@ def main():
         # has, and only give up when it has neither.
         _m = (b.obs() or {}).get("map") or {}
         conns = dict(_m.get("connections") or {})
+        # THE FOOTPRINT: a party standing on a doormat has not seen the
+        # city's edges, and a seam is listed only once a cell on that edge
+        # has been on screen. Coverage first, then choose — the same order
+        # the run itself now follows ({"op":"explore"} = sweep).
+        for _ in range(12):
+            if conns:
+                break
+            r = b.send("sweep")
+            print(f"[replay] sweep: "
+                  f"{str(((r or {}).get('result') or {}).get('detail'))[:100]}")
+            _m = (b.obs() or {}).get("map") or {}
+            conns = dict(_m.get("connections") or {})
+            if not (_m.get("frontier") or []):
+                break
         if not conns:
             for w in (_m.get("warps") or []):
                 if not w.get("reachable"):

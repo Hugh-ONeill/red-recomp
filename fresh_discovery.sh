@@ -115,6 +115,7 @@ if [ "$done_legs" = 0 ]; then
   # but left the fallback would load a previous chain's whole walked map
   # and call it this one's.
   rm -f run/explored.json run/explored.json.prev run/explored.json.tmp \
+        run/seen.json run/seen.json.tmp \
         run/last_state.json run/obs.json \
         run/status.txt run/heartbeat
   # these budgets belong to a chain, not to the directory
