@@ -7184,6 +7184,14 @@ class Executor:
             # the room's own geometry (doors on both sides = a corridor),
             # set by the build above
             ledger_block += getattr(ledger, "LAST_PASS_NOTE", "") or ""
+        # NO MAP, NO ROUTE CLAIMS. A page built while a box was up has no
+        # "here" to route from, and every far place below then read "no
+        # walked route from here" — the Rocket hideout the run had walked
+        # into, Cerulean, all of them — printed as a fact about the world
+        # (2026-08-25, Lavender Center, mid-dialogue). The head line
+        # already says the screen is not the overworld; stop there.
+        if "None" in str(here):
+            return move_head + ledger_block + self._bag_line(obs, sg_for_bag)
         taken = self._taken_here(here)
         m = (obs or {}).get("map") or {}
         # candidates are DOORS *and* MAP EDGES. Listing only warps meant a
