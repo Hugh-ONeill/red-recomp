@@ -10912,6 +10912,22 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             r0 = _p
                 if r0:
                     break
+            # THE HARNESS NO LONGER WALKS YOU BACK TO THE TARGET'S MAP ON
+            # ITS OWN. This block returned the party to the gym/city/map of
+            # the subgoal at the top of every round unless the exit had been
+            # registered as on purpose, and three loops in one day came out
+            # of that registration (gym -> city, city -> Route 24, and the
+            # backtrack redo marching the party from Route 9 and from
+            # Vermilion back to Route 12 while the model was on its way
+            # north for the flute). The model has {"op":"go"} and the page
+            # says THE KNOWN WAY TO X FROM HERE; where to stand is its
+            # decision (user, 2026-08-25: "the goal text keeps dragging it
+            # back"). RED_WALKBACK=1 restores the old behaviour so the two
+            # can be measured on the same legs.
+            if r0 and os.environ.get("RED_WALKBACK") != "1":
+                self.log("walkback_skipped", subgoal=sg["id"], round=rnd,
+                         legs=len(r0), to=r0[-1][1])
+                r0 = None
             if r0:
                 self._walk_route(sg, r0)
                 start = self.settle() or start
