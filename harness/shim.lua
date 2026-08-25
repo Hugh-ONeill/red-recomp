@@ -1493,8 +1493,43 @@ local function observe(G, seq, result)
           end
           _rows[#_rows + 1] = table.concat(line)
         end
+        -- CROP TO WHAT HAS BEEN ON SCREEN. A frame the size of the whole
+        -- map, blank where never seen, still tells the reader how big the
+        -- map is — which a player learns only by walking it. Keep the rows
+        -- and columns that hold any seen cell (one blank margin), and say
+        -- where the top-left of the crop sits so coordinates still read.
+        local _cx0, _cy0, _cx1, _cy1
+        for k, v in pairs(_smask) do
+          if v == true then
+            local sx, sy = k:match("^(-?%d+),(-?%d+)$")
+            sx, sy = tonumber(sx), tonumber(sy)
+            if sx then
+              if not _cx0 or sx < _cx0 then _cx0 = sx end
+              if not _cx1 or sx > _cx1 then _cx1 = sx end
+              if not _cy0 or sy < _cy0 then _cy0 = sy end
+              if not _cy1 or sy > _cy1 then _cy1 = sy end
+            end
+          end
+        end
+        local _ox, _oy = 0, 0
+        if _cx0 then
+          local bx0 = math.max(0, math.floor((_cx0 - 1) / _step))
+          local bx1 = math.min(math.ceil(_W / _step) - 1, math.floor((_cx1 + 1) / _step))
+          local by0 = math.max(0, math.floor((_cy0 - 1) / _step))
+          local by1 = math.min(#_rows - 1, math.floor((_cy1 + 1) / _step))
+          local cropped = {}
+          for by = by0, by1 do
+            cropped[#cropped + 1] = _rows[by + 1]:sub(bx0 + 1, bx1 + 1)
+          end
+          _rows = cropped
+          _ox, _oy = bx0 * _step, by0 * _step
+        end
         o.map.sketch = { rows = _rows, scale = _step,
-                         legend = (_step == 1
+                         origin = { x = _ox, y = _oy },
+                         legend = ("drawn only where ground has been on "
+                                   .. "screen; the top-left character is "
+                                   .. "cell (" .. _ox .. "," .. _oy .. "); ")
+                                  .. (_step == 1
                                    and "@ you, ' ' never on screen, . ground you can reach, "
                                    or "@ you, ' ' never on screen, . ground you can reach, ")
                                   .. ", water you can reach, ~ water you "

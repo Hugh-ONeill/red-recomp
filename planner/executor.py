@@ -391,6 +391,10 @@ def model_view(obs: dict, holding_map: bool = False,
     if isinstance(o.get("map"), dict):
         _m = dict(o["map"])
         _m.pop("region_anchors", None)
+        # a map's size is learned by walking it (the sketch is cropped to
+        # seen ground for the same reason)
+        _m.pop("width", None)
+        _m.pop("height", None)
         o["map"] = _m
     if isinstance(o.get("battle"), dict):
         b = dict(o["battle"])
