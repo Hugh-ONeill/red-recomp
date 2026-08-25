@@ -621,8 +621,8 @@ end
 -- the model's own 10x9 window), "both", or "off". RED_SEEN_OVERLAY sets
 -- the start mode; {"op":"overlay","mode":"tiles"} changes it live.
 local overlay_mode = (function()
-  local m = (os.getenv("RED_SEEN_OVERLAY") or "inset"):lower()
-  if m == "1" then m = "inset" end
+  local m = (os.getenv("RED_SEEN_OVERLAY") or "tiles"):lower()
+  if m == "1" then m = "tiles" end
   if m == "0" then m = "off" end
   return m
 end)()
@@ -8685,7 +8685,7 @@ end
 function OPS.overlay(G, c)
   local m = c.mode and tostring(c.mode):lower() or nil
   if m == nil then m = (c.on == false or c.seen == false) and "off" or "inset" end
-  if m == "1" then m = "inset" end
+  if m == "1" then m = "tiles" end
   if m == "0" then m = "off" end
   if not ({ inset = 1, tiles = 1, both = 1, off = 1 })[m] then
     return false, "overlay mode must be inset | tiles | both | off"
