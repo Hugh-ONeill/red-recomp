@@ -1344,11 +1344,20 @@ def observed_text(path: Path) -> str:
     # at each floor) is the other half: leg 18 kept re-writing Route
     # 11->12->13->14->15->Lavender with Route 12's whole northern half
     # never on screen (2026-08-25).
-    _ms = {k: int(v or 0) for k, v in (d.get("map_seen") or {}).items()
+    # per REGION when the record has it (region_seen, 2026-08-25 evening):
+    # Rock Tunnel's entrance pocket is fully seen while its middle pocket
+    # is not, and "ROCK_TUNNEL_1F: 9 spots" cannot say which
+    _ms = {k: int(v or 0) for k, v in (d.get("region_seen") or {}).items()
            if int(v or 0) > 0}
+    if not _ms:
+        _ms = {k: int(v or 0) for k, v in (d.get("map_seen") or {}).items()
+               if int(v or 0) > 0}
     if _ms:
-        def _map_hop(mid):
-            hs = [h for r, h in _hops.items() if r.split("|")[0] == mid]
+        def _map_hop(key):
+            if "|" in key:
+                h = _hops.get(key)
+                return h
+            hs = [h for r, h in _hops.items() if r.split("|")[0] == key]
             return min(hs) if hs else None
         _rows = sorted(_ms.items(),
                        key=lambda kv: (_map_hop(kv[0]) if _map_hop(kv[0])
