@@ -616,82 +616,138 @@ end
 -- come out a Game Boy shade. Placement mirrors Renderer:endFrame (fit
 -- scale, centred). Watchers only; the model never sees the screen.
 -- RED_SEEN_OVERLAY=0 turns it off; {"op":"overlay","on":false} too.
-local overlay_on = (os.getenv("RED_SEEN_OVERLAY") or "1") ~= "0"
-local overlay_G, overlay_wrapped = nil, false
+-- Modes: "inset" (the whole map, top-right), "tiles" (drawn over the
+-- world itself — worth it when the watcher has the world zoomed out past
+-- the model's own 10x9 window), "both", or "off". RED_SEEN_OVERLAY sets
+-- the start mode; {"op":"overlay","mode":"tiles"} changes it live.
+local overlay_mode = (function()
+  local m = (os.getenv("RED_SEEN_OVERLAY") or "inset"):lower()
+  if m == "1" then m = "inset" end
+  if m == "0" then m = "off" end
+  return m
+end)()
+local overlay_G = nil
+local overlay_wrapped = false
 local overlay_err = nil
-local function draw_seen_overlay()
-  local G = overlay_G
-  if not (overlay_on and G and G.overworld and G.stack
-          and G.stack:top() == G.overworld) then return end
-  local ow = G.overworld
-  local map, cam, p = ow.map, ow.camera, ow.player
-  if not (map and map.id and cam and cam.x and p) then return end
-  local mask = SEEN[map.id]
-  if not mask then return end
-  local W, H = seen_dims(G, map)
-  if W <= 0 or H <= 0 then return end
-  local R = G.renderer
-  -- THE WHOLE MAP AS AN INSET. The screen itself is the seen window, so a
-  -- seen/unseen boundary can never lie inside the view; the footprint is
-  -- only visible at map scale. Anchored to the WINDOW's top-right corner
-  -- (the watcher may have the world zoomed out, which widens the world
-  -- view and moves the classic frame), at most ~30% of the window.
+local function overlay_wants(what)
+  return overlay_mode == what or overlay_mode == "both"
+end
+-- the model's own window: what seen_paint paints from where the player stands
+local function seen_window(p)
+  return (p.cellX or 0) - VIEW_L, (p.cellY or 0) - VIEW_U,
+         VIEW_L + VIEW_R + 1, VIEW_U + VIEW_D + 1
+end
+local function draw_boundary(mask, W, H, cell_xy, c, x0, y0, x1, y1)
+  for cy = y0, y1 do
+    for cx = x0, x1 do
+      if mask[cx .. "," .. cy] then
+        local X, Y = cell_xy(cx, cy)
+        if cy > 0 and not mask[cx .. "," .. (cy - 1)] then
+          love.graphics.line(X, Y, X + c, Y) end
+        if cy < H - 1 and not mask[cx .. "," .. (cy + 1)] then
+          love.graphics.line(X, Y + c, X + c, Y + c) end
+        if cx > 0 and not mask[(cx - 1) .. "," .. cy] then
+          love.graphics.line(X, Y, X, Y + c) end
+        if cx < W - 1 and not mask[(cx + 1) .. "," .. cy] then
+          love.graphics.line(X + c, Y, X + c, Y + c) end
+      end
+    end
+  end
+end
+local function draw_inset(G, ow, map, mask, W, H)
+  local p = ow.player
   local ww, wh = love.graphics.getDimensions()
   local maxw, maxh = ww * 0.3, wh * 0.3
   local c = math.max(1, math.floor(math.min(maxw / W, maxh / H)))
   local iw, ih = W * c, H * c
   local ix, iy = ww - iw - 8, 8
-  local vw, vh = 160, 144
-  if R and R.worldViewSize then
-    local okv, a, b = pcall(R.worldViewSize, R)
-    if okv and a and b then vw, vh = a, b end
-  end
-  love.graphics.push("all")
+  local function cell_xy(cx, cy) return ix + cx * c, iy + cy * c end
   love.graphics.setColor(0, 0, 0, 0.55)
   love.graphics.rectangle("fill", ix - 2, iy - 2, iw + 4, ih + 4)
-  -- seen ground bright; never-seen ground stays dark
   love.graphics.setColor(0.85, 0.95, 0.85, 0.75)
   for k, v in pairs(mask) do
     if v == true then
       local x, y = k:match("^(-?%d+),(-?%d+)$")
       x, y = tonumber(x), tonumber(y)
-      if x and y then
-        love.graphics.rectangle("fill", ix + x * c, iy + y * c, c, c)
-      end
+      if x then love.graphics.rectangle("fill", ix + x * c, iy + y * c, c, c) end
     end
   end
-  -- the boundary in red
   love.graphics.setColor(1, 0.15, 0.15, 1)
   love.graphics.setLineWidth(1)
-  for k, v in pairs(mask) do
-    if v == true then
-      local x, y = k:match("^(-?%d+),(-?%d+)$")
-      x, y = tonumber(x), tonumber(y)
-      if x and y then
-        local X, Y = ix + x * c, iy + y * c
-        if y > 0 and not mask[x .. "," .. (y - 1)] then
-          love.graphics.line(X, Y, X + c, Y) end
-        if y < H - 1 and not mask[x .. "," .. (y + 1)] then
-          love.graphics.line(X, Y + c, X + c, Y + c) end
-        if x > 0 and not mask[(x - 1) .. "," .. y] then
-          love.graphics.line(X, Y, X, Y + c) end
-        if x < W - 1 and not mask[(x + 1) .. "," .. y] then
-          love.graphics.line(X + c, Y, X + c, Y + c) end
-      end
-    end
-  end
-  -- frontier spots of the last observation, in yellow
+  draw_boundary(mask, W, H, cell_xy, c, 0, 0, W - 1, H - 1)
   love.graphics.setColor(1, 0.85, 0.1, 1)
   for _, f in ipairs(last_frontier or {}) do
     love.graphics.rectangle("fill", ix + f.x * c, iy + f.y * c, c, c)
   end
-  -- the viewport, and the player
+  local sx, sy, sw, sh = seen_window(p)
   love.graphics.setColor(0.3, 0.6, 1, 0.9)
-  love.graphics.rectangle("line", ix + (cam.x / 16) * c, iy + (cam.y / 16) * c,
-                          (vw / 16) * c, (vh / 16) * c)
+  love.graphics.rectangle("line", ix + sx * c, iy + sy * c, sw * c, sh * c)
   love.graphics.setColor(0.2, 0.5, 1, 1)
   love.graphics.rectangle("fill", ix + (p.cellX or 0) * c, iy + (p.cellY or 0) * c,
                           math.max(c, 2), math.max(c, 2))
+end
+-- Renderer:endFrame presents the world canvas at sp = Zoom.scale(fitScale),
+-- centred: screen = wox + world_px * sp / dpi, world_px = cell*16 - cam.
+local function draw_tiles(G, ow, map, mask, W, H)
+  local R = G.renderer
+  local cam, p = ow.camera, ow.player
+  if not (R and R.fitScale and R.worldCanvas and cam and cam.x) then return end
+  local okz, Zoom = pcall(require, "src.render.Zoom")
+  local Sp = R:fitScale()
+  local sp = (okz and Zoom and Zoom.scale) and Zoom.scale(Sp) or Sp
+  local ww = love.graphics.getWidth()
+  local pw, ph = love.graphics.getPixelDimensions()
+  local dpi = (ww > 0) and (pw / ww) or 1
+  local wvw, wvh = R.worldCanvas:getWidth(), R.worldCanvas:getHeight()
+  local wox = math.floor((pw - wvw * sp) / 2) / dpi
+  local woy = math.floor((ph - wvh * sp) / 2) / dpi
+  local S = sp / dpi
+  local c = 16 * S
+  local function cell_xy(cx, cy)
+    return wox + (cx * 16 - cam.x) * S, woy + (cy * 16 - cam.y) * S
+  end
+  local x0 = math.max(0, math.floor(cam.x / 16) - 1)
+  local y0 = math.max(0, math.floor(cam.y / 16) - 1)
+  local x1 = math.min(W - 1, math.floor((cam.x + wvw) / 16) + 1)
+  local y1 = math.min(H - 1, math.floor((cam.y + wvh) / 16) + 1)
+  love.graphics.setColor(0, 0, 0, 0.5)
+  for cy = y0, y1 do
+    for cx = x0, x1 do
+      if not mask[cx .. "," .. cy] then
+        local X, Y = cell_xy(cx, cy)
+        love.graphics.rectangle("fill", X, Y, c, c)
+      end
+    end
+  end
+  love.graphics.setColor(1, 0.15, 0.15, 0.95)
+  love.graphics.setLineWidth(math.max(1, S))
+  draw_boundary(mask, W, H, cell_xy, c, x0, y0, x1, y1)
+  love.graphics.setColor(1, 0.85, 0.1, 0.9)
+  for _, f in ipairs(last_frontier or {}) do
+    local X, Y = cell_xy(f.x, f.y)
+    love.graphics.rectangle("line", X + c * 0.25, Y + c * 0.25, c * 0.5, c * 0.5)
+  end
+  local sx, sy, sw, sh = seen_window(p)
+  local X, Y = cell_xy(sx, sy)
+  love.graphics.setColor(0.3, 0.6, 1, 0.9)
+  love.graphics.rectangle("line", X, Y, sw * c, sh * c)
+end
+local function draw_seen_overlay()
+  local G = overlay_G
+  if overlay_mode == "off" then return end
+  if not (G and G.overworld and G.stack and G.stack:top() == G.overworld) then
+    return
+  end
+  local ow = G.overworld
+  local map, p = ow.map, ow.player
+  if not (map and map.id and p and p.cellX) then return end
+  local mask = SEEN[map.id]
+  if not mask then return end
+  local W, H = seen_dims(G, map)
+  if W <= 0 or H <= 0 then return end
+  love.graphics.push("all")
+  if overlay_wants("tiles") then draw_tiles(G, ow, map, mask, W, H) end
+  if overlay_wants("inset") then draw_inset(G, ow, map, mask, W, H) end
   love.graphics.pop()
 end
 local function overlay_install(G)
@@ -8627,8 +8683,15 @@ function OPS.sweep(G, c)
 end
 
 function OPS.overlay(G, c)
-  overlay_on = not (c.on == false or c.seen == false)
-  return true, "seen-footprint overlay " .. (overlay_on and "on" or "off")
+  local m = c.mode and tostring(c.mode):lower() or nil
+  if m == nil then m = (c.on == false or c.seen == false) and "off" or "inset" end
+  if m == "1" then m = "inset" end
+  if m == "0" then m = "off" end
+  if not ({ inset = 1, tiles = 1, both = 1, off = 1 })[m] then
+    return false, "overlay mode must be inset | tiles | both | off"
+  end
+  overlay_mode = m
+  return true, "seen-footprint overlay: " .. m
 end
 
 function OPS.save_game(G)
