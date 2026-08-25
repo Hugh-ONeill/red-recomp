@@ -10106,6 +10106,36 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if _gain < 0:
                     _gain = 0        # a faint/heal reshuffled the party
                 note += f" earned {_gain} exp"
+                # WHO EARNED IT. The total hid that the one Pokemon the
+                # model meant to train — ODDISH, in slot 4 — earned nothing
+                # while the lead took every point, three grinds running
+                # (user, 2026-08-25). The game prints "X gained N EXP" for
+                # each one sent out; say the same, and name the ones that
+                # got nothing, because only a Pokemon sent out earns.
+                def _pexp_each(_o):
+                    out = {}
+                    for _i, _p in enumerate((_o or {}).get("party") or []):
+                        if isinstance(_p, dict):
+                            out[(str(_p.get("species")),
+                                 str(_p.get("nickname") or ""))] = \
+                                int(_p.get("exp") or 0)
+                    return out
+                _b, _a = _pexp_each(pre_obs), _pexp_each(obs)
+                _got, _none = [], []
+                for _k, _v in _a.items():
+                    _d = _v - _b.get(_k, _v)
+                    _nm = _k[0]
+                    if _d > 0:
+                        _got.append(f"{_nm} +{_d}")
+                    else:
+                        _none.append(_nm)
+                if _got and _none:
+                    note += (" (" + ", ".join(_got) + "; nothing for "
+                             + ", ".join(_none) + " — only a Pokemon that "
+                             "is sent out earns, and slot 1 is sent out "
+                             "first)")
+                elif _got:
+                    note += " (" + ", ".join(_got) + ")"
                 _gm = getattr(self, "_last_overworld_map", None) or "?"
                 _gb = self._grind_exp.setdefault(_gm, {})
                 _gb["exp"] = int(_gb.get("exp", 0)) + _gain
