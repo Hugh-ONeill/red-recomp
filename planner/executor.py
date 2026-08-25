@@ -11791,15 +11791,21 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # 2026-08-25: "the goal text keeps dragging it back to Misty").
             # Every map of the target is left on purpose together; the
             # model's own ops are the evidence, not the distilled list.
-            if (_m0 in _tmaps and sig1[0] and sig1[0] not in _tmaps
+            if (_m0 in _tmaps and sig1[0] and sig1[0] != _m0
                     and any(isinstance(st, dict)
                             and st.get("op") in ("cross", "use_warp", "go")
                             for st in macro)):
                 if not hasattr(self, "_left_target"):
                     self._left_target = set()
-                self._left_target |= set(_tmaps)
+                # the map just left is left (gym -> city must not be walked
+                # back into the gym); landing outside every map of the
+                # target leaves them all (city -> Route 24)
+                self._left_target.add(_m0)
+                if sig1[0] not in _tmaps:
+                    self._left_target |= set(_tmaps)
                 self.log("left_target_on_purpose", subgoal=sg["id"],
-                         round=rnd, left=sorted(_tmaps), now=sig1[0])
+                         round=rnd, left=sorted(self._left_target & set(_tmaps)),
+                         now=sig1[0])
             # NB: do not reset stuck_note here — the blackout walk-back note
             # is appended above and a reset at this point deleted it before
             # it was ever sent, so the round after a wipe never learned it
