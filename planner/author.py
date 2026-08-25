@@ -1337,6 +1337,34 @@ def observed_text(path: Path) -> str:
                 + ", ".join(sorted(ks)[:6]) + ")"
                 + (f" — {_hop} walked leg(s) from where you stand"
                    if _hop is not None else ""))
+    # THE FOOTPRINT REACHES THE AUTHOR TOO. Under it a doorway that has
+    # never been on screen is in no list, so the door record above can be
+    # empty for a floor the run has barely looked at. The run's own record
+    # of where its seen ground ended (executor map_seen, from its last look
+    # at each floor) is the other half: leg 18 kept re-writing Route
+    # 11->12->13->14->15->Lavender with Route 12's whole northern half
+    # never on screen (2026-08-25).
+    _ms = {k: int(v or 0) for k, v in (d.get("map_seen") or {}).items()
+           if int(v or 0) > 0}
+    if _ms:
+        def _map_hop(mid):
+            hs = [h for r, h in _hops.items() if r.split("|")[0] == mid]
+            return min(hs) if hs else None
+        _rows = sorted(_ms.items(),
+                       key=lambda kv: (_map_hop(kv[0]) if _map_hop(kv[0])
+                                       is not None else 999, -kv[1], kv[0]))
+        _frontier_lines.append(
+            "\n\nFLOORS YOU HAVE WALKED WITH GROUND NEVER ON SCREEN (your own "
+            "record: where the ground you looked at ended, at your last look "
+            "there; what is past those spots is not known):")
+        for mid, n in _rows[:12]:
+            _hop = _map_hop(mid)
+            _frontier_lines.append(
+                f"  {mid}: {n} spot(s)"
+                + (f" — {_hop} walked leg(s) from where you stand"
+                   if _hop is not None else ""))
+        if len(_rows) > 12:
+            _frontier_lines.append(f"  (+{len(_rows) - 12} more floor(s))")
     # WHAT GETS CUT MATTERS MORE THAN HOW MANY. This was an alphabetical
     # names[:8], so CERULEAN_CITY showed eight COOLTRAINERs and GUARDs and
     # dropped CUT_TREE — the one object in that city the party could act
