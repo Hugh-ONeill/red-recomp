@@ -3765,6 +3765,43 @@ end
 -- being lost. The PC's own top-level list is deliberately NOT guarded, so
 -- navigating it — PROF.OAK's dex rating, SEE YA — still works.
 local ui_transaction_up
+-- THE PORT'S OWN MENUS ARE NOT THE GAME. The START menu here has LINK and
+-- MODS rows Red never had, and OPTION carries COLORS, GBC FX, ZOOM and
+-- more beside Red's three. The run pressed its way into them: the Game
+-- Boy Color LCD effect came on (green paper, green tint over everything)
+-- and the Spanish UI mod was switched on (user, 2026-08-25: "it looks
+-- like it's in negative"). Pressing them is not playing Red; the harness
+-- refuses the press and says so. Red's rows stay the model's.
+local RED_OPTION_ROWS = { ["TEXT SPEED"] = true, ["BATTLE ANIMATION"] = true,
+                          ["BATTLE STYLE"] = true, ["CANCEL"] = true }
+local PORT_START_ROWS = { MODS = true, LINK = true }
+local function port_only_here(G, row_index)
+  local top = G.stack and G.stack:top()
+  if not top then return nil end
+  if top.screenId == "StartMenu" and type(top.items) == "table" then
+    local it = top.items[row_index or top.index]
+    local lab = it and tostring(it.label or ""):upper() or ""
+    if PORT_START_ROWS[lab] then
+      return lab .. " is this port's own menu, not part of the game — "
+        .. "the harness does not open it"
+    end
+    return nil
+  end
+  if type(top.rows) == "table" and type(top.index) == "number"
+     and top.rows[1] and top.rows[1].label ~= nil then
+    local idx = row_index or top.index
+    local row = top.rows[idx]
+    local lab = (idx > #top.rows) and "CANCEL"
+                or tostring((row and row.label) or ""):upper()
+    if not RED_OPTION_ROWS[lab] then
+      return lab .. " is a setting of this port, not of the game — the "
+        .. "harness does not change it (TEXT SPEED, BATTLE ANIMATION and "
+        .. "BATTLE STYLE are the game's)"
+    end
+  end
+  return nil
+end
+
 local function hands_off(G, c)
   -- B IS ALWAYS ALLOWED. It closes a screen and cannot spend anything, and
   -- without it this guard is a trap: menu(index=2) opened the item PC, and
@@ -3793,7 +3830,12 @@ end
 function OPS.tap(G, c)
   local no = hands_off(G, c)
   if no then return false, no end
-  U.tap(G, c.btn or "a")
+  local btn = c.btn or "a"
+  if btn == "a" or btn == "left" or btn == "right" then
+    local port = port_only_here(G)
+    if port then return false, port end
+  end
+  U.tap(G, btn)
   return true
 end
 
@@ -7583,6 +7625,8 @@ function OPS.menu(G, c)
     return false, "no list menu on top"
   end
   local target = c.index or 1
+  local port = port_only_here(G, target)
+  if port and c.press ~= false then return false, port end
   for _ = 1, 24 do
     if top.index == target then break end
     U.tap(G, top.index > target and "up" or "down")
