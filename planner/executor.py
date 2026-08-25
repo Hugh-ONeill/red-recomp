@@ -11253,10 +11253,31 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                            "go")),
                        None)
             stripped = 0
+            _trunc_note = ""
             if cut is not None:
                 if cut + 1 < len(macro):
                     self.log("escalate_truncated", subgoal=sg["id"], round=rnd,
                              kept=cut + 1, dropped=len(macro) - cut - 1)
+                    # SAY SO. This was logged for us and never said to the
+                    # model: it wrote "cross west, use_warp, use_warp" for
+                    # a journey back to Route 6, got one hop a round, read
+                    # each result as that hop working, and ran the budget
+                    # out re-walking the same road (2026-08-25). The rule
+                    # is a contract; the one-op journey is a documented op.
+                    _dropped = ", ".join(
+                        (str(_s.get("op")) + (
+                            f" {_s.get('dir')}" if _s.get("dir") else
+                            f" ({_s.get('x')},{_s.get('y')})"
+                            if _s.get("x") is not None else ""))
+                        for _s in macro[cut + 1:][:4])
+                    _trunc_note = (
+                        f"({len(macro) - cut - 1} op(s) after your "
+                        f"{macro[cut].get('op')} were NOT run: {_dropped}. "
+                        f"A map-changing op ends the macro — whatever comes "
+                        f"after it would be written blind. If those were "
+                        f"more legs of a journey over ground you have "
+                        f"walked, {{\"op\":\"go\",\"to\":\"MAP or AREA\"}} "
+                        f"walks the whole route in ONE round.)")
                     macro = macro[:cut + 1]
                 # cross/use_warp path-find from wherever you stand; a walk_to
                 # DIRECTLY before one is never needed and walking onto a door
@@ -11453,6 +11474,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     _rec["why"] = _why[:240]
             if _decl_lines:
                 trace = list(_decl_lines) + list(trace)
+            if _trunc_note:
+                trace = list(trace) + [_trunc_note]
             if ok and redo:
                 # "somewhere else that also satisfies it": a couple of tiles
                 # is the same place. A real relocation crosses the map (the
