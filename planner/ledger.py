@@ -1334,10 +1334,24 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     sides = sorted((m.get("connections") or {}).keys())
     been = (getattr(ex, "visits", {}) or {}).get(here, 0)
     head = f"WHERE YOU STAND: {here}"
-    head += (" — indoors, no edges; the doors are the only ways out"
-             if not sides else
-             f" — this map has an edge on its {', '.join(sides)} side(s) "
-             f"and nowhere else")
+    # "AND NOWHERE ELSE" IS NOT KNOWN UNDER THE FOOTPRINT. A seam is listed
+    # once a cell on that edge has been on screen, so the sides that have
+    # never been looked at are simply absent — and Cerulean read "east,
+    # north, west and nowhere else" with its south edge row never seen
+    # (2026-08-25). Say what was seen, and which sides never were.
+    _unseen_sides = [str(x) for x in (m.get("sides_unseen") or [])]
+    _unseen_sides = [x for x in _unseen_sides if x not in sides]
+    if not sides and not _unseen_sides:
+        head += " — indoors, no edges; the doors are the only ways out"
+    elif not sides:
+        head += (" — no edge of this map has been on screen yet ("
+                 + ", ".join(_unseen_sides) + " never looked at)")
+    else:
+        head += (f" — this map has an edge on its {', '.join(sides)} side(s)"
+                 + (" that you have seen; its "
+                    + ", ".join(_unseen_sides)
+                    + " side(s) have never been on screen"
+                    if _unseen_sides else " and nowhere else"))
     if been:
         head += f"; you have been in this exact area {been}x"
     # UNSEEN GROUND IS SAID IN THE HEAD LINE, not only at the foot of the

@@ -559,6 +559,16 @@ local function seen_filter(G, o)
     for d in pairs(m.connections) do
       if not on[d] then m.connections[d] = nil end
     end
+    -- and say which SIDES have never been on screen at all, so the page
+    -- can stop calling the seen edges "the only ones" (a map has four
+    -- sides; whether a side connects is not known until it is looked at)
+    if m.outdoor then                -- a room has no sides to look at
+      local unseen_sides = {}
+      for _, d in ipairs({ "north", "south", "west", "east" }) do
+        if not on[d] then unseen_sides[#unseen_sides + 1] = d end
+      end
+      m.sides_unseen = unseen_sides
+    end
   end
   local dist, front = {}, {}
   if seen_reach then dist, front = seen_reach(G) end
@@ -2915,6 +2925,13 @@ seen_reach = function(G)
             if mask[lk] and not dist[lk] then
               dist[lk] = dist[ck] + 1
               q[#q + 1] = { x = lx, y = ly }
+            elseif not mask[lk] and lx >= 0 and ly >= 0 and lx < W and ly < H then
+              -- A LEDGE INTO UNSEEN GROUND IS A FRONTIER. Cerulean's way
+              -- south is a hop down at (11..14,32); the landing row had
+              -- never been on screen, the hop was not followed, and the
+              -- floor read frontier 0 with its south edge never seen
+              -- (2026-08-25). Standing here puts the landing on screen.
+              edge = true
             end
           end
         end
