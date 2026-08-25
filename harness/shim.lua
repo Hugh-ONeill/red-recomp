@@ -823,10 +823,17 @@ local function draw_seen_overlay()
   if not mask then return end
   local W, H = seen_dims(G, map)
   if W <= 0 or H <= 0 then return end
+  -- THE POP ALWAYS RUNS. An error between push and pop skipped the pop,
+  -- pcall swallowed it, and the last colour set (the inset's light green)
+  -- bled into every later frame ("it's all green", 2026-08-25).
   love.graphics.push("all")
-  if overlay_wants("tiles") then draw_tiles(G, ow, map, mask, W, H) end
-  if overlay_wants("inset") then draw_inset(G, ow, map, mask, W, H) end
+  local okd, errd = pcall(function()
+    if overlay_wants("tiles") then draw_tiles(G, ow, map, mask, W, H) end
+    if overlay_wants("inset") then draw_inset(G, ow, map, mask, W, H) end
+  end)
   love.graphics.pop()
+  love.graphics.setColor(1, 1, 1, 1)
+  if not okd then error(errd, 0) end
 end
 local function overlay_install(G)
   overlay_G = G
@@ -834,6 +841,7 @@ local function overlay_install(G)
   overlay_wrapped = true
   local _draw = love.draw
   love.draw = function(...)
+    love.graphics.setColor(1, 1, 1, 1)
     _draw(...)
     local ok, err = pcall(draw_seen_overlay)
     if not ok and err ~= overlay_err then
