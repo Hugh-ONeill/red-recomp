@@ -122,8 +122,12 @@ class Candidate:
             return f"walk {self.key}"
         if self.kind == "door":
             _l = getattr(self, "look", "door") or "door"
+            # "(4,7)+(5,7)" read to the model as two doors, and it took the
+            # twin as "the other door in this room" (2026-08-25): say it is one
             _tw = "".join(f"+({t})"
                           for t in (getattr(self, "twins", None) or []))
+            if _tw:
+                _tw += " — ONE doorway, two tiles wide"
             if _l == "pad":
                 return f"warp pad ({self.key}){_tw}"
             if _l == "hole":
@@ -855,6 +859,21 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         return ("press the panel and ride: {\"op\":\"elevator\","
                 "\"floor\":\"<a floor as the panel spells it>\"} — the "
                 "car's one door opens onto whichever floor you rode to")
+    # THE WORDS FOLLOW THE DEED. With the footprint, explore's first act
+    # on a floor with unseen ground is the SWEEP (executor _explore_step),
+    # and this line said "press the GIRL here" while the deed walked to
+    # the edge of seen ground — the same words/deed split the ledger has
+    # paid for before (Viridian Forest gate, 2026-08-25: the north door
+    # had never been on screen, and item 1 named a person).
+    _m0 = obs.get("map") or {}
+    _fr0 = _m0.get("frontier") or []
+    if _fr0:
+        _f = _fr0[0]
+        _n0 = int(((_m0.get("seen") or {}).get("frontier_n")) or len(_fr0))
+        return (f"walk to the nearest edge of the ground you have seen, "
+                f"({_f.get('x')},{_f.get('y')}), and keep going until "
+                f"something new comes into view — {_n0} such spot(s) on "
+                f"this floor; nothing past them is known yet")
     order = {"item": 0, "fixture": 1, "cut_tree": 1, "boulder": 1,
              "shut_door": 1, "npc": 2, "trainer": 2, "sign": 3}
     # THIRTY-SIX OF A THING IS ONE THING. The kind order above is fixed —
@@ -1308,6 +1327,18 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
              f"and nowhere else")
     if been:
         head += f"; you have been in this exact area {been}x"
+    # UNSEEN GROUND IS SAID IN THE HEAD LINE, not only at the foot of the
+    # page (executor coverage_text): the first-listed thing is taken 54%
+    # of the time, and a page that opened "FULLY WORKED" over a floor with
+    # a door never on screen sent the run back out the way it came.
+    _fr = m.get("frontier") or []
+    if _fr:
+        _fn = int(((m.get("seen") or {}).get("frontier_n")) or len(_fr))
+        head += (f". NOT ALL OF THIS FLOOR HAS BEEN ON SCREEN: the ground "
+                 f"you have looked at ends at ({_fr[0].get('x')},"
+                 f"{_fr[0].get('y')})"
+                 + (f" and {_fn - 1} more spot(s)" if _fn > 1 else "")
+                 + "; what is past them is not known")
     _sh = shelf_of(ex, here)
     if _sh:
         head += f". This mart sells: {', '.join(_sh[:10])}"
