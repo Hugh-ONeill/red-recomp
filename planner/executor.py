@@ -7685,7 +7685,7 @@ class Executor:
                         and (self._route(here, r) is not None))
                     if _ties:
                         route_line = (
-                            f"\nThe printed map puts {want_map} {_pick[3]} "
+                            f"\n{'The printed map' if self._holding_town_map(obs) else 'Your own walking'} puts {want_map} {_pick[3]} "
                             f"leg(s) from this map, and you are standing on "
                             f"a part of it you have walked. It CANNOT say "
                             f"which part touches the way on — these other "
@@ -7713,7 +7713,7 @@ class Executor:
                     route_line = (
                         f"\nNothing you have walked is ON {want_map}. The "
                         f"closest ground you HAVE walked to it is "
-                        f"{_pick[1]}, which the printed map puts {_pick[3]} "
+                        f"{_pick[1]}, which {'the printed map' if self._holding_town_map(obs) else 'your own walking'} puts {_pick[3]} "
                         f"leg(s) from {want_map}; the way there from here is "
                         f"{_st} to {_pick[2][0][1]}, {len(_pick[2])} leg(s) "
                         f"over ground you have already covered. What lies "
