@@ -818,6 +818,13 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             _bucket = 0 if _fresh else 2
         else:
             _bucket = 1 if (_fresh and _way) else 3
+        # FOR A MAP GOAL, ONLY A WAY OUT CAN CHANGE THE MAP. A door taken
+        # twice sat at item 14 under three unpressed signs while the goal
+        # was PEWTER_CITY, and the run pressed the signs (Viridian Forest,
+        # 2026-08-25). Same rule plan_explore already follows in words.
+        if (_bucket == 2 and _way and c.status in ("taken", "came_in_by", "back")
+                and str(target or "").startswith("map:")):
+            _bucket = 1
         c.rank = (_bucket, not c.reachable, STATUS_RANK.get(c.status, 9),
                   1 if _refused(c) else 0,
                   0 if c.kind in _goal_kinds else 1, into_seen,
@@ -1031,17 +1038,19 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
             continue
         left = ex._frontier_left(region)
         things = untouched_in(ex, region)
-        if not (left or things):
+        unseen = int((getattr(ex, "map_seen", None) or {})
+                     .get(region.split("|")[0], 0) or 0)
+        if not (left or things or unseen):
             continue
         path = ex._route(here, region)
         if not path:
             continue
-        r = (len(path), -(len(left) + len(things)), region)
-        found.append((r, region, left, things, path))
+        r = (len(path), -(len(left) + len(things) + unseen), region)
+        found.append((r, region, left, things, path, unseen))
     found.sort(key=lambda f: f[0])
     best = found[0] if found else None
     if best:
-        _, region, left, things, path = best
+        _, region, left, things, path, unseen = best
         fk, fd = path[0]
         first = f"walk {fk}" if not fk[0].isdigit() else f"door ({fk})"
         # THE NEAREST-AREA RECALL OUTRANKS THE UNREACHABLES NOTE. That note
@@ -1063,6 +1072,8 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                         + " (never taken)")
         if things:
             what.append(f"press {', '.join(things[:3])}")
+        if unseen:
+            what.append(f"sweep — {unseen} spot(s) where its seen ground ends")
         _uw = unreached_ways(cands)
         _head = ("EVERYTHING YOU CAN REACH HERE IS DONE, but "
                  + ", ".join(c.label() for c in _uw[:3])
@@ -1086,7 +1097,7 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         # appeared. The first leg is the choice actually being made; list
         # each one once, nearest example first.
         _more, _legs_seen = [], {path[0][0]}
-        for _r2, _reg2, _left2, _things2, _path2 in found[1:]:
+        for _r2, _reg2, _left2, _things2, _path2, _unseen2 in found[1:]:
             if len(_more) >= 3:
                 break
             _fk2, _fd2 = _path2[0]
@@ -1100,6 +1111,8 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                 _has.append(f"{len(_left2)} exit(s) never taken")
             if _things2:
                 _has.append(f"{len(_things2)} thing(s) never pressed")
+            if _unseen2:
+                _has.append(f"{_unseen2} spot(s) of ground never on screen")
             _more.append(f"{_reg2} ({len(_path2)} leg(s), first {_first2}"
                          f" to {_fd2}) has " + " and ".join(_has))
         return (_head + f" The nearest "

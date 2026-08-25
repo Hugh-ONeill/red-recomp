@@ -1822,15 +1822,19 @@ class Executor:
                 continue
             left = self._frontier_left(region)
             unpressed = ledger.untouched_in(self, region)
-            if not (left or unpressed):
+            # a floor whose seen ground ends somewhere is not finished
+            # either (the north gate's exit had never been on screen)
+            unseen = int((getattr(self, "map_seen", None) or {})
+                         .get(region.split("|")[0], 0) or 0)
+            if not (left or unpressed or unseen):
                 continue
             path = self._route(here, region)
             if not path:
                 continue
-            r = ((0 if left else 1) if _map_goal else 0,
-                 len(path), -(len(left) + len(unpressed)), region)
+            r = ((0 if left else 1 if unseen else 2) if _map_goal else 0,
+                 len(path), -(len(left) + len(unpressed) + unseen), region)
             if best is None or r < best[0]:
-                best = (r, region, left, unpressed, path)
+                best = (r, region, left, unpressed, path, unseen)
         if not best:
             # ...AND SAY WHICH KIND OF NOTHING IT IS. "Something you have
             # done must be undone" is a claim about the WORLD, and it was
@@ -1854,19 +1858,21 @@ class Executor:
                            "to over walked ground — something you have done "
                            "must be undone or something you carry must be "
                            "used to open new ground"], []
-        _, region, left, unpressed, path = best
+        _, region, left, unpressed, path, unseen = best
         self.log("explore_step", subgoal=sg.get("id"), step="walk",
                  to=region, legs=len(path), left=len(left),
-                 unpressed=len(unpressed))
+                 unpressed=len(unpressed), unseen=unseen)
         arrived = self._walk_route(sg, path)
         if isinstance(arrived, dict):
             arrived = self._where(arrived)
         cur = self.settle() or {}
         tr = [f"explore: this area is fully worked, so you were walked "
               f"{len(path)} leg(s) over walked ground to {region}, which "
-              f"still has {len(left)} exit(s) never taken and "
-              f"{len(unpressed)} thing(s) never pressed — now at "
-              f"{arrived or self._where(cur) or 'an unexpected stop'}"]
+              f"still has {len(left)} exit(s) never taken, "
+              f"{len(unpressed)} thing(s) never pressed"
+              + (f" and {unseen} spot(s) where its seen ground ends"
+                 if unseen else "")
+              + f" — now at {arrived or self._where(cur) or 'an unexpected stop'}"]
         if not ignore_done and pred_holds(sg.get("done_when"), cur):
             return True, tr, []
         if not self._same_area(self._where(cur), region):
@@ -1894,6 +1900,12 @@ class Executor:
             ok, t2, cl = _run(step, f"taking {c.label()} there")
             return ok, tr + t2, cl
 
+        # coverage first there, as at home: what that floor has not shown
+        # is found by walking to where its seen ground ends
+        if ((cur or {}).get("map") or {}).get("frontier"):
+            ok, t2, cl = _run({"op": "sweep"},
+                              "sweeping the ground there never on screen")
+            return ok, tr + t2, cl
         if _map_goal and exits2:            # same rule as at home
             return _there(exits2[0])
         if things2:

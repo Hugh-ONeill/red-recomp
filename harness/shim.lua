@@ -618,70 +618,80 @@ end
 -- RED_SEEN_OVERLAY=0 turns it off; {"op":"overlay","on":false} too.
 local overlay_on = (os.getenv("RED_SEEN_OVERLAY") or "1") ~= "0"
 local overlay_G, overlay_wrapped = nil, false
+local overlay_err = nil
 local function draw_seen_overlay()
   local G = overlay_G
   if not (overlay_on and G and G.overworld and G.stack
           and G.stack:top() == G.overworld) then return end
   local ow = G.overworld
-  local map, cam = ow.map, ow.camera
-  if not (map and map.id and cam and cam.x) then return end
+  local map, cam, p = ow.map, ow.camera, ow.player
+  if not (map and map.id and cam and cam.x and p) then return end
   local mask = SEEN[map.id]
   if not mask then return end
-  local R = G.renderer
-  if not (R and R.fitScale and R.uiSize) then return end
-  local okS, Sp = pcall(R.fitScale, R)
-  if not (okS and Sp) then return end
-  local uiw, uih = R:uiSize()
-  local ww, wh = love.graphics.getDimensions()
-  local pw, ph = love.graphics.getPixelDimensions()
-  local dpi = (ww > 0) and (pw / ww) or 1
-  local ox = math.floor((pw - uiw * Sp) / 2) / dpi
-  local oy = math.floor((ph - uih * Sp) / 2) / dpi
-  local S = Sp / dpi
   local W, H = seen_dims(G, map)
   if W <= 0 or H <= 0 then return end
-  local x0 = math.floor(cam.x / 16) - 1
-  local y0 = math.floor(cam.y / 16) - 1
-  local x1 = x0 + math.ceil(uiw / 16) + 2
-  local y1 = y0 + math.ceil(uih / 16) + 2
-  local function px(cx, cy)
-    return ox + (cx * 16 - cam.x) * S, oy + (cy * 16 - cam.y) * S
+  local R = G.renderer
+  -- THE WHOLE MAP AS AN INSET. The screen itself is the seen window, so a
+  -- seen/unseen boundary can never lie inside the view; the footprint is
+  -- only visible at map scale. Anchored to the WINDOW's top-right corner
+  -- (the watcher may have the world zoomed out, which widens the world
+  -- view and moves the classic frame), at most ~30% of the window.
+  local ww, wh = love.graphics.getDimensions()
+  local maxw, maxh = ww * 0.3, wh * 0.3
+  local c = math.max(1, math.floor(math.min(maxw / W, maxh / H)))
+  local iw, ih = W * c, H * c
+  local ix, iy = ww - iw - 8, 8
+  local vw, vh = 160, 144
+  if R and R.worldViewSize then
+    local okv, a, b = pcall(R.worldViewSize, R)
+    if okv and a and b then vw, vh = a, b end
   end
-  local s = 16 * S
   love.graphics.push("all")
-  love.graphics.setScissor(ox, oy, uiw * S, uih * S)
-  love.graphics.setColor(0, 0, 0, 0.45)
-  for cy = y0, y1 do
-    for cx = x0, x1 do
-      if cx >= 0 and cy >= 0 and cx < W and cy < H
-         and not mask[cx .. "," .. cy] then
-        local X, Y = px(cx, cy)
-        love.graphics.rectangle("fill", X, Y, s, s)
+  love.graphics.setColor(0, 0, 0, 0.55)
+  love.graphics.rectangle("fill", ix - 2, iy - 2, iw + 4, ih + 4)
+  -- seen ground bright; never-seen ground stays dark
+  love.graphics.setColor(0.85, 0.95, 0.85, 0.75)
+  for k, v in pairs(mask) do
+    if v == true then
+      local x, y = k:match("^(-?%d+),(-?%d+)$")
+      x, y = tonumber(x), tonumber(y)
+      if x and y then
+        love.graphics.rectangle("fill", ix + x * c, iy + y * c, c, c)
       end
     end
   end
-  love.graphics.setColor(1, 0.1, 0.1, 0.95)
-  love.graphics.setLineWidth(math.max(1, S))
-  for cy = y0, y1 do
-    for cx = x0, x1 do
-      if mask[cx .. "," .. cy] then
-        local X, Y = px(cx, cy)
-        if cy > 0 and not mask[cx .. "," .. (cy - 1)] then
-          love.graphics.line(X, Y, X + s, Y) end
-        if cy < H - 1 and not mask[cx .. "," .. (cy + 1)] then
-          love.graphics.line(X, Y + s, X + s, Y + s) end
-        if cx > 0 and not mask[(cx - 1) .. "," .. cy] then
-          love.graphics.line(X, Y, X, Y + s) end
-        if cx < W - 1 and not mask[(cx + 1) .. "," .. cy] then
-          love.graphics.line(X + s, Y, X + s, Y + s) end
+  -- the boundary in red
+  love.graphics.setColor(1, 0.15, 0.15, 1)
+  love.graphics.setLineWidth(1)
+  for k, v in pairs(mask) do
+    if v == true then
+      local x, y = k:match("^(-?%d+),(-?%d+)$")
+      x, y = tonumber(x), tonumber(y)
+      if x and y then
+        local X, Y = ix + x * c, iy + y * c
+        if y > 0 and not mask[x .. "," .. (y - 1)] then
+          love.graphics.line(X, Y, X + c, Y) end
+        if y < H - 1 and not mask[x .. "," .. (y + 1)] then
+          love.graphics.line(X, Y + c, X + c, Y + c) end
+        if x > 0 and not mask[(x - 1) .. "," .. y] then
+          love.graphics.line(X, Y, X, Y + c) end
+        if x < W - 1 and not mask[(x + 1) .. "," .. y] then
+          love.graphics.line(X + c, Y, X + c, Y + c) end
       end
     end
   end
-  love.graphics.setColor(1, 0.85, 0.1, 0.9)
+  -- frontier spots of the last observation, in yellow
+  love.graphics.setColor(1, 0.85, 0.1, 1)
   for _, f in ipairs(last_frontier or {}) do
-    local X, Y = px(f.x, f.y)
-    love.graphics.rectangle("line", X + s * 0.25, Y + s * 0.25, s * 0.5, s * 0.5)
+    love.graphics.rectangle("fill", ix + f.x * c, iy + f.y * c, c, c)
   end
+  -- the viewport, and the player
+  love.graphics.setColor(0.3, 0.6, 1, 0.9)
+  love.graphics.rectangle("line", ix + (cam.x / 16) * c, iy + (cam.y / 16) * c,
+                          (vw / 16) * c, (vh / 16) * c)
+  love.graphics.setColor(0.2, 0.5, 1, 1)
+  love.graphics.rectangle("fill", ix + (p.cellX or 0) * c, iy + (p.cellY or 0) * c,
+                          math.max(c, 2), math.max(c, 2))
   love.graphics.pop()
 end
 local function overlay_install(G)
@@ -691,7 +701,12 @@ local function overlay_install(G)
   local _draw = love.draw
   love.draw = function(...)
     _draw(...)
-    pcall(draw_seen_overlay)
+    local ok, err = pcall(draw_seen_overlay)
+    if not ok and err ~= overlay_err then
+      overlay_err = err
+      local f = io.open(BRIDGE .. "/overlay.log", "a")
+      if f then f:write(os.time() .. " " .. tostring(err) .. "\n"); f:close() end
+    end
   end
 end
 local recent_text = nil
