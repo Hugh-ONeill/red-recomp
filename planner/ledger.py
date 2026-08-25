@@ -311,6 +311,13 @@ def beyond(ex, dest: str, target: str, here: str | None = None) -> str:
         # a re-supposed purchase keeps missing
         return f"{dest} sells: {', '.join(_shelf[:8])}"
     parts = _left_parts(ex, dest)
+    # ground never on screen counts as something left, for the region
+    # itself and for the regions walked on through it: a dark tunnel lists
+    # no things and its exits have never been on screen, so eleven entries
+    # read "taken 11x" with nothing beyond (2026-08-25)
+    _rs = getattr(ex, "region_seen", None) or {}
+    if not parts and int(_rs.get(dest, 0) or 0) > 0:
+        parts = [f"{int(_rs[dest])} spot(s) where its seen ground ends"]
     if parts:
         return f"{dest} still has " + " and ".join(parts)
     # transitive, over walked ground, never back through here
@@ -326,6 +333,8 @@ def beyond(ex, dest: str, target: str, here: str | None = None) -> str:
                 continue
             seen.add(nxt)
             p2 = _left_parts(ex, nxt)
+            if not p2 and int(_rs.get(nxt, 0) or 0) > 0:
+                p2 = [f"{int(_rs[nxt])} spot(s) where its seen ground ends"]
             if p2:
                 found = (nxt, n + 1, p2)
                 break
@@ -1045,8 +1054,8 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
             continue
         left = ex._frontier_left(region)
         things = untouched_in(ex, region)
-        unseen = int((getattr(ex, "map_seen", None) or {})
-                     .get(region.split("|")[0], 0) or 0)
+        unseen = int((getattr(ex, "region_seen", None) or {})
+                     .get(region, 0) or 0)
         unseen = max(unseen, _reach_from.get(region, 0))
         if not (left or things or unseen):
             continue

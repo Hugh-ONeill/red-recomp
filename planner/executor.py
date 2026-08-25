@@ -1110,7 +1110,8 @@ class Executor:
         self._ferried: dict = {}            # target -> {region: untried set}
         self.map_doors: dict = {}           # map id -> every doorway seen
         self.map_holes: dict = {}           # map id -> holes seen in its floor
-        self.map_seen: dict = {}            # map id -> frontier count at last look
+        self.map_seen: dict = {}            # map id -> max frontier over its regions
+        self.region_seen: dict = {}         # region -> frontier count at last look
         self.shut_settings: dict = {}       # map -> door -> switch settings
                                             # it was seen unreachable in
         self.reach_settings: dict = {}      # map -> thing -> switch settings
@@ -1851,8 +1852,8 @@ class Executor:
             unpressed = ledger.untouched_in(self, region)
             # a floor whose seen ground ends somewhere is not finished
             # either (the north gate's exit had never been on screen)
-            unseen = int((getattr(self, "map_seen", None) or {})
-                         .get(region.split("|")[0], 0) or 0)
+            unseen = int((getattr(self, "region_seen", None) or {})
+                         .get(region, 0) or 0)
             unseen = max(unseen, _reach_from.get(region, 0))
             if not (left or unpressed or unseen):
                 continue
@@ -2388,6 +2389,7 @@ class Executor:
                 print(f"[memory] {_nb} seam(s) given their way back")
             self.seen_far = data.get("seen_far", {}) or {}
             self.map_seen = data.get("map_seen", {}) or {}
+            self.region_seen = data.get("region_seen", {}) or {}
             self._battle_regions = set(data.get("battle_regions") or ())
             # Money-dependent proofs do not survive a restart. "Fully
             # worked" recorded in a shop with an empty wallet is a fact
@@ -2885,6 +2887,7 @@ class Executor:
                              for r, s in self._tried_objs.items()},
                  "seen_far": getattr(self, "seen_far", {}),
                  "map_seen": getattr(self, "map_seen", {}),
+                 "region_seen": getattr(self, "region_seen", {}),
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
                  "no_cross_at": self._no_cross_at,
@@ -3142,7 +3145,17 @@ class Executor:
             if isinstance(_sn, dict):
                 if not hasattr(self, "map_seen"):
                     self.map_seen = {}
-                self.map_seen[_mid] = int(_sn.get("frontier_n") or 0)
+                if not hasattr(self, "region_seen"):
+                    self.region_seen = {}
+                # FRONTIER IS A FACT ABOUT A REGION. Keyed by map, the count
+                # from the last stand-point overwrote every other pocket's:
+                # Rock Tunnel's entrance pocket reads frontier 0 and wiped
+                # the middle pocket's unseen ground, so the tunnel door
+                # read "nothing beyond" after eleven entries (2026-08-25).
+                self.region_seen[here] = int(_sn.get("frontier_n") or 0)
+                self.map_seen[_mid] = max(
+                    (n for r, n in self.region_seen.items()
+                     if r.split("|")[0] == _mid), default=0)
             # the destinations ride along, unprinted (see door_dests above);
             # the claim rule forbids SAYING them, not knowing which two
             # tiles are one door
@@ -7346,18 +7359,11 @@ class Executor:
         # was fully explored (user, 2026-08-25). Recall of the run's own
         # last look at that floor: how many spots its seen ground ended at.
         _urows = []
-        _here_map0 = str(here).split("|")[0]
-        for _um, _un in (getattr(self, "map_seen", None) or {}).items():
-            if not _un or _um == _here_map0:
+        for _ur, _un in (getattr(self, "region_seen", None) or {}).items():
+            if not _un or _ur == here:
                 continue
-            _p = None
-            for _r2 in set(list(self.explored or {}) + list(self.visits or {})):
-                if _r2.split("|")[0] != _um:
-                    continue
-                _c = self._route(here, _r2)
-                if _c is not None and (_p is None or len(_c) < len(_p)):
-                    _p = _c
-            _urows.append((len(_p) if _p is not None else 99, -int(_un), _um))
+            _p = self._route(here, _ur)
+            _urows.append((len(_p) if _p is not None else 99, -int(_un), _ur))
         if _urows:
             # nearest first, then the MOST unseen ground, then the name: a
             # cap of three sorted by name dropped CERULEAN_TRASHED_HOUSE —
