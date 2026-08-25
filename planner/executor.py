@@ -7700,7 +7700,7 @@ class Executor:
                     else:
                         route_line = (
                             f"\nYou are STANDING on the closest ground you "
-                            f"have walked to {want_map} — the printed map "
+                            f"have walked to {want_map} — {'the printed map' if self._holding_town_map(obs) else 'your own walking'} "
                             f"puts it {_pick[3]} leg(s) from here, and "
                             f"nothing else you have covered gets nearer. "
                             f"The way on is not on walked ground: it is "
