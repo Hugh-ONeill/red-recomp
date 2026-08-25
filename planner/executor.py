@@ -1817,6 +1817,20 @@ class Executor:
         # decides only among those. (Same rule as the ledger's ranking,
         # which already puts the kind of thing that answers a goal first.)
         _map_goal = str(target or "").startswith("map:")
+        # SEEN GROUND THIS PART CANNOT REACH, AND WHICH PART CAN: the shim
+        # says which stood-in regions of this map reach ground you have
+        # looked at and cannot walk to from here (Cerulean's east corridor
+        # from the garden behind the trashed house). That is unfinished
+        # ground with a known way to it: an explore destination, the same
+        # as an exit never taken (user, 2026-08-25: "it should treat the
+        # remaining frontier as unexhausted explore options").
+        _reach_from = {}
+        for _f in (((obs or {}).get("map") or {}).get("seen_unreached")
+                   or {}).get("from") or []:
+            if isinstance(_f, dict) and _f.get("region"):
+                _reach_from[str(_f["region"])] = int(_f.get("n") or 0)
+        regions |= {r for r in _reach_from if r in (self.visits or {})
+                    or r in (self.explored or {})}
         for region in regions:
             if self._same_area(here, region) or self._same_area(region, here):
                 continue
@@ -1826,6 +1840,7 @@ class Executor:
             # either (the north gate's exit had never been on screen)
             unseen = int((getattr(self, "map_seen", None) or {})
                          .get(region.split("|")[0], 0) or 0)
+            unseen = max(unseen, _reach_from.get(region, 0))
             if not (left or unpressed or unseen):
                 continue
             path = self._route(here, region)

@@ -1033,6 +1033,13 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
     found = []
     regions = set(list(getattr(ex, "frontier", {}) or {})
                   + list(getattr(ex, "sightings", {}) or {}))
+    _reach_from = {}
+    for _f in ((obs.get("map") or {}).get("seen_unreached") or {}).get("from") or []:
+        if isinstance(_f, dict) and _f.get("region"):
+            _reach_from[str(_f["region"])] = int(_f.get("n") or 0)
+    regions |= {r for r in _reach_from
+                if r in (getattr(ex, "visits", {}) or {})
+                or r in (getattr(ex, "explored", {}) or {})}
     for region in regions:
         if region == here:
             continue
@@ -1040,6 +1047,7 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         things = untouched_in(ex, region)
         unseen = int((getattr(ex, "map_seen", None) or {})
                      .get(region.split("|")[0], 0) or 0)
+        unseen = max(unseen, _reach_from.get(region, 0))
         if not (left or things or unseen):
             continue
         path = ex._route(here, region)
