@@ -412,6 +412,18 @@ local region_of = {}
 -- Persisted to BRIDGE/seen.json (a Lua chunk) so a reboot keeps it; a
 -- fresh chain clears it with the rest of the ledgers.
 -- ===================================================================
+-- WATER IS WATER ONLY WHERE YOU CANNOT WALK. The engine keys water on one
+-- tile id for every tileset (Map.lua WATER_TILES = {0x14}); in an indoor
+-- tileset that id is ordinary floor, listed walkable, and the collision
+-- verdict only consults the water flag on an UNWALKABLE cell (the surf
+-- case). So a Viridian Forest gate reported "THIS FLOOR HAS WATER: 6
+-- cell(s)" over six squares of floor (2026-08-25). Same test the engine
+-- applies, applied here.
+local function real_water(map, x, y)
+  if not (map and map.isWaterCell and map:isWaterCell(x, y)) then return false end
+  if map.isWalkableCell and map:isWalkableCell(x, y) then return false end
+  return true
+end
 local SEEN = {}                 -- map id -> { n = count, ["x,y"] = true }
 local seen_dirty, seen_wrote = false, 0
 local seen_lmap, seen_lx, seen_ly = nil, nil, nil
@@ -1224,9 +1236,8 @@ local function observe(G, seq, result)
                   -- water you can reach is not ground you can reach: while
                   -- surfing both would draw as "." and the one distinction
                   -- this whole leg turns on would vanish from the picture
-                  this = (map.isWaterCell and map:isWaterCell(cx, cy))
-                         and "," or "."
-                elseif map.isWaterCell and map:isWaterCell(cx, cy) then
+                  this = real_water(map, cx, cy) and "," or "."
+                elseif real_water(map, cx, cy) then
                   this = "~"
                 end
                 -- @ beats a door beats ground beats reachable water beats
@@ -1296,7 +1307,7 @@ local function observe(G, seq, result)
         local _rc = reachable_cells()
         for _yy = 0, math.max(0, _H - 1) do
           for _xx = 0, math.max(0, _W - 1) do
-            if map:isWaterCell(_xx, _yy)
+            if real_water(map, _xx, _yy)
                and (SEEN[map.id] or {})[_xx .. "," .. _yy] then
               _wn = _wn + 1
               local _dd = math.abs(_xx - p.cellX) + math.abs(_yy - p.cellY)
