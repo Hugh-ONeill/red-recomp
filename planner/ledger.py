@@ -1277,6 +1277,20 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     obs = obs or {}
     m = obs.get("map") or {}
     here = ex._where(obs)
+    # NO MAP, NO VERDICT. An observation taken while a box is up carries no
+    # map, and this page then said "WHERE YOU STAND: None|None — FULLY
+    # WORKED: nothing here is untried" with three starter balls standing
+    # untouched on Oak's table; the model, told the room was finished,
+    # reached for a menu that was not there (2026-08-25, leg 1, attempt
+    # 1). What is on screen is the only fact available; say that.
+    if "None" in str(here):
+        _said = str(obs.get("recent_text") or obs.get("last_text") or "").strip()
+        return ("THE SCREEN IS NOT THE OVERWORLD RIGHT NOW"
+                + (f' — a box is up, saying: "{_said[-160:]}"' if _said else
+                   " — a box, menu or transition is up")
+                + ". Where you stand and what is untried cannot be read "
+                  "until it closes: answer it if it is asking, or "
+                  "{\"op\":\"tap\",\"btn\":\"b\"} to close it.")
     sides = sorted((m.get("connections") or {}).keys())
     been = (getattr(ex, "visits", {}) or {}).get(here, 0)
     head = f"WHERE YOU STAND: {here}"
