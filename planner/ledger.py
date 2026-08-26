@@ -1403,6 +1403,18 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                     if _far and _fn <= len(_fr) else
                     f", the nearest {int(_fr[0].get('d') or 0)} step(s) from you")
                  + "; what is past them is not known")
+    # NO "EVERYTHING YOU CAN REACH IS DONE" OVER GROUND NEVER ON SCREEN.
+    # Rocket Hideout B4F, elevator side: the page said NOT ALL OF THIS
+    # FLOOR HAS BEEN ON SCREEN (15 steps away) and, in the same breath,
+    # EVERYTHING YOU CAN REACH HERE IS DONE — and the run rode the lift
+    # back up, Giovanni's room a screen north of where its looking ended
+    # (user, 2026-08-25: "juuuust missing where giovanni is"). Under the
+    # footprint, done is only claimable over what has been on screen.
+    _done_lead = (". EVERYTHING YOU CAN REACH HERE IS DONE — but " if not _fr
+                  else ". Everything ON SCREEN here has been worked, and "
+                       "ground you can walk to from here has NEVER BEEN ON "
+                       "SCREEN (the spot(s) above; explore walks to the "
+                       "nearest) — and ")
     _sh = shelf_of(ex, here)
     if _sh:
         head += f". This mart sells: {', '.join(_sh[:10])}"
@@ -1424,7 +1436,7 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  "rode to, so this car is never finished with")
     elif unreached_ways(cands):
         _uw = unreached_ways(cands)
-        head += (". EVERYTHING YOU CAN REACH HERE IS DONE — but "
+        head += (_done_lead
                  + str(len(_uw)) + " way(s) out of this area have never "
                  "been taken and no walk from here reaches them ("
                  + ", ".join(c.label()
@@ -1449,7 +1461,7 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # in stays the model's.
         _stuck = [c for c in cands if c.status == "unreachable"
                   and c.kind not in ("op", "door", "seam")]
-        head += (". EVERYTHING YOU CAN REACH HERE IS DONE — but "
+        head += (_done_lead
                  + str(len(_stuck)) + " thing(s) sit on this floor that no "
                  "walk from here reaches ("
                  + ", ".join(c.key for c in _stuck[:4])
@@ -1534,7 +1546,7 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                          "got in before is in your own record")
         else:
             head += "ground you have not found the way into"
-    elif fully_worked(cands):
+    elif fully_worked(cands) and not _fr:
         head += (". FULLY WORKED: nothing here is untried or unpressed — "
                  "staying finds nothing new; leaving for ground that still "
                  "has something is how the search goes on")

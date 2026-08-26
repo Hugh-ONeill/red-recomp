@@ -11870,13 +11870,33 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             # remote lists name where ways never taken are
                             # and explore walks there; ending the subgoal
                             # here was the escort's shadow
-                            trace.append(
-                                f"Nothing in {here} serves this goal and no "
-                                f"exit here is unopened. Areas you have been "
-                                f"that still have ways never taken are "
-                                f"listed above with their first leg; "
-                                f"{{\"op\":\"explore\"}} walks to the "
-                                f"nearest and takes one.")
+                            # ...and never "nothing here" over ground that
+                            # has not been on screen (Rocket Hideout B4F,
+                            # 2026-08-25: this line sent the run back up
+                            # the lift with Giovanni's room a screen away)
+                            _frl = (((cur or {}).get("map") or {})
+                                    .get("frontier") or [])
+                            if _frl:
+                                _f0 = _frl[0] if isinstance(_frl[0], dict) else {}
+                                trace.append(
+                                    f"Nothing ON SCREEN in {here} serves this "
+                                    f"goal and no exit here is unopened, but "
+                                    f"ground you can walk to from here has "
+                                    f"NEVER BEEN ON SCREEN: the ground you "
+                                    f"have looked at ends at "
+                                    f"({_f0.get('x')},{_f0.get('y')}) and "
+                                    f"{max(0, len(_frl) - 1)} more spot(s); "
+                                    f"{{\"op\":\"explore\"}} walks to the "
+                                    f"nearest and keeps going until something "
+                                    f"new comes into view.")
+                            else:
+                                trace.append(
+                                    f"Nothing in {here} serves this goal and no "
+                                    f"exit here is unopened. Areas you have been "
+                                    f"that still have ways never taken are "
+                                    f"listed above with their first leg; "
+                                    f"{{\"op\":\"explore\"}} walks to the "
+                                    f"nearest and takes one.")
                         else:
                             print(f"   (target unreachable from {here} — "
                                   f"abandoning this area)")
