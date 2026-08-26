@@ -300,7 +300,24 @@ while :; do
     # a second 0 and the test died on "0\n0: integer expected" every leg
     _asked=$(grep -Fxc "$leg" run/outline_wording_asked 2>/dev/null) || true
     [ "${_asked:-0}" -ge 2 ] && return 1
-    [ "$(cat run/outline_rewordings 2>/dev/null | wc -l)" -lt 3 ] || return 1
+    # A ROLLING BUDGET, NOT A LIFETIME ONE. Three rewordings per CHAIN was
+    # written when a reworded objective was a cheap mistake to be rationed.
+    # On a 51-leg outline it means the ladder goes permanently blind about
+    # three-quarters of the way in: this run spent all three by leg 20
+    # (S.S. Ticket, Gold Teeth, Pokemon Tower) and arrived at leg 32
+    # "Obtain the Secret Key" — a key that is in the Pokemon Mansion on
+    # CINNABAR, eight legs later, behind a SURF the party cannot use — with
+    # reword, done-under-another-name and VOID all shut. check-done cannot
+    # save it either, because has_item SECRET_KEY simply never comes true
+    # in Fuchsia, so the leg can only burn attempts for the rest of the run
+    # (user, 2026-08-26: "yeah make the budget rolling"). Column 1 of
+    # outline_rewordings is the leg index it was spent on, so the window is
+    # free: three inside the last twelve legs still stops a thrash, and a
+    # run that has behaved for twelve legs gets its judgement back.
+    _recent=$(awk -F'\t' -v i="$i" -v w=12 \
+                  '($1+0) > i - w { n++ } END { print n+0 }' \
+                  run/outline_rewordings 2>/dev/null) || _recent=0
+    [ "${_recent:-0}" -lt 3 ] || return 1
     echo "$leg" >> run/outline_wording_asked
     set +e
     said=$(python planner/author.py --check-wording \
