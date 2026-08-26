@@ -4083,13 +4083,30 @@ class Executor:
                             self._walked_map_links())
         except Exception:
             return "", False
+        # ...AND THE MAP MUST BE IN THE BAG BEFORE IT CAN BE QUOTED. Every
+        # other printed-map channel is gated on TOWN_MAP — _atlas_text
+        # falls back to walked destinations, the whole-map adjacency block
+        # is withheld entirely, author.py withholds its two blocks, the
+        # itinerary line says "Your own walking" — and this one was missed.
+        # static_cost is ALREADY honest (PRINTED_MAP_HELD gates MAP_EDGES,
+        # so with no map the number comes only from links this run walked);
+        # it was the SENTENCE that credited an artifact the player does not
+        # own. This save carries no TOWN_MAP and was reading "the printed
+        # map draws no road between ROUTE_7 and FUCHSIA_CITY" every round
+        # (user, 2026-08-26: "what language concerning an atlas does it get
+        # without the town map?").
+        _held = self._holding_town_map(obs)
         if d is None:
             # No line on the printed map and no walked link either. Saying
             # "99 steps" would be inventing a distance; saying nothing hides
             # that the target is off the map you are holding.
-            return (f"\nHOW FAR OFF YOU ARE: the printed map draws no road "
-                    f"between {here_map} and {want_map}, so it cannot say "
-                    f"how far apart they are.", False)
+            return ((f"\nHOW FAR OFF YOU ARE: the printed map draws no road "
+                     f"between {here_map} and {want_map}, so it cannot say "
+                     f"how far apart they are." if _held else
+                     f"\nHOW FAR OFF YOU ARE: nothing you have walked joins "
+                     f"{here_map} to {want_map}, and you carry no TOWN MAP, "
+                     f"so there is no distance to give — only what you have "
+                     f"walked and what people have told you."), False)
         st = self._drift.setdefault(sg.get("id"), {"best": d, "since": 0,
                                                    "at": here_map})
         if d < st["best"]:
@@ -4101,7 +4118,11 @@ class Executor:
         # than standing in Cerulean. Only a long stretch with no improvement
         # at all counts, and only while actually further off than the best.
         give_up = st["since"] >= 14 and d > st["best"]
-        note = (f"\nHOW FAR OFF YOU ARE: on the printed map {here_map} is "
+        note = (f"\nHOW FAR OFF YOU ARE: "
+                + ("on the printed map " if _held
+                   else "by your own walking, and by nothing else — you "
+                        "carry no TOWN MAP — ")
+                + f"{here_map} is "
                 f"{d} leg(s) from {want_map}. The closest you have been "
                 f"this subgoal is {st['best']} (at {st['at']})"
                 + (f", and you have not improved on it for {st['since']} "
