@@ -51,6 +51,29 @@ ck("at leg 32 the rung reopens (the old three have aged out)",
    recent(32) < 3)
 ck("a burst inside one window is still stopped", recent(21) >= 3)
 
+# --- the look-ahead sweep had the same lifetime ration ---
+ck("the sweep's lifetime cap is gone",
+   'cat run/outline_skips 2>/dev/null | wc -l)" -lt 8' not in sh)
+k = sh.find("ROLLING, FOR THE SAME REASON THE REWORD BUDGET IS")
+ck("sweep_ahead rolls too", k > 0)
+sblk = sh[k:k + 1400]
+ck("...over the leg it is sweeping from", '-v i="$at"' in sblk)
+ck("...counting only the NUMBERED lines sweep_ahead writes",
+   "$1 ~ /^[0-9]+$/" in sblk)
+ck("...so exit-4/VOID's bare lines never spend it",
+   "bare objective" in sblk)
+ck("...still eight inside the window", '-lt 8 ] \\' in sblk)
+
+def skipped(i, w=12):
+    out = subprocess.run(
+        ["awk", "-F\t", "-v", f"i={i}", "-v", f"w={w}",
+         "$1 ~ /^[0-9]+$/ && ($1+0) > i - w { n++ } END { print n+0 }",
+         "run/outline_skips"], capture_output=True, text=True)
+    return int(out.stdout.strip() or 0)
+ck("at leg 32 the sweep reopens", skipped(32) < 8)
+ck("a bare VOID line is not counted against it",
+   skipped(32) == 1)   # only "22\tReach Celadon City" is in the window
+
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)

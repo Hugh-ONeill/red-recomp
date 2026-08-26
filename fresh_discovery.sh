@@ -164,7 +164,20 @@ fi
 sweep_ahead() {
   local at="$1" st got nums n
   st=$(python planner/state_text.py)
-  if [ "$(cat run/outline_skips 2>/dev/null | wc -l)" -lt 8 ] \
+  # ROLLING, FOR THE SAME REASON THE REWORD BUDGET IS. This gates the
+  # LOOK-AHEAD sweep — the rung that crosses off objectives already done —
+  # and eight per chain runs out. It is 8/8 by leg 32 of 51, with legs 34
+  # (Silph's President: the MASTER_BALL is in the bag), 35 (the POKE_FLUTE:
+  # in the bag) and 41 (a WATER or ICE type: LAPRAS is in the party) all
+  # sitting ahead of it as finished work the sweep can no longer cross off
+  # (user, 2026-08-26: "what about push/pull ops?"). Count only the
+  # NUMBERED lines — sweep_ahead writes "index<TAB>text", while the wording
+  # rung's exit-4/VOID append the bare objective and are a different
+  # mechanism that was never gated by this at all.
+  _skipped=$(awk -F'\t' -v i="$at" -v w=12 \
+                 '$1 ~ /^[0-9]+$/ && ($1+0) > i - w { n++ } END { print n+0 }' \
+                 run/outline_skips 2>/dev/null) || _skipped=0
+  if [ "${_skipped:-0}" -lt 8 ] \
       && got=$(python planner/author.py --check-already-done \
           --goal "$leg" --outline-path plans/outline.txt --leg "$at" \
           --start "$st" --observed run/explored.json --model "$AUTHOR_MODEL") \
