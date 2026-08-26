@@ -1901,9 +1901,43 @@ local function observe(G, seq, result)
     -- an edge). Player-visible: the path leads off-screen that way.
     if md and md.connections then
       o.map.connections = {}
+      -- ...AND WHETHER A WALK FROM HERE EVEN REACHES THAT EDGE. A seam
+      -- belongs to the MAP, not to the pocket you are standing in, so the
+      -- nine-cell strip at the top of Route 6 -- the bit the Saffron gate
+      -- opens onto -- listed "walk south -> VERMILION_CITY|18,0 -- never
+      -- taken from here" with no caveat, while every DOOR and every object
+      -- on the same page carried "you cannot walk to it from where you
+      -- stand". The run read the south road as open, could not take it,
+      -- and concluded the gate guard was blocking it -- after that guard
+      -- had just said "Hi, thanks for the cool drinks!" (user,
+      -- 2026-08-26: "but then it went out and north back into saffron").
+      -- "No reached cell touches that side at all" is a sound NEGATIVE:
+      -- wherever the crossing strip sits on that edge, none of that edge
+      -- can be walked to. It never claims the reverse -- touching the
+      -- edge is not proof the crossing is there, and cross() still has
+      -- the last word.
+      -- (map_dims_cells is a local defined further down the file and so is
+      -- nil inside observe(); blocks x2, as everywhere up here.)
+      local _cr = {}
+      local _rc3 = reachable_cells()
+      local _W3 = (((md and md.width) or (map and map.width) or 0)) * 2
+      local _H3 = (((md and md.height) or (map and map.height) or 0)) * 2
+      for k, v in pairs(_rc3 or {}) do
+        if v then
+          local x, y = k:match("^(-?%d+),(-?%d+)$")
+          x, y = tonumber(x), tonumber(y)
+          if x and y then
+            if y == 0 then _cr.north = true end
+            if _H3 > 0 and y == _H3 - 1 then _cr.south = true end
+            if x == 0 then _cr.west = true end
+            if _W3 > 0 and x == _W3 - 1 then _cr.east = true end
+          end
+        end
+      end
       for d, cn in pairs(md.connections) do
         o.map.connections[d] = cn.map
       end
+      o.map.connections_reach = _cr
     end
     -- Interactable objects the player can see: G.overworld.npcs is the LIVE
     -- list already filtered by objectVisible (taken items / beaten trainers /

@@ -737,6 +737,22 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                     c.beyond = beyond(ex, walked, target, here)
         else:
             c.status = "untried"
+        # ...AND A SEAM YOU CANNOT WALK TO IS NOT AN EXIT FROM HERE. The
+        # shim publishes, per side, whether any cell a walk from here
+        # reaches lies on that edge. Doors and objects have carried "you
+        # cannot walk to it from where you stand" for months; a seam
+        # carried nothing, so the nine-cell pocket at the top of Route 6
+        # advertised "walk south -> VERMILION_CITY|18,0 — never taken from
+        # here" and the run decided the gate guard was blocking a road it
+        # simply could not get to (user, 2026-08-26). Only the NEGATIVE is
+        # claimed: no reached cell touches that side at all. Touching it
+        # is not proof the crossing is there, and cross() still decides.
+        _cr = (m.get("connections_reach") or {}) if isinstance(
+            m.get("connections_reach"), dict) else {}
+        if _cr and not _cr.get(d) and c.status in ("untried", "back"):
+            c.status = "unreachable"
+            c.note = _join(c.note, "no ground you can walk to from here "
+                                   "touches that side of this map")
         out.append(c)
 
     # ---- things and people --------------------------------------------
