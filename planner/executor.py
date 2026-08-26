@@ -7414,13 +7414,21 @@ class Executor:
             # house has a few unseen top rows (the screen reaches four rows
             # up from the mat), so the list is wider and the rest counted.
             _urows.sort()
-            _shown = _urows[:8]
+            # ...AND THE CUT WAS THE LIE. Eight rows, nearest first, and
+            # POKEMON_TOWER_7F (4 spots, 6 legs) sat behind eight nearer
+            # houses in "and 9 more floor(s)" on every page the run read
+            # while it walked in and out of Fuji's house saying "I have
+            # already cleared the tower" (user, 2026-08-25). Every floor is
+            # named, in a shorter form; only a very long tail is counted.
+            _shown = _urows[:30]
             floor_away += (
-                "\nFLOORS YOU HAVE WALKED WITH GROUND NEVER ON SCREEN: "
+                "\nFLOORS YOU HAVE WALKED WITH GROUND NEVER ON SCREEN "
+                "(spots where the ground you looked at ends, and walked "
+                "legs from here): "
                 + "; ".join(
-                    f"{_m} ({-_n} spot(s) where the ground you looked at ends"
-                    + (f", {_d} walked leg(s) away" if _d < 99
-                       else ", no walked route from here") + ")"
+                    f"{_m} ({-_n} spot(s), "
+                    + (f"{_d} leg(s))" if _d < 99
+                       else "no walked route from here)")
                     for _d, _n, _m in _shown)
                 + (f"; and {len(_urows) - len(_shown)} more floor(s)"
                    if len(_urows) > len(_shown) else "")
