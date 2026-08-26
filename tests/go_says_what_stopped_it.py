@@ -19,6 +19,9 @@ ck("go says it", 'WHAT STOPPED IT: {_why}' in src)
 ck("explore says it too", 'WHAT STOPPED IT: {_why2}' in src)
 ck("every give-up path sets a reason, not just one",
    src.count("self._route_why = (") >= 4)
+ck("the walk-across leg keeps what the walk itself said",
+   '_wdet = ((_wres or {}).get("result") or {}).get("detail") or ""' in src
+   and "what it said was: {str(_wdet)[:300]}" in src)
 
 # behaviour: the trace the model actually receives
 ex = E.Executor.__new__(E.Executor)

@@ -5867,7 +5867,11 @@ class Executor:
                              step=str(key), standing=self._where(_now),
                              why="that walked-to area has no anchor cell")
                     return o if o is not None else _now
-                self._send_safe("walk_to", x=_ax, y=_ay)
+                # keep what the walk SAID: its refusal is the rich one —
+                # the reachable-ground count and who or what stands at the
+                # edge of it, a CUT_TREE included
+                _wres = self._send_safe("walk_to", x=_ax, y=_ay)
+                _wdet = ((_wres or {}).get("result") or {}).get("detail") or ""
                 o = self.settle() or _now
                 while o and o.get("mode") == "battle":
                     o = self.handle_battle(sg, o)
@@ -5891,7 +5895,9 @@ class Executor:
                         self._save_memory()
                     self._route_why = (
                         f"the leg {str(key)} is a walk across this map and "
-                        f"it did not arrive")
+                        f"it did not arrive"
+                        + (f", and what it said was: {str(_wdet)[:300]}"
+                           if _wdet else ""))
                     self.log("route_abandoned", subgoal=sg.get("id"),
                              step=str(key), standing=self._where(o),
                              why="the walk across this map did not arrive")
