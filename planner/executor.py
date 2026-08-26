@@ -459,6 +459,23 @@ def pred_keys(pred: dict | None) -> set:
 # offered again. Match on the string that exists, from one place.
 ASKING = "is ASKING something and the box is STILL OPEN"
 
+# A LIST THAT OPENED AND WAS NOT PICKED FROM IS NOT A SPENT INTERACTION.
+# Exactly the fossil rule one paragraph up, for the other kind of open
+# box. `interact` on a vending machine opens its rows and deliberately
+# picks nothing — "Nothing was chosen and it is left OPEN. Pick a row
+# with {"op":"menu","index":N}" — and that reply was recorded as a TRY.
+# The escalation's round budget then ran out on the very op that opened
+# the menu, the next subgoal was "exit the department store" so the model
+# closed the box and left, and by the time it came back the roof machines
+# read as pressed, the ledger dropped them from "never pressed", and its
+# own summary hardened into "I have already checked the Celadon Mart
+# clerks and the roof vending machines without success" — while the guard
+# on Route 7 still wanted a drink and the water was two hundred yen away
+# behind a list nobody had picked from (user, 2026-08-26: "i guess it
+# believes it isnt there and is searching the game corner now"). Match on
+# the string the shim emits, from one place, like ASKING.
+LIST_OPEN = "Nothing was chosen and it is left OPEN"
+
 
 # A PREDICATE THE HARNESS CANNOT READ IS UNMET, NEVER FATAL. pred_holds is
 # called unguarded from run_subgoal, the ladder and the escalation loop, so
@@ -1324,8 +1341,15 @@ class Executor:
         r = ((res_obs or {}).get("result") or {})
         if not r.get("ok"):
             return False                       # it never happened
+        # WHAT THE LIST SAID IS KEPT EVEN WHEN THE PRESS IS NOT SPENT.
+        # The rows are what was on the screen; not picking one does not
+        # unsee them, and the guard below deliberately returns before the
+        # recording block at the end of this function.
+        self._record_machine_stock(region, r.get("detail"))
         if ASKING in str(r.get("detail") or ""):
             return False                       # it asked; nothing answered
+        if LIST_OPEN in str(r.get("detail") or ""):
+            return False                       # it offered; nothing picked
         # ...AND A BALL YOU COULD NOT CARRY IS STILL LYING THERE. The full
         # bag answers "No more room for items!" and the ball does not move;
         # recording that as a touch made B1F's (5,13) and (5,4) — one of
@@ -1337,7 +1361,6 @@ class Executor:
         self._tried_objs.setdefault(region, set()).add(name)
         self._stamp_touch(region)
         self._mark_touch(region, name, res_obs)
-        self._record_machine_stock(region, r.get("detail"))
         return True
 
     # A MACHINE THAT SELLS THINGS IS A SHOP. A mart counter's stock is
@@ -2676,7 +2699,9 @@ class Executor:
                 # opened, which is where you were standing when it
                 # answered.
                 try:
-                    _last_at = ""
+                    # `_re3` above lives inside the mart pass, which is
+                    # gated on an EMPTY shelf store and so may not have run
+                    _last_at, _last_rg, _unspent = "", "", 0
                     for _l in (RUN / "executor_log.jsonl").read_text() \
                             .splitlines():
                         try:
@@ -2687,7 +2712,7 @@ class Executor:
                                       _r4.get("to")):
                             _c = str(_cand or "")
                             if _c and "None" not in _c and "|" in _c:
-                                _last_at = _c.split("|")[0]
+                                _last_at, _last_rg = _c.split("|")[0], _c
                         if "opened a menu" not in _l:
                             continue
                         for _t in (_r4.get("trace") or []):
@@ -2701,10 +2726,29 @@ class Executor:
                             if _rows4:
                                 self._shelves[_last_at] = _rows4
                                 self._shelf_machine.add(_last_at)
+                            # ...AND UN-SPEND THE PRESS. Until today a
+                            # menu that opened and was not picked from was
+                            # recorded as a TRY, so this run's roof
+                            # machines already sit in `touched` and the
+                            # sweep will never offer them again — the very
+                            # state that hardened "I have already checked
+                            # the roof vending machines without success".
+                            # The new rule cannot reach a ledger written
+                            # under the old one; the journal can.
+                            _nm4 = _re.search(
+                                r"([A-Z0-9_]+) opened a (?:menu|list)", _t)
+                            if _nm4 and _last_rg:
+                                _tos = self._tried_objs.get(_last_rg)
+                                if _tos and _nm4.group(1) in _tos:
+                                    _tos.discard(_nm4.group(1))
+                                    _unspent += 1
                     if self._shelf_machine:
                         print(f"[memory] vending stock backfilled for "
                               f"{len(self._shelf_machine)} floor(s) from "
                               f"the journal")
+                    if _unspent:
+                        print(f"[memory] {_unspent} press(es) that only "
+                              f"opened a list are open again")
                 except OSError:
                     pass
             # ...and drop any edge already filed that contradicts a seam
@@ -12814,7 +12858,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if loose:
                     self.log("room_sweep", subgoal=sg["id"], region=here_s,
                              objects=loose[:8])
-                    asked_back = []
+                    asked_back, listed_back = [], []
                     felled = []
                     for name in loose[:8]:
                         if kinds.get(name) == "cut_tree" and knows_cut:
@@ -12850,6 +12894,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                        .get("detail") or "")
                             if ASKING in _det:
                                 asked_back.append(name)
+                            elif LIST_OPEN in _det:
+                                listed_back.append(name)
                         cur = o2 or cur
                         if pred_holds(done, cur):
                             break
@@ -12879,6 +12925,22 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                 f"you send it again"]
                                if felled else [])))
                         + " — everything reachable here has now been tried)")
+                    # ...AND A LIST NOBODY PICKED FROM IS STILL OPEN.
+                    # The sweep presses blind and can no more choose a row
+                    # than it can answer a question: the roof's machines
+                    # offered FRESH WATER / SODA POP / LEMONADE, nothing
+                    # was picked, and saying "everything reachable here has
+                    # now been tried" over that is how the run concluded
+                    # the water was not there.
+                    if listed_back:
+                        trace.append(
+                            f"({', '.join(listed_back)} OPENED A LIST and "
+                            f"the sweep could only leave it — it presses "
+                            f"blind and cannot pick a row for you. They are "
+                            f"NOT recorded as done. To take something from "
+                            f"one, press it yourself and then "
+                            f"{{\"op\":\"menu\",\"index\":N}} with the "
+                            f"row you want.)")
                     if asked_back:
                         trace.append(
                             f"({', '.join(asked_back)} ASKED something and "
