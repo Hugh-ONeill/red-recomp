@@ -5783,7 +5783,21 @@ function OPS.use_item(G, c)
         .. ". Choose which to write over and re-send use_item with "
         .. "forget= that move (HM moves cannot be forgotten)."
     end
-    return false, "the teach did not go through"
+    -- ...AND THE LAST CASE SAID SEVEN WORDS. Not incompatible, fewer than
+    -- four moves known, and nothing learned: the teach simply did not
+    -- take. The run met it holding HM_SURF right after depositing
+    -- CHARIZARD and withdrawing LAPRAS IN THE SAME MACRO — which moves
+    -- every slot number after it — and had nothing to work from (user,
+    -- 2026-08-26). Say which slot was aimed at, who is standing in it now,
+    -- and that a party changed mid-macro renumbers the slots.
+    return false, ("the teach did not go through: slot %s holds %s, which "
+      .. "still knows %s, and nothing was learned. If the party CHANGED "
+      .. "earlier in this same macro (a deposit or a withdraw), every slot "
+      .. "number moved with it — send the use_item on its own and read the "
+      .. "party list first")
+      :format(tostring(slot),
+              tostring((mon and mon.species) or "nobody"),
+              #monmoves > 0 and table.concat(monmoves, ", ") or "nothing")
   end
   -- A FIELD ITEM ACTS ON WHAT YOU ARE STANDING BESIDE, and the game says
   -- so in its own words when there is nothing there ("Now, that's a catchy
@@ -7060,7 +7074,32 @@ function OPS.pc_deposit(G, c)
     return false, "the deposit did not go through (party still " .. after
       .. ")"
   end
-  return true, ("deposited %s — party is now %d"):format(label, after)
+  -- WHAT THE PARTY JUST LOST, IN ITS OWN NUMBERS. "deposited CHARIZARD
+  -- :L47 — party is now 5" is true and does not say that L47 was the
+  -- highest level in it: the run boxed its ace to free a slot for a L15
+  -- LAPRAS it wanted to teach SURF, and the only place that cost was
+  -- legible was a level buried in the label (user, 2026-08-26: "it taught
+  -- surf to lapras -- unfortunately it put char in the box to do it").
+  -- Arithmetic on the party list, which is on the screen. Whether the swap
+  -- was worth it is the model's; a boxed Pokemon counting for nothing
+  -- until withdrawn is already said on every page.
+  local _lv, _lo, _hi = nil, nil, nil
+  for _, m in ipairs(((G.save or {}).party or {})) do
+    local l = tonumber(m.level)
+    if l then
+      if not _lo or l < _lo then _lo = l end
+      if not _hi or l > _hi then _hi = l end
+    end
+  end
+  _lv = tonumber(tostring(label):match(":L(%d+)"))
+  return true, ("deposited %s — party is now %d%s"):format(
+    label, after,
+    (_lo and _hi)
+      and ((_lv and _hi and _lv > _hi
+            and (", and that was the highest level in it — what is left is L"
+                 .. _lo .. "-L" .. _hi))
+           or (", and what is left is L" .. _lo .. "-L" .. _hi))
+      or "")
 end
 
 -- Take stored Pokemon #index out of box `box` (default: the current one).
