@@ -8062,15 +8062,33 @@ class Executor:
             # exactly the judgment this harness is not supposed to make.
             # So rank ROOMS by distance, which is mechanical, and inside a
             # room say everything, bounded by a total line count.
+            # ONE CHATTY ROOM MUST NOT EAT THE WHOLE BUDGET. Depth-first
+            # over rooms spent all eight lines on Celadon City's slot-machine
+            # chatter (the Game Corner sign, the little girl, the gramps),
+            # and CELADON_MART_1F one leg further never got a line — the
+            # room holding the store directory the run had READ OUT LOUD,
+            # "ROOFTOP SQUARE: VENDING MACHINES", while it circled the
+            # thirsty Route 7 guard looking for a drink (user, 2026-08-26:
+            # "the thing it missed is where it is, on the roof"). Round
+            # robin: every room reachable gets its first sentence before
+            # any room gets its second. Still mechanical — rooms by
+            # distance, sentences in the order they were heard — and it
+            # still does not pick WHICH sentence is the gate.
             said_away.sort(key=lambda t: (t[0], t[1]))
-            _body = []
-            for _n, _rg, _ls in said_away:
-                for _l in _ls:
-                    _body.append(f"  ({_rg}, {_n} leg(s) away) "
-                                 f"{self._dated(_rg, _l, obs)}")
-                if len(_body) >= 8:
+            _body, _round = [], 0
+            while len(_body) < 14:
+                _added = False
+                for _n, _rg, _ls in said_away:
+                    if _round < len(_ls):
+                        _body.append(f"  ({_rg}, {_n} leg(s) away) "
+                                     f"{self._dated(_rg, _ls[_round], obs)}")
+                        _added = True
+                        if len(_body) >= 14:
+                            break
+                if not _added:
                     break
-            _body = _body[:8]
+                _round += 1
+            _body = _body[:14]
             hint_line += ("\nWHAT YOU WERE TOLD ELSEWHERE, nearest first. "
                           "People say a thing once and this game explains "
                           "its own gates out loud, so a sentence you heard "
