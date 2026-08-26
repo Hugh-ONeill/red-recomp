@@ -6525,6 +6525,7 @@ local function pc_open_menu(G)
     if #keep > 0 then adj = keep end
   end
   local at = false
+  local last_why = ""
   for _ = 1, 2 do
     for _, a in ipairs(adj) do
       if p.cellX == a[1] and p.cellY == a[2] then
@@ -6534,12 +6535,35 @@ local function pc_open_menu(G)
     end
     if at then break end
     for _, a in ipairs(adj) do
-      OPS.walk_to(G, { x = a[1], y = a[2],
+      local okw, whyw = OPS.walk_to(G, { x = a[1], y = a[2],
                        max_steps = _approach_budget(p, a[1], a[2]) })
-      if p.cellX == a[1] and p.cellY == a[2] then break end
+      if not okw and whyw then last_why = tostring(whyw) end
+      -- LET THE LAST STEP LAND. walk_to returns with the sprite still
+      -- between cells; the cell check ran a frame early, the party was
+      -- reported "could not stand at the PC" while standing under it,
+      -- and the same op succeeded a moment later (2026-08-26, pc_box).
+      for _ = 1, 60 do
+        if not p.moving then break end
+        U.wait(1)
+      end
+      -- ARRIVAL COUNTS WHEN IT HAPPENS. `at` was only set by the check at
+      -- the top of a pass, so a walk that landed on the cell in the LAST
+      -- pass was never credited: "could not stand at the PC at (13,3) —
+      -- standing at (13,4)" (2026-08-26, after a person blocked the
+      -- first pass).
+      if p.cellX == a[1] and p.cellY == a[2] then
+        if p.facing ~= a[3] then U.tap(G, a[3]); U.wait(3) end
+        at = true; break
+      end
     end
+    if at then break end
   end
-  if not at then return false, "could not stand at the PC" end
+  if not at then
+    return false, ("could not stand at the PC at (%s,%s) — standing at "
+      .. "(%s,%s)%s"):format(tostring(px), tostring(py),
+      tostring(p.cellX), tostring(p.cellY),
+      last_why ~= "" and ("; the walk said: " .. last_why:sub(1, 300)) or "")
+  end
   U.tap(G, "a"); U.wait(10)
   for _ = 1, 12 do                       -- through "Turned on the PC" text
     if ui_is_menu(G) then break end
