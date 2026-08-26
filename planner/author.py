@@ -4611,8 +4611,51 @@ def _norm_obj(t: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
 
 
+def departure_text(path) -> str:
+    """WHAT THE RUN SAID AS IT WALKED AWAY from the objective it is stuck
+    on, in its own words, over every attempt of the last plan.
+
+    The re-author was handed the same words (LEFT lines) and still wrote
+    "leave the hideout, go to Lavender, climb" three times over: the
+    rewrite pass answers "how do I do THIS objective", and a deed the
+    objective needs first is not that question. This is the evidence for
+    the question that IS about that — whether the list is missing a step
+    — so the model's own conclusion reaches the model that can act on it.
+    Its words, counted; nothing here says what the deed is."""
+    try:
+        recs = [json.loads(l) for l in Path(path).read_text().splitlines()
+                if l.strip()]
+    except (OSError, ValueError):
+        return ""
+    starts = [i for i, r in enumerate(recs) if r.get("kind") == "plan_start"]
+    if not starts:
+        return ""
+    goal = recs[starts[-1]].get("goal")
+    first = next(i for i in starts if recs[i].get("goal") == goal)
+    said: dict = {}
+    where = []
+    for r in recs[first:]:
+        if r.get("kind") != "left_target_on_purpose":
+            continue
+        w = (r.get("said") or "").strip()
+        if w:
+            said[w[:300]] = said.get(w[:300], 0) + 1
+        where.append(f"{r.get('left_from')} -> {r.get('now')}")
+    if not said and not where:
+        return ""
+    out = ("\n\nWHAT THE RUN SAID AS IT WALKED AWAY FROM THIS OBJECTIVE, "
+           "in its own words: during the last plan for it the run left "
+           "the objective's place by its own decision ("
+           + "; ".join(where[-3:]) + ") and the attempt ended where it "
+           "had walked to, not where it started:")
+    for w, n in sorted(said.items(), key=lambda kv: -kv[1])[:4]:
+        out += f"\n  - (x{n}) \"{w}\""
+    return out
+
+
 def check_missing(goal: str, ahead: list, start: str, model: str,
-                  behind: list = (), observed=None, tries: int = 3) -> str:
+                  behind: list = (), observed=None, tries: int = 3,
+                  journal=None) -> str:
     """Ask whether the PLAN is missing a step, when nothing else worked.
 
     The chain's last recourse used to be stopping. But a leg can be
@@ -4646,7 +4689,8 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
                + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
             + done_ledger_text()
             + "\n\nSTILL ON THE DOCKET, in order:\n"
-            + "\n".join(f"  {n}. {t}" for n, t in ahead))
+            + "\n".join(f"  {n}. {t}" for n, t in ahead)
+            + (departure_text(journal) if journal else ""))
     turned_down: list = []
     for _ in range(max(1, tries)):
         body = base + ("\n\nYOU ALREADY PROPOSED THESE AND THEY WERE TURNED "
@@ -5202,7 +5246,8 @@ def main():
             sys.exit(3)
         behind = [(n, lines[n - 1]) for n in range(1, args.leg)]
         deed = check_missing(args.goal, ahead, args.start or "", args.model,
-                             behind=behind, observed=args.observed)
+                             behind=behind, observed=args.observed,
+                             journal=args.journal)
         if deed:
             print(deed)
             sys.exit(0)

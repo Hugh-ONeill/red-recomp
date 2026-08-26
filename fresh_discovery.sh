@@ -343,6 +343,36 @@ while :; do
     fi
     return 1
   }
+  # IS THE LIST MISSING A STEP? Asked at the ladder as before, and ALSO
+  # right after a first attempt that ended on a departure the run made by
+  # its own decision (planner/departed.py): the tower leg's every
+  # escalation said "need the Silph Scope" and walked to the Rocket
+  # Hideout, and the evidence-based rewrite — which answers "how do I do
+  # THIS objective" — marched it back to Lavender four times (v6-v9,
+  # 2026-08-25). The question is the same, the answer is the model's, the
+  # guard against restating the leg is unchanged (insert_guard: a
+  # prerequisite that restates the objective itself, or any outline line,
+  # is refused — leg 19 inserted its own wording in front of itself); only
+  # the moment moved, and the model's own words as it walked away are
+  # now on the page it answers from.
+  missing_rung() {
+    _ins_leg=$(grep -Fc "LEG=$leg|" run/outline_inserts 2>/dev/null) || true
+    [ "$(cat run/outline_inserts 2>/dev/null | wc -l)" -lt 12 ] || return 1
+    [ "${_ins_leg:-0}" -lt 1 ] || return 1
+    set +e
+    missing=$(python planner/author.py --check-missing \
+        --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
+        --start "$(python planner/state_text.py)" \
+        --journal run/executor_log.jsonl --model "$AUTHOR_MODEL")
+    mrc=$?
+    set -e
+    [ $mrc = 0 ] && [ -n "$missing" ] || return 1
+    python planner/insert_guard.py "$missing" "$leg" plans/outline.txt || return 1
+    echo "=== leg $i needs something first: $missing ==="
+    python planner/insert_leg.py "$i" "$missing"
+    echo "LEG=$leg|$missing" >> run/outline_inserts
+    return 0
+  }
   run_campaign() {
     env RED_HEADED="${RED_HEADED:-1}" RED_SPEED="${RED_SPEED:-200}" \
         RED_CONTINUE="$1" ./campaign.sh "$2" "$plan" -- --escalate
@@ -354,8 +384,13 @@ while :; do
   crc=$?
   set -e
   if [ "$crc" = 1 ]; then
-    # the first attempt failed on its own merits (not a boot failure):
-    # ask whether the objective still makes sense before spending more
+    # the first attempt failed on its own merits (not a boot failure).
+    # If it ended on a departure the run made by its own decision, ask
+    # first whether the list is missing the step it walked off to do;
+    # then ask whether the objective still makes sense before spending more
+    if python planner/departed.py run/executor_log.jsonl; then
+      if missing_rung; then continue; fi
+    fi
     if wording_rung; then continue; fi
     # the rewrite inside campaign.sh already produced the next version
     plan=$(python planner/find_plan.py "$leg" 2>/dev/null || echo "$plan")
@@ -445,21 +480,7 @@ while :; do
     # it a fresh ask every time: Cinnabar asked at 40, was pushed to 41 by
     # its own answer, and asked again at 41 (2026-08-23). The objective is
     # what has the question, so the objective is what spends the ask.
-    _ins_leg=$(grep -Fc "LEG=$leg|" run/outline_inserts 2>/dev/null || true)
-    if [ "$(cat run/outline_inserts 2>/dev/null | wc -l)" -lt 12 ] \
-        && [ "${_ins_leg:-0}" -lt 1 ] \
-        && missing=$(python planner/author.py --check-missing \
-            --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
-            --start "$(python planner/state_text.py)" --model "$AUTHOR_MODEL") \
-        && python planner/insert_guard.py "$missing" "$leg" plans/outline.txt; then
-      # (insert_guard: a prerequisite that restates the objective itself,
-      # or any outline line, is refused — leg 19 inserted its own wording
-      # in front of itself, 2026-08-25)
-      echo "=== leg $i needs something first: $missing ==="
-      python planner/insert_leg.py "$i" "$missing"
-      echo "LEG=$leg|$missing" >> run/outline_inserts
-      continue
-    fi
+    if missing_rung; then continue; fi
     # LAST RUNG: IS THE OBJECTIVE ITSELF WRONG? The chain halted at
     # "Obtain the Secret Key from the Rocket Hideout" — an item that is
     # not in that dungeon, written before the run had been near it, with
