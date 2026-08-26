@@ -8858,9 +8858,13 @@ Pokemon appear by WALKING on such ground, never by standing still, so this
 is the
 op for TRAINING *and* for finding something to CATCH; {"op":"wait"} will
 never produce an encounter),
-{"op":"buy","item":"POTION","count":N} (own N total of the item, buying
-the difference from THIS map's mart clerk — it talks to the clerk ITSELF,
-no interact needed first; obs.money is your budget),
+{"op":"buy","item":"POTION","count":N,"clerk":"NAME"} (own N total of the
+item, buying
+the difference from THIS map's mart counter — it talks to the clerk
+ITSELF, no interact needed first; obs.money is your budget. A floor can
+have MORE THAN ONE COUNTER and in this game they carry different stock;
+"clerk" names which one to read (omit it and the first one on the floor
+is used, and a refusal names the others standing there)),
 {"op":"use_item","item":"POTION","slot":N} (use a bag item on party slot
 N COUNTING FROM 1 — slot 1 is the lead — lead if omitted. NOT EVERY ITEM
 IS USED ON A POKEMON: some are used WHERE YOU STAND and act on whatever
@@ -10551,16 +10555,23 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # the Vermilion mart and lived only in those rounds'
                 # traces; every new subgoal re-supposed the water was there.
                 # Kept per mart, persisted, printed on the mart's door.
-                _sh = _re.search(r"this mart sells: ([A-Z0-9_, ]+)", det) \
-                    if "this mart sells" in det else None
+                # ...AND A SHELF BELONGS TO A COUNTER, NOT TO A FLOOR.
+                # Celadon 5F's two clerks carry different stock (X items
+                # vs vitamins), so recording one counter's list as "what
+                # this mart sells" — and condemning the floor on it — was
+                # a fabricated absolute (user, 2026-08-26). The floor-wide
+                # record is kept only when this floor has ONE counter.
+                _sh = _re.search(
+                    r"shelf, which holds: ([A-Z0-9_, ]+)", det)
+                _alone = "THIS FLOOR HAS OTHER COUNTERS" not in det
                 if _sh:
                     _cm = ((obs or {}).get("map") or {}).get("id")
-                    if _cm:
+                    if _cm and _alone:
                         self._shelves[_cm] = [x.strip() for x in
                                               _sh.group(1).split(",")
                                               if x.strip()]
                         self._save_memory()
-                if "is not sold here" in det and self._cur_target:
+                if "shelf, which holds" in det and _alone and self._cur_target:
                     self.note_dead_end(self._cur_target, self._where(obs),
                                        shop_proof=True)
                     trace.append(

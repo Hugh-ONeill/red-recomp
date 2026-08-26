@@ -5014,8 +5014,52 @@ local function shop_door_hint(G)
   return ""
 end
 
+-- WHICH COUNTER. A floor can have more than one, and in this game they
+-- carry DIFFERENT stock: Celadon 5F's CLERK1 sells the X items and its
+-- CLERK2 sells the vitamins. Taking the first name that matched made half
+-- a floor unbuyable and, worse, made the refusal a lie — "not sold here,
+-- this mart sells: <first shelf>" with the goods on the counter two tiles
+-- over (user, 2026-08-26: "how does the buy work when there's two clerks
+-- in the mart floors?"). The model may now name the counter; naming none
+-- keeps the old first-match behaviour.
+local function shop_clerks(ow)
+  local out = {}
+  for _, npc in ipairs((ow and ow.npcs) or {}) do
+    local nm = ((npc.def or {}).name or ""):upper()
+    if nm:find("CLERK") or nm:find("CASHIER") then
+      out[#out + 1] = npc
+    end
+  end
+  return out
+end
+
+local function pick_clerk(ow, want)
+  local all = shop_clerks(ow)
+  if want and want ~= "" then
+    local w = tostring(want):upper()
+    for _, npc in ipairs(all) do
+      local nm = ((npc.def or {}).name or ""):upper()
+      if nm == w or nm:find(w, 1, true) then return npc, all end
+    end
+    return nil, all, w            -- named, but no such counter here
+  end
+  return all[1], all
+end
+
+local function other_counters(all, used)
+  local out = {}
+  for _, npc in ipairs(all or {}) do
+    if npc ~= used then
+      out[#out + 1] = ((npc.def or {}).name or "?")
+    end
+  end
+  return out
+end
+
 function OPS.buy(G, c)
   if not (c.item and c.count) then return false, "buy needs item, count" end
+  -- function-scope: the refusal below names the counter it actually read
+  local clerk, all_clerks
   -- TARGET semantics: own c.count total, not "c.count more". Escalation
   -- rounds carry state forward and re-propose their macros — with buy-more
   -- semantics every retry SPENT REAL MONEY (brock31 walked into Pewter
@@ -5059,10 +5103,15 @@ function OPS.buy(G, c)
   end
   if G.overworld and G.stack:top() == G.overworld then
     local ow = G.overworld
-    local clerk
-    for _, npc in ipairs(ow.npcs or {}) do
-      local nm = ((npc.def or {}).name or ""):upper()
-      if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
+    local missed
+    clerk, all_clerks, missed = pick_clerk(ow, c.clerk)
+    if missed then
+      local names = other_counters(all_clerks, nil)
+      return false, ("no counter here called " .. missed
+        .. (#names > 0
+            and (" — the counters standing here are: "
+                 .. table.concat(names, ", "))
+            or " — there is no counter on this floor"))
     end
     local went_in = false
     if not clerk then
@@ -5070,10 +5119,7 @@ function OPS.buy(G, c)
       went_in = enter_shop(G)
       if went_in then
         ow = G.overworld
-        for _, npc in ipairs(ow.npcs or {}) do
-          local nm = ((npc.def or {}).name or ""):upper()
-          if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
-        end
+        clerk, all_clerks = pick_clerk(ow, c.clerk)
       end
     end
     if not clerk then
@@ -5113,8 +5159,16 @@ function OPS.buy(G, c)
     ui_close_shop(G); ui_back_out(G)
     -- name the actual stock so the caller can adapt instead of retrying
     -- blind (Viridian famously sells no POTION at all)
-    return false, c.item .. " is not sold here — this mart sells: "
-      .. table.concat(sold, ", ")
+    local _others = other_counters(all_clerks, clerk)
+    return false, c.item .. " is not on "
+      .. (((clerk and clerk.def or {}).name) or "this counter")
+      .. "'s shelf, which holds: " .. table.concat(sold, ", ")
+      .. (#_others > 0
+          and (". THIS FLOOR HAS OTHER COUNTERS and in this game they "
+               .. "carry different stock: " .. table.concat(_others, ", ")
+               .. " — {\"op\":\"buy\",\"item\":X,\"count\":N,\"clerk\":\""
+               .. _others[1] .. "\"} reads that one instead")
+          or "")
   end
   if not ui_cursor_to(G, "index", idx) then
     ui_close_shop(G); ui_back_out(G)
@@ -5157,6 +5211,7 @@ end
 -- exists for exactly this.
 function OPS.sell(G, c)
   if not c.item then return false, "sell needs item" end
+  local clerk, all_clerks
   local have0 = bag_count(G, c.item)
   if have0 < 1 then return false, "no " .. c.item .. " in the bag" end
   local want = math.min(c.count or have0, have0)
@@ -5166,10 +5221,15 @@ function OPS.sell(G, c)
   end
   if G.overworld and G.stack:top() == G.overworld then
     local ow = G.overworld
-    local clerk
-    for _, npc in ipairs(ow.npcs or {}) do
-      local nm = ((npc.def or {}).name or ""):upper()
-      if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
+    local missed
+    clerk, all_clerks, missed = pick_clerk(ow, c.clerk)
+    if missed then
+      local names = other_counters(all_clerks, nil)
+      return false, ("no counter here called " .. missed
+        .. (#names > 0
+            and (" — the counters standing here are: "
+                 .. table.concat(names, ", "))
+            or " — there is no counter on this floor"))
     end
     local went_in = false
     if not clerk then
@@ -5177,10 +5237,7 @@ function OPS.sell(G, c)
       went_in = enter_shop(G)
       if went_in then
         ow = G.overworld
-        for _, npc in ipairs(ow.npcs or {}) do
-          local nm = ((npc.def or {}).name or ""):upper()
-          if nm:find("CLERK") or nm:find("CASHIER") then clerk = npc break end
-        end
+        clerk, all_clerks = pick_clerk(ow, c.clerk)
       end
     end
     if not clerk then
