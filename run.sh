@@ -8,6 +8,18 @@ export RED_BRIDGE_DIR="${RED_BRIDGE_DIR:-$HOME/Developer/red-recomp/run}"
 mkdir -p "$RED_BRIDGE_DIR"
 rm -f "$RED_BRIDGE_DIR"/obs.json "$RED_BRIDGE_DIR"/cmd.lua
 cd "$HOME/Developer/gen1recomp"
+# THE PORT'S OWN SETTINGS ARE RIG CONFIG (TODO (a), 2026-08-25). The shim
+# refuses the presses that change them, but a value already changed lives
+# in options.lua and the dying game rewrites that file on exit — a restart
+# raced it once and came up green-and-negative. Assert the rig's values at
+# every boot, from here, the one place every game starts (fresh_run.sh and
+# the exclusive tests both go through run.sh).
+OPTS="$HOME/.local/share/love/pokemon-love2d/options.lua"
+if [ -f "$OPTS" ]; then
+  sed -i -E 's/(gbcfx[[:space:]]*=[[:space:]]*)[0-9]+/\10/;
+             s/(spanish_ui[[:space:]]*=[[:space:]]*)true/\1false/;
+             s/(colors[[:space:]]*=[[:space:]]*)"[a-z]+"/\1"gbc"/' "$OPTS"
+fi
 # Headless runs still open an audio device — the repeated bump/interact
 # sounds are an accidental but genuinely useful progress channel (a loop
 # SOUNDS like a loop). RED_MUTE=1 silences it for unattended runs.
