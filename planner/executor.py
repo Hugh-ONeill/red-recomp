@@ -10116,9 +10116,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if said and "None" not in reg and len(said) > 12:
                     lst = self.hints.setdefault(reg, [])
                     line = f"{who}: {said[:220]}"
-                    if line not in lst:
+                    # ONE SENTENCE, ONCE, whoever it was filed under: the
+                    # Pokedex poster in Fuji's house was read five times
+                    # under five op names and, with a cap of 8, pushed the
+                    # Super Nerd's "MR.FUJI isn't here. Where'd he go?" —
+                    # the one line that explains the gate — out of the
+                    # ledger (2026-08-25). Same words = same line.
+                    _same = any(l.partition(": ")[2] == said[:220]
+                                for l in lst)
+                    if line not in lst and not _same:
                         lst.append(line)
-                        del lst[:-8]
+                        del lst[:-16]
                         if not hasattr(self, "hints_at"):
                             self.hints_at = {}
                         self.hints_at.setdefault(reg, {})[line] = len(

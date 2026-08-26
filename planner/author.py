@@ -1739,10 +1739,26 @@ def _fit(text: str, budget: int = EVIDENCE_BUDGET,
         if len(lines) < 8:
             return text[:budget] + "\n[evidence truncated to fit]"
         head, body = lines[0], lines[1:]
-        keep_n = max(4, len(body) * 3 // 4)
+        # A SENTENCE STAYS UNDER THE PLACE IT WAS SAID IN. The near-first
+        # sort ran over single lines, so "  in CERULEAN_CITY|20,0:" (a map
+        # name: near) floated up and the indented speeches under it (no
+        # map name: far) sank to the cut — every WHAT PEOPLE HAVE SAID
+        # header survived with an empty body, and the Super Nerd's "MR.FUJI
+        # isn't here" never reached the author (2026-08-25). An indented
+        # line belongs to the entry above it; entries move and are cut
+        # whole.
+        units: list = []
+        for l in body:
+            if units and l.startswith("    "):
+                units[-1].append(l)
+            else:
+                units.append([l])
+        keep_n = max(4, len(units) * 3 // 4)
         if near:
-            body.sort(key=lambda l: 0 if any(m in l for m in near) else 1)
-        kept, cut = body[:keep_n], len(body) - keep_n
+            units.sort(key=lambda u: 0 if any(m in l for l in u
+                                              for m in near) else 1)
+        kept_units, cut = units[:keep_n], len(units) - keep_n
+        kept = [l for u in kept_units for l in u]
         # ORDER IS INFORMATION; DO NOT RE-ALPHABETISE IT. The near-first
         # sort above is stable, so `kept` arrives in whatever order the
         # block was built in — and for the sightings block that order IS
