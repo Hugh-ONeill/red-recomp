@@ -9198,7 +9198,14 @@ map and you have already walked through it, you are taken round through the
 doors you actually used, and told that is what happened), {"op":"cross","dir":"north|
 south|east|west"} (to the adjacent map; if that seam cannot be reached from
 where you stand but another part of this map you have walked HAS crossed it,
-you are taken there first through the doors you used, and told so), {"op":"use_warp","x":N,"y":N} (a
+you are taken there first through the doors you used, and told so. AN EDGE IS
+A ROW, NOT A POINT: cross walks to a gap on that edge and steps off, and WHICH
+cell it steps off at decides which part of the next map you come out in — the
+same edge can land you in a sealed corner or on the road on. To choose, put a
+{"op":"walk_to","x":N,"y":N} onto another cell of that edge immediately before
+the cross; walk_to cannot path between maps, so that pairing is the only way
+to say where to cross from. A one-way ledge can make a cell reachable to step
+off and not to come back to), {"op":"use_warp","x":N,"y":N} (a
 door/stairs; add "map":"MAP_ID" when the door belongs to a map you are NOT
 standing on — you are first walked there over ground you have walked, by
 the exits you actually took; an unwalked map is refused. walk_to takes
@@ -11815,13 +11822,33 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # composition — stripping every walk_to in the macro broke
                 # [walk_to water's edge, field_move SURF, cross] and SURF
                 # fired on dry land. Strip only the trailing walk_to chain.
-                body = macro[:-1]
-                _j = -1
-                for _i, _s in enumerate(body):
-                    if _s.get("op") != "walk_to":
-                        _j = _i
-                keep = body[:_j + 1]
-                stripped = len(body) - len(keep)
+                # ...AND NOT BEFORE A CROSS. The hazard above is a DOOR
+                # MAT: walking onto one teleports, so a walk_to aimed at a
+                # warp tile is never what the model meant. A SEAM is not a
+                # mat. A seam is a ROW, and which cell you step off at
+                # decides which part of the next map you come out in —
+                # ROUTE_13's west edge lands in ROUTE_14|16,6, a four-cell
+                # nook, from where cross() picks its own gap, and every
+                # crossing went there: `go ROUTE_14` and `cross west` both
+                # (user, 2026-08-26: "go to rt 14 routes directly into the
+                # pocket", "so does cross west from rt 13"). walk_to cannot
+                # path between maps, so [walk_to <another edge cell>, cross]
+                # is the ONLY way to choose — and stripping the walk_to made
+                # the correct play unwritable (user: "its because of the
+                # precise boundary, if walk_to doesnt go between maps it
+                # wont route"). Strip for use_warp, keep for cross.
+                if (macro and isinstance(macro[-1], dict)
+                        and macro[-1].get("op") == "cross"):
+                    body, keep = [], macro[:-1]
+                    stripped = 0
+                else:
+                    body = macro[:-1]
+                    _j = -1
+                    for _i, _s in enumerate(body):
+                        if _s.get("op") != "walk_to":
+                            _j = _i
+                    keep = body[:_j + 1]
+                    stripped = len(body) - len(keep)
                 if stripped:
                     self.log("escalate_stripped_walkto", subgoal=sg["id"],
                              round=rnd, dropped=stripped)
