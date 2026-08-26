@@ -6229,7 +6229,31 @@ function OPS.field_move(G, c)
               .. "the rest of this map: " .. table.concat(_b, ", ") .. ".")
               or "")
       end
-      return false, "no reachable tile adjacent to the target"
+      -- ...AND THE THIRD CASE, WHICH SAID NOTHING AT ALL. The two branches
+      -- above cover "somebody is standing there" and "none of the four
+      -- tiles can be walked to". What is left is the awkward one: a tile
+      -- beside it IS ground the reach map says you can walk to, and the
+      -- approach walk still did not arrive — a step budget run out, a
+      -- wanderer moving into the way mid-walk, a one-way ledge. The model
+      -- got the bare seven words and nothing to act on, twice on ROUTE_13
+      -- with the ledger's own entry 1 reading "CUT the bush at (34,4) — a
+      -- party Pokemon knows CUT and it is a way on" (user, 2026-08-26).
+      -- Name the tiles that ARE reachable and say the walk is what failed;
+      -- which of them to stand on, or whether to walk there first, is the
+      -- model's.
+      local _ok = {}
+      for _, a in ipairs(adj) do
+        if reach[a[1] .. "," .. a[2]] then
+          _ok[#_ok + 1] = ("(%d,%d)"):format(a[1], a[2])
+        end
+      end
+      return false, ("the walk to the tile beside it did not arrive. "
+        .. "%d of the tiles around (%d,%d) IS ground you can walk to (%s), "
+        .. "so this is the WALK failing, not the ground: a step budget run "
+        .. "out, somebody moving into the way, or a one-way drop. "
+        .. "{\"op\":\"walk_to\",\"x\":N,\"y\":N} onto one of them "
+        .. "first, then the move, is how that is separated")
+        :format(#_ok, c.x, c.y, table.concat(_ok, ", "))
     end
     if p.facing ~= placed[3] then U.tap(G, placed[3]); U.wait(4) end
   end
