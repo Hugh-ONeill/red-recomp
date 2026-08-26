@@ -3802,6 +3802,34 @@ local function port_only_here(G, row_index)
   return nil
 end
 
+-- WHAT IS ON THE COUNTER. Pressing A at a clerk puts the stock list on
+-- screen — it is the whole of what a counter is — but the harness only
+-- ever published it in a REFUSAL ("not sold here — ... sells: ..."), so a
+-- shelf was learned only by failing to buy from it. The run stood at
+-- Celadon 4F twice, was told "that is a shop COUNTER", and was never told
+-- the counter sells a WATER_STONE, with an EEVEE in slot 6 and a leg
+-- asking for a WATER type (user, 2026-08-26: "it could've solved it with
+-- a water stone and eevee"). The engine reads this list from the same
+-- table to build the screen; this reads it at the same moment.
+local function counter_stock(G, tx, ty)
+  local ow = G.overworld
+  if not (ow and ow.map and ow.map.def and tx and ty) then return nil end
+  local npc
+  for _, n in ipairs(ow.npcs or {}) do
+    if n.cellX == tx and n.cellY == ty then npc = n break end
+  end
+  local txt = npc and npc.def and npc.def.text
+  if not txt then return nil end
+  local ok, entry = pcall(function()
+    return G.data:textEntry(ow.map.def.label, txt)
+  end)
+  if not (ok and entry and entry.mart) then return nil end
+  local out = {}
+  for _, id in ipairs(entry.mart) do out[#out + 1] = tostring(id) end
+  if #out == 0 then return nil end
+  return out
+end
+
 local function hands_off(G, c)
   -- B IS ALWAYS ALLOWED. It closes a screen and cannot spend anything, and
   -- without it this guard is a trap: menu(index=2) opened the item PC, and
@@ -8319,9 +8347,14 @@ function OPS.interact(G, c)
           -- hiding things; hiding the answer inside it is the same fault
           -- wearing the fix's clothes.
           local said = recent_text
+          local _stock = counter_stock(G, tx, ty)
           return true, ((said and said ~= "")
                         and ("\"" .. said .. "\" — ") or "")
                        .. hands_off(G)
+                       .. (_stock
+                           and (" THIS COUNTER SELLS: "
+                                .. table.concat(_stock, ", ") .. ".")
+                           or "")
         end
       end
       -- WHICH POKEMON IS NOT THE HARNESS'S CHOICE. A party picker inside a
