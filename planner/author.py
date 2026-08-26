@@ -1389,14 +1389,17 @@ def observed_text(path: Path) -> str:
             "\n\nFLOORS YOU HAVE WALKED WITH GROUND NEVER ON SCREEN (your own "
             "record: where the ground you looked at ended, at your last look "
             "there; what is past those spots is not known):")
-        for mid, n in _rows[:12]:
+        # every floor, not the nearest twelve: POKEMON_TOWER_7F's four
+        # unseen spots (the Rockets and Fuji) sat past the cut while the
+        # Flute leg was re-authored as "go to his house" (2026-08-25)
+        for mid, n in _rows[:40]:
             _hop = _map_hop(mid)
             _frontier_lines.append(
                 f"  {mid}: {n} spot(s)"
                 + (f" — {_hop} walked leg(s) from where you stand"
                    if _hop is not None else ""))
-        if len(_rows) > 12:
-            _frontier_lines.append(f"  (+{len(_rows) - 12} more floor(s))")
+        if len(_rows) > 40:
+            _frontier_lines.append(f"  (+{len(_rows) - 40} more floor(s))")
     # WHAT GETS CUT MATTERS MORE THAN HOW MANY. This was an alphabetical
     # names[:8], so CERULEAN_CITY showed eight COOLTRAINERs and GUARDs and
     # dropped CUT_TREE — the one object in that city the party could act
