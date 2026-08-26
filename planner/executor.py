@@ -10654,7 +10654,30 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # dead-end brand made one layer up. Stamp the world mark
                 # with the count and start again when the world moves.
                 self._strike(sig, r.get("detail"))
-                note += f": FAILED — {r.get('detail')}"
+                # "FAILED" IS A CLAIM ABOUT THE WORLD, AND SOMETIMES IT IS
+                # FALSE. The Route 7 guard drank the water, the flag fired
+                # and the bag lost the bottle, and the line the model read
+                # was "interact(name=ROUTE7GATE_GUARD,answer=yes): FAILED —
+                # stuck in a menu/dialog  [FRESH_WATER -1 (now 0)] — it
+                # said: '...You can go on through'". The op ran out of A
+                # presses on a long speech; that is the BOX still being up,
+                # not the interaction not happening, and the harness's own
+                # delta sat two clauses later contradicting its own verdict
+                # (user, 2026-08-26). The run had to overrule us to
+                # continue, which it did — but reading past the harness is
+                # not a thing it should have to do. Only the sentence
+                # changes: the strike, the touch retraction and everything
+                # else keyed on ok stay exactly as they were, because
+                # whether the op should be RE-SENT is a different question
+                # from whether the world moved.
+                _moved = self._goods_delta(pre_obs, obs)
+                if _moved:
+                    note += (f": the op did not finish cleanly — "
+                             f"{r.get('detail')} — BUT THE WORLD MOVED "
+                             f"WHILE IT RAN, so this is not nothing having "
+                             f"happened")
+                else:
+                    note += f": FAILED — {r.get('detail')}"
                 # An interact that never happened leaves the thing UNTOUCHED.
                 # Without this the provisional mark stands, and a room whose
                 # items could not be reached this time counts as fully
