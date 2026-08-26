@@ -1759,6 +1759,14 @@ def _fit(text: str, budget: int = EVIDENCE_BUDGET,
                                               for m in near) else 1)
         kept_units, cut = units[:keep_n], len(units) - keep_n
         kept = [l for u in kept_units for l in u]
+        # NOTHING CAME OUT — STOP, DO NOT SPIN. Grouping indented speeches
+        # into whole entries (2026-08-26) made a block that is few ENTRIES
+        # but many LINES: keep_n = max(4, 4*3//4) = 4 of 4 units, so cut
+        # was 0, the block was rewritten with a "... 0 line(s) ..." note
+        # added, the text got LONGER, and the while loop never ended —
+        # author.py burned 12 minutes of CPU mid-chain with the game down.
+        if cut <= 0:
+            return text[:budget] + "\n[evidence truncated to fit]"
         # ORDER IS INFORMATION; DO NOT RE-ALPHABETISE IT. The near-first
         # sort above is stable, so `kept` arrives in whatever order the
         # block was built in — and for the sightings block that order IS
