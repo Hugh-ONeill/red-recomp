@@ -1099,6 +1099,8 @@ class Executor:
         self._world_mark_seen: str = ""
         self.frontier: dict = {}    # region -> every exit visible from it
         self.sightings: dict = {}   # region -> named objects seen there
+        # region -> names once sighted there and since found absent
+        self._gone: dict = {}
         self.region_anchors: dict = {}   # map -> {cell: region name}
         self.searched: dict = {}    # "*" -> {region: fully worked};
                                     # flag:/item: keys add per-target claims
@@ -2500,6 +2502,8 @@ class Executor:
             self.visits = data.get("visits", {})
             self.frontier = data.get("frontier", {})
             self.sightings = data.get("sightings", {})
+            self._gone = {r: set(v) for r, v in
+                          (data.get("gone") or {}).items()}
             self.region_anchors = data.get("region_anchors", {}) or {}
             self.searched = data.get("searched", {})
             self.contested = data.get("contested", {})
@@ -3066,6 +3070,8 @@ class Executor:
                 {"explored": self.explored, "dead_ends": self.dead_ends,
                  "visits": self.visits, "frontier": self.frontier,
                  "sightings": self.sightings, "searched": self.searched,
+                 "gone": {r: sorted(v) for r, v in
+                          (getattr(self, "_gone", {}) or {}).items()},
                  "touch_bag": self._touch_bag,
                  "touch_mark": self._touch_mark,
                  "region_anchors": self.region_anchors,
@@ -3295,6 +3301,16 @@ class Executor:
                 and not str(n).startswith("CUT_TREE")}
         if gone:
             self.log("sighting_gone", area=here, names=sorted(gone))
+            # ...AND WHAT THEY SAID OUTLIVES THEM. Sightings learned this
+            # in 08-25; `hints` never did, so ROUTE12_SNORLAX's "A sleeping
+            # POKéMON blocks the way!" went on being served under "WHAT YOU
+            # WERE TOLD ELSEWHERE — this game explains its own gates out
+            # loud" for legs after EVENT_BEAT_ROUTE12_SNORLAX fired and the
+            # thing was gone from the map (user, 2026-08-26: "stale snorlax
+            # blocker too i think"). The line is kept — a ledger keeps its
+            # observations — and marked with the other observation that
+            # bears on it: you have stood there since and it was not there.
+            self._gone.setdefault(here, set()).update(gone)
         keep = (was - gone) | set(names)
         if keep != was:
             self.sightings[here] = sorted(keep)
@@ -8814,14 +8830,24 @@ class Executor:
         events have fired since. Said before the world moved is a fact the
         reader needs to weigh a sentence; whether it still applies is the
         model's."""
+        # WHO SAID IT MAY NOT BE THERE ANY MORE, and that is the other
+        # half of dating a sentence. Same evidence the sightings ledger
+        # already keeps: this run stood in that spot again and the speaker
+        # was not on screen. Stated as the observation it is; whether the
+        # sentence still means anything is the model's.
+        _who = str(line).split(":", 1)[0].strip()
+        _absent = (_who and _who
+                   in ((getattr(self, "_gone", {}) or {}).get(region) or ()))
+        _tail = (f" — and {_who} is NOT THERE ANY MORE: you have stood in "
+                 f"{region} since and it was not on screen" if _absent else "")
         then = ((getattr(self, "hints_at", {}) or {}).get(region) or {}).get(line)
         if then is None:
-            return line
+            return line + _tail
         now = len((obs or {}).get("flags") or [])
         if now > then:
             return (f"{line}  (said before {now - then} event(s) that have "
-                    f"fired since)")
-        return line
+                    f"fired since){_tail}")
+        return line + _tail
 
     def _atlas_text(self, here: str | None = None) -> str:
         parts = []

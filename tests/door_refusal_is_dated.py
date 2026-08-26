@@ -57,7 +57,7 @@ _ex = Path("planner/executor.py").read_text()
 ck("the wording matches the people-said block",
    "said before " in src[i:i + 1600]
    and "(said before {now - then} event(s) that have " in _ex
-   and 'f"fired since)")' in _ex)
+   and 'fired since)' in _ex)
 
 import ast
 try:
