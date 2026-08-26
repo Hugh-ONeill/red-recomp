@@ -5920,7 +5920,8 @@ class Executor:
                     self._route_why = (
                         f"the leg {str(key)} is a walk across this map and "
                         f"it did not arrive"
-                        + (f", and what it said was: {str(_wdet)[:300]}"
+                        + (f", and what it said was: "
+                           f"{str(_wdet)[:self.WHY_BUDGET]}"
                            if _wdet else ""))
                     self.log("route_abandoned", subgoal=sg.get("id"),
                              step=str(key), standing=self._where(o),
@@ -6196,7 +6197,8 @@ class Executor:
                     self._save_memory()
                 self._route_why = (
                     f"the leg {str(key)} toward {nxt} would not land"
-                    + (f", and what it said was: {str(_last_det)[:300]}"
+                    + (f", and what it said was: "
+                       f"{str(_last_det)[:self.WHY_BUDGET]}"
                        if _last_det else ""))
                 self.log("route_walk_lost", subgoal=sg["id"], wanted=nxt,
                          got=self._where(o), why=_last_det[:200])
@@ -6978,6 +6980,18 @@ class Executor:
         return "\n".join(lines)
 
     BAG_SLOTS = 20          # gen 1's bag is twenty distinct items
+
+    # HOW MUCH OF A REFUSAL REACHES THE MODEL. Yesterday's fix passed the
+    # failing hop's own words through at [:300], and a cross refusal puts
+    # its geometry FIRST and what is standing in the way LAST — so Route 9
+    # arrived as "...closest to the right edge was 4,8, still 55 cells
+    # short. The ground you can reach from here is only 9 cell(s), and
+    # standing at its edge" and stopped, one clause before "CUT_TREE (a
+    # bush CUT clears) at (5,8)". The model read a wall, tried FLY (which
+    # it cannot use), and re-issued the same go (user, 2026-08-26: "from
+    # vermillion stopped at rt9 again"). The tail is the part worth
+    # sending; these refusals run to roughly 600-900 characters.
+    WHY_BUDGET = 1400
 
     def _policy_heal_line(self, obs) -> str:
         """A healing rule that names an item you do not carry never fires.
@@ -12664,6 +12678,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     self.log("room_sweep", subgoal=sg["id"], region=here_s,
                              objects=loose[:8])
                     asked_back = []
+                    felled = []
                     for name in loose[:8]:
                         if kinds.get(name) == "cut_tree" and knows_cut:
                             x, y = coords.get(name, (None, None))
@@ -12671,6 +12686,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                                  x=x, y=y)
                             self.log("sweep_cut", subgoal=sg["id"],
                                      at=f"{x},{y}")
+                            if ((o2 or {}).get("result") or {}).get("ok"):
+                                felled.append(f"{name} at ({x},{y})")
                         else:
                             o2 = self._send_safe("interact", name=name)
                         if o2 and o2.get("mode") == "battle":
@@ -12699,10 +12716,32 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         cur = o2 or cur
                         if pred_holds(done, cur):
                             break
+                    # A BUSH THAT WAS CUT IS NOT A BUSH THAT WAS PRESSED.
+                    # The sweep sends field_move CUT and reported it as
+                    # "pressed A on CUT_TREE — everything reachable here
+                    # has now been tried", which is the OPPOSITE of what
+                    # happened: a wall came down and the sentence says
+                    # nothing is left to do here. On Route 9 that bush is
+                    # what seals the 9-cell pocket you land in from
+                    # Cerulean off from the east seam, and the run read
+                    # "everything tried", spent a round on FLY, and only
+                    # got through on the go after that (user, 2026-08-26:
+                    # "from vermillion stopped at rt9 again"). What the
+                    # felling opens is not stated — it may open nothing.
+                    _pressed = [n for n in loose[:8]
+                                if not any(f.startswith(n + " at ")
+                                           for f in felled)]
                     trace.append(
-                        f"(swept this area: pressed A on "
-                        f"{', '.join(loose[:8])} — everything reachable "
-                        f"here has now been tried)")
+                        "(swept this area: "
+                        + ("; ".join(
+                            ([f"pressed A on {', '.join(_pressed)}"]
+                             if _pressed else [])
+                            + ([f"CUT DOWN {', '.join(felled)} — that "
+                                f"ground is walkable now, and a walk that "
+                                f"stopped against it may get further if "
+                                f"you send it again"]
+                               if felled else [])))
+                        + " — everything reachable here has now been tried)")
                     if asked_back:
                         trace.append(
                             f"({', '.join(asked_back)} ASKED something and "

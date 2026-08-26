@@ -14,14 +14,14 @@ src = Path("planner/executor.py").read_text()
 ck("_walk_route clears the reason each time", "self._route_why = \"\"" in src)
 ck("the lost-hop path records the leg and what it said",
    'f"the leg {str(key)} toward {nxt} would not land"' in src
-   and "what it said was: {str(_last_det)[:300]}" in src)
+   and "str(_last_det)[:self.WHY_BUDGET]" in src)
 ck("go says it", 'WHAT STOPPED IT: {_why}' in src)
 ck("explore says it too", 'WHAT STOPPED IT: {_why2}' in src)
 ck("every give-up path sets a reason, not just one",
    src.count("self._route_why = (") >= 4)
 ck("the walk-across leg keeps what the walk itself said",
    '_wdet = ((_wres or {}).get("result") or {}).get("detail") or ""' in src
-   and "what it said was: {str(_wdet)[:300]}" in src)
+   and "str(_wdet)[:self.WHY_BUDGET]" in src)
 
 # behaviour: the trace the model actually receives
 ex = E.Executor.__new__(E.Executor)

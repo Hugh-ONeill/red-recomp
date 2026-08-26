@@ -38,9 +38,13 @@ ck("it stays silent when there is no record at all",
    "if _here2 or _away2:" in src[max(0, i - 400):i])
 
 # --- never points ---
+# comments carry the case history (Route 9, Diglett's Cave); only the text
+# that actually reaches the model is under test here
+_said = "\n".join(l for l in blk.splitlines()
+                  if not l.lstrip().startswith("#"))
 ck("no map is placed for it, and no ground is recommended",
    not re.search(r"(?i)(route \d|diglett's cave|is located|you should|go to "
-                 r"the|best place|pays more|worth going)", blk))
+                 r"the|best place|pays more|worth going)", _said))
 ck("the choice is left with the model",
    "worth the walk is yours to read" in blk)
 
