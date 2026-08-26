@@ -1512,13 +1512,36 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # there, route walked before — say so; going is still its call.
         _mymap = str(here).split("|")[0]
         _seen_in: dict = {}
+        # A THING ALREADY PRESSED OVER THERE IS NOT A REASON TO WALK BACK.
+        # On SILPH_CO_11F|1,1 the four unreachable things were the PC, the
+        # BEAUTY, the PRESIDENT and ROCKET2 — and of those, only ROCKET2
+        # had ever been sighted anywhere the run had walked (in
+        # SILPH_CO_11F|9,0), where it had ALREADY been fought. The page
+        # still offered "ground you HAVE stood in before ... {"op":"go",
+        # "to":"SILPH_CO_11F|9,0"} walks the whole walked route for you",
+        # and the run took that route twice, to a room that cannot reach
+        # the president, while the one thing that could work — explore,
+        # entry 1, toward ground never on screen seven steps away — sat
+        # unread (user, 2026-08-26: "its been here twice and used the go
+        # command to go to the other part of 11F which CANT reach the
+        # door"). A route whose whole payoff is a thing already touched
+        # buys nothing; offering it is the harness recommending a walk it
+        # has itself already proven spent.
+        _tried = getattr(ex, "_tried_objs", {}) or {}
         for _nm in (c.key for c in _stuck):
             for _reg, _names in (getattr(ex, "sightings", {}) or {}).items():
                 if (_reg != here and str(_reg).split("|")[0] == _mymap
                         and _nm in (_names or [])
+                        and _nm not in (_tried.get(_reg) or set())
                         and int((getattr(ex, "visits", {}) or {})
                                 .get(_reg) or 0) > 0):
                     _seen_in.setdefault(_reg, []).append(_nm)
+        # ...AND THE ONES NO WALKED GROUND HAS EVER REACHED. The sentence
+        # named all four and then answered for one, so "it is ground you
+        # HAVE stood in before" read as true of the list. Three of those
+        # four had never been reachable from anywhere this run has stood.
+        _named = {n for ns in _seen_in.values() for n in ns}
+        _nowhere = [c.key for c in _stuck if c.key not in _named]
         if _seen_in:
             _reg = max(_seen_in, key=lambda r: len(_seen_in[r]))
             try:
@@ -1547,7 +1570,13 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                      + ", ".join(_seen_in[_reg][:4]) + f" are in {_reg}, "
                      "which you have visited "
                      + str(int((getattr(ex, "visits", {}) or {})
-                               .get(_reg) or 0)) + "x")
+                               .get(_reg) or 0)) + "x"
+                     + (f" — but {', '.join(_nowhere[:4])} "
+                        + ("has" if len(_nowhere) == 1 else "have")
+                        + " never been reachable from any ground you have "
+                          "stood on, so that route does not answer for "
+                        + ("it" if len(_nowhere) == 1 else "them")
+                        if _nowhere else ""))
             if _path:
                 _k, _dest = _path[0]
                 _ks = str(_k)
