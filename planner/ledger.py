@@ -347,17 +347,83 @@ def beyond(ex, dest: str, target: str, here: str | None = None) -> str:
                 break
             q.append((nxt, n + 1))
     worked = dest in worked_regions(ex, target)
+    _other = other_part_note(ex, dest, here or "")
     if found:
         nxt, n, p2 = found
         return ((f"{dest} is fully worked itself" if worked
                  else f"{dest} has nothing untried itself")
                 + f", but {n} more leg(s) on through it {nxt} still has "
-                + " and ".join(p2))
+                + " and ".join(p2) + _other)
     if worked:
         return (f"{dest} is fully worked and so is everything you have "
                 f"walked beyond it — nothing new that way as far as you "
-                f"have walked")
-    return ""
+                f"have walked" + _other)
+    return _other.lstrip("; ").capitalize() if _other else ""
+
+
+def other_part_note(ex, dest: str, here: str) -> str:
+    """Another walked part of the SAME map that still has untried ways.
+
+    beyond()'s search deliberately refuses to double back through `here`,
+    which is right for "what is new that way" and leaves it blind to the
+    rest of the map. Crossing west from Saffron lands in ROUTE_7|18,12, a
+    pocket whose ONE recorded exit is back east, so the row read
+    "ROUTE_7|18,12 is fully worked and so is everything you have walked
+    beyond it — nothing new that way". Every word true, and it reads as
+    "Route 7 is done" — while ROUTE_7|0,2, the half holding the Underground
+    Path and the Route 7 gate, still had untried ways. The run crossed west
+    three times in a row, landing in the same nine cells each time, before
+    it reached for go (user, 2026-08-26: "it kept trying to cross west
+    again and landing itself in the same area").
+
+    Recall of ground already walked, and the one fact that decides it: the
+    two parts are joined only by LEAVING the map. Which to do stays the
+    model's."""
+    mid = _map_of(dest)
+    if not mid:
+        return ""
+    rows = []
+    for reg in (getattr(ex, "explored", {}) or {}):
+        if reg in (dest, here) or _map_of(reg) != mid:
+            continue
+        parts = _left_parts(ex, reg)
+        if not parts:
+            continue
+        try:
+            path = ex._route(dest, reg)
+        except Exception:
+            path = None
+        rows.append((len(path) if path is not None else 99, reg, parts))
+    if not rows:
+        return ""
+    rows.sort()
+    n, reg, parts = rows[0]
+
+    def _joined_on_map(a: str, b: str) -> bool:
+        """Is there a walked route from a to b that never leaves this map?"""
+        from collections import deque
+        seen, q = {a}, deque([a])
+        while q:
+            cur = q.popleft()
+            for _k, e in ((getattr(ex, "explored", {}) or {}).get(cur)
+                          or {}).items():
+                t = (e or {}).get("to")
+                if not t or t in seen or _map_of(t) != mid:
+                    continue
+                if t == b:
+                    return True
+                seen.add(t)
+                q.append(t)
+        return False
+
+    if _joined_on_map(dest, reg):
+        return ""            # one map, one walk — nothing to warn about
+    return (f"; {reg} is ANOTHER PART of {mid} you have walked and it still "
+            f"has " + " and ".join(parts)
+            + f", and no walk on {mid} joins the two"
+            + (f" — the route you have walked between them is {n} leg(s) "
+               f"and leaves this map" if n < 99
+               else ", and no walked route between them is recorded"))
 
 
 UNWORKED = ("untried", "untouched", "unspoken", "reopened", "cuttable",

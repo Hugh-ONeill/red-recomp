@@ -4865,21 +4865,35 @@ function OPS.cross(G, c)
                 math.abs(ex - p.cellX) + math.abs(ey - p.cellY), why2)
     end
   end
+  -- WHERE A CROSSING PUT YOU DOWN. `go` reports "now at ROUTE_7|0,2" and
+  -- use_warp reports "(map->ROUTE_7_GATE, moved, warped)"; cross reported
+  -- the bare word "crossed", so three crossings west out of Saffron that
+  -- each landed in the SAME nine-cell pocket read as three plain successes
+  -- in the trace (user, 2026-08-26: "it kept trying to cross west again and
+  -- landing itself in the same area"). The map and the cell are on the
+  -- screen the moment you arrive; saying them costs nothing and decides
+  -- nothing.
+  local function crossed_at()
+    local p2 = ow.player or p
+    return ("crossed — now on %s at (%s,%s)"):format(
+      tostring(ow.map and ow.map.id),
+      tostring(p2 and p2.cellX), tostring(p2 and p2.cellY))
+  end
   -- step off the seam repeatedly until the map changes
   for _ = 1, 8 do
-    if (ow.map and ow.map.id) ~= startMap then return true, "crossed" end
+    if (ow.map and ow.map.id) ~= startMap then return true, crossed_at() end
     table.insert(G.input.pressQueue, dir)
     G.input.state[dir] = true
     for _ = 1, 20 do
       coroutine.yield()
       if (ow.map and ow.map.id) ~= startMap then
-        G.input.state[dir] = false; return true, "crossed"
+        G.input.state[dir] = false; return true, crossed_at()
       end
     end
     G.input.state[dir] = false
     U.wait(3)
   end
-  if (ow.map and ow.map.id) ~= startMap then return true, "crossed" end
+  if (ow.map and ow.map.id) ~= startMap then return true, crossed_at() end
   return false, ("stepped %s at gap (%d,%d) but no map change")
     :format(dir, p.cellX, p.cellY)
 end
