@@ -1715,9 +1715,30 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         else:
             head += "ground you have not found the way into"
     elif fully_worked(cands) and not _fr:
-        head += (". FULLY WORKED: nothing here is untried or unpressed — "
-                 "staying finds nothing new; leaving for ground that still "
-                 "has something is how the search goes on")
+        # "FULLY WORKED" IS ABOUT A REGION AND READS AS A MAP. Route 13's
+        # west crossing lands in ROUTE_14|16,6, a four-cell nook, and the
+        # page opened "FULLY WORKED: nothing here is untried or unpressed"
+        # in the same breath as "its north, south, west side(s) have never
+        # been on screen" and "38 cell(s) seen but cannot be walked to"
+        # (user, 2026-08-26: "uh oh its in the rt 14 pocket"). Both true;
+        # together they say a route nobody has looked at is finished. The
+        # frontier branch above already has the honest wording for a floor
+        # with unseen ground you can WALK to; a sealed corner has none you
+        # can walk to and is exactly as unfinished. Say what is known: this
+        # is a corner, and where the rest is entered from is not recorded.
+        head += (". NOTHING HERE IS UNTRIED OR UNPRESSED"
+                 + (" — and this is a CORNER of "
+                    + str((m.get("id") or "this map")) + ": "
+                    + (", ".join(_unseen_sides)
+                       + " side(s) of it have never been on screen"
+                       if _unseen_sides else "part of it cannot be reached "
+                                             "from here")
+                    + ". Where the rest of this map is entered from is not "
+                      "recorded — it may be another cell of the same edge "
+                      "you crossed, and it may be another map entirely"
+                    if _unseen_sides else "")
+                 + ". Staying finds nothing new; leaving for ground that "
+                   "still has something is how the search goes on")
     elif switches(cands) and not any(c.status in UNWORKED for c in cands
                                      if c.kind != "op"):
         _sw = switches(cands)
