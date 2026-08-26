@@ -161,6 +161,25 @@ fi
 # The judgment is the model's, twice over (a sweep of the remaining list,
 # then a yes/no on each objective it names, refused outright for any that
 # names a map the run has never stood on). The harness only crosses off.
+# A PUSH THE OUTLINE UNDID IS NOT A PUSH THE MODEL SPENT. `later` refuses a
+# third deferral, and it counted every line in run/outline_pushes bearing this
+# objective's text. But the outline SHRINKS underneath a pushed leg: legs ahead
+# of it get crossed off by check-done and the look-ahead sweep, and the leg
+# slides back toward the front. "Obtain the Secret Key" was pushed 32->after
+# 36, came up again at 34, was pushed 34->after 37, and came up again at 36 —
+# two deferrals spent and it sits BEFORE both targets, so neither is in force.
+# The rung then refused a third and the chain stopped on it, with the correct
+# answer (put it after "Reach Cinnabar Island", which is where the key is)
+# never asked for (user, 2026-08-26: "wouldnt the real exit be pushing it back
+# to cinnabar though?"). "Defeat the Silph Co. guards" shows the same shape
+# four times over. Count a push only while it still HOLDS: the leg is now
+# later than the position it was pushed to. Format is from<TAB>to<TAB>text.
+pushes_in_force() {
+  awk -F'\t' -v want="$1" -v now="$2" \
+      '$3 == want && ($2+0) < now { n++ } END { print n+0 }' \
+      run/outline_pushes 2>/dev/null || echo 0
+}
+
 sweep_ahead() {
   local at="$1" st got nums n
   st=$(python planner/state_text.py)
@@ -475,7 +494,7 @@ while :; do
     # FLY leg then named it as its blocker and pulled it back to 29, and
     # round again. If this leg has already been pushed, the pull rung is
     # not asked (2026-08-19).
-    pushed_before=$(grep -Fc "$leg" run/outline_pushes 2>/dev/null) || pushed_before=0
+    pushed_before=$(pushes_in_force "$leg" "$i")
     if [ "$pushed_before" -gt 0 ]; then
       echo "    (not asking the blocker rung: this leg has been pushed" \
            "before — pulling it back is the loop that costs the run)"
@@ -555,7 +574,7 @@ while :; do
     # KILLED THE WHOLE CHAIN (exit 141, mid-ladder, leg 5). No pipe: the
     # substitution already captures grep's "0", and the `||` only has to
     # stop the non-zero status from tripping set -e.
-    pushed=$(grep -Fc "$leg" run/outline_pushes 2>/dev/null) || pushed=0
+    pushed=$(pushes_in_force "$leg" "$i")
     if [ "$(cat run/outline_pushes 2>/dev/null | wc -l)" -lt 20 ] \
         && at=$(python planner/author.py --check-later \
             --goal "$leg" --outline-path plans/outline.txt --leg "$i" \
