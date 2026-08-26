@@ -61,6 +61,11 @@ ck("it names the op that picks a row",
 # --- ledgers written under the old rule are repaired ---
 ck("presses already spent under the old rule are re-opened",
    "opened a list are open again" in src and "_unspent" in src)
+ck("...under its OWN gate, not the vending store's",
+   "if not self._shelf_machine or not self._lists_reopened:" in src
+   and "self._lists_reopened = True" in src)
+ck("...and that gate survives a restart",
+   'data.get("lists_reopened")' in src and '"lists_reopened": bool(' in src)
 ck("...keyed on the object the reply itself names",
    r'r"([A-Z0-9_]+) opened a (?:menu|list)"' in src)
 

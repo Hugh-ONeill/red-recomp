@@ -1207,6 +1207,8 @@ class Executor:
         # which of those are VENDING MACHINES rather than a counter:
         # the stock is kept the same way, the sentence is not
         self._shelf_machine: set = set()
+        # whether the one-shot un-spend of menu-only presses has run
+        self._lists_reopened: bool = False
         self._plan_hist: dict = {}   # target -> [(round, where, plan)] last 8
         self._last_overworld_map = None
         self.boulder_start: dict = {}   # map -> boulder cells ON ARRIVAL
@@ -2652,6 +2654,7 @@ class Executor:
             self._cut_bushes = data.get("cut_bushes") or {}
             self._shelves = data.get("shelves") or {}
             self._shelf_machine = set(data.get("shelf_machine") or [])
+            self._lists_reopened = bool(data.get("lists_reopened"))
             # MEMORY THAT OUTLIVES THE ATTEMPT. The outcome ledger and the
             # plan history were per process, and every attempt is a new
             # process — so each attempt re-supposed the same thing from
@@ -2686,7 +2689,14 @@ class Executor:
                               f"{len(self._shelves)} mart(s) from the journal")
                 except OSError:
                     pass
-            if not self._shelf_machine:
+            # TWO REPAIRS, TWO GATES. This pass was gated on the
+            # vending store being empty, and the un-spend rides in
+            # it — so at the restart that first carried the un-spend
+            # the store was ALREADY full from the restart before,
+            # the whole block was skipped, and the three roof
+            # machines stayed retired. A one-shot repair whose gate
+            # is somebody else's completion can never fire.
+            if not self._shelf_machine or not self._lists_reopened:
                 # ...AND THE MACHINES, WHICH NO BACKFILL COULD SEE. The
                 # mart pass above keys on the record's own `at`, and a
                 # vending machine answers with its MENU UP, so the
@@ -2749,6 +2759,11 @@ class Executor:
                     if _unspent:
                         print(f"[memory] {_unspent} press(es) that only "
                               f"opened a list are open again")
+                    # stamped whatever it found: the journal is the same
+                    # journal next boot, so a second sweep can only redo
+                    # the same work
+                    self._lists_reopened = True
+                    self._save_memory()
                 except OSError:
                     pass
             # ...and drop any edge already filed that contradicts a seam
@@ -3083,6 +3098,8 @@ class Executor:
                  "shelves": getattr(self, "_shelves", {}),
                  "shelf_machine": sorted(getattr(self, "_shelf_machine",
                                                  set())),
+                 "lists_reopened": bool(getattr(
+                     self, "_lists_reopened", False)),
                  "outcomes": getattr(self, "_outcomes", {}),
                  "plan_hist": getattr(self, "_plan_hist", {}),
                  "blackouts": self._blackouts,

@@ -75,7 +75,7 @@ ck("the machine set is persisted and reloaded",
    and 'data.get("shelf_machine")' in esrc)
 ck("stock already pressed this run is backfilled from the journal",
    "vending stock backfilled" in esrc
-   and "if not self._shelf_machine:" in esrc)
+   and "if not self._shelf_machine or not self._lists_reopened:" in esrc)
 ck("...using the last map the journal named, since a menu-up obs has none",
    "_last_at" in esrc and '"None" not in _c' in esrc)
 
