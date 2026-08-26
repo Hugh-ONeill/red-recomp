@@ -296,7 +296,10 @@ while :; do
     # ladder, after the remaining attempts and their rewrites have added
     # evidence (leg 19's first ask reworded a wrong fact into another;
     # the second is where VOID has something to stand on)
-    [ "$(grep -Fxc "$leg" run/outline_wording_asked 2>/dev/null || echo 0)" -ge 2 ] && return 1
+    # grep -c prints "0" AND exits 1 on no match, so "|| echo 0" printed
+    # a second 0 and the test died on "0\n0: integer expected" every leg
+    _asked=$(grep -Fxc "$leg" run/outline_wording_asked 2>/dev/null) || true
+    [ "${_asked:-0}" -ge 2 ] && return 1
     [ "$(cat run/outline_rewordings 2>/dev/null | wc -l)" -lt 3 ] || return 1
     echo "$leg" >> run/outline_wording_asked
     set +e
