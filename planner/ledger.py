@@ -739,6 +739,11 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         kind = o.get("kind") or "thing"
         c = Candidate(key=name, kind=kind, x=o.get("x"), y=o.get("y"),
                       reachable=bool(o.get("reachable")))
+        # a wide fixture (Silph's two-tile card-key shutters) is ONE thing
+        # minted at its first tile; the rest of it rides along as twins so
+        # the tiles on screen are not read as doors gone missing
+        c.twins = [f"{t.get('x')},{t.get('y')}"
+                   for t in (o.get("twins") or []) if isinstance(t, dict)]
         seen_names[name] = c
         oc = outcomes.get(name) or {}
         c.n = int(oc.get("n") or 0)
@@ -1947,7 +1952,17 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                      "it is a way DOWN and never a way back — " + words)
         if c.kind == "shut_door" and c.status in ("untouched", "touched",
                                                   "inert", "worth_a_word"):
-            words = ("a CLOSED DOOR, drawn shut across the way — "
+            # A SHUTTER IS ONE DOOR AND IT IS WIDE. The shim now mints it
+            # once at its first tile and carries the rest, the same
+            # convention an ordinary two-tile doorway has used since
+            # 2026-08-25 — say the width for the same reason: so the tiles
+            # the model can see on screen are not read as separate doors it
+            # has failed to find.
+            _tw = [t for t in (getattr(c, "twins", None) or []) if t]
+            words = ("a CLOSED DOOR, drawn shut across the way"
+                     + (f" — ONE shutter, {len(_tw) + 1} tiles wide, also "
+                        f"at {', '.join(str(t) for t in _tw)}" if _tw else "")
+                     + " — "
                      + _STATUS_WORDS.get(
                          "sealed_untried" if (c.status == "sealed"
                                               and not c.n) else c.status,

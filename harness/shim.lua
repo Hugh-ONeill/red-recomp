@@ -2178,6 +2178,24 @@ local function observe(G, seq, result)
       if onList and lm and lm.cellTile then
         local w = lm.widthCells or 0
         local h = lm.heightCells or 0
+        -- A SHUTTER IS ONE DOOR, AND THE ENGINE SAYS SO. Silph's card-key
+        -- shutters are drawn two cells tall (or wide), and minting a thing
+        -- per TILE put six entries on 9F for three doors — 18,4 with 19,4,
+        -- 3,8 with 3,9, 18,10 with 19,10 (user, 2026-08-26: "the shutter
+        -- doors register as two objects, they should only register as
+        -- one"). It doubles every "N thing(s) never pressed" count on
+        -- every Silph floor, and the second half is a round spent on a
+        -- door already answered: after
+        -- DOOR_SILPH_CO_9F_11_12 said "Bingo! The CARD KEY opened the
+        -- door!", the very next op pressed DOOR_SILPH_CO_9F_11_13 and got
+        -- "no reachable tile adjacent to target" — there was no door there
+        -- any more. The engine's own unit is the BLOCK: tryCardKeyDoor
+        -- does replaceBlock(floor(fx/2), floor(fy/2)), so both cells of a
+        -- block ARE one shutter and open together. Group on that, name it
+        -- once at its first cell, carry the rest as twins, hide nothing —
+        -- the convention an ordinary two-tile doorway has used since
+        -- 2026-08-25.
+        local blocks, order = {}, {}
         for cy = 0, math.min(h - 1, 71) do
           for cx = 0, math.min(w - 1, 71) do
             local t = lm:cellTile(cx, cy)
@@ -2190,13 +2208,31 @@ local function observe(G, seq, result)
               end
             end
             if hit then
-              o.map.objects[#o.map.objects + 1] = {
-                x = cx, y = cy, kind = "shut_door",
-                name = ("DOOR_%s_%d_%d"):format(tostring(lm.id), cx, cy),
-                reachable = adjacent_reachable(cx, cy, false),
-              }
+              local bk = ("%d,%d"):format(math.floor(cx / 2),
+                                          math.floor(cy / 2))
+              if not blocks[bk] then
+                blocks[bk] = { cells = {} }
+                order[#order + 1] = bk
+              end
+              local cs = blocks[bk].cells
+              cs[#cs + 1] = { x = cx, y = cy }
             end
           end
+        end
+        for _, bk in ipairs(order) do
+          local cs = blocks[bk].cells
+          local head = cs[1]
+          local reach, twins = false, {}
+          for i, c in ipairs(cs) do
+            if adjacent_reachable(c.x, c.y, false) then reach = true end
+            if i > 1 then twins[#twins + 1] = { x = c.x, y = c.y } end
+          end
+          o.map.objects[#o.map.objects + 1] = {
+            x = head.x, y = head.y, kind = "shut_door",
+            name = ("DOOR_%s_%d_%d"):format(tostring(lm.id), head.x, head.y),
+            reachable = reach,
+            twins = (#twins > 0) and twins or nil,
+          }
         end
       end
     end
