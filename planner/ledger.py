@@ -309,6 +309,13 @@ def beyond(ex, dest: str, target: str, here: str | None = None) -> str:
     if _shelf:
         # a shop's shelf is what lies beyond its door, and it is the fact
         # a re-supposed purchase keeps missing
+        # ...AND A VENDING MACHINE IS NOT A COUNTER. Same store, same
+        # sentence shape, but "buy" does not read a machine: it is pressed
+        # and its rows are picked. Saying "sells" without saying which
+        # would send a buy at a wall.
+        if _map_of(dest) in (getattr(ex, "_shelf_machine", None) or set()):
+            return (f"{dest} has a VENDING MACHINE selling: "
+                    f"{', '.join(_shelf[:8])}")
         return f"{dest} sells: {', '.join(_shelf[:8])}"
     parts = _left_parts(ex, dest)
     # ground never on screen counts as something left, for the region
@@ -1417,7 +1424,14 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                        "nearest) — and ")
     _sh = shelf_of(ex, here)
     if _sh:
-        head += f". This mart sells: {', '.join(_sh[:10])}"
+        if _map_of(here) in (getattr(ex, "_shelf_machine", None) or set()):
+            head += (". THE VENDING MACHINE(S) HERE SELL: "
+                     + ", ".join(_sh[:10])
+                     + " — a machine is not a counter and takes no buy: "
+                       "press one and pick a row with "
+                       "{\"op\":\"menu\",\"index\":N}")
+        else:
+            head += f". This mart sells: {', '.join(_sh[:10])}"
     # A LIFT CAR IS NEVER FINISHED, AND IT IS NOT A ROOM. Its panel is the
     # whole point of it: the floors it serves are on the panel, and one of
     # them is where you want to be. Filed as an ordinary room with a sign

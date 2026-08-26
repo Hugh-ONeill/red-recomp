@@ -1187,6 +1187,9 @@ class Executor:
         self._dead_why: dict = {}    # op signature -> last failure detail
         self._cut_bushes: dict = {}  # map -> ["x,y", ...] bushes cut before
         self._shelves: dict = {}     # mart map -> [items it sells], as seen
+        # which of those are VENDING MACHINES rather than a counter:
+        # the stock is kept the same way, the sentence is not
+        self._shelf_machine: set = set()
         self._plan_hist: dict = {}   # target -> [(round, where, plan)] last 8
         self._last_overworld_map = None
         self.boulder_start: dict = {}   # map -> boulder cells ON ARRIVAL
@@ -1334,7 +1337,49 @@ class Executor:
         self._tried_objs.setdefault(region, set()).add(name)
         self._stamp_touch(region)
         self._mark_touch(region, name, res_obs)
+        self._record_machine_stock(region, r.get("detail"))
         return True
+
+    # A MACHINE THAT SELLS THINGS IS A SHOP. A mart counter's stock is
+    # kept the moment the counter opens and printed on that mart's door
+    # from anywhere in the world ("CELADON_MART_2F sells: GREAT_BALL,
+    # ..."). A vending machine's stock was published ONCE, in the round
+    # that pressed it — "1=FRESH WATER 200, 2=SODA POP 300, 3=LEMONADE
+    # 350" — and then existed nowhere. The run pressed all three roof
+    # machines, the fact evaporated, and the machines went into `touched`
+    # so the ledger reads them as done while never saying what they hold;
+    # meanwhile the Route 7 guard wants a drink and the only place in the
+    # world that sells one is the one shop the harness never restates
+    # (user, 2026-08-26: "we dont say it the way we do for marts in other
+    # cities"). Same store as the counters, so both render sites and the
+    # persistence work unchanged.
+    _MENU_RE = _re.compile(r"opened a menu[^:]*: (.+?)\. Nothing was chosen")
+    _ROW_RE = _re.compile(r"\d+=([A-Z0-9 .'-]+?)\s*[¥]\s*[\d,]+")
+
+    def _record_machine_stock(self, region, detail) -> None:
+        """Keep what a fixture's purchase menu offered, keyed by map.
+
+        A PRICE is what makes it a shop: an elevator panel lists floors and
+        a PC lists options, and neither carries one, so neither is kept.
+        Nothing here says the stock is worth buying or what it is for."""
+        det = str(detail or "")
+        m = self._MENU_RE.search(det)
+        if not m:
+            return
+        rows = [r.strip().replace(" ", "_")
+                for r in self._ROW_RE.findall(m.group(1))]
+        rows = [r for r in rows if r]
+        if not rows:
+            return                       # a menu with no prices is not a shop
+        mid = str(region).split("|")[0]
+        if not mid or mid == "None":
+            return
+        if self._shelves.get(mid) == rows and mid in self._shelf_machine:
+            return
+        self._shelves[mid] = rows
+        self._shelf_machine.add(mid)
+        self.log("machine_stock", region=region, map=mid, sells=rows)
+        self._save_memory()
 
     def _note_blocker(self, area: str, key: str, kind: str, what: str):
         """Write (or bump) a way that turned the run back. Evidence only:
@@ -2583,6 +2628,7 @@ class Executor:
             self.boulder_start = data.get("boulder_start") or {}
             self._cut_bushes = data.get("cut_bushes") or {}
             self._shelves = data.get("shelves") or {}
+            self._shelf_machine = set(data.get("shelf_machine") or [])
             # MEMORY THAT OUTLIVES THE ATTEMPT. The outcome ledger and the
             # plan history were per process, and every attempt is a new
             # process — so each attempt re-supposed the same thing from
@@ -2615,6 +2661,50 @@ class Executor:
                     if self._shelves:
                         print(f"[memory] shelves backfilled for "
                               f"{len(self._shelves)} mart(s) from the journal")
+                except OSError:
+                    pass
+            if not self._shelf_machine:
+                # ...AND THE MACHINES, WHICH NO BACKFILL COULD SEE. The
+                # mart pass above keys on the record's own `at`, and a
+                # vending machine answers with its MENU UP, so the
+                # observation carries no map and the record reads
+                # "at": "None|None". This run had already pressed all
+                # three roof machines — they are in `touched`, so the
+                # sweep will never press them again — and without this
+                # the stock stays unknown for the rest of the run. The
+                # map is the last one the journal named before the menu
+                # opened, which is where you were standing when it
+                # answered.
+                try:
+                    _last_at = ""
+                    for _l in (RUN / "executor_log.jsonl").read_text() \
+                            .splitlines():
+                        try:
+                            _r4 = json.loads(_l)
+                        except ValueError:
+                            continue
+                        for _cand in (_r4.get("at"), _r4.get("region"),
+                                      _r4.get("to")):
+                            _c = str(_cand or "")
+                            if _c and "None" not in _c and "|" in _c:
+                                _last_at = _c.split("|")[0]
+                        if "opened a menu" not in _l:
+                            continue
+                        for _t in (_r4.get("trace") or []):
+                            _m4 = self._MENU_RE.search(_t)
+                            if not (_m4 and _last_at):
+                                continue
+                            _rows4 = [x.strip().replace(" ", "_")
+                                      for x in self._ROW_RE.findall(
+                                          _m4.group(1))]
+                            _rows4 = [x for x in _rows4 if x]
+                            if _rows4:
+                                self._shelves[_last_at] = _rows4
+                                self._shelf_machine.add(_last_at)
+                    if self._shelf_machine:
+                        print(f"[memory] vending stock backfilled for "
+                              f"{len(self._shelf_machine)} floor(s) from "
+                              f"the journal")
                 except OSError:
                     pass
             # ...and drop any edge already filed that contradicts a seam
@@ -2947,6 +3037,8 @@ class Executor:
                  "boulder_start": getattr(self, "boulder_start", {}),
                  "cut_bushes": getattr(self, "_cut_bushes", {}),
                  "shelves": getattr(self, "_shelves", {}),
+                 "shelf_machine": sorted(getattr(self, "_shelf_machine",
+                                                 set())),
                  "outcomes": getattr(self, "_outcomes", {}),
                  "plan_hist": getattr(self, "_plan_hist", {}),
                  "blackouts": self._blackouts,
