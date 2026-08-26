@@ -13185,8 +13185,24 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # change it toured the houses instead. Walk back to the last
             # subgoal that is actually unsatisfied.
             prev = None
+            # NO BACKTRACK OVER A DELIBERATE DEPARTURE. When the failed
+            # escalation's own ops walked the party out of the target's maps
+            # (recorded as left on purpose), re-opening the previous step
+            # asks the model to walk back to the place it just chose to
+            # leave — and it complies: Lavender to Celadon for the Silph
+            # Scope, then straight back to climb the tower's 6th floor
+            # again (user, 2026-08-25: "it made it to Celadon then turned
+            # back to fulfil the redo goal"). The step failed; let the plan
+            # end and be rewritten from where the party stands.
+            _walked_off = bool(getattr(self, "_left_target", None))
+            if not ok and _walked_off:
+                self.log("backtrack_skipped", failed=sg["id"],
+                         candidate=subgoals[idx - 1]["id"] if idx > 0 else None,
+                         reason="the model walked away from the target on "
+                                "purpose; its plan is elsewhere")
             if (not ok and self.can_escalate and idx > 0
-                    and backtracks < 2 and not sg.get("optional")):
+                    and backtracks < 2 and not sg.get("optional")
+                    and not _walked_off):
                 at = self.settle() or {}
                 # A satisfied MAP subgoal is still worth redoing when that
                 # map has other enclosed areas we have not searched for this
