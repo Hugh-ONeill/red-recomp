@@ -6384,6 +6384,38 @@ class Executor:
                              legs=len(_rest))
                     return self._walk_route(sg, _rest, _replans + 1)
             if self._where(o) != nxt:
+                # ...BUT A BUSH THAT GREW BACK IS NOT A CONTRADICTION. Gen 1
+                # regrows a cut tree every time you re-enter the map, so a
+                # road the run has walked twenty times is walled again on
+                # arrival: `go LAVENDER_TOWN` stops at ROUTE_9|0,8 on EVERY
+                # trip, and has since 08-26 morning (user, twice). Replaying
+                # a walked route is what `go` IS, and that route was walked
+                # with this bush down; cutting it back down is replay, not a
+                # decision — the room sweep already fells bushes unasked.
+                # Only a bush the refusal itself names, only with CUT in the
+                # party, and only once per route.
+                _cut_at = None
+                if _replans < 1:
+                    _cb = _re.search(
+                        r"CUT_TREE \(a bush CUT clears\) at \((\d+),(\d+)\)",
+                        str(_last_det or ""))
+                    if _cb and any(
+                            "CUT" in [str(mv.get("id")
+                                          if isinstance(mv, dict) else mv)
+                                      for mv in (mon.get("moves") or [])]
+                            for mon in ((o or {}).get("party") or [])):
+                        _cut_at = (int(_cb.group(1)), int(_cb.group(2)))
+                if _cut_at:
+                    _cr = self._send_safe("field_move", move="CUT",
+                                          x=_cut_at[0], y=_cut_at[1])
+                    _cok = ((_cr or {}).get("result") or {}).get("ok")
+                    self.log("route_cut_regrowth", subgoal=sg.get("id"),
+                             at=f"{_cut_at[0]},{_cut_at[1]}", ok=bool(_cok))
+                    if _cok:
+                        o = self.settle() or o
+                        _rest3 = self._route(self._where(o), _final)
+                        if _rest3:
+                            return self._walk_route(sg, _rest3, _replans + 1)
                 # A hop that fails to land even after the passage retry
                 # CONTRADICTS the recorded edge: void it, or the router
                 # re-picks the phantom forever (a blackout walk-back
