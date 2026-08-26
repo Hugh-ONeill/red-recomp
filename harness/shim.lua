@@ -6389,11 +6389,15 @@ function OPS.toss(G, c)
         .. ((#can > 0 and #cannot > 0)
             and (" and NOT COMPATIBLE for " .. table.concat(cannot, ", "))
             or "")
-        .. "."
+        .. ". A TM is used up by ONE teaching in this game, so teaching it "
+        .. "frees this bag slot exactly as tossing it would."
     end
+    -- the same count the ITEM screen shows: badges sit in this table too
+    -- and are not bag kinds ("23 of 20 kinds" went out once, 2026-08-25)
     local nk = 0
-    for _, n in pairs((G.save and G.save.inventory) or {}) do
-      if (tonumber(n) or 0) > 0 then nk = nk + 1 end
+    for k, n in pairs((G.save and G.save.inventory) or {}) do
+      if type(k) == "string" and not k:match("BADGE$")
+         and (tonumber(n) or 0) > 0 then nk = nk + 1 end
     end
     why = why .. " A Pokemon Center's PC keeps it instead "
       .. "({\"op\":\"store_item\",\"item\":\"" .. c.item .. "\"}), which "
