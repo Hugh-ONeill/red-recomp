@@ -4794,15 +4794,39 @@ class Executor:
                 return ""
             rows.sort()
             _bits = []
-            for _hop, _m, _wl, _per in rows[:5]:
+            # ...AND "0 EXP PER GRIND" OFF ONE SAMPLE IS NOT A VERDICT.
+            # DIGLETTS_CAVE carries L15-L31 across 76 battles and a single
+            # aborted grind, and the row read "0 exp per grind" beside it:
+            # two numbers from the same floor saying opposite things, with
+            # nothing to say which one is thin. The sample size is the
+            # harness's own count; how much weight it carries is the read.
+            for _hop, _m, _wl, _per in rows[:12]:
                 _lv = (f"L{_wl['lo']}" if _wl["lo"] == _wl["hi"]
                        else f"L{_wl['lo']}-L{_wl['hi']}")
                 _bits.append(
                     f"{_m} {_lv} in {_wl['n']} battle(s)"
-                    + (f", {_per} exp per grind" if _per is not None else "")
+                    + (f", {_per} exp per grind over "
+                       f"{int(((self._grind_exp or {}).get(_m) or {})['n'])} "
+                       f"grind(s)" if _per is not None else "")
                     + (f", {_hop} walked leg(s) away" if _hop < 99 else ""))
+            # THE TAIL KEEPS THE NUMBER THAT DECIDES. A cap of five,
+            # ordered by walked distance, hid exactly the ground a
+            # levelling goal needs: from ROUTE_25 the five nearest floors
+            # are Route 24's L7-L14 grass and its neighbours, and every
+            # floor that pays for an L22 -> L35 haul sat past the cut.
+            # Naming the tail without its levels only moves the cut — for
+            # a level goal the level range IS the evidence — so the tail
+            # is short-form, not name-only: POKEMON_TOWER_6F is L19-L30
+            # whether it is listed ninth or twentieth.
+            _rest = []
+            for _hop, _m, _wl, _per in rows[12:]:
+                _rest.append(_m + " " + (f"L{_wl['lo']}"
+                                         if _wl["lo"] == _wl["hi"]
+                                         else f"L{_wl['lo']}-L{_wl['hi']}"))
             return (". WILD GROUND ELSEWHERE YOU HAVE ALREADY FOUGHT ON: "
-                    + "; ".join(_bits))
+                    + "; ".join(_bits)
+                    + ("; and further off, the levels alone: "
+                       + ", ".join(_rest) if _rest else ""))
         except Exception:
             return ""
 
@@ -6919,6 +6943,33 @@ class Executor:
                       "takes one into the party and "
                       "{\"op\":\"pc_deposit\",\"slot\":N} sends one the "
                       "other way, both at any Pokemon Center.")
+            # ...AND WHERE IT HAS ALREADY FOUGHT, WHICH A LEVEL GOAL WAS
+            # NEVER TOLD. "It fails plainly if nothing wild lives on this
+            # floor, and then somewhere wild is where to go" was the whole
+            # of it, while the run holds the level and the count of every
+            # wild it has ever met: DIGLETTS_CAVE L15-L31 across 76
+            # battles, POKEMON_TOWER_6F L19-L30 across 133, ROUTE_24
+            # L7-L14 across 1209. Carrying a DIGLETT L22 -> L35 condition
+            # it stood on Route 24's grass and spent six rounds walking
+            # Cerulean -> 24 -> 25 hunting a cave it had personally fought
+            # in 76 times, because no page recalled it (user, 2026-08-26:
+            # "for some reason its thinking digletts cave is rt 25 but it
+            # should have it in its memory that its rt2 or rt11"). Where
+            # the cave IS stays its own to know or not know; that it has
+            # BEEN there, and what it met, is the run's own record. The
+            # four helpers the CATCH branch has used since 2026-08-24,
+            # under one head, ordered by walked distance and never by how
+            # good the ground looks.
+            _mid2 = ((obs or {}).get("map") or {}).get("id")
+            _here2 = (_wild_level_note(self, _mid2, obs)
+                      + _grind_yield_note(self, _mid2))
+            _away2 = self._wild_elsewhere_note(_mid2, obs)
+            if _here2 or _away2:
+                lines.append(
+                    "WHAT THE FIGHTING HAS ACTUALLY BEEN, in battles you "
+                    "fought yourself" + _here2 + _exp_needed_note(obs)
+                    + _away2
+                    + ". Which ground is worth the walk is yours to read.")
         # the ONE navigational fact that still matters: a run with no
         # healing behind it is one wipe from losing the walk as well
         rs = (obs or {}).get("respawn") or {}
