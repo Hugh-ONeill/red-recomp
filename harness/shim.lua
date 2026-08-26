@@ -6356,11 +6356,51 @@ function OPS.toss(G, c)
   -- the game will let you USE on a party member, and that tossing ends
   -- that. Refused once; re-issue the same toss and it goes.
   if item_has_a_use(c.item) and not c.confirm then
-    return false, (c.item .. " is something this game will let you USE on "
+    -- SAY WHAT THE TEACH SCREEN WOULD SAY. "Something you can USE on a
+    -- party member" was true of TM02 and the run tossed it anyway, twice
+    -- in one evening (user, 2026-08-25: "just tossed razor wind instead of
+    -- teaching it to pidgeotto"). The game answers "compatible" or "not
+    -- compatible" the moment a TM is pointed at a Pokemon, for free, so
+    -- naming who in the party could take it is what six costless tries
+    -- would show — a fact at the decision, not a pointer. The PC that
+    -- keeps it is on the page too. The verdict stays the model's.
+    local why = c.item .. " is something this game will let you USE on "
       .. "a party member ({\"op\":\"use_item\",\"item\":\"" .. c.item
       .. "\",\"slot\":N}) — using it spends it and keeps whatever it is "
-      .. "worth, tossing it destroys that. Nothing has been thrown away. "
-      .. "If you meant it, send the same toss again with \"confirm\":true.")
+      .. "worth, tossing it destroys that."
+    local _idef = G.data and G.data.items and G.data.items[c.item]
+    local _mv = _idef and _idef.machine and _idef.machine.move
+    if _mv then
+      local can, cannot = {}, {}
+      for i, mon in ipairs((G.save and G.save.party) or {}) do
+        local pdef = G.data.pokemon and G.data.pokemon[mon.species]
+        local able = false
+        for _, mvn in ipairs((pdef and pdef.tmhm) or {}) do
+          if mvn == _mv then able = true break end
+        end
+        local lst = able and can or cannot
+        lst[#lst + 1] = tostring(mon.species) .. " (slot " .. i .. ")"
+      end
+      why = why .. " It teaches " .. tostring(_mv) .. "; pointed at your "
+        .. "party, the teach screen would say"
+        .. (#can > 0
+            and (" compatible for " .. table.concat(can, ", "))
+            or " NOT COMPATIBLE for every one of them")
+        .. ((#can > 0 and #cannot > 0)
+            and (" and NOT COMPATIBLE for " .. table.concat(cannot, ", "))
+            or "")
+        .. "."
+    end
+    local nk = 0
+    for _, n in pairs((G.save and G.save.inventory) or {}) do
+      if (tonumber(n) or 0) > 0 then nk = nk + 1 end
+    end
+    why = why .. " A Pokemon Center's PC keeps it instead "
+      .. "({\"op\":\"store_item\",\"item\":\"" .. c.item .. "\"}), which "
+      .. "destroys nothing. Your bag holds " .. nk .. " of 20 kinds. "
+      .. "Nothing has been thrown away. If you meant it, send the same "
+      .. "toss again with \"confirm\":true."
+    return false, why
   end
   -- KEY ITEMS CANNOT BE THROWN AWAY. The game says so itself
   -- ("That's too impor-tant to toss!") and items.lua marks them
