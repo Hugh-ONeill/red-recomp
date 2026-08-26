@@ -80,10 +80,16 @@ def main():
         # city's edges, and a seam is listed only once a cell on that edge
         # has been on screen. Coverage first, then choose — the same order
         # the run itself now follows ({"op":"explore"} = sweep).
-        for _ in range(12):
+        # BOUNDED sweeps: an open-ended sweep walked the fixture party from
+        # (25,26) to a pocket at (0,18) north of the CUT_TREE, where the
+        # west strip is unreachable, and the test called the harness
+        # broken (2026-08-26). Look around a little; if no edge shows, a
+        # door will do — the property is that a replayed macro changes
+        # the map.
+        for _ in range(3):
             if conns:
                 break
-            r = b.send("sweep")
+            r = b.send("sweep", steps=10)
             print(f"[replay] sweep: "
                   f"{str(((r or {}).get('result') or {}).get('detail'))[:100]}")
             _m = (b.obs() or {}).get("map") or {}
@@ -117,6 +123,17 @@ def main():
         ex.MEMORY = RUN / "explored.json"
         ex._load_memory()
 
+        # UNDER THE FOOTPRINT ONLY SEEN EDGES ARE LISTED, and the fixture's
+        # one seen edge (west) sits behind the CUT_TREE at (19,28) with no
+        # CUT in the party — before the footprint the test simply took
+        # another listed edge. The cross op refuses an edge the map does
+        # not have, honestly, so every direction is a fair try; the seen
+        # doors come after.
+        for d in ("north", "south", "east", "west"):
+            conns.setdefault(d, None)
+        for w in (_m.get("warps") or []):
+            if w.get("reachable"):
+                conns.setdefault(f"{w.get('x')},{w.get('y')}", None)
         crossed = None
         for d in sorted(conns, key=str):
             door = "," in str(d)
@@ -124,10 +141,15 @@ def main():
             # test asserts only that the map CHANGED, which is the property
             # under test either way
             want = conns[d] if not door else None
+            # a condition that is ALREADY TRUE is passed on the pre-check
+            # and the macro never runs (no_battle was that: the door path
+            # had silently never been exercised, 2026-08-26); a known
+            # destination is asserted, an unknown one gets a condition
+            # that cannot pre-satisfy so the replay is forced to happen
             sg = {"id": f"leave_{d}",
                   "goal_text": f"leave {here} by {d}",
                   "done_when": ({"map": want} if want
-                                else {"no_battle": True}),
+                                else {"party_size": 99}),
                   "max_attempts": 1,
                   "macro": ([{"op": "cross", "dir": d}] if not door else
                             [{"op": "use_warp",
@@ -139,6 +161,21 @@ def main():
                 crossed = (d, now_m)
                 break
             print(f"        {d}: did not open, trying another")
+        if not crossed:
+            # every listed edge refused (a bush, a pocket): a reachable
+            # door is the same property, a map change by a replayed macro
+            for w in (((b.obs() or {}).get("map") or {}).get("warps") or []):
+                if not w.get("reachable"):
+                    continue
+                sg = {"id": f"leave_door_{w.get('x')}_{w.get('y')}",
+                      "goal_text": "leave by a door", "done_when": {"party_size": 99},
+                      "max_attempts": 1,
+                      "macro": [{"op": "use_warp", "x": w.get("x"), "y": w.get("y")}]}
+                ex._attempt(sg)
+                now_m = ((b.obs() or {}).get("map") or {}).get("id")
+                if now_m and now_m != here:
+                    crossed = (f"door {w.get('x')},{w.get('y')}", now_m)
+                    break
         if crossed:
             print(f"  ok    replayed a macro and walked {here} -> "
                   f"{crossed[1]} ({crossed[0]})")
