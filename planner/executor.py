@@ -1667,7 +1667,9 @@ class Executor:
         if not ignore_done and pred_holds(sg.get("done_when"), cur):
             return True, tr, [dict(step)]
         if not self._same_area(self._where(cur), region):
-            tr.append("go: the walk did not arrive; author from here")
+            _why = getattr(self, "_route_why", "") or ""
+            tr.append("go: the walk did not arrive; author from here"
+                      + (f". WHAT STOPPED IT: {_why}" if _why else ""))
             return False, tr, []
         return False, tr, [dict(step)]
 
@@ -1939,7 +1941,9 @@ class Executor:
         if not ignore_done and pred_holds(sg.get("done_when"), cur):
             return True, tr, []
         if not self._same_area(self._where(cur), region):
-            tr.append("explore: the walk did not arrive; author from here")
+            _why2 = getattr(self, "_route_why", "") or ""
+            tr.append("explore: the walk did not arrive; author from here"
+                      + (f". WHAT STOPPED IT: {_why2}" if _why2 else ""))
             return False, tr, []
         # one expansion on arrival — the same order as at home
         cands2 = ledger.build(self, cur, target,
@@ -5762,6 +5766,15 @@ class Executor:
         """Replay a fully-walked route hop by hop (the escort's pattern):
         send the edge, settle, fight through interruptions, record the
         transition. Returns where the walk ended."""
+        # WHY A REPLAY STOPPED, FOR THE MODEL AND NOT ONLY FOR US. The
+        # failing hop's own refusal — the one that names the CUT_TREE and
+        # says a bush CUT clears it — was captured as _last_det, written
+        # to route_walk_lost / route_abandoned, and then thrown away: go
+        # said "the walk did not arrive; author from here" and nothing
+        # else, so the model re-issued the same go and paid a round for
+        # it (user, 2026-08-26: "go was stopped by the tree on rt9 ... it
+        # took longer"). Set here, read by _go_step.
+        self._route_why = ""
         o = None
         # WHERE A WIDE SEAM LANDS DEPENDS ON WHERE YOU CROSS IT, so a hop
         # can put you in a different pocket of the right map than the path
@@ -5831,6 +5844,9 @@ class Executor:
                         self.log("lift_edge_blocked",
                                  frm=self._where(_now), via=str(key))
                         self._save_memory()
+                    self._route_why = (
+                        f"the leg {str(key)} was a LIFT ride and it did not "
+                        f"put the party on that floor")
                     self.log("route_abandoned", subgoal=sg.get("id"),
                              step=str(key), standing=self._where(o),
                              why="the lift did not put us on that floor")
@@ -5873,6 +5889,9 @@ class Executor:
                         self.log("walk_edge_blocked",
                                  frm=self._where(_now), via=str(key))
                         self._save_memory()
+                    self._route_why = (
+                        f"the leg {str(key)} is a walk across this map and "
+                        f"it did not arrive")
                     self.log("route_abandoned", subgoal=sg.get("id"),
                              step=str(key), standing=self._where(o),
                              why="the walk across this map did not arrive")
@@ -5885,6 +5904,9 @@ class Executor:
             else:
                 _has = str(key).split("#", 1)[0] in (_m.get("connections") or {})
             if _m.get("id") and not _has:
+                self._route_why = (
+                    f"the next leg was {str(key)} and this map has no such "
+                    f"way out of it any more")
                 self.log("route_abandoned", subgoal=sg.get("id"),
                          step=str(key), standing=self._where(_now),
                          why="this map has no such way out")
@@ -6142,6 +6164,10 @@ class Executor:
                     self.log("inference_refused", frm=frm, via=key, to=nxt,
                              landed=self._where(o))
                     self._save_memory()
+                self._route_why = (
+                    f"the leg {str(key)} toward {nxt} would not land"
+                    + (f", and what it said was: {str(_last_det)[:300]}"
+                       if _last_det else ""))
                 self.log("route_walk_lost", subgoal=sg["id"], wanted=nxt,
                          got=self._where(o), why=_last_det[:200])
                 return self._where(o)
