@@ -1084,6 +1084,19 @@ class Executor:
         self.explored: dict = {}
         self.dead_ends: dict = {}   # subgoal id -> {region: failures}
         self.visits: dict = {}      # region -> times arrived
+        # ...AND A LOOP COUNT THAT THE PLAN CANNOT WIPE. `visits`
+        # in the escalation loop is a LOCAL, so re-authoring a
+        # subgoal resets it — and the run re-authors often. It
+        # crossed ROUTE_7 <-> CELADON four times, was told "visit
+        # #4 ... the trips between here and there have bought
+        # nothing", and then a fresh subgoal started the count at
+        # zero and it did it again (user, 2026-08-26). The world
+        # mark is the honest clock: nothing about those trips
+        # changed because the plan was rewritten. Reported only;
+        # the round BUDGET still counts per subgoal, so a new step
+        # is never charged for the last one's wandering.
+        self._world_visits: dict = {}
+        self._world_mark_seen: str = ""
         self.frontier: dict = {}    # region -> every exit visible from it
         self.sightings: dict = {}   # region -> named objects seen there
         self.region_anchors: dict = {}   # map -> {cell: region name}
@@ -12758,6 +12771,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # map) is not circling (brock23 spent its whole budget on
                 # level-up rounds counted as "revisits")
                 visits[sig1[0]] = visits.get(sig1[0], 0) + 1
+                _wm = str(getattr(self, "_mark_now", None))
+                if _wm != self._world_mark_seen:
+                    self._world_visits = {}
+                    self._world_mark_seen = _wm
+                self._world_visits[sig1[0]] = \
+                    self._world_visits.get(sig1[0], 0) + 1
                 # ...AND WHETHER ANYTHING CAME OF THE LAST N VISITS. The
                 # count alone is what a shuttle looks like from inside it:
                 # 1F -> B1F -> 1F -> B1F, every op succeeding, so nothing
@@ -12785,9 +12804,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # on the very exit; "do not re-enter maps you just
                     # left" is a strategy claim). Under the ledger the
                     # count is the whole note.
+                    _wv = self._world_visits.get(sig1[0], 0)
                     loop_note = (
                         f"\nThis is visit #{visits[sig1[0]]} to {sig1[0]} "
-                        f"during this subgoal."
+                        f"during this subgoal"
+                        + (f", and #{_wv} since anything about the world "
+                           f"last changed — re-authoring the plan did not "
+                           f"undo those trips" if _wv > visits[sig1[0]]
+                           else "") + "."
                         + (" The world mark is what it was on visit #1 — no "
                            "badge, flag, item or door has changed since, so "
                            "the trips between here and there have bought "
