@@ -24,7 +24,7 @@ blk = src[max(0, i - 1800):i + 2200]
 
 ck("...on the general page, beside the PC-storage line",
    "_rs_line = self._respawn_line(obs)" in src[max(0, i - 2400):i]
-   and "_boxed = [m for m in ((obs or {}).get(\"pc_mons\")" in src[i:i + 2600])
+   and "_boxed = [m for m in ((obs or {}).get(\"pc_mons\")" in src[i:i + 4200])
 ck("ordered by walked legs, and it says how far",
    "_shops.sort()" in blk and "walked leg(s) away" in blk)
 ck("a shop with no walked route says so rather than being dropped",

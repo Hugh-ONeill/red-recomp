@@ -13,7 +13,7 @@ i = src.find("IN PC STORAGE (yours, not in the party")
 ck("the general page names storage", i > 0)
 
 # it must sit on the page every goal gets, not inside a party-goal branch
-seg = src[max(0, i - 3600):i]
+seg = src[max(0, i - 5200):i]
 ck("...outside the party-goal branches",
    "_rs_line = self._respawn_line(obs)" in seg)
 ck("it names species, level, box and index",

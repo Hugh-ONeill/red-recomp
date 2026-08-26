@@ -6925,7 +6925,20 @@ class Executor:
         Only rendered when the subgoal is waiting on a flag; otherwise it
         is noise, and space in this prompt is the budget.
         """
-        if "flag" not in pred_keys(sg.get("done_when") or {}):
+        # ...AND A has_item GOAL IS WAITING ON EVENTS TOO. The gate was
+        # "only when the subgoal is waiting on a flag", which is right about
+        # budget and wrong about this: chasing has_item SECRET_KEY the run
+        # wrote "To get the Secret Key, I must first find the Warden's Gold
+        # Teeth" and planned an expedition across the Safari Zone for teeth
+        # it had already handed over — the trade is in this very ledger,
+        # EVENT_GAVE_GOLD_TEETH fired in WARDENS_HOUSE|0,1, and the block
+        # that would have said so was switched off because the goal names an
+        # item rather than a flag (user, 2026-08-26: "no gold_teeth are no
+        # longer in the bag they were already given for strength"). An item
+        # that will not come is as often behind an event as a flag is, and
+        # as often explained by one that already fired.
+        _pk = pred_keys(sg.get("done_when") or {})
+        if "flag" not in _pk and "has_item" not in _pk:
             return ""
         # ...AND ONLY WHAT IS STILL TRUE. flag_sites is persisted memory and
         # the SAVE CAN ROLL BACK under it: an attempt that reloads an
@@ -8730,6 +8743,30 @@ class Executor:
                       "worth is yours to judge.\n") + _rs_line
         except Exception as _e:      # a page must never die of this
             self.log("shop_recall_error", err=str(_e)[:120])
+        # WHAT YOU ARE CARRYING, ON EVERY PAGE. The bag reached the prompt
+        # only when a round changed NOTHING (_stale_rounds) or after two
+        # blackouts — so a run that is busy is never told what it holds.
+        # The comment on that staleness gate already describes this bug in
+        # its earlier form: "Route 12's leg is literally named for the POKE
+        # FLUTE, the flute was in the bag, and across eleven escalations the
+        # word POKE_FLUTE did not appear in the prompt once." It happened
+        # again, moving: carrying GOLD_TEETH, the run wrote "To get the
+        # Secret Key, I must first find the Warden's Gold Teeth" and planned
+        # an expedition across the Safari Zone for a thing in its own bag
+        # (user, 2026-08-26: "its hunting for the gold teeth again"). A bag
+        # is on screen for the price of opening it and it is a short list.
+        # Same standing as obs.pc_items and the boxed roster below.
+        _bagall = (obs or {}).get("bag") or {}
+        if _bagall:
+            _rs_line = (
+                "WHAT YOU ARE CARRYING: "
+                + ", ".join(f"{k} x{v}" for k, v in sorted(_bagall.items()))
+                + f" ({len(_bagall)} of {self.BAG_SLOTS} kinds). Some are "
+                  "used ON a party member and some WHERE YOU STAND; "
+                  "{\"op\":\"use_item\",\"item\":X} with no slot uses "
+                  "one on "
+                  "the spot. Whether any of it serves what you are doing is "
+                  "yours to read.\n") + _rs_line
         # WHO IS IN THE BOX, ON EVERY PAGE. The three places that named
         # stored Pokemon were all inside PARTY-goal prompts, so on a map
         # or flag goal the run's own boxed roster was invisible. It boxed
@@ -12661,12 +12698,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # two of its four slots, while TM_MEGA_PUNCH sat unused in
                 # the bag the whole time. Inventory beside the problem —
                 # what to do with it, if anything, is not stated here.
-                _bag = (cur or {}).get("bag") or {}
-                if _bag:
-                    stuck_note += ("\nWHAT YOU ARE CARRYING: "
-                                   + ", ".join(f"{k} x{v}"
-                                               for k, v in sorted(_bag.items()))
-                                   + ".")
+                # (the bag itself is on every page now; the wipe note keeps
+                # the WALLET, which nothing else says beside a blackout)
                 # AND WHAT IT IS WORTH. The bag reached the note and the
                 # wallet never did, so "you have a NUGGET" sat next to no
                 # number to compare it with. The run walked into the mart
@@ -13343,8 +13376,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # engine says can never work. A bag is on-screen at any moment
             # for the price of opening it, and it is a short list. Say it
             # whenever a round changed nothing.
-            if (0 < self._stale_rounds) or self._blackouts.get(
-                    self._target_key(sg), 0) >= 2:
+            # ...NOW SUBSUMED: the page carries the bag unconditionally
+            # (see "WHAT YOU ARE CARRYING, ON EVERY PAGE"), so this fires
+            # only if that line somehow did not, and never twice.
+            if False:
                 _bag2 = (cur or {}).get("bag") or {}
                 if _bag2 and "WHAT YOU ARE CARRYING" not in stuck_note:
                     stuck_note += ("\nWHAT YOU ARE CARRYING: "
