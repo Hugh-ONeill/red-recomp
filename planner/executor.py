@@ -1703,18 +1703,46 @@ class Executor:
         # instead picks the same wrong shore; what was missing is not a
         # better tiebreak, it is saying which part was taken and that the
         # others are nameable. `go` already accepts "MAP|region".
+        # ...AND "NEAREST" IS THE WRONG DEFAULT FOR A BARE MAP NAME. Asked
+        # for a MAP, the model means the PLACE, and the nearest walked part
+        # of it is routinely the worst one: ROUTE_14's only walked region is
+        # ROUTE_14|16,6, a four-cell nook whose single recorded exit is back
+        # the way you came, and `go ROUTE_14` delivered the run into it over
+        # and over (user, 2026-08-26: "can we route it to somewhere that
+        # isnt a pocket? ... unless its stated that were aiming for the
+        # pocket we should go to the area that has the most movement
+        # options"). Rank by ways out first and distance second; naming
+        # MAP|region still overrides it exactly as before, which is the
+        # "unless it is stated" half.
+        def _ways(r):
+            outs = {(e or {}).get("to")
+                    for e in (self.explored.get(r) or {}).values()
+                    if (e or {}).get("to") and (e or {}).get("to") != r}
+            try:
+                more = len(self._frontier_left(r) or ())
+            except Exception:
+                more = 0
+            return len(outs) + more
         _choice_note = ""
         if best and "|" not in str(want) and len(_reachable) > 1:
-            _others = ", ".join(f"{r} ({n} leg(s))"
-                                for r, n in sorted(_reachable,
-                                                   key=lambda rn: rn[1])
-                                if r != best[0])
+            _ranked = sorted(_reachable, key=lambda rn: (-_ways(rn[0]), rn[1]))
+            _pick = _ranked[0][0]
+            if _pick != best[0]:
+                _p2 = self._route(here, _pick)
+                if _p2:
+                    best = (_pick, _p2)
+            _others = ", ".join(
+                f"{r} ({n} leg(s), {_ways(r)} way(s) out)"
+                for r, n in _ranked if r != best[0])
             _choice_note = (
                 f"go: {want} has more than one part you have walked, and "
-                f"this took the nearest — {best[0]}, {len(best[1])} leg(s). "
-                f"The others are reachable too and are NOT the same place: "
-                f"{_others}. Name one ({{\"op\":\"go\",\"to\":"
-                f"\"MAP|region\"}}) when it matters which.")
+                f"they are NOT the same place. This took {best[0]} "
+                f"({len(best[1])} leg(s), {_ways(best[0])} way(s) out) — the "
+                f"one with the most ways on, not the nearest, because a bare "
+                f"map name asks for the place and the nearest part of a map "
+                f"is often a corner. The others: {_others}. Name one "
+                f"({{\"op\":\"go\",\"to\":\"MAP|region\"}}) when it "
+                f"matters which, and that choice is taken as given.")
         if not best:
             _rc = self._ride_chance(here, targets)
             if _rc:
