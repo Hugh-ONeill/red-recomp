@@ -29,8 +29,10 @@ i = shim.find("local probe = setmetatable({ cellX = cur.x")
 block = shim[max(0, i - 1400):i + 300]
 
 ck("the swim flood exists", i > 0)
-ck("surfing is gated on a water cell", "isWaterCell(cur.x, cur.y)" in block)
-ck("...or on stepping onto one", "isWaterCell(nx, ny)" in block)
+ck("surfing is gated on a water cell",
+   "real_water(G, ow.map, cur.x, cur.y)" in block)
+ck("...or on stepping onto one",
+   "real_water(G, ow.map, nx, ny)" in block)
 ck("the probe no longer rides unconditionally",
    "surfing = surf or nil" not in block)
 ck("it says why the land rules matter", "tile-pair" in block.lower())

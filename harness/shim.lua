@@ -419,7 +419,36 @@ local region_of = {}
 -- case). So a Viridian Forest gate reported "THIS FLOOR HAS WATER: 6
 -- cell(s)" over six squares of floor (2026-08-25). Same test the engine
 -- applies, applied here.
-local function real_water(map, x, y)
+-- ...AND WATER IS A TILESET FACT BEFORE IT IS A TILE FACT. Map:isWaterCell
+-- says so in its own comment -- "Tileset membership in water_tilesets.asm
+-- is checked by the caller" -- and no caller in this file ever did.
+-- SILPH_CO_11F is tileset INTERIOR, which is NOT in field.waterTilesets
+-- (OVERWORLD, FOREST, DOJO, GYM, SHIP, SHIP_PORT, CAVERN, FACILITY,
+-- PLATEAU), and two of its solid decorative tiles carry ids that ARE water
+-- ids elsewhere. The unwalkable test above passed them, the page said
+-- "THIS FLOOR HAS WATER: 2 cell(s), the nearest at (7,4) ... nobody in the
+-- party knows SURF", and the run concluded the SILPH PRESIDENT was across
+-- a lake and left the floor to go and find SURF -- with the boardroom door
+-- a few steps south (user, 2026-08-26). The engine's own gate is
+-- OverworldState:tilesetHasWater(); this is that gate, memoised per
+-- tileset name.
+local _WATER_TS = {}
+local function tileset_has_water(G, map)
+  local ts = map and map.def and map.def.tileset
+  if not ts then return false end
+  local hit = _WATER_TS[ts]
+  if hit == nil then
+    hit = false
+    for _, t in ipairs((G and G.data and G.data.field
+                        and G.data.field.waterTilesets) or {}) do
+      if t == ts then hit = true end
+    end
+    _WATER_TS[ts] = hit
+  end
+  return hit
+end
+local function real_water(G, map, x, y)
+  if not tileset_has_water(G, map) then return false end
   if not (map and map.isWaterCell and map:isWaterCell(x, y)) then return false end
   if map.isWalkableCell and map:isWalkableCell(x, y) then return false end
   return true
@@ -1484,8 +1513,8 @@ local function observe(G, seq, result)
                   -- water you can reach is not ground you can reach: while
                   -- surfing both would draw as "." and the one distinction
                   -- this whole leg turns on would vanish from the picture
-                  this = real_water(map, cx, cy) and "," or "."
-                elseif real_water(map, cx, cy) then
+                  this = real_water(G, map, cx, cy) and "," or "."
+                elseif real_water(G, map, cx, cy) then
                   this = "~"
                 end
                 -- @ beats a door beats ground beats reachable water beats
@@ -1580,7 +1609,7 @@ local function observe(G, seq, result)
     do
       local _wn, _wx, _wy, _wd = 0, nil, nil, nil
       local _mx, _my, _md2 = nil, nil, nil        -- mountable from reach
-      if map.isWaterCell then
+      if map.isWaterCell and tileset_has_water(G, map) then
         -- map_dims_cells is a local defined further down this file, so it
         -- is nil up here; this is its body. NOT widthCells/heightCells —
         -- the live map object leaves those nil on many maps, which is the
@@ -1590,7 +1619,7 @@ local function observe(G, seq, result)
         local _rc = reachable_cells()
         for _yy = 0, math.max(0, _H - 1) do
           for _xx = 0, math.max(0, _W - 1) do
-            if real_water(map, _xx, _yy)
+            if real_water(G, map, _xx, _yy)
                and (SEEN[map.id] or {})[_xx .. "," .. _yy] then
               _wn = _wn + 1
               local _dd = math.abs(_xx - p.cellX) + math.abs(_yy - p.cellY)
@@ -2678,7 +2707,7 @@ local function bushes_blocking(G, tx, ty, reach)
           out[#out + 1] = { x = cx, y = cy,
                             d = math.abs(cx - tx) + math.abs(cy - ty) }
         end
-      elseif lm and lm.isWaterCell and lm:isWaterCell(cx, cy) then
+      elseif lm and real_water(G, lm, cx, cy) then
         local touches = false
         for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
           if reach[(cx + d[1]) .. "," .. (cy + d[2])] then touches = true end
@@ -2943,9 +2972,8 @@ function warp_reach(G, no_ledges, surf)
         -- only when you are ON water or stepping ONTO it; everywhere else
         -- the land rules still hold.
         local _wet = nil
-        if surf and ow.map.isWaterCell
-           and (ow.map:isWaterCell(cur.x, cur.y)
-                or ow.map:isWaterCell(nx, ny)) then
+        if surf and (real_water(G, ow.map, cur.x, cur.y)
+                     or real_water(G, ow.map, nx, ny)) then
           _wet = true
         end
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y,
@@ -3480,8 +3508,7 @@ local function bfs_to_edge(G, dir, skip, surf)
         local t2 = ow.map:cellTile(x + d2[1], y + d2[2])
         if ledge_tiles[t2] then nwall_ledge = nwall_ledge + 1 end
       end
-      if d2 and ow.map and ow.map.isWaterCell
-         and ow.map:isWaterCell(x + d2[1], y + d2[2]) then
+      if d2 and real_water(G, ow.map, x + d2[1], y + d2[2]) then
         nwater = nwater + 1
       end
     end
@@ -3597,7 +3624,7 @@ local function bfs_to_edge(G, dir, skip, surf)
   -- blocked by the trainers near it instead of the water"). The sea is on
   -- the screen; whether to ride it stays the model's.
   local _tw_n, _tw_x, _tw_y, _tw_d = 0, nil, nil, nil
-  if nwater == 0 and ow.map and ow.map.isWaterCell then
+  if nwater == 0 and ow.map and tileset_has_water(G, ow.map) then
     local _cnt = {}
     for k in pairs(seen) do
       local cx, cy = k:match("^(-?%d+),(-?%d+)$")
@@ -3606,7 +3633,7 @@ local function bfs_to_edge(G, dir, skip, surf)
         for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
           local wx, wy = cx + d[1], cy + d[2]
           local wk = wx .. "," .. wy
-          if not seen[wk] and not _cnt[wk] and ow.map:isWaterCell(wx, wy) then
+          if not seen[wk] and not _cnt[wk] and real_water(G, ow.map, wx, wy) then
             _cnt[wk] = true
             _tw_n = _tw_n + 1
             local dd = math.abs(wx - p.cellX) + math.abs(wy - p.cellY)
@@ -3650,7 +3677,7 @@ local function bfs_to_edge(G, dir, skip, surf)
                    local W3, H3 = map_dims_cells(G)
                    for yy = 0, math.max(0, H3 - 1) do
                      for xx = 0, math.max(0, W3 - 1) do
-                       if ow.map.isWaterCell and ow.map:isWaterCell(xx, yy)
+                       if real_water(G, ow.map, xx, yy)
                           and not seen[xx .. "," .. yy]
                           -- a swimmer parked on the tile makes it
                           -- unmountable; name water that can be stood on
@@ -3993,8 +4020,8 @@ function OPS.walk_to(G, c)
           sx, sy = tonumber(sx), tonumber(sy)
           for _, d in pairs(DIRS) do
             local wx, wy = sx + d[1], sy + d[2]
-            if ow.map.isWaterCell and ow.map:inBounds(wx, wy)
-               and ow.map:isWaterCell(wx, wy) then
+            if ow.map:inBounds(wx, wy)
+               and real_water(G, ow.map, wx, wy) then
               local dd = math.abs(wx - c.x) + math.abs(wy - c.y)
               if not bd or dd < bd then
                 bd, bx, by, bland = dd, wx, wy, { sx, sy }
@@ -6136,7 +6163,7 @@ function OPS.field_move(G, c)
     local _Coll = require("src.world.Collision")
     local _already, _first
     for _, a in ipairs(_nb) do
-      if ow.map.isWaterCell and ow.map:isWaterCell(a[1], a[2])
+      if real_water(G, ow.map, a[1], a[2])
          and not _Coll.occupied(ow.entities, a[1], a[2], p) then
         if p.facing == a[3] then _already = true end
         _first = _first or a[3]
@@ -7745,7 +7772,7 @@ function OPS.grind(G, c)
             local dd = math.abs(xx - p.cellX) + math.abs(yy - p.cellY)
             if not ngd or dd < ngd then ngd, ngx, ngy = dd, xx, yy end
           end
-          if not any_water and map.isWaterCell and map:isWaterCell(xx, yy) then
+          if not any_water and real_water(G, map, xx, yy) then
             any_water = true
           end
         end
