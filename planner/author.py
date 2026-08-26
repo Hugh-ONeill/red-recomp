@@ -1916,6 +1916,25 @@ def journal_text(path: Path, limit: int = 60) -> str:
                           f"HALF YOUR MONEY")
         elif k == "rerouted":
             events.append(f"  walked back to {r.get('to')} looking for a way on")
+        elif k == "left_target_on_purpose":
+            # The run's own decision to walk away from the step's target,
+            # in the model's words. Seven rewrites of the tower leg
+            # re-marched "go to Lavender, climb" while every escalation
+            # of it had said "blocked by a Ghost, need the Silph Scope"
+            # and walked out toward Celadon — the story never carried the
+            # departure, and the quote was cut before the destination.
+            said = (r.get("said") or "").strip()
+            events.append(
+                f"  LEFT    during {r.get('subgoal')} the run walked out of "
+                f"{r.get('left_from') or ', '.join(r.get('left') or [])} to "
+                f"{r.get('now')} by its own decision"
+                + (f" — its words: \"{said[:300]}\"" if said else ""))
+        elif k == "backtrack_skipped":
+            events.append(
+                f"  ENDED   {r.get('failed')} failed after that departure; "
+                f"the plan ended there instead of walking back to its "
+                f"previous step, and this rewrite starts where the party "
+                f"stands")
         elif k == "target_unreachable":
             key = (r.get("subgoal"), r.get("target"), r.get("region"),
                    tuple(r.get("objects") or []))
@@ -2108,7 +2127,7 @@ def tried_text(recs: list, top_subgoals: int = 4, top_ops: int = 5) -> str:
                            + (f" — and the same verdict for: {_rest}"
                               if _rest else ""))
         for pl, n in sorted(d["plans"].items(), key=lambda kv: -kv[1])[:3]:
-            out.append(f"      it said (x{n}): \"{pl[:118]}\"")
+            out.append(f"      it said (x{n}): \"{pl[:240]}\"")
     return "\n".join(out)
 
 

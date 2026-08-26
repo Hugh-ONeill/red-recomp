@@ -168,6 +168,17 @@ def static_cost(a: str, b: str, toll: dict, extra: dict | None = None):
 # Mt Moon rated the road outside better than the cave it was crossing, left,
 # was pulled back by its plan, and left again.
 import re as _re
+
+
+def map_family(m) -> str:
+    """The building a floor belongs to: POKEMON_TOWER_6F -> POKEMON_TOWER,
+    MT_MOON_B2F -> MT_MOON; a map with no floor suffix is its own family.
+    Harness-internal only: it decides which of the harness's OWN walk-backs
+    stand down, and is never said to the model."""
+    mm = _re.match(r"^(.+?)_B?\d+F$", str(m or ""))
+    return mm.group(1) if mm else str(m or "")
+
+
 try:
     _DOORS = json.loads(
         Path(__file__).with_name("map_doors.json").read_text())
@@ -11945,21 +11956,37 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # 2026-08-25: "the goal text keeps dragging it back to Misty").
             # Every map of the target is left on purpose together; the
             # model's own ops are the evidence, not the distilled list.
-            if (_m0 in _tmaps and sig1[0] and sig1[0] != _m0
-                    and any(isinstance(st, dict)
+            # A BUILDING IS LEFT FROM ANY OF ITS FLOORS. The rule keyed on
+            # standing IN the target map, so with the target on the tower's
+            # 7th floor and the party blocked on the 6th, walking all the
+            # way down and out to Route 7 for the Silph Scope registered
+            # nothing — and the backtrack marched it straight back up to
+            # 6F (user, 2026-08-25: "it made it to Celadon then turned back
+            # to fulfil the redo goal"). Floors of one building are one
+            # place for this purpose; moving between its floors is not a
+            # departure, stepping out of the building is.
+            _tfam = {map_family(t) for t in _tmaps}
+            _own_move = any(isinstance(st, dict)
                             and st.get("op") in ("cross", "use_warp", "go")
-                            for st in macro)):
+                            for st in macro)
+            _left_exact = _m0 in _tmaps
+            _left_building = bool(
+                _tfam and map_family(_m0) in _tfam and sig1[0]
+                and map_family(sig1[0]) not in _tfam)
+            if ((_left_exact or _left_building) and sig1[0]
+                    and sig1[0] != _m0 and _own_move):
                 if not hasattr(self, "_left_target"):
                     self._left_target = set()
                 # the map just left is left (gym -> city must not be walked
                 # back into the gym); landing outside every map of the
                 # target leaves them all (city -> Route 24)
                 self._left_target.add(_m0)
-                if sig1[0] not in _tmaps:
+                if map_family(sig1[0]) not in _tfam:
                     self._left_target |= set(_tmaps)
                 self.log("left_target_on_purpose", subgoal=sg["id"],
                          round=rnd, left=sorted(self._left_target & set(_tmaps)),
-                         now=sig1[0])
+                         left_from=_m0, now=sig1[0],
+                         said=(getattr(self, "_plan_said", "") or "")[:300])
             # NB: do not reset stuck_note here — the blackout walk-back note
             # is appended above and a reset at this point deleted it before
             # it was ever sent, so the round after a wipe never learned it
