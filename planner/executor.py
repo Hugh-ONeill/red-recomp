@@ -11331,6 +11331,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             stripped = 0
             _trunc_note = ""
             if cut is not None:
+                # A `go` RIGHT AFTER THE MAP CHANGE IS RECALL, NOT BLIND
+                # AUTHORING. The cut exists because ops written for a map
+                # never seen are hallucinated; `go` names a walked place
+                # and replays a walked route from wherever it stands, or
+                # refuses. Cutting it made "leave the house, go to the
+                # tower" a one-op round every time, and the next round —
+                # standing in the street — the model flipped to "go back
+                # in and check" (Fuji's house <-> tower 1F, eleven rounds,
+                # 2026-08-25; TODO (b) macro truncation). Trailing `go`
+                # ops ride along; anything else after the change is cut.
+                while (cut + 1 < len(macro)
+                       and isinstance(macro[cut + 1], dict)
+                       and macro[cut + 1].get("op") == "go"):
+                    cut += 1
                 if cut + 1 < len(macro):
                     self.log("escalate_truncated", subgoal=sg["id"], round=rnd,
                              kept=cut + 1, dropped=len(macro) - cut - 1)
@@ -11350,9 +11364,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         f"({len(macro) - cut - 1} op(s) after your "
                         f"{macro[cut].get('op')} were NOT run: {_dropped}. "
                         f"A map-changing op ends the macro — whatever comes "
-                        f"after it would be written blind. If those were "
-                        f"more legs of a journey over ground you have "
-                        f"walked, {{\"op\":\"go\",\"to\":\"MAP or AREA\"}} "
+                        f"after it would be written blind — except a go, "
+                        f"which only walks ground you have walked and so "
+                        f"runs right after it. If those were more legs of "
+                        f"a journey over ground you have walked, "
+                        f"{{\"op\":\"go\",\"to\":\"MAP or AREA\"}} "
                         f"walks the whole route in ONE round.)")
                     macro = macro[:cut + 1]
                 # cross/use_warp path-find from wherever you stand; a walk_to
