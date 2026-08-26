@@ -372,6 +372,27 @@ local function _screen_name(G)
   return table.concat(bits, ", ")
 end
 
+-- A BATTLE UNDER A MENU IS STILL A BATTLE. Every battle test in this file
+-- asked `G.stack:top()`, and the flute puts a PartyMenu on top of one:
+-- use_item(POKE_FLUTE) woke ROUTE12_SNORLAX ("SNORLAX woke up! It attacked
+-- in a grumpy rage!"), the fight began UNDER the item's own party menu, and
+-- from then on every op answered "not in overworld (a box was up and would
+-- not close: PartyMenu)". The observation called it mode=ui, so the battle
+-- policy was never handed the fight, and the run spent its rounds in
+-- escalate_repeat_refused (user, 2026-08-26: "it started a battle but the
+-- policy isnt handling it"). StateStack keeps every frame in `states`;
+-- look past the top. `.enemy` only — `.kind` is worn by half the screens
+-- in the engine and would call a shop a battle.
+local function battle_frame(G)
+  local st = G and G.stack and G.stack.states
+  if type(st) ~= "table" then return nil end
+  for i = #st, 1, -1 do
+    local f = st[i]
+    if type(f) == "table" and f.enemy ~= nil then return f end
+  end
+  return nil
+end
+
 local function _is_fade(t)
   return t ~= nil and t.phase ~= nil and t.frames ~= nil
      and t.map == nil and t.items == nil
@@ -385,6 +406,10 @@ local function need_overworld(G)
   if G.overworld and G.stack:top() == G.overworld then return true end
   local t = G.stack and G.stack:top()
   if t and (t.enemy or t.kind) then return false end   -- in battle; leave it
+  -- ...and a menu ON TOP of a battle is not a stray box either: backing
+  -- out of it is a real choice inside a real fight, and the executor's
+  -- battle policy is what makes those.
+  if battle_frame(G) then return false end
   if ui_back_out then ui_back_out(G) end
   return (G.overworld and G.stack:top() == G.overworld) and true or false
 end
@@ -2378,6 +2403,16 @@ local function observe(G, seq, result)
                  page = top.pageIndex, pages = #top.pages,
                  waiting = top.waiting and true or false,
                  done = top.done and true or false }
+  elseif battle_frame(G) then
+    -- A MENU OVER A FIGHT REPORTS THE FIGHT. mode decides who handles the
+    -- round: "ui" sends it back to the model as a screen to dismiss, and
+    -- the model cannot dismiss a party menu that a battle is waiting
+    -- behind. Reported as battle so the executor's policy takes the turn;
+    -- what is on top is still said, so nothing is hidden.
+    local _bf = battle_frame(G)
+    o.mode = "battle"
+    o.battle = scalars(_bf, 0)
+    o.battle.behind_a_menu = _screen_name(G)
   elseif top then
     o.mode = "ui"
     o.ui = scalars(top, 0)
@@ -7935,7 +7970,22 @@ end
 
 local function in_battle(G)
   local b = G.stack:top()
-  return b and (b.enemy or b.kind) and b or nil
+  if b and (b.enemy or b.kind) then return b end
+  -- A MENU ON TOP OF A FIGHT, and every battle op answered "not in
+  -- battle". use_item(POKE_FLUTE) woke ROUTE12_SNORLAX and the fight
+  -- began UNDER the item's own PartyMenu; the policy could not take a
+  -- turn, need_overworld could not close the menu, and the run looped in
+  -- escalate_repeat_refused (user, 2026-08-26). Inside a fight B is the
+  -- battle's own "go back", so backing out of what sits above it is
+  -- mechanics, not a choice — and if it will not come off, the ops below
+  -- refuse exactly as they did before.
+  local f = battle_frame(G)
+  if not f then return nil end
+  for _ = 1, 8 do
+    if G.stack:top() == f then break end
+    U.tap(G, "b"); U.wait(3)
+  end
+  return (G.stack:top() == f) and f or nil
 end
 
 function OPS.battle_move(G, c)
