@@ -8288,6 +8288,27 @@ class Executor:
                     + "; ".join(t for _r, t in sorted(elsewhere)[:6])
                     + "." + near_hint)
             _rs_line = self._respawn_line(obs)
+        # WHO IS IN THE BOX, ON EVERY PAGE. The three places that named
+        # stored Pokemon were all inside PARTY-goal prompts, so on a map
+        # or flag goal the run's own boxed roster was invisible. It boxed
+        # its EEVEE to make room for a DIGLETT that satisfied "the party
+        # holds a GROUND or WATER type" (2026-08-26) — and the Eevee is
+        # also the answer to a WATER type later, if it wants one. A thing
+        # the run put in the box is its own record and one A-press away at
+        # any PC, the same standing as obs.pc_items, which is published
+        # unconditionally. Nothing here says who to take out or why.
+        _boxed = [m for m in ((obs or {}).get("pc_mons") or [])
+                  if isinstance(m, dict) and m.get("species")]
+        if _boxed:
+            _rs_line = (
+                "IN PC STORAGE (yours, not in the party — a boxed Pokemon "
+                "counts for nothing until it is taken out, and "
+                "{\"op\":\"pc_withdraw\",\"index\":N,\"box\":B} takes "
+                "one out at any Pokemon Center): "
+                + ", ".join(f"{m.get('species')} L{m.get('level')} "
+                            f"(box {m.get('box')}, #{m.get('index')})"
+                            for m in _boxed[:8])
+                + ".\n") + _rs_line
         # THE SAFARI CLOCK, while it is running: steps left and balls left
         # are both on screen in the game and neither was ever said.
         _sf = (obs or {}).get("safari") or {}
