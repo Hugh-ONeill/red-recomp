@@ -10014,6 +10014,41 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 sig = self._sig_of(_pre, op, step)
                 if self._gated(sig, op, step, trace):
                     continue
+                # ...AND DO NOT WALK INTO A POCKET WE HAVE ALREADY MAPPED.
+                # cross picks a gap on the edge, always the same one, and
+                # from ROUTE_13 that gap lands in ROUTE_14|16,6 — a nook
+                # whose one recorded way out is straight back. The uncork
+                # routine has known how to try another cell since 08-19,
+                # and it only fires AFTER the run is stuck inside (user,
+                # 2026-08-26: "we shouldnt be routing it automatically into
+                # the pocket in the first place, a generic cross west lands
+                # it in the pocket to begin with"). The atlas already says
+                # where this seam lands from here; if that landing is a
+                # dead end, cross at another cell instead. Which CELL of a
+                # seam to use is pathfinding — the same call _uncork_seam
+                # documents as "the direction stays the model's" — and the
+                # direction is untouched. Said out loud in the trace, and
+                # never overriding a skip the model asked for itself.
+                _skipped_why = ""
+                if step.get("skip") is None:
+                    _h0 = self._where(_pre)
+                    _lands = ((self.explored.get(_h0) or {})
+                              .get(step["dir"]) or {}).get("to")
+                    if _lands and _lands != _h0:
+                        _outs = {(e or {}).get("to")
+                                 for e in (self.explored.get(_lands)
+                                           or {}).values()
+                                 if (e or {}).get("to")
+                                 and (e or {}).get("to") != _lands}
+                        if _outs and _outs <= {_h0}:
+                            step = dict(step, skip=1)
+                            _skipped_why = (
+                                f" — crossing at the nearest gap of this "
+                                f"edge lands in {_lands}, whose only "
+                                f"recorded way out is back to {_h0}, so "
+                                f"another cell of the same edge was used")
+                            self.log("cross_skip_pocket", subgoal=sg.get("id"),
+                                     frm=_h0, dir=step["dir"], pocket=_lands)
                 _r0 = (self._send_safe("cross", **step) or {})
                 _d0 = str((_r0.get("result") or {}).get("detail") or "")
                 if (_r0.get("result") or {}).get("ok"):
@@ -10021,6 +10056,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     _note = f"cross(dir={step['dir']}): ok"
                     if _d0:
                         _note += f" ({_d0})"
+                    _note += _skipped_why
                     trace.append(_note)
                     self._record_outcome(_pre, op, step, _note)
                     if ((_pre.get("map") or {}).get("id")
