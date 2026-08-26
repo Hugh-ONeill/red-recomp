@@ -39,6 +39,16 @@ j.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
 r = subprocess.run([sys.executable, "planner/departed.py", str(j)], capture_output=True, text=True)
 ck("...and not for a different leg's plan", r.returncode == 1)
 ck("no departures, no section", author.departure_text(Path(d) / "nope.jsonl") == "")
+rows2 = [
+    {"dt": 0, "kind": "plan_start", "goal": "Get the Flute"},
+    {"dt": 1, "kind": "escalate_proposal", "subgoal": "talk", "round": 1, "macro": [], "plan": "Mr. Fuji is not in his house. I will go back to the tower."},
+    {"dt": 2, "kind": "escalate_proposal", "subgoal": "talk", "round": 2, "macro": [], "plan": "Mr. Fuji is not in his house. I will go back to the tower."},
+    {"dt": 3, "kind": "escalate_proposal", "subgoal": "talk", "round": 3, "macro": [], "plan": "He should be home now."},
+]
+j2 = Path(d) / "words.jsonl"; j2.write_text("\n".join(json.dumps(r) for r in rows2) + "\n")
+w = author.words_text(j2)
+ck("the run's own words reach the missing rung, counted", '(x2) "Mr. Fuji is not in his house. I will go back to the tower."' in w and '(x1) "He should be home now."' in w)
+ck("people-said on a missing record is empty, not an error", author.people_said_text(Path(d) / "nope.json") == "")
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)

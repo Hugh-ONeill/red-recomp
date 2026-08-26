@@ -4656,6 +4656,56 @@ def departure_text(path) -> str:
     return out
 
 
+def words_text(path) -> str:
+    """WHAT THE RUN SAID WHILE IT TRIED THIS OBJECTIVE: the executor
+    model's own plan sentences over every attempt of the last plan,
+    counted. The missing-step rung answered "deliver the Gold Teeth to
+    Mr. Fuji" (2026-08-25) from a page that held the docket and the flag
+    list and not one of the sixty sentences the run had written about
+    Fuji not being home. Its words, nothing else."""
+    try:
+        recs = [json.loads(l) for l in Path(path).read_text().splitlines()
+                if l.strip()]
+    except (OSError, ValueError):
+        return ""
+    starts = [i for i, r in enumerate(recs) if r.get("kind") == "plan_start"]
+    if not starts:
+        return ""
+    goal = recs[starts[-1]].get("goal")
+    first = next(i for i in starts if recs[i].get("goal") == goal)
+    said: dict = {}
+    for r in recs[first:]:
+        if r.get("kind") != "escalate_proposal":
+            continue
+        w = (r.get("plan") or "").strip()
+        if w:
+            said[w[:240]] = said.get(w[:240], 0) + 1
+    if not said:
+        return ""
+    out = ("\n\nWHAT THE RUN SAID WHILE IT TRIED THIS OBJECTIVE, in its own "
+           "words, most repeated first:")
+    for w, n in sorted(said.items(), key=lambda kv: -kv[1])[:6]:
+        out += f"\n  - (x{n}) \"{w}\""
+    return out
+
+
+def people_said_text(observed) -> str:
+    """The WHAT PEOPLE HAVE SAID section of the walked record, alone. The
+    game explains its own gates out loud ("That's odd, MR.FUJI isn't
+    here. Where'd he go?"), and the rewrite pass has always been shown
+    those sentences; the missing-step rung was not."""
+    try:
+        full = observed_text(Path(observed))
+    except Exception:
+        return ""
+    i = full.find("\n\nWHAT PEOPLE HAVE SAID")
+    if i < 0:
+        return ""
+    rest = full[i + 2:]
+    j = rest.find("\n\n")
+    return "\n\n" + (rest if j < 0 else rest[:j])
+
+
 def check_missing(goal: str, ahead: list, start: str, model: str,
                   behind: list = (), observed=None, tries: int = 3,
                   journal=None) -> str:
@@ -4693,7 +4743,9 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
             + done_ledger_text()
             + "\n\nSTILL ON THE DOCKET, in order:\n"
             + "\n".join(f"  {n}. {t}" for n, t in ahead)
-            + (departure_text(journal) if journal else ""))
+            + (departure_text(journal) if journal else "")
+            + (words_text(journal) if journal else "")
+            + (people_said_text(observed) if observed else ""))
     turned_down: list = []
     for _ in range(max(1, tries)):
         body = base + ("\n\nYOU ALREADY PROPOSED THESE AND THEY WERE TURNED "
