@@ -8477,6 +8477,51 @@ class Executor:
                     + "; ".join(t for _r, t in sorted(elsewhere)[:6])
                     + "." + near_hint)
             _rs_line = self._respawn_line(obs)
+        # WHAT THE SHOPS YOU HAVE WALKED INTO SELL, FROM ANYWHERE. The
+        # shelf store is complete and its RECALL was one hop deep: a
+        # shelf renders on the floor you stand on, and on a door whose
+        # destination is that shop. So from CELADON_MART_1F the page said
+        # "CELADON_MART_2F sells: GREAT_BALL, ..." on the door to 2F and
+        # nothing at all about the ROOF two legs up, whose machines this
+        # run has pressed and which hold the only FRESH_WATER in the
+        # world. Carrying "reach Saffron", blocked by a guard who wants a
+        # drink, it bought nothing and spent five rounds asking both 2F
+        # counters for water, twice, before leaving the building (user,
+        # 2026-08-26: "whats it getting on 2F of the celadon mart" —
+        # nothing). Same shape as WILD GROUND ELSEWHERE: the run's own
+        # record, ordered by walked legs, never by what looks useful.
+        try:
+            _shops = []
+            for _sm, _items in (getattr(self, "_shelves", {}) or {}).items():
+                if not _items:
+                    continue
+                _hop = None
+                for _sr in (self.explored or {}):
+                    if _sr.split("|")[0] != _sm:
+                        continue
+                    _sp = self._route(self._where(obs), _sr)
+                    if _sp is not None and (_hop is None or len(_sp) < _hop):
+                        _hop = len(_sp)
+                _shops.append((_hop if _hop is not None else 99, _sm, _items))
+            if _shops:
+                _shops.sort()
+                _mach = getattr(self, "_shelf_machine", None) or set()
+                _rs_line = (
+                    "SHOPS YOU HAVE WALKED INTO AND WHAT THEY WERE SELLING: "
+                    + "; ".join(
+                        f"{_sm}"
+                        + (" (VENDING MACHINES, pressed and picked from, "
+                           "not bought at)" if _sm in _mach else "")
+                        + (f", {_h} walked leg(s) away" if _h < 99
+                           else ", no walked route from here")
+                        + ": " + ", ".join(_it[:10])
+                        for _h, _sm, _it in _shops[:8])
+                    + ". A counter takes {\"op\":\"buy\"}; a machine is "
+                      "pressed and a row picked. Shops you have never "
+                      "walked into are not listed, and what any of this is "
+                      "worth is yours to judge.\n") + _rs_line
+        except Exception as _e:      # a page must never die of this
+            self.log("shop_recall_error", err=str(_e)[:120])
         # WHO IS IN THE BOX, ON EVERY PAGE. The three places that named
         # stored Pokemon were all inside PARTY-goal prompts, so on a map
         # or flag goal the run's own boxed roster was invisible. It boxed
