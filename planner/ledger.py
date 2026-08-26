@@ -619,7 +619,29 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             if str(_h).startswith(_pre):
                 _said_here = str(_h)[len(_pre):]
         if _said_here:
+            # ...AND A REFUSAL OUTLIVES THE THING THAT LIFTED IT. The
+            # people-said block dates every line ("said before N event(s)
+            # that have fired since"); a DOOR's quoted refusal carried no
+            # stamp at all. Inside ROUTE_5_GATE the row for the south door
+            # read: trying it said: "I'm on guard duty. Gee, I'm thirsty,
+            # though! Oh wait there, the road's closed." — with the drink
+            # long since handed over and the guard, one row below, saying
+            # "Hi, thanks for the cool drinks!". Two sentences from the
+            # same gate, one stale, and the stale one sat on the row where
+            # the door is chosen (user, 2026-08-26). Same stamp, same
+            # source (hints_at), same rule: say when it was said; whether
+            # it still holds is the model's.
             c.spoke = _said_here
+            try:
+                _line = f"use_warp ({key}): {_said_here}"
+                _then = ((getattr(ex, "hints_at", {}) or {})
+                         .get(here) or {}).get(_line)
+                _now = len((obs.get("flags") or []))
+                if _then is not None and _now > _then:
+                    c.spoke = (f"{_said_here}  (said before {_now - _then} "
+                               f"event(s) that have fired since)")
+            except Exception:
+                pass
         # A DOOR INTO A LIFT IS A LIFT. The op rides door to door from
         # where you stand — walks in, presses the floor, walks out — but
         # nothing outside the car ever said so, so the run kept working
