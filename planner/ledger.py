@@ -365,10 +365,26 @@ UNWORKED = ("untried", "untouched", "unspoken", "reopened", "cuttable",
 
 
 def switches(cands: list) -> list:
-    """Reachable fixtures other than a PC: pressable AGAIN by nature. The
-    Vermilion gym's cans re-randomise on a miss and pressing again is the
-    only way through; a PC is a service with its own ops."""
-    return [c for c in cands if c.kind == "fixture" and c.key != "PC"
+    """Reachable things pressable AGAIN by nature: fixtures other than a
+    PC, and closed doors. The Vermilion gym's cans re-randomise on a miss
+    and pressing again is the only way through; a PC is a service with its
+    own ops.
+
+    A CARD-KEY SHUTTER IS THE SAME KIND OF THING, and was not in this list.
+    Pressing one without the key says "Darn! It needs a CARD KEY!", which
+    is a real reply, so it banked a touch — and the floor then read FULLY
+    WORKED with the door still drawn shut across the way. The same tile,
+    the same press, answers "Bingo! The CARD KEY opened the door!" once the
+    key is in the bag; both replies are in this run's own journal for
+    DOOR_SILPH_CO_8F_7_8 (user, 2026-08-26: "are the shutters counting as
+    'touched' because we might want to make them fixtures so they dont
+    count like that"). And the shim only MINTS a shut door while its tile
+    is still a door tile, so a shut_door in the observation is proof the
+    thing is still closed, whatever was pressed at it. A floor holding one
+    is not finished; whether it is worth going back for is the model's."""
+    return [c for c in cands
+            if (c.kind == "fixture" and c.key != "PC"
+                or c.kind == "shut_door")
             and c.status not in ("unreachable",)]
 
 
@@ -1571,8 +1587,13 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  "has something is how the search goes on")
     elif switches(cands) and not any(c.status in UNWORKED for c in cands
                                      if c.kind != "op"):
+        _sw = switches(cands)
+        _shut = [c for c in _sw if c.kind == "shut_door"]
         head += (". Everything here has been pressed at least once, but "
-                 f"the fixtures ({', '.join(c.key for c in switches(cands)[:6])}) "
+                 + ("the closed doors" if _shut and len(_shut) == len(_sw)
+                    else "the fixtures and closed doors" if _shut
+                    else "the fixtures")
+                 + f" ({', '.join(c.key for c in _sw[:6])}) "
                  "can be pressed AGAIN — a room like this can be a puzzle "
                  "about which, rather than about finding one more thing")
     _holes = m.get("holes") if isinstance(m.get("holes"), list) else []
@@ -1931,6 +1952,12 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         if c.kind == "fixture" and c.key != "PC" and c.status in (
                 "touched", "inert", "worth_a_word"):
             words += " — a fixture; it can be pressed again"
+        if c.kind == "shut_door" and c.status in ("touched", "inert",
+                                                  "worth_a_word"):
+            words += (" — IT IS STILL DRAWN SHUT, so nothing pressed at it "
+                      "has opened it yet; a door answers differently once "
+                      "the world has moved, and pressing it again is how "
+                      "you find out")
         # AN ITEM IS FREE STUFF. Renamed to ITEM_x_y (its contents are not
         # on the screen), "never pressed" undersells it: it is a thing lying
         # on the ground that pressing A picks up, at no cost. Say that.
