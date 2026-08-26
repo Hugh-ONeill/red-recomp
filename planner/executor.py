@@ -1743,6 +1743,43 @@ class Executor:
                 f"is often a corner. The others: {_others}. Name one "
                 f"({{\"op\":\"go\",\"to\":\"MAP|region\"}}) when it "
                 f"matters which, and that choice is taken as given.")
+        # ...AND WHEN THERE IS ONLY ONE PART, AND IT IS A DEAD END. The note
+        # above needs two reachable parts to fire, so `go ROUTE_14` — whose
+        # single walked region is the four-cell nook with one recorded exit,
+        # back the way you came — delivered the run into it in silence, over
+        # and over. Ranking cannot help: there is nothing else to rank
+        # (user, 2026-08-26: "what if it wasnt a walked part yet?"). What IS
+        # known is that this is all of that map the run has walked and that
+        # it leads nowhere new; where the rest of it is entered from is not
+        # recorded, which is the honest end of the sentence.
+        elif best and "|" not in str(want) and _ways(best[0]) <= 1:
+            _outs = sorted({(e or {}).get("to")
+                            for e in (self.explored.get(best[0]) or {}).values()
+                            if (e or {}).get("to")
+                            and (e or {}).get("to") != best[0]})
+            # ...AND SEEN IS NOT WALKED. The rest of that map is not
+            # unknown ground — the footprint has looked at a band of it
+            # from inside the nook (user, 2026-08-26: "the unwalked parts
+            # are still in the area footprint though, so theyre seen").
+            # Say NOT STOOD ON, never "never seen"; and add the frontier
+            # count, because a region with none is a closed box that
+            # explore cannot get out of either.
+            _fr_here = int((getattr(self, "map_seen", {}) or {})
+                           .get(str(want), 0) or 0)
+            _choice_note = (
+                f"go: {best[0]} is the ONLY part of {want} you have walked, "
+                f"and every way out of it that you have recorded leads back "
+                + (f"to {', '.join(_outs)}" if _outs else "nowhere")
+                + f". The rest of {want} is ground you have SEEN but never "
+                  f"STOOD ON"
+                + (", and from the part you have walked the seen ground "
+                   "ends nowhere you can reach, so explore finds no way on "
+                   "from inside it either" if _fr_here == 0 else
+                   f", and {_fr_here} spot(s) where that seen ground ends "
+                   f"can be reached from the part you have walked")
+                + f". How the rest of {want} is entered is not recorded — it "
+                  f"may be another cell of the edge you crossed to get here, "
+                  f"and it may be another map entirely.")
         if not best:
             _rc = self._ride_chance(here, targets)
             if _rc:

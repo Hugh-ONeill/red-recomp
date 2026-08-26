@@ -61,6 +61,27 @@ r12 = sorted((r for r in ex.explored if r.startswith("ROUTE_12|")),
              key=lambda r: -ways(r))
 ck("ROUTE_12 ranks the 3-way part first", r12[0] == "ROUTE_12|0,61")
 
+# --- and the single-part dead end, which no ranking can help ---
+j = src.find("AND WHEN THERE IS ONLY ONE PART, AND IT IS A DEAD END")
+ck("a lone dead-end part is called out", j > 0)
+dblk = src[j:j + 3000]
+# the comment quotes the phrasing it forbids; test the code only
+_dsaid = "\n".join(l for l in dblk.splitlines()
+                   if not l.lstrip().startswith("#"))
+ck("...only for a bare map name with nowhere else to go",
+   '"|" not in str(want) and _ways(best[0]) <= 1' in dblk)
+ck("it names what its recorded ways out lead back to", "_outs" in dblk)
+ck("SEEN is not confused with WALKED",
+   "SEEN but never " in _dsaid and "STOOD ON" in _dsaid
+   and "never seen" not in _dsaid)
+ck("...and the frontier count decides which half of that sentence",
+   "map_seen" in dblk and "_fr_here == 0" in dblk)
+ck("a closed box says explore cannot get out either",
+   "explore finds no way on " in dblk)
+ck("it still refuses to say where the rest IS",
+   "is not recorded" in _dsaid
+   and "may be another map entirely" in _dsaid)
+
 import ast
 try:
     ast.parse(src); ck("executor.py parses", True)
