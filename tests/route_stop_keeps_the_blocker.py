@@ -27,8 +27,8 @@ ck("a named budget replaces the bare [:300]",
 m = re.search(r"WHY_BUDGET = (\d+)", src)
 ck("the budget exists and clears a whole refusal",
    m and int(m.group(1)) >= 900)
-ck("both give-up paths use it",
-   src.count("str(_last_det)[:self.WHY_BUDGET]") == 1
+ck("every give-up path uses it (the two originals and the Safari-clock verdict)",
+   src.count("str(_last_det)[:self.WHY_BUDGET]") == 2
    and src.count("str(_wdet)[:self.WHY_BUDGET]") == 1)
 
 # --- a felled bush is reported as felled ---
