@@ -4772,7 +4772,9 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
     done = sorted(cur.get("flags") or [])
     listed = {_norm_obj(t) for _, t in ahead} | {_norm_obj(t) for _, t in behind}
     base = (f"THE OBJECTIVE YOU ARE STUCK ON: {goal}" + _wording_lineage(goal)
-            + f"\n\nWHERE THE RUN STANDS: {start}\n\n"
+            + f"\n\nWHERE THE RUN STANDS: {start}"
+            + attempt_yield_text(goal)[0] + new_ground_text(goal)
+            + "\n\n"
             f"WHAT THE GAME HAS RECORDED YOU DOING ({len(done)} events): "
             + ", ".join(done[:60])
             + ("\n\nOBJECTIVES YOU HAVE ALREADY FINISHED:\n"
@@ -5007,6 +5009,48 @@ def dry_tail(goal: str) -> int:
     return dry
 
 
+def new_ground_by_map(goal: str) -> dict:
+    """How many parts of each map this objective's runs entered for the
+    first time, summed over every run under every wording. Reads both
+    row formats: "by map: A x3, B x1" and the older list of region names.
+    """
+    from collections import Counter
+    total = Counter()
+    for _, _, t in attempt_yield_rows(goal):
+        m = re.search(r"entered for the first time — by map: ([^;.]+)", t)
+        if m:
+            for name, n in re.findall(r"([A-Z0-9_]+) x(\d+)", m.group(1)):
+                total[name] += int(n)
+            continue
+        m = re.search(r"entered for the first time: ([^;.]+)", t)
+        if m:
+            for reg in re.findall(r"([A-Z0-9_]+)\|", m.group(1)):
+                total[reg] += 1
+    return dict(total)
+
+
+def new_ground_text(goal: str) -> str:
+    """THE GROUND A LEG'S RUNS WALKED FOR THE FIRST TIME, by map, as the
+    rungs that can add a step read it. "Reach Cinnabar Island" walked ten
+    new parts of the Seafoam Islands and the missing rung, asked whether a
+    step was missing, was shown none of that (user, 2026-08-27: "if
+    something has a ton of new ground walked it probably deserves its own
+    leg"). Measured, and set beside the list; whether a place that took
+    that much walking is a step of its own is the model's answer."""
+    total = new_ground_by_map(goal)
+    if not total:
+        return ""
+    rows = sorted(total.items(), key=lambda kv: -kv[1])
+    n = sum(total.values())
+    return ("\n\nGROUND THIS OBJECTIVE'S RUNS WALKED FOR THE FIRST TIME, by "
+            f"map ({n} part(s) in all): "
+            + ", ".join(f"{m} x{c}" for m, c in rows[:10])
+            + ". Where that walking went is worth reading against your "
+              "list: a place that took a run of its own and stands on no "
+              "line of it may be a step of its own — or may not; that is "
+              "yours to say.")
+
+
 def attempt_yield_text(goal: str) -> tuple:
     """The record as the model reads it, and how many runs on the tail
     yielded nothing."""
@@ -5218,7 +5262,7 @@ def check_later(goal: str, n: int, ahead: list, start: str, journal: str,
         return 0
     body = (f"THE OBJECTIVE THAT FAILED: {n}. {goal}" + _wording_lineage(goal)
             + f"\n\nWHERE THE RUN STANDS: {start}\n{journal}"
-            + attempt_yield_text(goal)[0]
+            + attempt_yield_text(goal)[0] + new_ground_text(goal)
             + "\n\nYOUR LIST FROM HERE ON:\n"
             + "\n".join(f"  {i}. {t}" for i, t in ahead))
     try:

@@ -83,8 +83,15 @@ def main() -> int:
     new_areas = [a for a in now.get("areas", [])
                  if a not in set(before.get("areas", []))]
     if new_areas:
-        bits.append(f"{len(new_areas)} place(s) entered for the first time: "
-                    + ", ".join(new_areas[:8]))
+        # BY MAP, ALL OF IT. Eight region names told nobody that a run's
+        # walking went almost entirely into one dungeon; the count per
+        # map does (user, 2026-08-27: "if something has a ton of new
+        # ground walked it probably deserves its own leg").
+        from collections import Counter
+        _by_map = Counter(a.split("|")[0] for a in new_areas)
+        bits.append(f"{len(new_areas)} place(s) entered for the first time"
+                    " — by map: "
+                    + ", ".join(f"{m} x{c}" for m, c in _by_map.most_common(10)))
     op = dict((s, l) for s, l in before.get("party", []))
     grew = [f"{s} {op[s]}->{l}" for s, l in now.get("party", [])
             if s in op and l > op[s]]
