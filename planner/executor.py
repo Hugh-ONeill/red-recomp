@@ -8861,9 +8861,11 @@ class Executor:
                           f"something this map can do, however the printed "
                           f"map is laid out.")
         else:
-            _edge_line = ("\nTHIS MAP HAS NO EDGES AT ALL — it is indoors. "
-                          "The only ways out are its doors; there is no "
-                          "direction to cross.")
+            # NOT "it is indoors": a FOREST map (Viridian Forest, the
+            # Safari areas) has no edges either, and the sky is on screen.
+            _edge_line = ("\nTHIS MAP HAS NO EDGES AT ALL — "
+                          + ledger.no_edge_words(m)
+                          + ". There is no direction to cross.")
         out = warned + _edge_line + "\nEXITS FROM HERE — "
         out += ("UNTRIED (prefer these, they are the only way to find "
                 f"anything new): {', '.join(untried)}. " if untried

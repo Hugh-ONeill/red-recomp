@@ -1455,6 +1455,32 @@ def _spent_both_note(obs, ex) -> str:
         return ""
 
 
+# A MAP WITH NO EDGES IS NOT THEREBY INDOORS. The engine's own outside test
+# (Map.isOutside, the one wLastMap reads) counts only OVERWORLD and PLATEAU,
+# so SAFARI_ZONE_WEST — tall grass under open sky, walled by fences — read
+# "indoors, no edges" to a model standing in it (leg 36, 2026-08-26). The
+# tileset says which it is: FOREST is Viridian Forest and the four Safari
+# areas, walled ground you can see the sky from; OVERWORLD/PLATEAU ground
+# simply has no neighbour on any side; anything else is a building.
+OPEN_SKY_TILESETS = {"OVERWORLD", "PLATEAU"}
+FOREST_TILESETS = {"FOREST"}
+
+
+def no_edge_words(m: dict) -> str:
+    """Why this map has no seams, said only as far as the tileset allows."""
+    ts = str((m or {}).get("tileset") or "").upper()
+    if ts in FOREST_TILESETS:
+        return ("walled ground under open sky, like a forest or a park — "
+                "no edge of this map connects anywhere; its gates and "
+                "doors are the only ways out")
+    if ts in OPEN_SKY_TILESETS:
+        return ("no edge of this map connects anywhere; its doors are "
+                "the only ways out")
+    if ts:
+        return "indoors, no edges; the doors are the only ways out"
+    return "no edges; the doors are the only ways out"
+
+
 def render(cands: list[Candidate], ex, obs: dict, target: str = "",
            limit: int = 24) -> str:
     """The ledger as the model reads it: numbered, local, ranked, bounded.
@@ -1491,7 +1517,7 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     _unseen_sides = [str(x) for x in (m.get("sides_unseen") or [])]
     _unseen_sides = [x for x in _unseen_sides if x not in sides]
     if not sides and not _unseen_sides:
-        head += " — indoors, no edges; the doors are the only ways out"
+        head += " — " + no_edge_words(m)
     elif not sides:
         head += (" — no edge of this map has been on screen yet ("
                  + ", ".join(_unseen_sides) + " never looked at)")

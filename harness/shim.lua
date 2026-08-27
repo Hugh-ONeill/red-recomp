@@ -1077,7 +1077,11 @@ local function observe(G, seq, result)
     local wb = (md and md.width) or map.width
     local hb = (md and md.height) or map.height
     o.map = { id = map.id, name = map.name,
-              width = wb and wb * 2, height = hb and hb * 2 }
+              width = wb and wb * 2, height = hb and hb * 2,
+              -- the tileset is on screen (grass and sky vs floor and
+              -- walls); it is what lets a no-edge map be called a forest
+              -- or a room truthfully instead of "indoors" for both
+              tileset = md and md.tileset or (map.def and map.def.tileset) }
     -- OUTDOORS OR NOT, the engine's own test (Map.isOutside — the one
     -- wLastMap reads). On screen: sky, town, route vs walls and a roof.
     -- The recorder uses it to refuse a LAST_MAP door edge that claims to
@@ -4500,10 +4504,17 @@ function OPS.cross(G, c)
     if md.connections then
       for d in pairs(md.connections) do outs[#outs + 1] = d end
     end
+    local _ts = tostring(md.tileset or "")
+    local _noedge = "it is indoors; exit through a door/stairs with use_warp"
+    if _ts == "FOREST" then
+      _noedge = "it is walled all round under open sky, like a forest or "
+        .. "a park; exit through a gate or door with use_warp"
+    elseif _ts == "OVERWORLD" or _ts == "PLATEAU" then
+      _noedge = "no edge of it connects anywhere; exit through a door with use_warp"
+    end
     return false, ("%s has no %s edge — %s"):format(
       tostring(startMap), cmap[dir],
-      #outs > 0 and ("its edges go " .. table.concat(outs, "/"))
-        or "it is indoors; exit through a door/stairs with use_warp")
+      #outs > 0 and ("its edges go " .. table.concat(outs, "/")) or _noedge)
   end
   -- NPC-robust: a wandering NPC can sit on the seam gap or block the only
   -- corridor, making the edge transiently unreachable. Re-BFS across a few
