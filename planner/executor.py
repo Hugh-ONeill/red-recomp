@@ -6055,6 +6055,21 @@ class Executor:
         return False
 
     @staticmethod
+    def _safari_clock_cut(pre, post) -> bool:
+        """The Safari game was running when the hop began, is gone now,
+        and the party stands at the gate: the park's clock ended the hop.
+        Read off the observations, so it holds whatever the op said —
+        the first fix keyed on the shim's wording and use_warp returned a
+        bare "warped" from a site it did not cover (2026-08-27)."""
+        try:
+            return (bool((pre or {}).get("safari"))
+                    and not (post or {}).get("safari")
+                    and str(((post or {}).get("map") or {}).get("id") or "")
+                    .startswith("SAFARI_ZONE_GATE"))
+        except AttributeError:
+            return False
+
+    @staticmethod
     def _walk_cut_by_the_world(det) -> bool:
         """A walk that died because the WORLD moved — a battle box came
         up, a wild fight started, the Safari clock ran out and the park
@@ -6438,11 +6453,18 @@ class Executor:
                 # 2026-08-27). The shim names the clock; a walk it ended
                 # says nothing about the edge, so nothing is blocked,
                 # voided or refuted, and the verdict says which it was.
-                if self._walk_cut_by_the_world(_last_det) \
-                        and "SAFARI GAME ended" in str(_last_det or ""):
+                if "SAFARI GAME ended" in str(_last_det or "") \
+                        or self._safari_clock_cut(pre, o):
+                    _det = str(_last_det or "")
+                    if "SAFARI GAME ended" not in _det:
+                        _det += (" — the SAFARI GAME ended on the way (its "
+                                 "steps ran out; PA: Ding-dong! Time's up!) "
+                                 "and the park sent you out to the gate; the "
+                                 "ground you were walking is not what "
+                                 "stopped you")
                     self._route_why = (
                         f"the walk toward {nxt} was cut short, not stopped: "
-                        f"{str(_last_det)[:self.WHY_BUDGET]}. "
+                        f"{_det[:self.WHY_BUDGET]}. "
                         "The route as recorded still stands.")
                     self.log("route_walk_lost_safari_clock",
                              subgoal=sg.get("id"), wanted=nxt,

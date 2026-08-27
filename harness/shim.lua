@@ -4389,6 +4389,7 @@ function OPS.use_warp(G, c)
   end
   local reached_any = false
   local _px0, _py0 = p.cellX, p.cellY
+  local _sf0u = safari_running(G)     -- use_warp discards attempt's detail
   for _, t in ipairs(tiles) do
     local ok, w = attempt(t.x, t.y)
     if ok or (ow.map and ow.map.id) ~= startMap then
@@ -4399,7 +4400,7 @@ function OPS.use_warp(G, c)
         return true, ("warped — same map, you are now at %d,%d")
           :format(_pp.cellX or -1, _pp.cellY or -1)
       end
-      return true, "warped"
+      return true, "warped" .. safari_ended_note(G, _sf0u)
     end
     reached_any = reached_any or (w == "no fire")
   end

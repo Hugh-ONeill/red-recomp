@@ -93,11 +93,24 @@ def main() -> int:
         bits.append("levels gained: " + ", ".join(grew))
     if joined:
         bits.append("joined the party: " + ", ".join(joined))
+    # SPENDING IS NOT A YIELD. "items no longer held" is the bag going
+    # DOWN — a potion used, a candy tossed — and it kept a dry leg alive:
+    # the Secret Key leg's fourth run read as a yield on "items no longer
+    # held: FULL_RESTORE, MAX_POTION" and the dry gate never fired
+    # (2026-08-27). It is still reported, as an aside; it just is not
+    # progress, so a run with nothing else to show starts with NOTHING.
+    aside = ""
+    if lost:
+        aside = "items no longer held: " + ", ".join(sorted(lost)[:8])
+        bits = [b for b in bits if not b.startswith("items no longer held")]
     if not bits:
-        print("NOTHING changed while this leg ran: no event fired, no item "
-              "or badge was gained, and no new place was entered.")
+        print("NOTHING new while this leg ran: no event fired, no item "
+              "or badge was gained, and no new place was entered"
+              + (f" — only the bag went down ({aside})" if aside else "")
+              + ".")
         return 0
-    print("WHAT CHANGED WHILE THIS LEG RAN — " + "; ".join(bits) + ".")
+    print("WHAT CHANGED WHILE THIS LEG RAN — " + "; ".join(bits)
+          + (f" ({aside})" if aside else "") + ".")
     return 0
 
 

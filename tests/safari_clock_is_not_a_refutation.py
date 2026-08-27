@@ -35,6 +35,21 @@ ck("walk_to says it, whether it stepped or crossed",
 ck("the explore loop says it", 'why = "warped to " .. tostring(ow.map and ow.map.id)\n        .. safari_ended_note(G, _sf0)' in lua)
 ck("each site captures the flag at op start", lua.count("local _sf0 = safari_running(G)") >= 3)
 
+ck("use_warp's own return names it too (it discards the walk's detail)",
+   'return true, "warped" .. safari_ended_note(G, _sf0u)' in lua
+   and "local _sf0u = safari_running(G)" in lua)
+
+# read off the observations, whatever the op said
+clock = E.Executor._safari_clock_cut
+pre = {"safari": {"steps": 12, "balls": 30}, "map": {"id": "SAFARI_ZONE_NORTH"}}
+gate = {"map": {"id": "SAFARI_ZONE_GATE"}}
+ck("clock running before, gone after, standing at the gate: the clock cut it", clock(pre, gate))
+ck("...not if the game is still running", not clock(pre, {"safari": {"steps": 3}, "map": {"id": "SAFARI_ZONE_GATE"}}))
+ck("...not if it landed somewhere other than the gate",
+   not clock(pre, {"map": {"id": "SAFARI_ZONE_WEST"}}))
+ck("...not if no game was running to begin with", not clock({"map": {"id": "ROUTE_1"}}, gate))
+ck("...and a missing observation is not a clock", not clock(None, None))
+
 cut = E.Executor._walk_cut_by_the_world
 ck("a walk the Safari clock ended was cut by the world",
    cut("warped — the SAFARI GAME ended on the way (PA: Ding-dong! Time's up!) and the park sent you out to the gate"))
@@ -44,7 +59,10 @@ ck("a walk that simply did not arrive was not", not cut("warped to SAFARI_ZONE_G
 src = (ROOT / "planner/executor.py").read_text()
 i = src.index("def _walk_route(")
 body = src[i:]
-guard = body.index('and "SAFARI GAME ended" in str(_last_det or "")')
+guard = body.index('if "SAFARI GAME ended" in str(_last_det or "")')
+ck("the guard also reads the observations", "or self._safari_clock_cut(pre, o)" in body[guard:guard + 200])
+ck("...and names the clock itself when the op did not",
+   "steps ran out" in body[guard:guard + 900])
 ck("the clock guard comes before the edge is judged",
    guard < body.index("frm = self._where(pre)\n                rec = ")
    and guard < body.index("self._bad_seam.add("))

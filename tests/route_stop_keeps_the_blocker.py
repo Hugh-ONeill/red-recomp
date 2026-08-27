@@ -28,8 +28,9 @@ m = re.search(r"WHY_BUDGET = (\d+)", src)
 ck("the budget exists and clears a whole refusal",
    m and int(m.group(1)) >= 900)
 ck("every give-up path uses it (the two originals and the Safari-clock verdict)",
-   src.count("str(_last_det)[:self.WHY_BUDGET]") == 2
-   and src.count("str(_wdet)[:self.WHY_BUDGET]") == 1)
+   src.count("str(_last_det)[:self.WHY_BUDGET]") == 1
+   and src.count("str(_wdet)[:self.WHY_BUDGET]") == 1
+   and src.count("{_det[:self.WHY_BUDGET]}") == 1)
 
 # --- a felled bush is reported as felled ---
 i = src.find("CUT DOWN {', '.join(felled)}")
