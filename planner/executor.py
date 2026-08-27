@@ -5411,6 +5411,12 @@ class Executor:
         if back not in _OPP or back == dirname:
             return _no("the one way out is not a compass seam to come back "
                        "through", back=back)
+        _to = str((ways[back] or {}).get("to") or "")
+        if not self._is_pocket(here, _to):
+            return _no("entered from elsewhere: not a pocket", back=back)
+        if self._seam_row_uniform(_to.split("|")[0], _OPP[back]):
+            return _no("every cell of that seam already tried lands here",
+                       back=back)
         self._uncorked = getattr(self, "_uncorked", set()) | {key}
         self._uncorking = True
         final = obs
@@ -6053,6 +6059,47 @@ class Executor:
                 if str(mv.get("id") if isinstance(mv, dict) else mv) == move:
                     return True
         return False
+
+    def _is_pocket(self, region: str, frm: str) -> bool:
+        """A region whose only recorded way out is back where you came
+        from — AND which was never entered from anywhere else. Ways out
+        alone were not enough: Route 19's water is entered by surfing off
+        Route 19's own land (an intra-map walk), so its one recorded way
+        out was west to Route 20, the rule called it a dead end, and every
+        crossing into it was retried at three more cells of the seam, all
+        landing in the same water (2026-08-27, "to 19 and back"). A region
+        you walked into from a third place has a way out: the way you came.
+        """
+        ex = self.explored.get(region) or {}
+        outs = {str(v.get("to")).split("|")[0] for v in ex.values()
+                if isinstance(v, dict) and v.get("to")
+                and v.get("to") != region}
+        if not outs or not outs <= {frm.split("|")[0]}:
+            return False
+        ins = {f.split("|")[0] for f, e in (self.explored or {}).items()
+               if f != region
+               for v in (e or {}).values()
+               if isinstance(v, dict) and v.get("to") == region}
+        return ins <= {frm.split("|")[0]}
+
+    def _seam_row_uniform(self, frm_map: str, dirname: str) -> bool:
+        """Every cell of this seam that was ever crossed from this map,
+        skips included, landed in the same part: trying another cell is
+        a known result, not a search. Recorded across all regions of the
+        map, because the crossing is made from whichever part the run is
+        standing in."""
+        lands, skips = set(), 0
+        for reg, ex in (self.explored or {}).items():
+            if reg.split("|")[0] != frm_map:
+                continue
+            for k, v in (ex or {}).items():
+                if not isinstance(v, dict) or not v.get("to"):
+                    continue
+                if k == dirname or k.startswith(dirname + "#skip"):
+                    lands.add(v["to"])
+                    if "#skip" in k:
+                        skips += 1
+        return skips >= 1 and len(lands) == 1
 
     @staticmethod
     def _safari_clock_cut(pre, post) -> bool:
@@ -10124,13 +10171,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     _h0 = self._where(_pre)
                     _lands = ((self.explored.get(_h0) or {})
                               .get(step["dir"]) or {}).get("to")
+                    _pocket = None
                     if _lands and _lands != _h0:
-                        _outs = {(e or {}).get("to")
-                                 for e in (self.explored.get(_lands)
-                                           or {}).values()
-                                 if (e or {}).get("to")
-                                 and (e or {}).get("to") != _lands}
-                        if _outs and _outs <= {_h0}:
+                        if self._seam_row_uniform(_h0.split("|")[0],
+                                                  step["dir"]):
+                            _skipped_why = (
+                                f" — every cell of this edge you have "
+                                f"crossed lands in {_lands}")
+                        elif self._is_pocket(_lands, _h0):
+                            _pocket = _lands
                             step = dict(step, skip=1)
                             _skipped_why = (
                                 f" — crossing at the nearest gap of this "
@@ -10146,6 +10195,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     _note = f"cross(dir={step['dir']}): ok"
                     if _d0:
                         _note += f" ({_d0})"
+                    if _pocket and self._where(obs) == _pocket:
+                        _skipped_why += (" — and that cell landed in the "
+                                         "same part anyway")
                     _note += _skipped_why
                     trace.append(_note)
                     self._record_outcome(_pre, op, step, _note)

@@ -24,8 +24,8 @@ blk = src[i:i + 2400]
 
 ck("it reads the landing from the atlas, not a guess",
    'self.explored.get(_h0) or {})' in blk and '.get("to")' in blk)
-ck("a pocket is defined as: its only way out comes back here",
-   "_outs <= {_h0}" in blk and "if _outs and" in blk)
+ck("a pocket is defined by the helper: only way out comes back here, and never entered from elsewhere",
+   "self._is_pocket(_lands, _h0)" in blk)
 ck("it crosses at another cell rather than refusing",
    'step = dict(step, skip=1)' in blk)
 ck("the direction is never changed", 'step["dir"]' in blk
