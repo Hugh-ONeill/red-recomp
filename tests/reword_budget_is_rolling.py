@@ -38,12 +38,19 @@ ck("the per-leg cap is untouched — a single leg still gets two asks",
 ck("the script still parses",
    subprocess.run(["bash", "-n", "fresh_discovery.sh"]).returncode == 0)
 
-# the arithmetic, on this run's real ledger
+# the arithmetic, on a fixture (the live ledger moved — three leg-36
+# rewordings landed and the "reopens at 32" read came back 3)
+import tempfile
+_rw = Path(tempfile.mkdtemp(prefix="rewords_")) / "outline_rewordings"
+_rw.write_text("10\tReach Mt. Moon\tReach Mt Moon\n"
+               "13\tTeach CUT\tTeach a Pokemon CUT\n"
+               "17\tFind Bill\tReach Bill's house\n")
+
 def recent(i, w=12):
     out = subprocess.run(
         ["awk", "-F\t", "-v", f"i={i}", "-v", f"w={w}",
          "($1+0) > i - w { n++ } END { print n+0 }",
-         "run/outline_rewordings"], capture_output=True, text=True)
+         str(_rw)], capture_output=True, text=True)
     return int(out.stdout.strip() or 0)
 
 ck("at leg 20 the throttle still bit (3 in the window)", recent(20) == 3)
@@ -64,15 +71,37 @@ ck("...so exit-4/VOID's bare lines never spend it",
    "bare objective" in sblk)
 ck("...still eight inside the window", '-lt 8 ] \\' in sblk)
 
-def skipped(i, w=12):
+# THE LIVE LEDGER MOVES; the test does not: a "39\tWake Snorlax" skip landed
+# inside the window and broke the count this used to read off run/. The
+# sweep's awk program is read out of the script and run against a fixture.
+import tempfile
+_prog = re.search(r"_skipped=\$\(awk -F'\\t' -v i=\"\$at\" -v w=12 \\\n\s*'([^']*)'", sh)
+ck("sweep_ahead's awk program can be read out of the script", bool(_prog))
+_dir = Path(tempfile.mkdtemp(prefix="skips_"))
+
+def skipped(i, rows, w=12):
+    fx = _dir / f"skips_{i}_{len(rows)}"
+    fx.write_text("".join(r + "\n" for r in rows))
     out = subprocess.run(
         ["awk", "-F\t", "-v", f"i={i}", "-v", f"w={w}",
-         "$1 ~ /^[0-9]+$/ && ($1+0) > i - w { n++ } END { print n+0 }",
-         "run/outline_skips"], capture_output=True, text=True)
+         _prog.group(1) if _prog else "", str(fx)],
+        capture_output=True, text=True)
     return int(out.stdout.strip() or 0)
-ck("at leg 32 the sweep reopens", skipped(32) < 8)
+
+_rows = ["3\tReach Viridian City",
+         "Retrieve the Pokemon from the Poke Mart",          # a bare VOID line
+         "22\tReach Celadon City",
+         "Retrieve the Gold Teeth from the woman in Celadon City"]
+ck("at leg 32 the sweep reopens", skipped(32, _rows) < 8)
 ck("a bare VOID line is not counted against it",
-   skipped(32) == 1)   # only "22\tReach Celadon City" is in the window
+   skipped(32, _rows) == 1)   # only "22\tReach Celadon City" is in the window
+ck("...and a skip twelve legs back has rolled off",
+   skipped(34, _rows) == 0)
+_eight = [f"{n}\tleg {n}" for n in range(25, 33)]
+ck("eight numbered skips inside the window still close the sweep",
+   skipped(32, _eight) == 8)
+ck("...and the same eight, twelve legs later, are gone",
+   skipped(45, _eight) == 0)
 
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)

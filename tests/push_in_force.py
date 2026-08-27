@@ -42,23 +42,40 @@ ck("the chain-wide cap of 20 is untouched",
 ck("the script parses",
    subprocess.run(["bash", "-n", "fresh_discovery.sh"]).returncode == 0)
 
+# THE LIVE LEDGER MOVES; the test does not. Written against run/outline_pushes
+# as it stood, this test failed the moment the leg was reworded (its rows
+# then carried the longer name). The helper is read out of the script and
+# run against a fixture that never changes.
+import os, tempfile
+_prog = re.search(r"pushes_in_force\(\) \{.*?'(\$3 == want[^']*)'", sh, re.S)
+ck("pushes_in_force's awk program can be read out of the script", bool(_prog))
+_fx = Path(tempfile.mkdtemp(prefix="pushes_")) / "outline_pushes"
+_fx.write_text("32\t36\tObtain the Secret Key\n"
+               "34\t37\tObtain the Secret Key\n"
+               "30\t32\tDefeat the Silph Co. guards to reach the President\n"
+               "34\t36\tDefeat the Silph Co. guards to reach the President\n")
+
 def in_force(want, now):
     out = subprocess.run(
         ["awk", "-F\t", "-v", f"want={want}", "-v", f"now={now}",
-         "$3 == want && ($2+0) < now { n++ } END { print n+0 }",
-         "run/outline_pushes"], capture_output=True, text=True)
+         _prog.group(1) if _prog else "", str(_fx)],
+        capture_output=True, text=True)
     return int(out.stdout.strip() or 0)
 
-raw = Path("run/outline_pushes").read_text().count("Obtain the Secret Key")
+raw = _fx.read_text().count("Obtain the Secret Key")
 ck(f"the old count said {raw} — the rung's cap is 2", raw >= 2)
 ck("in force at leg 36: none, so the rung reopens",
    in_force("Obtain the Secret Key", 36) == 0)
+ck("at leg 37 the first push holds and the second does not: one",
+   in_force("Obtain the Secret Key", 37) == 1)
 ck("a push is still counted while it holds",
    in_force("Obtain the Secret Key", 99) == 2)
 ck("the Silph leg shows the same undoing",
    in_force("Defeat the Silph Co. guards to reach the President", 36)
-   < Path("run/outline_pushes").read_text().count(
+   < _fx.read_text().count(
        "Defeat the Silph Co. guards to reach the President"))
+ck("a name the ledger never saw is not in force anywhere",
+   in_force("Reach Cinnabar Island", 99) == 0)
 
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
