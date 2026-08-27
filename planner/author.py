@@ -4113,8 +4113,8 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
     was badly wrong, and it earns a second question in different words —
     see confirm_blocker. Distance raises the burden; it never forbids.
     """
-    body = (f"THE STUCK LEG: {goal}\n\n"
-            f"WHERE THE RUN STANDS: {start}\n"
+    body = (f"THE STUCK LEG: {goal}" + _wording_lineage(goal)
+            + f"\n\nWHERE THE RUN STANDS: {start}\n"
             f"{journal}" + attempt_yield_text(goal)[0]
             + "\n\nTHE LEGS STILL AHEAD:\n"
             + "\n".join(f"  {n}. {t}" for n, t in ahead
@@ -4759,8 +4759,8 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
         cur = {}
     done = sorted(cur.get("flags") or [])
     listed = {_norm_obj(t) for _, t in ahead} | {_norm_obj(t) for _, t in behind}
-    base = (f"THE OBJECTIVE YOU ARE STUCK ON: {goal}\n\n"
-            f"WHERE THE RUN STANDS: {start}\n\n"
+    base = (f"THE OBJECTIVE YOU ARE STUCK ON: {goal}" + _wording_lineage(goal)
+            + f"\n\nWHERE THE RUN STANDS: {start}\n\n"
             f"WHAT THE GAME HAS RECORDED YOU DOING ({len(done)} events): "
             + ", ".join(done[:60])
             + ("\n\nOBJECTIVES YOU HAVE ALREADY FINISHED:\n"
@@ -4849,6 +4849,30 @@ def _reword_chain(goal: str) -> list:
         chain.insert(0, (r[1], r[2]))
         cur = _norm_obj(r[1])
     return chain
+
+
+def _wording_lineage(goal: str) -> str:
+    """The objective as it was FIRST written, for every rung that judges it.
+
+    The later, blocker, missing and done rungs were handed the CURRENT
+    wording — so once "Obtain the Secret Key" had been rewritten into
+    "... from the Secret House in the Safari Zone", the too-early question
+    was asked about a sentence that names ground the run was standing on,
+    and could only ever answer "not later". User, 2026-08-27: "it's not
+    going to be recognized as supposed to be happening later if we're
+    using the altered version after leg rewrites; we have to consider the
+    original version." The rewrites are the model's own and are shown as
+    such; the first line is what it set out to do.
+    """
+    chain = _reword_chain(goal)
+    if not chain:
+        return ""
+    return ("\n\nTHIS OBJECTIVE AS YOU FIRST WROTE IT: " + chain[0][0]
+            + "\nYou have rewritten it since, and each rewrite failed too:\n"
+            + "\n".join(f"  {a} -> {b}" for a, b in chain)
+            + "\nThe first line is what you set out to do; the rewrites were "
+              "your later guesses at where or how. Answer for the objective, "
+              "not only for the sentence it has drifted into.")
 
 
 def _reword_history(goal: str) -> str:
@@ -5134,8 +5158,8 @@ def check_later(goal: str, n: int, ahead: list, start: str, journal: str,
         print(f"[later] refused: {goal!r} has already been put off twice",
               file=sys.stderr)
         return 0
-    body = (f"THE OBJECTIVE THAT FAILED: {n}. {goal}\n\n"
-            f"WHERE THE RUN STANDS: {start}\n{journal}"
+    body = (f"THE OBJECTIVE THAT FAILED: {n}. {goal}" + _wording_lineage(goal)
+            + f"\n\nWHERE THE RUN STANDS: {start}\n{journal}"
             + attempt_yield_text(goal)[0]
             + "\n\nYOUR LIST FROM HERE ON:\n"
             + "\n".join(f"  {i}. {t}" for i, t in ahead))
@@ -5250,8 +5274,9 @@ def check_done(goal: str, start: str, model: str,
             return False
     reply = brock_probe.chat(
         [{"role": "system", "content": CHECKDONE_SYS},
-         {"role": "user", "content": f"THE OBJECTIVE: {goal}\n\n"
-          f"WHERE THE RUN STANDS: {start}"
+         {"role": "user", "content": f"THE OBJECTIVE: {goal}"
+          + _wording_lineage(goal)
+          + f"\n\nWHERE THE RUN STANDS: {start}"
           # WHAT THE LEG ACHIEVED, not just where it ended. A leg can fail
           # every subgoal and still have done the thing — and a FUSED
           # objective ("deliver the parcel from Bill", two errands welded
