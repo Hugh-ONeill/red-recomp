@@ -124,7 +124,8 @@ if [ "$done_legs" = 0 ]; then
         run/outline_void run/outline_wording_asked \
         run/leg_audit_redo run/outline_upkeep_missed \
         run/outline_pushes \
-        run/outline_pulls run/outline_pulls_failed
+        run/outline_pulls run/outline_pulls_failed \
+        run/attempt_yield run/attempt_start.json
   echo "archived ${ts}.pre-discovery; ledgers cleared"
 fi
 
@@ -354,6 +355,7 @@ while :; do
     set +e
     said=$(python planner/author.py --check-wording \
         --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
+        --asked "${1:-}" \
         --start "$(python planner/state_text.py)" \
         --observed run/explored.json \
         --journal run/executor_log.jsonl --model "$AUTHOR_MODEL")
@@ -422,9 +424,18 @@ while :; do
     echo "LEG=$leg|$missing" >> run/outline_inserts
     return 0
   }
+  # NEUTRALLY ASCRIBED PROGRESS, per run: what the world gained while these
+  # attempts ran (events, items, badges, new ground, levels — leg_delta.py),
+  # kept in run/attempt_yield under the leg's wording. The rungs show the
+  # model this record; a run that gained nothing is written down as such.
   run_campaign() {
+    python planner/leg_delta.py snap run/attempt_start.json 2>/dev/null || true
     env RED_HEADED="${RED_HEADED:-1}" RED_SPEED="${RED_SPEED:-200}" \
         RED_CONTINUE="$1" ./campaign.sh "$2" "$plan" -- --escalate
+    _rc=$?
+    _y=$(python planner/leg_delta.py diff run/attempt_start.json 2>/dev/null || true)
+    [ -n "$_y" ] && printf '%s\t%s\t%s\t%s\n' "$leg" "$i" "$2" "$_y" >> run/attempt_yield
+    return $_rc
   }
   cont=0; [ "$i" -gt 1 ] && cont=1
   failed=0
@@ -437,10 +448,12 @@ while :; do
     # If it ended on a departure the run made by its own decision, ask
     # first whether the list is missing the step it walked off to do;
     # then ask whether the objective still makes sense before spending more
+    _early_asked=""
     if python planner/departed.py run/executor_log.jsonl; then
       if missing_rung; then continue; fi
+      _early_asked="missing"
     fi
-    if wording_rung; then continue; fi
+    if wording_rung "$_early_asked"; then continue; fi
     # the rewrite inside campaign.sh already produced the next version
     plan=$(python planner/find_plan.py "$leg" 2>/dev/null || echo "$plan")
     if [ "$ATTEMPTS" -gt 1 ]; then
@@ -545,8 +558,12 @@ while :; do
     # asks once and applies an answer it did not shape. The restatement
     # still has to clear the already-done check, which is what stops a
     # hard leg being reworded into one that is finished.
-    # the sense question, if this leg has not been asked it yet
-    if wording_rung; then continue; fi
+    # TOO EARLY IS ASKED BEFORE WRONG SENTENCE. A push is cheap and undoes
+    # itself (the list closes up behind it); a rewrite is permanent and the
+    # old wording is barred for good. Asked the other way round, with the
+    # wording prompt claiming ordering was settled, "Obtain the Secret Key"
+    # was rewritten three times into three wrong places (2026-08-26). The
+    # sense question now comes after the later rung, below.
     # RIGHT, BUT NOT YET. Every rung above asks whether something ELSE
     # must happen first; none can say "this one, later". An outline's
     # ordering mistakes are almost all TOO EARLY — a model writing a
@@ -586,6 +603,8 @@ while :; do
       python planner/push_leg.py "$i" "$at"
       continue
     fi
+    # the sense question, last, told exactly what was asked before it
+    if wording_rung "done,blocker,missing,later"; then continue; fi
     # AN UPKEEP LEG NEVER STOPS THE CHAIN. The upkeep round adds
     # objectives the story beats take for granted — catch something to
     # soak hits, get a type that covers the next gym — and those are

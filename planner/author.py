@@ -4115,7 +4115,8 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
     """
     body = (f"THE STUCK LEG: {goal}\n\n"
             f"WHERE THE RUN STANDS: {start}\n"
-            f"{journal}\n\nTHE LEGS STILL AHEAD:\n"
+            f"{journal}" + attempt_yield_text(goal)[0]
+            + "\n\nTHE LEGS STILL AHEAD:\n"
             + "\n".join(f"  {n}. {t}" for n, t in ahead
                         if _norm_obj(t) not in refused))
     reply = brock_probe.chat(
@@ -4800,11 +4801,10 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
 
 
 WORDING_SYS = """You are stuck on one objective of your own playthrough
-list, and every other question has already been asked and answered: it is
-not already done, no later objective of yours has to come first, and no
-missing prerequisite explains it.
+list. Which other questions have already been asked about it, and how
+they were answered, is listed below — nothing is settled beyond that.
 
-So the last question is about the SENTENCE. An objective is a description
+This question is about the SENTENCE. An objective is a description
 of something to do, and a description can be wrong. It can name a thing
 that is not where you thought it was, or name the wrong thing entirely,
 or ask for something that is not there at all. You wrote this line before
@@ -4871,8 +4871,95 @@ def _reword_history(goal: str) -> str:
               "Whatever is wrong here, it is not what you changed.")
 
 
+# WHICH QUESTIONS THE LADDER HAS ACTUALLY ASKED. The wording prompt used to
+# open "every other question has already been asked and answered … no
+# later objective of yours has to come first" — while "is it simply too
+# early?" had NOT been asked (the later rung came after this one). Told
+# that ordering was settled, the model had one explanation left, and wrote
+# the Safari Zone into "Obtain the Secret Key" three times over (leg 36,
+# 2026-08-26; user: "it's essentially codified a hallucination where there
+# wasn't one before … just a misplacement in ordering"). The shell now says
+# what it asked; the prompt lists exactly that.
+_ASKED_WORDS = {
+    "done": "is it already done? — no",
+    "blocker": "must a later objective of yours come first? — no",
+    "missing": "is a step missing before it? — none was named",
+    "later": "is it simply too early? — it was not moved",
+}
+
+
+def _asked_text(asked) -> str:
+    if asked is None:            # the caller did not say: claim nothing
+        return ""
+    said = [_ASKED_WORDS[a] for a in asked if a in _ASKED_WORDS]
+    if not said:
+        return ("\n\nNO OTHER QUESTION HAS BEEN ASKED ABOUT THIS OBJECTIVE "
+                "YET — whether it is done, blocked, missing a step or too "
+                "early is all still open. This one is only about whether "
+                "the sentence is accurate.")
+    return ("\n\nALREADY ASKED ABOUT THIS OBJECTIVE, and answered:\n"
+            + "\n".join(f"  {x}" for x in said))
+
+
+# NEUTRALLY ASCRIBED PROGRESS. A leg's runs are measured in the world's own
+# terms — events that fired, items, badges, places entered for the first
+# time, levels (planner/leg_delta.py, snapped and diffed around every
+# campaign call by fresh_discovery.sh into run/attempt_yield). The first
+# runs at "Obtain the Secret Key" brought the run to Fuchsia and emptied
+# the Safari Zone of its HMs; the last ones walked the same loop and
+# gained nothing. Both are the same objective; only the measure tells them
+# apart. Measured here, never judged: what a dry run means is the
+# model's reading. The one contract the harness keeps for itself is that
+# a new SENTENCE over ground that has stopped yielding is not on offer.
+def attempt_yield_rows(goal: str) -> list:
+    """This objective's runs, oldest first, under every wording it has had."""
+    names = {_norm_obj(goal)}
+    for a, b in _reword_chain(goal):
+        names.add(_norm_obj(a))
+        names.add(_norm_obj(b))
+    rows = []
+    try:
+        for line in Path("run/attempt_yield").read_text().splitlines():
+            parts = line.split("\t")
+            if len(parts) >= 4 and _norm_obj(parts[0]) in names:
+                rows.append((parts[1], parts[2], "\t".join(parts[3:])))
+    except OSError:
+        pass
+    return rows
+
+
+def attempt_yield_text(goal: str) -> tuple:
+    """The record as the model reads it, and how many runs on the tail
+    yielded nothing."""
+    rows = attempt_yield_rows(goal)
+    if not rows:
+        return "", 0
+    dry = 0
+    for _, _, t in reversed(rows):
+        if t.startswith("NOTHING"):
+            dry += 1
+        else:
+            break
+    lines = []
+    for k, (leg, att, t) in enumerate(rows, 1):
+        what = ("nothing new — no event fired, no item or badge was gained, "
+                "no new place was entered" if t.startswith("NOTHING")
+                else t.replace("WHAT CHANGED WHILE THIS LEG RAN — ", "")
+                      .rstrip("."))
+        lines.append(f"  run {k} (as leg {leg}, {att} attempt"
+                     f"{'' if att == '1' else 's'}): {what}")
+    text = ("\n\nWHAT EACH RUN AT THIS OBJECTIVE YIELDED, in the world's "
+            "own terms — events that fired, items, badges, places entered "
+            "for the first time, levels — measured, not judged:\n"
+            + "\n".join(lines))
+    if dry >= 2:
+        text += (f"\nTHE LAST {dry} RUNS YIELDED NOTHING NEW. What that "
+                 "says about the objective is yours to read.")
+    return text, dry
+
+
 def check_wording(goal: str, ahead: list, behind: list, start: str,
-                  journal: str, model: str, observed=None) -> str:
+                  journal: str, model: str, observed=None, asked=None) -> str:
     """The last rung: is the objective itself wrong?
 
     The chain halted at "Obtain the Secret Key from the Rocket Hideout" —
@@ -4902,9 +4989,31 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
     Rocket Hideout" is caught not because it is weaker but because it is
     done.
     """
+    # ONE REWRITE PER LEG, AND NONE OVER DRY GROUND. Three rewordings of
+    # the same leg spent the whole rolling budget on one sentence, each a
+    # new wrong place (user, 2026-08-27: "we probably shouldn't let it burn
+    # all of its rewrites on the same leg"). A leg that has been rewritten
+    # once, or whose last two runs yielded nothing, is still asked — stands
+    # and VOID are real answers — but the rewrite is not on the table, and
+    # the prompt says so rather than throwing the answer away unseen.
+    chain = _reword_chain(goal)
+    ytext, dry = attempt_yield_text(goal)
+    no_reword = ""
+    if chain:
+        no_reword = ("it has been rewritten once already, and that wording "
+                     "failed too; one rewrite is what a leg gets")
+    elif dry >= 2:
+        no_reword = (f"its last {dry} runs yielded nothing new — no event, "
+                     "no item, no badge, no new ground — and a new sentence "
+                     "over the same ground is not what is missing")
+    offer = ("" if not no_reword else
+             "\n\nA REWRITE IS NOT ON OFFER for this objective: " + no_reword
+             + ". The answers open to you are two: the wording stands, or "
+               "the line is VOID.")
     body = (f"THE OBJECTIVE YOU ARE STUCK ON: {goal}\n\n"
             f"WHERE THE RUN STANDS: {start}\n{journal}"
-            + _reword_history(goal)
+            + _asked_text(asked)
+            + _reword_history(goal) + ytext + offer
             + recent_events() + done_ledger_text()
             + ("\n\nOBJECTIVES YOU HAVE FINISHED:\n"
                + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
@@ -4932,6 +5041,10 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
         return ""
     if not new or new.lower() in ("none", "null"):
         print(f"[wording] the wording stands: {why}", file=sys.stderr)
+        return ""
+    if no_reword:
+        print(f"[wording] refused a rewrite ({no_reword}): {new!r} — "
+              f"the wording stands", file=sys.stderr)
         return ""
     if _norm_obj(new) == _norm_obj(goal):
         print("[wording] refused: that is the same sentence",
@@ -5023,6 +5136,7 @@ def check_later(goal: str, n: int, ahead: list, start: str, journal: str,
         return 0
     body = (f"THE OBJECTIVE THAT FAILED: {n}. {goal}\n\n"
             f"WHERE THE RUN STANDS: {start}\n{journal}"
+            + attempt_yield_text(goal)[0]
             + "\n\nYOUR LIST FROM HERE ON:\n"
             + "\n".join(f"  {i}. {t}" for i, t in ahead))
     try:
@@ -5189,6 +5303,10 @@ def main():
     ap.add_argument("--pushed", type=int, default=0,
                     help="how many times this objective has been put off "
                          "already (--check-later refuses a third)")
+    ap.add_argument("--asked", default=None,
+                    help="comma list of the rungs already asked about the "
+                         "stuck leg before --check-wording (done, blocker, "
+                         "missing, later); the prompt lists exactly these")
     ap.add_argument("--check-wording", action="store_true",
                     help="last rung: ask whether the stuck --goal describes "
                          "anything doable, and let the model restate it; "
@@ -5236,7 +5354,10 @@ def main():
         behind = [(n, lines[n - 1]) for n in range(1, args.leg)]
         jt = journal_text(args.journal) if args.journal else ""
         new = check_wording(args.goal, ahead, behind, args.start or "", jt,
-                            args.model, observed=args.observed)
+                            args.model, observed=args.observed,
+                            asked=None if args.asked is None else
+                            tuple(a.strip() for a in args.asked.split(",")
+                                  if a.strip()))
         if new:
             print(new)
             sys.exit(0)
