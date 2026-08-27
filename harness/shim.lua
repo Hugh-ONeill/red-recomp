@@ -472,6 +472,26 @@ local function tileset_has_water(G, map)
   end
   return hit
 end
+
+-- THE SAFARI GAME ENDS BY ITSELF. When its steps run out the PA calls
+-- "Ding-dong! Time's up!" and the game warps the party to the gate
+-- (OverworldController.safariGameOver, which also clears save.safari).
+-- To a walk in progress that is a warp it never asked for, and it was
+-- reported as bare "warped": the executor read seven of those as the
+-- ground refuting the route and refused the Secret House door and both
+-- North->West warps for good, and the model called `go` "broken" (leg 36,
+-- 2026-08-27). The PA's line is on screen; say it.
+local function safari_running(G)
+  return (G.save and G.save.safari) and true or false
+end
+local function safari_ended_note(G, was_running)
+  if was_running and not safari_running(G) then
+    return " — the SAFARI GAME ended on the way (PA: Ding-dong! Time's up!)"
+      .. " and the park sent you out to the gate; the ground you were"
+      .. " walking is not what stopped you"
+  end
+  return ""
+end
 local function real_water(G, map, x, y)
   if not tileset_has_water(G, map) then return false end
   if not (map and map.isWaterCell and map:isWaterCell(x, y)) then return false end
@@ -4028,6 +4048,7 @@ function OPS.walk_to(G, c)
   local ow = G.overworld
   local startMap = ow.map and ow.map.id
   local p = ow.player
+  local _sf0 = safari_running(G)
   -- CLIMBING A SLOPE: HOLD UP WHERE UP IS OPEN, STEP ROUND WHERE IT IS NOT.
   -- On a slope map the game moves you one cell downhill on every poll with
   -- no direction held, so releasing the d-pad between cells (which walk_to
@@ -4064,6 +4085,7 @@ function OPS.walk_to(G, c)
     end
     if (ow.map and ow.map.id) ~= startMap then
       return true, "warped to " .. tostring(ow.map and ow.map.id)
+        .. safari_ended_note(G, _sf0)
     end
     if p.cellX == c.x and p.cellY == c.y then return true end
     local dir, why = bfs_dir(G, c.x, c.y)
@@ -4218,6 +4240,7 @@ function OPS.use_warp(G, c)
     end
   end
   local function attempt(x, y)
+    local _sf0 = safari_running(G)
     local stepped = false
     if p.cellX == x and p.cellY == y then
       step_off(x, y)
@@ -4230,8 +4253,9 @@ function OPS.use_warp(G, c)
     -- door that fired is the door we aimed at, and the edge is knowable.
     local function crossed()
       if (ow.map and ow.map.id) == startMap then return nil end
-      if stepped then return true, "warped" end
-      return true, "crossed mid-walk (door unknown)"
+      local _note = safari_ended_note(G, _sf0)
+      if stepped then return true, "warped" .. _note end
+      return true, "crossed mid-walk (door unknown)" .. _note
     end
     -- Three passes, yielding ground between them: pass 1 is the plain
     -- walk, and each retry backs off a tile first so an NPC pinned by the
@@ -9208,10 +9232,12 @@ function OPS.sweep(G, c)
     return false
   end
   local steps, hops, tried, why = 0, 0, {}, nil
+  local _sf0 = safari_running(G)
   while true do
     if G.stack:top() ~= ow then why = "interrupted (battle or script)"; break end
     if (ow.map and ow.map.id) ~= map0 then
-      why = "warped to " .. tostring(ow.map and ow.map.id); break
+      why = "warped to " .. tostring(ow.map and ow.map.id)
+        .. safari_ended_note(G, _sf0); break
     end
     if fired(came_into_view()) then why = "something new came into view"; break end
     if steps >= budget then why = ("step budget (%d) spent"):format(budget); break end

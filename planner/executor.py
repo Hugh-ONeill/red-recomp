@@ -6054,6 +6054,18 @@ class Executor:
                     return True
         return False
 
+    @staticmethod
+    def _walk_cut_by_the_world(det) -> bool:
+        """A walk that died because the WORLD moved — a battle box came
+        up, a wild fight started, the Safari clock ran out and the park
+        warped the party — says nothing about the ground it was on. Such
+        a hop is neither blocked nor voided nor refuted."""
+        _wd = str(det or "").lower()
+        return ("a box was up" in _wd or "kind=wild" in _wd
+                or "because of the battle" in _wd
+                or "a fight started" in _wd
+                or "safari game ended" in _wd)
+
     def _walk_route(self, sg, path, _replans=0):
         """Replay a fully-walked route hop by hop (the escort's pattern):
         send the edge, settle, fight through interruptions, record the
@@ -6416,6 +6428,26 @@ class Executor:
                         _rest3 = self._route(self._where(o), _final)
                         if _rest3:
                             return self._walk_route(sg, _rest3, _replans + 1)
+                # ...UNLESS THE WORLD CUT THE WALK, NOT THE GROUND. The
+                # Safari Zone's step clock runs out mid-route and the park
+                # warps the party to the gate: seven such landings were
+                # read as the ground refuting the route, and the Secret
+                # House door and both North->West warps went into
+                # _bad_seam for good — `go` could no longer route there
+                # and the model called it "a broken chain" (leg 36,
+                # 2026-08-27). The shim names the clock; a walk it ended
+                # says nothing about the edge, so nothing is blocked,
+                # voided or refuted, and the verdict says which it was.
+                if self._walk_cut_by_the_world(_last_det) \
+                        and "SAFARI GAME ended" in str(_last_det or ""):
+                    self._route_why = (
+                        f"the walk toward {nxt} was cut short, not stopped: "
+                        f"{str(_last_det)[:self.WHY_BUDGET]}. "
+                        "The route as recorded still stands.")
+                    self.log("route_walk_lost_safari_clock",
+                             subgoal=sg.get("id"), wanted=nxt,
+                             got=self._where(o))
+                    return self._where(o)
                 # A hop that fails to land even after the passage retry
                 # CONTRADICTS the recorded edge: void it, or the router
                 # re-picks the phantom forever (a blackout walk-back
@@ -6441,10 +6473,7 @@ class Executor:
                         # stamped Seafoam's one joining swim on a wild
                         # encounter and darkened every route between the
                         # island's halves for the rest of the world mark.
-                        _wd = str(_last_det or "").lower()
-                        if ("a box was up" in _wd or "kind=wild" in _wd
-                                or "because of the battle" in _wd
-                                or "a fight started" in _wd):
+                        if self._walk_cut_by_the_world(_last_det):
                             self.log("edge_not_blocked_battle", frm=frm,
                                      via=key, to=nxt, why=_last_det[:200])
                         else:
