@@ -25,6 +25,25 @@ import sys
 from pathlib import Path
 
 
+def _seen_counts(path="run/seen.json") -> dict:
+    """Tiles the footprint has painted SEEN, per map. The shim persists
+    its mask as a Lua chunk — `["MAP"] = { "x,y", ... }` — within five
+    seconds of any change, so a count taken here is current. New tiles
+    seen is the plainest measure of new ground there is (user, 2026-08-27:
+    "not just new maps discovered but the actual amount of new tiles
+    seen"): a run can enter no new region and still open a hundred
+    cells of a floor, or enter one and see nothing it had not seen."""
+    import re
+    try:
+        txt = Path(path).read_text()
+    except OSError:
+        return {}
+    out = {}
+    for m in re.finditer(r'\["([A-Z0-9_]+)"\]\s*=\s*\{([^}]*)\}', txt):
+        out[m.group(1)] = m.group(2).count('"') // 2
+    return out
+
+
 def _state() -> dict:
     for src in ("run/last_state.json", "run/obs.json"):
         try:
@@ -46,6 +65,7 @@ def _state() -> dict:
                       for p in (o.get("party") or [])],
             "map": (m.get("id") if isinstance(m, dict) else m),
             "areas": sorted(vis),
+            "seen": _seen_counts(),
         }
     return {}
 
@@ -92,6 +112,16 @@ def main() -> int:
         bits.append(f"{len(new_areas)} place(s) entered for the first time"
                     " — by map: "
                     + ", ".join(f"{m} x{c}" for m, c in _by_map.most_common(10)))
+    # TILES SEEN FOR THE FIRST TIME, by map: the amount of new ground,
+    # not just the number of new regions.
+    _sb, _sn = before.get("seen") or {}, now.get("seen") or {}
+    _tiles = {mp: _sn[mp] - _sb.get(mp, 0) for mp in _sn
+              if _sn[mp] > _sb.get(mp, 0)}
+    if _tiles:
+        _tot = sum(_tiles.values())
+        _top = sorted(_tiles.items(), key=lambda kv: -kv[1])[:10]
+        bits.append(f"{_tot} tile(s) seen for the first time — by map: "
+                    + ", ".join(f"{mp} +{c}" for mp, c in _top))
     op = dict((s, l) for s, l in before.get("party", []))
     grew = [f"{s} {op[s]}->{l}" for s, l in now.get("party", [])
             if s in op and l > op[s]]

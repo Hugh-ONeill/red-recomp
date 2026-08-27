@@ -5009,6 +5009,19 @@ def dry_tail(goal: str) -> int:
     return dry
 
 
+def new_tiles_by_map(goal: str) -> dict:
+    """Tiles this objective's runs saw for the first time, per map,
+    summed over every run under every wording."""
+    from collections import Counter
+    total = Counter()
+    for _, _, t in attempt_yield_rows(goal):
+        m = re.search(r"tile\(s\) seen for the first time — by map: ([^;.]+)", t)
+        if m:
+            for name, n in re.findall(r"([A-Z0-9_]+) \+(\d+)", m.group(1)):
+                total[name] += int(n)
+    return dict(total)
+
+
 def new_ground_by_map(goal: str) -> dict:
     """How many parts of each map this objective's runs entered for the
     first time, summed over every run under every wording. Reads both
@@ -5038,13 +5051,21 @@ def new_ground_text(goal: str) -> str:
     leg"). Measured, and set beside the list; whether a place that took
     that much walking is a step of its own is the model's answer."""
     total = new_ground_by_map(goal)
-    if not total:
+    tiles = new_tiles_by_map(goal)
+    if not total and not tiles:
         return ""
-    rows = sorted(total.items(), key=lambda kv: -kv[1])
-    n = sum(total.values())
-    return ("\n\nGROUND THIS OBJECTIVE'S RUNS WALKED FOR THE FIRST TIME, by "
-            f"map ({n} part(s) in all): "
-            + ", ".join(f"{m} x{c}" for m, c in rows[:10])
+    out = "\n\nGROUND THIS OBJECTIVE'S RUNS WALKED FOR THE FIRST TIME"
+    if tiles:
+        trows = sorted(tiles.items(), key=lambda kv: -kv[1])
+        out += (f" — {sum(tiles.values())} tile(s) seen for the first time, "
+                "by map: " + ", ".join(f"{m} +{c}" for m, c in trows[:10]))
+    if total:
+        rows = sorted(total.items(), key=lambda kv: -kv[1])
+        n = sum(total.values())
+        out += ((";" if tiles else " —") + f" {n} part(s) entered for the "
+                "first time, by map: "
+                + ", ".join(f"{m} x{c}" for m, c in rows[:10]))
+    return (out
             + ". Where that walking went is worth reading against your "
               "list: a place that took a run of its own and stands on no "
               "line of it may be a step of its own — or may not; that is "
