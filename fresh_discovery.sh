@@ -175,6 +175,13 @@ fi
 # to cinnabar though?"). "Defeat the Silph Co. guards" shows the same shape
 # four times over. Count a push only while it still HOLDS: the leg is now
 # later than the position it was pushed to. Format is from<TAB>to<TAB>text.
+# A DISPOSITION IS WRITTEN INTO THE YIELD LEDGER. Moving, rewording,
+# inserting before, or pulling another leg ahead of this one is the point
+# from which its runs are counted afresh (author.dry_tail stops at it).
+disposed() {
+  printf '%s\t%s\t0\tDISPOSED: %s\n' "$leg" "$i" "$1" >> run/attempt_yield
+}
+
 pushes_in_force() {
   awk -F'\t' -v want="$1" -v now="$2" \
       '$3 == want && ($2+0) < now { n++ } END { print n+0 }' \
@@ -284,6 +291,7 @@ while :; do
       _after=$(( i + 2 ))
       [ "$_after" -gt "${#LEGS[@]}" ] && _after=${#LEGS[@]}
       if python planner/push_leg.py "$i" "$_after"; then
+        disposed "authoring failed; moved to after leg $_after"
         continue
       fi
       # push refused (already deferred twice): leave the order alone and
@@ -363,6 +371,7 @@ while :; do
     set -e
     if [ $wrc = 0 ] && [ -n "$said" ]; then
       python planner/reword_leg.py "$i" "$said"
+      disposed "reworded to: $said"
       return 0
     fi
     # EXIT 4: the restatement the model gave names something the run has
@@ -421,6 +430,7 @@ while :; do
     python planner/insert_guard.py "$missing" "$leg" plans/outline.txt || return 1
     echo "=== leg $i needs something first: $missing ==="
     python planner/insert_leg.py "$i" "$missing"
+    disposed "a step was put before it: $missing"
     echo "LEG=$leg|$missing" >> run/outline_inserts
     return 0
   }
@@ -439,10 +449,21 @@ while :; do
   }
   cont=0; [ "$i" -gt 1 ] && cont=1
   failed=0
-  set +e
-  run_campaign "$cont" 1
-  crc=$?
-  set -e
+  # A DRY LEG IS NOT RUN AGAIN AS IT STANDS (author.py DRY_RUNS): two runs
+  # in a row that gained nothing in the world, and no disposition since,
+  # send it straight to the ladder — it moves, changes, or goes, or the
+  # run stops for a person. 37 attempts on one leg is what this replaces.
+  _dry=$(python planner/author.py --dry-tail --goal "$leg" 2>/dev/null || echo 0)
+  if [ "${_dry:-0}" -ge 2 ]; then
+    echo "=== leg $i/${#LEGS[@]}: its last $_dry runs yielded nothing new —" \
+         "not run again as it stands (it moves, changes, or goes): $leg ==="
+    crc=2
+  else
+    set +e
+    run_campaign "$cont" 1
+    crc=$?
+    set -e
+  fi
   if [ "$crc" = 1 ]; then
     # the first attempt failed on its own merits (not a boot failure).
     # If it ended on a departure the run made by its own decision, ask
@@ -491,6 +512,7 @@ while :; do
     # the loop, not to walk round it.
     if [ "$(cat run/outline_pulls_failed 2>/dev/null | wc -l)" -lt 2 ] \
         && python planner/pull_leg.py undo "$i"; then
+      disposed "a pull that put it here was undone"
       continue
     fi
     # Or the leg is stuck because a LATER leg of the model's own outline
@@ -521,6 +543,7 @@ while :; do
             --journal run/executor_log.jsonl --model "$AUTHOR_MODEL"); then
       echo "=== leg $i stuck behind leg $blocker: pulling it forward ==="
       python planner/pull_leg.py pull "$i" "$blocker"
+      disposed "leg $blocker was pulled ahead of it"
       echo "$i<-$blocker" >> run/outline_reorders
       continue
     fi
@@ -601,6 +624,7 @@ while :; do
       # PROGRESS is deliberately NOT advanced: the objective that was next
       # has slid into this position, and that is the one to run now.
       python planner/push_leg.py "$i" "$at"
+      disposed "moved to after leg $at"
       continue
     fi
     # the sense question, last, told exactly what was asked before it

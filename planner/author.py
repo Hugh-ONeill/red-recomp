@@ -4952,20 +4952,49 @@ def attempt_yield_rows(goal: str) -> list:
     return rows
 
 
+# A DRY LEG IS NOT RUN AGAIN AS IT STANDS. "Obtain the Secret Key" was
+# granted 37 attempts over 19 campaign calls (plan rewritten to v29, 23%
+# of the whole journal) because every rung that said "continue" handed
+# the leg a fresh 1+3 attempts when it resurfaced, however dry the last
+# ones were. User, 2026-08-27: "if we're not getting it or making any
+# progress over the course of a leg then whatever is going on the leg is
+# not right for this outline, whether it needs to be moved, changed, or
+# removed." So: two runs in a row that yield nothing, and the leg goes
+# straight to the ladder — it moves (later/blocker), changes (reword or an
+# inserted step) or goes (VOID). A disposition is written into the ledger
+# as a marker and resets the count: by the time the leg resurfaces the
+# world will have changed, and it earns a fresh look. Which of the three,
+# or none, stays the model's answer; "none" stops the run for a person.
+DRY_RUNS = 2
+
+
+def dry_tail(goal: str) -> int:
+    """Runs at this objective since its last disposition, counted from the
+    tail, that yielded nothing — stopping at the first that yielded."""
+    dry = 0
+    for _, att, t in reversed(attempt_yield_rows(goal)):
+        if t.startswith("DISPOSED"):
+            break
+        if t.startswith("NOTHING"):
+            dry += 1
+        else:
+            break
+    return dry
+
+
 def attempt_yield_text(goal: str) -> tuple:
     """The record as the model reads it, and how many runs on the tail
     yielded nothing."""
     rows = attempt_yield_rows(goal)
     if not rows:
         return "", 0
-    dry = 0
-    for _, _, t in reversed(rows):
-        if t.startswith("NOTHING"):
-            dry += 1
-        else:
-            break
-    lines = []
-    for k, (leg, att, t) in enumerate(rows, 1):
+    dry = dry_tail(goal)
+    lines, k = [], 0
+    for leg, att, t in rows:
+        if t.startswith("DISPOSED"):
+            lines.append(f"  then, as leg {leg}: {t[len('DISPOSED: '):]}")
+            continue
+        k += 1
         what = ("nothing new — no event fired, no item or badge was gained, "
                 "no new place was entered" if t.startswith("NOTHING")
                 else t.replace("WHAT CHANGED WHILE THIS LEG RAN — ", "")
@@ -4976,9 +5005,13 @@ def attempt_yield_text(goal: str) -> tuple:
             "own terms — events that fired, items, badges, places entered "
             "for the first time, levels — measured, not judged:\n"
             + "\n".join(lines))
-    if dry >= 2:
+    if dry >= DRY_RUNS:
         text += (f"\nTHE LAST {dry} RUNS YIELDED NOTHING NEW. What that "
-                 "says about the objective is yours to read.")
+                 "says about the objective is yours to read — but AS IT "
+                 "STANDS IT WILL NOT BE RUN AGAIN: it moves (say after "
+                 "which objective), it changes (a step before it, or its "
+                 "wording), or it goes (void). If none of those, the run "
+                 "stops here and a person looks at it.")
     return text, dry
 
 
@@ -5328,6 +5361,9 @@ def main():
     ap.add_argument("--pushed", type=int, default=0,
                     help="how many times this objective has been put off "
                          "already (--check-later refuses a third)")
+    ap.add_argument("--dry-tail", action="store_true",
+                    help="print how many runs at --goal, since its last "
+                         "disposition, have yielded nothing (run/attempt_yield)")
     ap.add_argument("--asked", default=None,
                     help="comma list of the rungs already asked about the "
                          "stuck leg before --check-wording (done, blocker, "
@@ -5363,6 +5399,9 @@ def main():
                     help="executor_log.jsonl: what actually happened last "
                          "run (money, wipes, failed steps) for the audit")
     args = ap.parse_args()
+    if args.dry_tail:
+        print(dry_tail(args.goal))
+        sys.exit(0)
     if args.check_done:
         done = check_done(args.goal, args.start or "a brand new game",
                           args.model, observed=args.observed,
