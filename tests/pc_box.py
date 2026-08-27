@@ -326,15 +326,29 @@ def main():
             print("  SKIPPED (counter) — could not get out of the Center")
         else:
             money0 = o.get("money")
-            r = (b.send("sell", item="POKE_BALL", count=1)
-                 or {}).get("result") or {}
-            o = b.obs() or {}
-            ok = r.get("ok") and (o.get("money") or 0) > (money0 or 0)
-            print(f"  {'ok  ' if ok else 'FAIL'}  sell still drives the "
-                  f"counter (money {money0} -> {o.get('money')})")
-            if not ok:
-                print(f"          {r.get('detail')}")
-                fails.append("sell")
+            # SELL WHATEVER THIS SAVE CAN SELL. Hard-coding POKE_BALL failed
+            # the moment the live save's bag had none (2026-08-27); the
+            # case is about the counter, not the ball. Key items and HMs
+            # cannot be sold, so pick from goods that can.
+            _bag = o.get("bag") or {}
+            _sell = next((it for it in ("POKE_BALL", "GREAT_BALL",
+                                        "ULTRA_BALL", "POTION",
+                                        "SUPER_POTION", "HYPER_POTION",
+                                        "ANTIDOTE", "PARLYZ_HEAL", "REPEL",
+                                        "ESCAPE_ROPE", "NUGGET")
+                          if (_bag.get(it) or 0) > 0), None)
+            if not _sell:
+                print("  SKIPPED (sell) — nothing sellable in this save's bag")
+            else:
+                r = (b.send("sell", item=_sell, count=1)
+                     or {}).get("result") or {}
+                o = b.obs() or {}
+                ok = r.get("ok") and (o.get("money") or 0) > (money0 or 0)
+                print(f"  {'ok  ' if ok else 'FAIL'}  sell still drives the "
+                      f"counter ({_sell}: money {money0} -> {o.get('money')})")
+                if not ok:
+                    print(f"          {r.get('detail')}")
+                    fails.append("sell")
 
             # the clerk, pressed blind, is where the 15 balls came from.
             # `sell` walked itself into whatever mart this town has, so
@@ -358,7 +372,14 @@ def main():
                 # clerk's own line was the bug: the model asked her a
                 # question and got 392 characters of guard notice instead
                 # of an answer.
-                ok = ("shop COUNTER" in det) and not spent and len(det) < 200
+                # ...and since 2026-08-26 the guard is FOLLOWED by what the
+                # counter sells (the Water Stone lesson), so the whole
+                # detail is longer by design; what must stay short is the
+                # guard clause itself, up to "Left open".
+                _guard_end = det.find("Left open")
+                ok = ("shop COUNTER" in det) and not spent \
+                    and det.lstrip().startswith('"') \
+                    and 0 < _guard_end < 260
                 print(f"  {'ok  ' if ok else 'FAIL'}  a bare interact on "
                       f"the clerk is handed back, and nothing is bought")
                 if not ok:
