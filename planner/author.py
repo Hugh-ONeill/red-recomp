@@ -4122,18 +4122,30 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
     reply = brock_probe.chat(
         [{"role": "system", "content": BLOCKER_SYS},
          {"role": "user", "content": body}], model)
+    # EVERY ANSWER IS SAID. "none" left no line in the chain log, so when
+    # leg 37 stopped with no Seafoam leg inserted there was no way to tell
+    # whether the rungs were asked, declined, or had their proposals turned
+    # down (user, 2026-08-27: "why didn't it insert a 'seafoam islands'
+    # leg?"). A rung that answers in silence cannot be audited.
     m = re.search(r"\{.*\}", reply, re.S)
     if not m:
+        print("[blocker] no parseable answer", file=sys.stderr)
         return None
     try:
-        n = json.loads(m.group(0)).get("pull_forward")
+        _ans = json.loads(m.group(0))
+        n = _ans.get("pull_forward")
     except (ValueError, AttributeError):
+        print("[blocker] no parseable answer", file=sys.stderr)
         return None
     if not isinstance(n, (int, float)):
+        print(f"[blocker] none: {str(_ans.get('why') or '')[:200]}",
+              file=sys.stderr)
         return None
     n = int(n)
     hit = [(a, t) for a, t in ahead if a == n]
     if not hit:
+        print(f"[blocker] refused: {n} is not a leg still ahead",
+              file=sys.stderr)
         return None
     text = hit[0][1]
     # A leg already pulled forward once and failed there is not pulled
@@ -4782,21 +4794,34 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
                 [{"role": "system", "content": CHECKMISSING_SYS},
                  {"role": "user", "content": body}], model)
             m = re.search(r"\{.*\}", reply, re.S)
-            ans = json.loads(m.group(0)) if m else {}
+            if not m:
+                print("[missing] no parseable answer", file=sys.stderr)
+                return ""
+            ans = json.loads(m.group(0))
         except (ValueError, KeyError, OSError, AttributeError):
+            print("[missing] no parseable answer", file=sys.stderr)
             return ""
         ins = str(ans.get("insert") or "").strip()
+        _why = str(ans.get("why") or "")[:200]
         if not ins or ins.lower() in ("none", "null"):
+            # EVERY ANSWER IS SAID (see check_blocker): a silent "none" is
+            # indistinguishable from a rung never asked.
+            print(f"[missing] none: {_why}", file=sys.stderr)
             return ""
         if _norm_obj(ins) in listed:
+            print(f"[missing] turned down {ins!r}: already on your own "
+                  f"list — {_why}", file=sys.stderr)
             turned_down.append((ins, "already on your own list"))
             continue
         if check_already_done(ins, start, model, observed=observed):
+            print(f"[missing] turned down {ins!r}: judged already done — "
+                  f"{_why}", file=sys.stderr)
             turned_down.append((ins, "you have already done this"))
             continue
-        print(f"[check-missing] {str(ans.get('why') or '')[:160]}",
-              file=sys.stderr)
+        print(f"[missing] {ins!r}: {_why[:160]}", file=sys.stderr)
         return ins
+    print("[missing] every proposal was turned down; nothing inserted",
+          file=sys.stderr)
     return ""
 
 
