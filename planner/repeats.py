@@ -162,10 +162,18 @@ def main():
     ap.add_argument("logs", nargs="*", default=None)
     ap.add_argument("--by-subgoal", action="store_true",
                     help="rank subgoals by refused and repeated rounds")
+    ap.add_argument("--era", choices=["all", "map-edges", "ledger"],
+                    default="all",
+                    help="restrict to one prompt era by its own marker line "
+                         "(map-edges: 'THIS MAP HAS'; ledger: 'WHERE YOU "
+                         "STAND:')")
     ap.add_argument("--new", action="store_true",
-                    help="only rounds whose prompt carries the map-edges "
-                         "line (the marker decisions.py --new uses)")
+                    help="alias for --era ledger (the current era)")
     args = ap.parse_args()
+    _era = "ledger" if args.new else args.era
+    _ERA_MARK = {"map-edges": "THIS MAP HAS", "ledger": "WHERE YOU STAND:"}
+    def _in_era(ctx):
+        return _era == "all" or _ERA_MARK[_era] in (ctx or "")
     paths = args.logs or [RUN / "executor_log.jsonl"]
 
     rounds = 0
@@ -203,7 +211,7 @@ def main():
                 continue
             if k == "escalate_context":
                 ctx = d.get("memory") or ""
-                esc["skip"] = args.new and "THIS MAP HAS" not in ctx
+                esc["skip"] = not _in_era(ctx)
                 continue
             if k == "escalate_proposal":
                 macro = [s for s in (d.get("macro") or [])

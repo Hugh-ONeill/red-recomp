@@ -119,14 +119,23 @@ def move_of(macro) -> str | None:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("logs", nargs="*", default=None)
+    ap.add_argument("--era", choices=["all", "map-edges", "ledger"],
+                    default="all",
+                    help="restrict to one prompt era by its own marker line "
+                         "(map-edges: 'THIS MAP HAS'; ledger: 'WHERE YOU "
+                         "STAND:'). The journal has no clock, so the era is "
+                         "read from the text the model was shown.")
     ap.add_argument("--new", action="store_true",
-                    help="only decisions taken AFTER the map-edges line "
-                         "shipped — the line is its own marker, so the two "
-                         "eras can be told apart without a clock")
+                    help="alias for --era ledger (the current era; was "
+                         "--era map-edges when this flag was written)")
     ap.add_argument("--misses", action="store_true",
                     help="print the ungrounded proposals in full")
     args = ap.parse_args()
     paths = args.logs or [RUN / "executor_log.jsonl"]
+    _era = "ledger" if args.new else args.era
+    _ERA_MARK = {"map-edges": "THIS MAP HAS", "ledger": "WHERE YOU STAND:"}
+    def _in_era(mem):
+        return _era == "all" or _ERA_MARK[_era] in (mem or "")
 
     verdict = Counter()
     by_subgoal = Counter()
@@ -155,7 +164,7 @@ def main():
             # "before and after the map-edges line" cannot be asked of it —
             # except that a context rendered after the fix CONTAINS that
             # line. Filter on the text itself.
-            if args.new and "THIS MAP HAS" not in mem:
+            if not _in_era(mem):
                 continue
             if move is None:
                 verdict["no-move"] += 1
