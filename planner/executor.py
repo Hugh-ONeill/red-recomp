@@ -292,16 +292,32 @@ def _is_service(region: str) -> bool:
     return str(region).split("|")[0].endswith(SERVICE_SUFFIXES)
 
 
-# THE DOORS THIS RUN HAS SEEN, outdoor map -> {door: destination map} —
-# the executor points this at its door_dests so _doorstep can resolve a
-# building the static tables do not know (CINNABAR_LAB is not a gym, a
-# mart, a center or a gate, and "CINNABAR_ISLAND" does not end in _CITY),
-# so "HOW FAR OFF YOU ARE" said "nothing you have walked joins ROUTE_14
-# to CINNABAR_LAB" to a run that had stood beside the lab's door
-# (2026-08-28, user: "running around east kanto looking for cinnabar
-# which it's already been to"). A door seen from walked ground is walked-
-# ground recall, not a printed map.
-_SEEN_DOORS_REF: list = [{}]
+# THE DOORS THIS RUN HAS WALKED THROUGH — _doorstep reads the executor's
+# learned graph to place a building the static tables do not know
+# (CINNABAR_LAB is not a gym, a mart, a center or a gate, and
+# "CINNABAR_ISLAND" does not end in _CITY): "HOW FAR OFF YOU ARE" said
+# "nothing you have walked joins ROUTE_14 to CINNABAR_LAB" to a run that
+# had stood beside the lab's door (2026-08-28). Two sources only, both the
+# player's own: the building's NAME (a player reading "Cinnabar Lab" knows
+# the island, as CELADON_GYM has always placed in Celadon), and a door the
+# run has actually gone through. NOT the engine's warp table: where an
+# untaken door leads is hidden from the ledger on purpose, and this note
+# must not leak it (user: "it wouldn't know the lab is the lab until
+# walking inside though, right?"). The reference is the executor itself,
+# so a graph reloaded from disk is still the one read.
+_WALKED_REF: list = [None]
+
+
+def _walked_door_into(map_id: str):
+    """(outdoor map, door key) of a door this run has WALKED into map_id
+    through, or None."""
+    graph = getattr(_WALKED_REF[0], "explored", None) or {}
+    for region, exits in graph.items():
+        for k, e in (exits or {}).items():
+            if ("," in str(k) and isinstance(e, dict) and int(e.get("n") or 0) >= 1
+                    and str(e.get("to") or "").split("|")[0] == map_id):
+                return region.split("|")[0], str(k)
+    return None
 
 
 def _doorstep(map_id: str) -> str:
@@ -323,12 +339,13 @@ def _doorstep(map_id: str) -> str:
                 if city in MAP_EDGES:
                     return city
     for city in MAP_EDGES:
-        if city.endswith("_CITY") and map_id.startswith(
-                city[: -len("_CITY")] + "_"):
-            return city
-    for outer, doors in (_SEEN_DOORS_REF[0] or {}).items():
-        if outer != map_id and map_id in set((doors or {}).values()):
-            return outer if outer in MAP_EDGES else _doorstep(outer)
+        for kind in ("_CITY", "_TOWN", "_ISLAND"):
+            if city.endswith(kind) and map_id.startswith(
+                    city[: -len(kind)] + "_"):
+                return city
+    hit = _walked_door_into(map_id)
+    if hit and hit[0] != map_id:
+        return hit[0] if hit[0] in MAP_EDGES else _doorstep(hit[0])
     return map_id
 import battle_oracle
 import brock_probe   # reuse the live model driver (chat/parse) for escalation
@@ -1199,7 +1216,7 @@ class Executor:
                                             # you off (seen while standing
                                             # there; see note_frontier)
         self.door_dests: dict = {}          # map id -> {key: destMap} —
-        _SEEN_DOORS_REF[0] = self.door_dests
+        _WALKED_REF[0] = self
                                             # INTERNAL, never printed: kept
                                             # only so the one-doorway
                                             # grouping (_door_groups) can be
@@ -3006,7 +3023,6 @@ class Executor:
                                    for k, v
                                    in (data.get("reach_settings") or {}).items()}
             self.door_dests = data.get("door_dests") or {}
-            _SEEN_DOORS_REF[0] = self.door_dests
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
             # reset before ever reaching 2 — the TOO-WEAK note was aimed at
@@ -4222,14 +4238,16 @@ class Executor:
         here_map = ((obs or {}).get("map") or {}).get("id")
         if not (want_map and here_map):
             return "", False
-        # a building resolved through a door the run has seen: say which
+        # a building placed by its name, or by a door the run has walked
+        # through — never by a door it has only looked at
         _door_of = ""
         if want_map != want_raw:
-            for _k, _dst in ((self.door_dests or {}).get(want_map) or {}).items():
-                if _dst == want_raw:
-                    _door_of = (f" (its door, ({_k}), stands on {want_map}, "
-                                f"ground you have walked)")
-                    break
+            _hit = _walked_door_into(want_raw)
+            if _hit and _hit[0] == want_map:
+                _door_of = (f" (its door, ({_hit[1]}), stands on {want_map} "
+                            f"and you have walked through it)")
+            else:
+                _door_of = f" (on {want_map}, going by its name)"
         try:
             d = static_cost(_doorstep(here_map), want_map, {},
                             self._walked_map_links())
