@@ -11440,7 +11440,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         f"will. Either buy what IS on this shelf if it "
                         f"serves the goal, or leave and find another shop — "
                         f"do not try this counter again.")
-            elif before == after:
+            elif before == after or (
+                    op == "interact"
+                    and (before[0],) + tuple(before[3:])
+                    == (after[0],) + tuple(after[3:])):
+                # A PRESS IS JUDGED WITHOUT THE WALK TO IT. `interact` walks
+                # to the thing first, so the party's own tile differed
+                # before and after, the press read as "ok (moved)" instead
+                # of "the world did not change", the machine never became
+                # inert, and the ledger offered it again — Blaine's quiz
+                # machines were pressed 5x and 6x (2026-08-28, user: "it
+                # keeps going back to the old quiz machines").
                 det0 = str(r.get("detail") or "")
                 if ASKING in det0:
                     note += f": {det0}"

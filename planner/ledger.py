@@ -912,6 +912,11 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             # is a verdict; "a warp pad is beside it" is a way in.
             if o.get("why"):
                 c.note = _join(c.note, str(o["why"]))
+        elif kind == "fixture" and o.get("gate") == "open":
+            # AN ANSWERED QUIZ MACHINE IS DONE: its gate stands open on
+            # screen, and pressing it again only repeats the rules.
+            c.status = "inert"
+            c.note = "its gate is OPEN — answered; pressing it again changes nothing"
         elif name in inert and snap is not None and inert.get(name) == snap:
             c.status = "inert"
             c.note = c.note or "pressed; the world did not change and has not since"
@@ -2135,8 +2140,11 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
             words += _reached_before(obs, ex, c.key)
         if getattr(c, "spoke", ""):
             words += (" — trying it said: \"" + str(c.spoke)[:120] + "\"")
-        if c.kind == "fixture" and c.key != "PC" and c.status in (
-                "touched", "inert", "worth_a_word"):
+        # ONLY A TOGGLE IS "PRESSABLE AGAIN". The line was written for the
+        # Mansion's statue switches and it invited re-pressing Blaine's
+        # quiz machines, which answer once (2026-08-28).
+        if c.kind == "fixture" and c.status in ("touched", "inert", "worth_a_word") \
+                and str(c.key).upper().startswith(("SWITCH", "TRASH_CAN")):
             words += " — a fixture; it can be pressed again"
         if c.kind == "shut_door" and c.status in ("touched", "inert",
                                                   "worth_a_word"):

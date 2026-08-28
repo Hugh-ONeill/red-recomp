@@ -1324,12 +1324,21 @@ local function observe(G, seq, result)
           -- fixture row apiece. Where they stand is on the screen; what to
           -- answer is the puzzle and story6.lua does not export it.
           local _mach = {}
-          for _, _c in ipairs((_view and _view.machines) or {}) do
+          for _i, _c in ipairs((_view and _view.machines) or {}) do
             local cx, cy = _c[1] or _c.x, _c[2] or _c.y
             if cx and cy then
-              _mach[#_mach + 1] = {
+              local _row = {
                 x = cx, y = cy,
                 reachable = _rc[cx .. "," .. (cy + 1)] and true or false }
+              -- ITS GATE IS ON SCREEN. A right answer opens that room's
+              -- gate block for good (story6 applyGymGates, per-door
+              -- flag in the machines' own order); a player sees the
+              -- wall gone. Said as open/shut, never what to answer.
+              if map.id == "CINNABAR_GYM" and G.save and G.save.flags then
+                _row.gate = G.save.flags[("EVENT_CINNABAR_GYM_GATE%d_UNLOCKED")
+                                         :format(_i - 1)] and "open" or "shut"
+              end
+              _mach[#_mach + 1] = _row
             end
           end
           if #_mach > 0 then o.map.quiz_machines = _mach end
@@ -2439,6 +2448,7 @@ local function observe(G, seq, result)
             x = _f.x, y = _f.y, kind = "fixture",
             name = ("%s_%s_%d_%d"):format(_pair[1], _mid2, _f.x, _f.y),
             reachable = _f.reachable and true or false,
+            gate = _f.gate,
           }
         end
       end
