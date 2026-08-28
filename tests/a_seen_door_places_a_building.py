@@ -24,6 +24,8 @@ ck("without a seen door the lab resolves to nothing better than itself", E._door
 E._SEEN_DOORS_REF[0] = {"CINNABAR_ISLAND": {"6,9": "CINNABAR_LAB", "11,11": "CINNABAR_POKECENTER"}}
 ck("a door seen on the island places the lab on the island", E._doorstep("CINNABAR_LAB") == "CINNABAR_ISLAND")
 ck("the static rules still come first", E._doorstep("CELADON_GYM") == "CELADON_CITY")
+ck("...and a gym on an island or in a town is placed by its name too",
+   E._doorstep("CINNABAR_GYM") == "CINNABAR_ISLAND" and E._doorstep("PEWTER_GYM") == "PEWTER_CITY")
 ck("a map the town map draws is itself", E._doorstep("ROUTE_20") == "ROUTE_20")
 E._SEEN_DOORS_REF[0] = {"CINNABAR_LAB": {"2,7": "CINNABAR_LAB_TRADE_ROOM"}, "CINNABAR_ISLAND": {"6,9": "CINNABAR_LAB"}}
 ck("a room inside a building climbs out through the building to the island", E._doorstep("CINNABAR_LAB_TRADE_ROOM") == "CINNABAR_ISLAND")

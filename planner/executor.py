@@ -318,9 +318,10 @@ def _doorstep(map_id: str) -> str:
         return INTERIOR_ROAD[fam]
     for suffix in ("_GYM", "_MART", "_POKECENTER", "_GATE"):
         if map_id.endswith(suffix):
-            city = map_id[: -len(suffix)] + "_CITY"
-            if city in MAP_EDGES:
-                return city
+            for kind in ("_CITY", "_TOWN", "_ISLAND"):   # CINNABAR_GYM, too
+                city = map_id[: -len(suffix)] + kind
+                if city in MAP_EDGES:
+                    return city
     for city in MAP_EDGES:
         if city.endswith("_CITY") and map_id.startswith(
                 city[: -len("_CITY")] + "_"):
