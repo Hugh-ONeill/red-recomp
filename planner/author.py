@@ -387,6 +387,63 @@ def holding_town_map() -> bool:
     return False
 
 
+def _live_flags():
+    """The event flags SET in the state snapshot, or None without one."""
+    for src in ("run/last_state.json", "run/obs.json"):
+        try:
+            o = json.loads(Path(src).read_text())
+        except (OSError, ValueError):
+            continue
+        if isinstance(o, dict) and isinstance(o.get("flags"), list):
+            return {str(f) for f in o["flags"]}
+    return None
+
+
+def _flag_site(f: str) -> str:
+    try:
+        d = json.loads(Path("run/explored.json").read_text())
+    except (OSError, ValueError):
+        return ""
+    return str((d.get("flag_sites") or {}).get(f) or "")
+
+
+def _fired_row_note(f: str, live) -> str:
+    """What to say beside a fired flag that is not set any more."""
+    if live is None or f in live:
+        return ""
+    note = " — and it is NOT set now"
+    if "BOULDER_ON_SWITCH" in str(f):
+        note += (": a boulder-switch event is kept only while the boulder "
+                 "sits on the switch, and the game clears it when you "
+                 "leave that floor, so what it opened is ground already "
+                 "walked")
+    return note
+
+
+def reset_flag_problem(f: str, fired=None, live=None) -> str:
+    """'' or why a step cannot wait on flag f: it fired, and is not set now.
+
+    Victory Road, 2026-08-28: EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH fired
+    on 1F, the run climbed to 2F, and every rewrite of the leg opened with
+    a step waiting on that flag — the observed block said only that it
+    "fired in VICTORY_ROAD_1F|5,9", and the already-fired rule below looks
+    at the last subgoal only. The plan then sent the run back down a floor
+    to re-press a switch whose work it had walked through.
+    """
+    if not f:
+        return ""
+    fired = set(fired_flags()) if fired is None else set(fired)
+    if f not in fired:
+        return ""
+    live = _live_flags() if live is None else live
+    if live is None or f in live:
+        return ""
+    site = _flag_site(f)
+    return (f"flag '{f}', which fired earlier in this run"
+            + (f" — in {site} —" if site else "") + " and is NOT set now"
+            + _fired_row_note(f, live).replace(" — and it is NOT set now", ""))
+
+
 def doors_text() -> str:
     """The labelled places, as the printed map shows them.
 
@@ -761,6 +818,22 @@ def validate(plan: dict) -> list:
                 f"'{fl}', which ALREADY FIRED earlier in this run — it holds "
                 f"before the plan takes a single step, so it cannot witness "
                 f"this leg's deed. End on what THIS deed leaves behind.")
+    # A FLAG THAT FIRED AND IS NOT SET NOW cannot be waited on from
+    # anywhere (see reset_flag_problem). Every subgoal, not just the last.
+    _fired_now = set(fired_flags()) if subs else set()
+    _live_now = _live_flags() if subs else None
+    for i, s0 in enumerate(subs or []):
+        if not isinstance(s0, dict):
+            continue
+        dw0 = s0.get("done_when") or {}
+        fl = dw0.get("flag") if isinstance(dw0, dict) else None
+        why = reset_flag_problem(fl, fired=_fired_now, live=_live_now) if fl else ""
+        if why:
+            probs.append(
+                f"subgoal[{i}] ({s0.get('id')}) waits on {why}. A step "
+                f"cannot wait on an event that has come and gone — end it "
+                f"on a map you could not stand in before, or leave the "
+                f"step out.")
     # A PLACE YOU HAVE ALREADY STOOD IN WITNESSES NOTHING. Leg 34 ended on
     # any_of the four Saffron GATE buildings: three of its six subgoals
     # failed (never reached Celadon, never bought the drink), the party
@@ -1599,7 +1672,8 @@ def observed_text(path: Path) -> str:
             out += ("\n\nEVERY PRINTED WAY INTO A PLACE YOU HAVE NEVER "
                     "REACHED, and what has happened at each:\n"
                     + "\n".join(walls))
-    fired = [f"  {f} fired in {region}"
+    _live = _live_flags()
+    fired = [f"  {f} fired in {region}" + _fired_row_note(f, _live)
              for f, region in sorted((d.get("flag_sites") or {}).items())]
     hints = d.get("hints") or {}
     if hints:

@@ -36,6 +36,10 @@ t3 = ex._fired_text(obs3, sg)
 ck("on the switch's own floor the note says what setting it again would take, and that its work is walked",
    "HAS FIRED ONCE ALREADY" in t3 and "any other floor" not in t3 and "putting a boulder back on the switch" in t3
    and "ground you have walked since" in t3)
+src = (ROOT / "planner" / "executor.py").read_text()
+ck("the note stands on the round-1 page too, not only in feedback",
+   "memory += self._reset_flag_note(start, sg)" in src)
+ck("...and is logged when rendered", 'self.log("reset_flag_note"' in src)
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)

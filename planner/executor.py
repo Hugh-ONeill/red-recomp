@@ -7254,6 +7254,52 @@ class Executor:
                  answer=a, why=str(d.get("why") or "")[:200])
         return a == "yes"
 
+    def _reset_flag_note(self, obs, sg) -> str:
+        """The event this step waits for fired before and is not set now.
+
+        Rendered at the top of the round-1 page and in every feedback
+        (via _fired_text), and logged, so that "the note never reached the
+        model" can be ruled out from the journal.
+        """
+        live = set((obs or {}).get("flags") or [])
+        _reset_note = ""
+        _want = None
+        _dw = sg.get("done_when") or {}
+        if isinstance(_dw, dict):
+            _want = _dw.get("flag")
+            if not _want:
+                for _alt in (_dw.get("any_of") or []):
+                    if isinstance(_alt, dict) and _alt.get("flag"):
+                        _want = _alt["flag"]
+                        break
+        if _want and _want not in live and (self.flag_sites or {}).get(_want):
+            _at = (self.flag_sites or {}).get(_want)
+            _here = self._where(obs)
+            _reset_note = (f"\n\nTHE EVENT THIS STEP WAITS FOR, {_want}, HAS FIRED "
+                           f"ONCE ALREADY — in {_at} — and it is NOT set now")
+            if "BOULDER_ON_SWITCH" in str(_want):
+                _reset_note += (". A boulder-switch event is kept only while the "
+                                "boulder sits on the switch, and the game clears "
+                                "it when you leave that floor; it cannot be true "
+                                "from any other floor. What it opened, you have "
+                                "walked through" if _here.split("|")[0] != str(_at).split("|")[0]
+                                else ". A boulder-switch event is kept only while "
+                                "the boulder sits on the switch, and the game "
+                                "cleared it when you left the floor; it would be "
+                                "set again only by putting a boulder back on the "
+                                "switch, and what it opened the first time is "
+                                "ground you have walked since")
+            _reset_note += (". A step that waits on a thing already done, or "
+                            "that cannot come true as written, is what "
+                            "{\"op\":\"skip\"} is for.")
+        if _reset_note:
+            try:
+                self.log("reset_flag_note", subgoal=sg.get("id"), flag=_want,
+                         where=(self.flag_sites or {}).get(_want))
+            except AttributeError:      # a fixture with no journal open
+                pass
+        return _reset_note
+
     def _fired_text(self, obs, sg) -> str:
         """The events this run has watched fire, when it is stuck on one.
 
@@ -7313,36 +7359,7 @@ class Executor:
         # was pressed on 1F at dt 968, the run climbed to 2F, and the plan
         # sent it back down after a flag that resets (user: "it's fired
         # but it resets").
-        _reset_note = ""
-        _want = None
-        _dw = sg.get("done_when") or {}
-        if isinstance(_dw, dict):
-            _want = _dw.get("flag")
-            if not _want:
-                for _alt in (_dw.get("any_of") or []):
-                    if isinstance(_alt, dict) and _alt.get("flag"):
-                        _want = _alt["flag"]
-                        break
-        if _want and _want not in live and (self.flag_sites or {}).get(_want):
-            _at = (self.flag_sites or {}).get(_want)
-            _here = self._where(obs)
-            _reset_note = (f"\n\nTHE EVENT THIS STEP WAITS FOR, {_want}, HAS FIRED "
-                           f"ONCE ALREADY — in {_at} — and it is NOT set now")
-            if "BOULDER_ON_SWITCH" in str(_want):
-                _reset_note += (". A boulder-switch event is kept only while the "
-                                "boulder sits on the switch, and the game clears "
-                                "it when you leave that floor; it cannot be true "
-                                "from any other floor. What it opened, you have "
-                                "walked through" if _here.split("|")[0] != str(_at).split("|")[0]
-                                else ". A boulder-switch event is kept only while "
-                                "the boulder sits on the switch, and the game "
-                                "cleared it when you left the floor; it would be "
-                                "set again only by putting a boulder back on the "
-                                "switch, and what it opened the first time is "
-                                "ground you have walked since")
-            _reset_note += (". A step that waits on a thing already done, or "
-                            "that cannot come true as written, is what "
-                            "{\"op\":\"skip\"} is for.")
+        _reset_note = self._reset_flag_note(obs, sg)
         rows = [f"  {f} (fired in {where})"
                 for f, where in reversed(list(
                     (self.flag_sites or {}).items()))
@@ -12051,6 +12068,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     "also satisfies it — typically by going back the way you "
                     "came and taking another route. Standing still is failure.")
             memory = self.exploration_text(start, self._target_key(sg), sg)
+            if USE_LEDGER:
+                memory += self._reset_flag_note(start, sg)
             # A FULL BAG fails every gift silently: the captain's HM01
             # played its "got it!" text into a 20-of-20 bag and vanished.
             # The game normally says "no room" on screen; say it here.
