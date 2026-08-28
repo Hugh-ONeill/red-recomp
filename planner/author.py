@@ -5495,12 +5495,40 @@ def check_done(goal: str, start: str, model: str,
     if str(goal).strip().split()[:1] and \
             str(goal).strip().split()[0].lower().rstrip(",:") in _TRAVEL_GOAL:
         _gained_speaks = True
+    # ...AND AN ITEM THE OBJECTIVE NAMES, SITTING IN THE BAG, SPEAKS TOO.
+    # "Retrieve the HM03 from the Cinnabar Island gym" was refused on the
+    # place check with HM_SURF in the bag for days (2026-08-28): the bag
+    # is the evidence, and the place is only where the errand was meant
+    # to happen.
+    if not _gained_speaks:
+        _gu = re.sub(r"[^A-Z0-9]+", " ", str(goal).upper())
+        try:
+            _bag = set((json.loads(Path("run/obs.json").read_text())
+                        .get("bag") or {}).keys())
+        except (OSError, ValueError, AttributeError):
+            _bag = set()
+        for _alias, _real in ITEM_ALIASES.items():
+            if re.search(r"\b" + re.escape(_alias) + r"\b", _gu) and (
+                    _real in _bag or _real in (start or "")):
+                _gained_speaks = True
+                break
+        else:
+            for _real in _bag:
+                if re.search(r"\b" + re.escape(_real.replace("_", " ")) + r"\b", _gu) \
+                        or re.search(r"\b" + re.escape(_real) + r"\b", _gu):
+                    _gained_speaks = True
+                    break
     _place = re.search(r"\b(ROUTE\s*\d+|[A-Z][a-z]+\s+(?:CITY|TOWN|ISLAND))\b",
                        goal, re.I)
     if _place and bearing and not _gained_speaks:
         want = re.sub(r"\s+", "_", _place.group(1).strip()).upper()
+        # A TOWN IS NAMED BY ITS FIRST WORD in every event about it:
+        # EVENT_BEAT_CINNABAR_GYM_TRAINER_0 is a Cinnabar Island event and
+        # "CINNABAR_ISLAND" is in no event name at all (2026-08-28).
+        _stem = want.split("_")[0] if not want.startswith("ROUTE") else want
         names = re.findall(r"EVENT_[A-Z0-9_]+", bearing)
         if names and not any(want in n or want.replace("ROUTE_", "ROUTE") in n
+                             or f"_{_stem}_" in n or n.endswith(f"_{_stem}")
                              for n in names):
             print(f"[check-done] refused: this objective names {want} and "
                   f"the events it could rest on name somewhere else "
