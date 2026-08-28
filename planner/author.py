@@ -4057,8 +4057,76 @@ PULL_NEAR = 3
 PULL_MAX = 8
 
 
+def _held_things(state=None) -> dict:
+    """The moves the party knows and the items the bag holds, from the
+    save — mechanical save-reading, the same source as state_text.py."""
+    if state is None:
+        for src in ("run/last_state.json", "run/obs.json"):
+            try:
+                state = json.load(open(src))
+                break
+            except Exception:
+                continue
+    moves, items = {}, set()
+    for p in (state or {}).get("party") or []:
+        for m in p.get("moves") or []:
+            mid = str(m.get("id") if isinstance(m, dict) else m).upper()
+            moves.setdefault(mid, str(p.get("species") or "a party Pokemon"))
+    bag = (state or {}).get("bag")
+    if isinstance(bag, dict):
+        items = {str(i).upper() for i in bag}
+    return {"moves": moves, "items": items}
+
+
+def _already_yours(got: str, held: dict) -> str:
+    """'' or a clause saying the thing named is already held or known.
+
+    Victory Road, 2026-08-28: "Navigate the Victory Road" was judged stuck
+    behind "Retrieve the HM08 from the Victory Road warden" because it
+    "provides the HM for the move that allows boulder pushing" — with
+    CHARIZARD knowing STRENGTH and HM_STRENGTH in the bag on the very
+    state line the rung was reading. A thing the run already holds is not
+    work a later leg hands it; the pull locates nothing.
+    """
+    g = " " + re.sub(r"[^a-z0-9]+", " ", str(got).lower()).strip() + " "
+    for item in sorted(held.get("items") or (), key=len, reverse=True):
+        if " " + item.lower().replace("_", " ") + " " in g:
+            return f"{item} is in the bag already"
+    for mv, who in (held.get("moves") or {}).items():
+        if " " + mv.lower().replace("_", " ") + " " in g:
+            return f"{mv} is a move {who} already knows"
+    for item in held.get("items") or ():
+        if item.startswith(("HM_", "TM_")) \
+                and " " + item[3:].lower().replace("_", " ") + " " in g:
+            return f"{item} is in the bag already"
+    return ""
+
+
+def _phantom_item(text: str) -> str:
+    """'' or why the text names an HM/TM this game does not define.
+
+    The game's item list is manual-tier: it defines five HM items, and a
+    leg written for "HM08" reaches for a thing that is not in the game.
+    The author already refuses a PLAN naming it ("'HM08' is not an item
+    id this game defines"); refusing the PULL saves the two failed
+    authorings and the leg's turn at the front of the list.
+    """
+    if not ENGINE_ITEMS:
+        return ""
+    hms = sorted(i for i in ENGINE_ITEMS if i.startswith("HM_"))
+    tms = [i for i in ENGINE_ITEMS if i.startswith("TM_")]
+    for kind, num in re.findall(r"\b(HM|TM)\s*(\d{1,2})\b", str(text).upper()):
+        have = hms if kind == "HM" else tms
+        if not 1 <= int(num) <= len(have):
+            if kind == "HM":
+                return (f"there is no HM{num} in this game — it defines "
+                        f"{len(hms)} HM items: {', '.join(hms)}")
+            return f"there is no TM{num} in this game — it defines {len(tms)} TM items"
+    return ""
+
+
 def confirm_blocker(goal: str, n: int, text: str, gap: int, start: str,
-                    journal: str, model: str) -> bool:
+                    journal: str, model: str, held=None) -> bool:
     """A long pull must name what it provides, or it does not happen.
 
     Leg 11 — "Obtain the Secret Key from the Rocket Hideout", an objective
@@ -4090,6 +4158,20 @@ def confirm_blocker(goal: str, n: int, text: str, gap: int, start: str,
     if not got or got.lower() in ("none", "null", "nothing"):
         print(f"[blocker] refused a {gap}-leg pull: {why}", file=sys.stderr)
         return False
+    # THE THING NAMED MAY NOT BE ONE THE RUN ALREADY HOLDS, nor one the
+    # game does not have. Both are read off the save and the item list,
+    # not judged.
+    _ph = _phantom_item(got)
+    if _ph:
+        print(f"[blocker] refused a {gap}-leg pull: it says leg {n} provides "
+              f"{got!r}, and {_ph}", file=sys.stderr)
+        return False
+    _ay = _already_yours(got, held if held is not None else _held_things())
+    if _ay:
+        print(f"[blocker] refused a {gap}-leg pull: it says leg {n} provides "
+              f"{got!r}, and {_ay} — a thing already yours is not work a "
+              f"later leg hands you", file=sys.stderr)
+        return False
     # THE ANSWER MAY NOT BE THE QUESTION. Asked what the Viridian gym
     # would hand a run stuck on "Obtain the Secret Key from the Rocket
     # Hideout", the model answered "the Secret Key", and explained that
@@ -4114,7 +4196,8 @@ def confirm_blocker(goal: str, n: int, text: str, gap: int, start: str,
 
 
 def check_blocker(goal: str, ahead: list, start: str, journal: str,
-                  model: str, leg: int = 0, observed=None, refused=()):
+                  model: str, leg: int = 0, observed=None, refused=(),
+                  held=None):
     """The model reorders its own outline when play proves it misordered.
 
     The Surge leg walled on a bush only CUT clears while the model's own
@@ -4165,6 +4248,11 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
               file=sys.stderr)
         return None
     text = hit[0][1]
+    _ph = _phantom_item(text)
+    if _ph:
+        print(f"[blocker] refused: leg {n} names a thing this game does not "
+              f"have — {_ph}", file=sys.stderr)
+        return None
     # A leg already pulled forward once and failed there is not pulled
     # again — otherwise a wrong pull is re-made every time the ladder
     # comes round, and the reorder budget is spent churning one mistake.
@@ -4196,7 +4284,8 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
     # likely, not least: legs N and N+1 are usually about the same stretch
     # of the game. Distance still raises the burden inside confirm_blocker;
     # it is no longer what decides whether to ask at all.
-    if not confirm_blocker(goal, n, text, gap, start, journal, model):
+    if not confirm_blocker(goal, n, text, gap, start, journal, model,
+                           held=held):
         return None
     return n
 
