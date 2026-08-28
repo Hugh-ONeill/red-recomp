@@ -1027,6 +1027,18 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                 f"({_f.get('x')},{_f.get('y')}), and keep going until "
                 f"something new comes into view — {_n0} such spot(s) on "
                 f"this floor; nothing past them is known yet")
+    # ...THEN THE FRONTIER ACROSS THE WATER, when someone can ride it (the
+    # deed rides there and sweeps; see executor _explore_step, 2026-08-28)
+    _fw0 = _m0.get("frontier_water") or []
+    if _fw0 and any(str(mv.get("id") if isinstance(mv, dict) else mv) == "SURF"
+                    for mon in (obs.get("party") or [])
+                    for mv in (mon.get("moves") or [])):
+        _f = _fw0[0]
+        _nw = int(((_m0.get("seen") or {}).get("frontier_water_n")) or len(_fw0))
+        return (f"ride the water to the nearest edge of the ground you have "
+                f"seen across it, ({_f.get('x')},{_f.get('y')}), and sweep "
+                f"from there — {_nw} such spot(s) on this floor that only a "
+                f"swim reaches; nothing past them is known yet")
     order = {"item": 0, "fixture": 1, "cut_tree": 1, "boulder": 1,
              "shut_door": 1, "npc": 2, "trainer": 2, "sign": 3}
     # THIRTY-SIX OF A THING IS ONE THING. The kind order above is fixed —
@@ -1575,8 +1587,21 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # back up, Giovanni's room a screen north of where its looking ended
     # (user, 2026-08-25: "juuuust missing where giovanni is"). Under the
     # footprint, done is only claimable over what has been on screen.
-    _done_lead = (". EVERYTHING YOU CAN REACH HERE IS DONE — but " if not _fr
-                  else ". Everything ON SCREEN here has been worked, and "
+    # ...AND DONE ON FOOT IS NOT DONE when the water can be ridden: the
+    # shim lists the spots across it where seen ground ends (Route 23,
+    # 2026-08-28).
+    _fw = m.get("frontier_water") or []
+    _knows_surf = any(str(mv.get("id") if isinstance(mv, dict) else mv) == "SURF"
+                      for mon in (obs.get("party") or [])
+                      for mv in (mon.get("moves") or []))
+    _done_lead = (". EVERYTHING YOU CAN REACH HERE IS DONE — but " if not _fr and not (_fw and _knows_surf)
+                  else (f". Everything you can reach ON FOOT here is done, but the "
+                        f"WATER you can ride from here has "
+                        f"{int((m.get('seen') or {}).get('frontier_water_n') or len(_fw))} "
+                        f"spot(s) where its seen ground ends, the nearest at "
+                        f"({_fw[0].get('x')},{_fw[0].get('y')}) — explore rides "
+                        f"to the nearest and sweeps from there — and ")
+                  if not _fr else ". Everything ON SCREEN here has been worked, and "
                        "ground you can walk to from here has NEVER BEEN ON "
                        "SCREEN (the spot(s) above; explore walks to the "
                        "nearest) — and ")
@@ -1759,7 +1784,14 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # with unseen ground you can WALK to; a sealed corner has none you
         # can walk to and is exactly as unfinished. Say what is known: this
         # is a corner, and where the rest is entered from is not recorded.
-        head += (". NOTHING HERE IS UNTRIED OR UNPRESSED"
+        if _fw and _knows_surf:
+            head += (". Nothing here is untried or unpressed ON FOOT, but "
+                     "the WATER you can ride from here has "
+                     f"{int((m.get('seen') or {}).get('frontier_water_n') or len(_fw))} "
+                     f"spot(s) where its seen ground ends, the nearest at "
+                     f"({_fw[0].get('x')},{_fw[0].get('y')}) — explore rides "
+                     "to the nearest and sweeps from there")
+        head += ((". NOTHING HERE IS UNTRIED OR UNPRESSED" if not (_fw and _knows_surf) else "")
                  + (" — and this is a CORNER of "
                     + str((m.get("id") or "this map")) + ": "
                     + (", ".join(_unseen_sides)

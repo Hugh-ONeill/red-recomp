@@ -666,6 +666,28 @@ local function seen_filter(G, o)
   end
   local dist, front = {}, {}
   if seen_reach then dist, front = seen_reach(G) end
+  -- ...AND THE FRONTIER ACROSS THE WATER, apart, when someone can ride it
+  -- and the party is not already on it: the spots where seen ground ends
+  -- that only a swim reaches. Reported so explore can ride to one instead
+  -- of leaving the map (see seen_reach).
+  local front_water = {}
+  do
+    local _p = G.overworld and G.overworld.player
+    local _knows = false
+    for _, mon in ipairs((G.save or {}).party or {}) do
+      for _, mv in ipairs(mon.moves or {}) do
+        if tostring(type(mv) == "table" and mv.id or mv) == "SURF" then _knows = true end
+      end
+    end
+    if seen_reach and _knows and _p and not _p.surfing then
+      local _, fw = seen_reach(G, nil, nil, true)
+      local onfoot = {}
+      for _, f in ipairs(front) do onfoot[f.x .. "," .. f.y] = true end
+      for _, f in ipairs(fw) do
+        if not onfoot[f.x .. "," .. f.y] then front_water[#front_water + 1] = f end
+      end
+    end
+  end
   local function near(x, y)
     if x == nil or y == nil then return false end
     if dist[x .. "," .. y] then return true end
@@ -708,6 +730,15 @@ local function seen_filter(G, o)
   m.seen = { n = mask.n or 0, frontier_n = #front }
   m.frontier = fl
   last_frontier = fl
+  if #front_water > 0 then
+    m.seen.frontier_water_n = #front_water
+    local fw = {}
+    for i, f in ipairs(front_water) do
+      if i > 24 then break end
+      fw[i] = { x = f.x, y = f.y, d = f.d }
+    end
+    m.frontier_water = fw
+  end
   -- GROUND YOU HAVE SEEN BUT CANNOT WALK TO FROM HERE. Cerulean's fence at
   -- column 35 walls the city off from the east corridor that is the only
   -- tree-free way onto the southern strip and the ledge down to Route 5;
@@ -3243,7 +3274,15 @@ end
 -- that neighbour (and four or five more beyond it) on screen. Nearest
 -- first by walked distance, ties north then west; the ordering is
 -- mechanical and goal-blind, which is the whole point of it.
-seen_reach = function(G, sx, sy)
+-- WATER IS GROUND YOU CAN RIDE. The seen-ground fill probed every step
+-- with `surfing = nil`, so on Route 23 — a road that is mostly water past
+-- its first guard — the frontier read empty on foot, the page said the
+-- area was DONE, and explore walked six legs back to Route 21's leftovers
+-- with the whole unseen north a swim away (user, 2026-08-28: "sweep
+-- brought it back to rt 21 instead of continuing up victory road"). The
+-- probe now surfs when the party IS surfing, or when asked (surf=true),
+-- so the frontier over the water is counted and can be ridden to.
+seen_reach = function(G, sx, sy, surf)
   local okc, Collision = pcall(require, "src.world.Collision")
   local ow, p = G.overworld, G.overworld and G.overworld.player
   if not (okc and ow and p and ow.map and ow.map.id and p.cellX) then
@@ -3281,7 +3320,8 @@ seen_reach = function(G, sx, sy)
         edge = true
       elseif mask[nk] and not dist[nk] and not THROUGH[ck] then
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y,
-                                     surfing = nil }, { __index = p })
+                                     surfing = (surf or p.surfing) and true or nil },
+                                   { __index = p })
         if Collision.canMove(ow.map, STATIC, probe, dn) then
           dist[nk] = dist[ck] + 1
           q[#q + 1] = { x = nx, y = ny }

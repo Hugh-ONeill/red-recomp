@@ -1912,6 +1912,29 @@ class Executor:
                     _st[_k] = _params[_k]
             ok, tr, cl = self._run_traced(sg, [_st], ignore_done=ignore_done)
             return ok, [f"explore (sweeping unseen ground): {t}" for t in tr], cl
+        # THE FRONTIER ACROSS THE WATER COMES BEFORE LEAVING THE MAP. With
+        # nothing left on foot, explore used to walk to the nearest OTHER
+        # area with untried ground — six legs back to Route 21 from Route
+        # 23, whose whole north was a swim away (2026-08-28). When a party
+        # Pokemon knows SURF and the shim lists spots where seen ground
+        # ends across the water, ride to the nearest and sweep from there.
+        _fw = _m.get("frontier_water") or []
+        if (_fw and not _params.get("no_sweep")
+                and _params.get("until") != "doors_only"
+                and self._knows_move(obs, "SURF")):
+            _f0 = _fw[0]
+            self.log("explore_step", subgoal=sg.get("id"), step="ride",
+                     to=f"{_f0.get('x')},{_f0.get('y')}",
+                     frontier_water=len(_fw))
+            _steps = [{"op": "walk_to", "x": int(_f0.get("x")),
+                       "y": int(_f0.get("y")), "surf": True},
+                      {"op": "sweep"}]
+            for _k in ("until", "steps"):
+                if _params.get(_k) is not None:
+                    _steps[1][_k] = _params[_k]
+            ok, tr, cl = self._run_traced(sg, _steps, ignore_done=ignore_done)
+            return ok, [f"explore (riding to where seen ground ends across "
+                        f"the water, then sweeping): {t}" for t in tr], cl
         cands = ledger.build(self, obs, target,
                              outcomes=self._outcomes_here(obs),
                              want_explore=False)
