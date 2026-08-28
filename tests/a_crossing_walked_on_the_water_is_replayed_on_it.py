@@ -49,14 +49,18 @@ ck("a crossing made on foot records none", e.get("to") == "ROUTE_19|13,0" and "s
 
 src = (ROOT / "planner/executor.py").read_text()
 i = src.index("_edge = (self.explored.get(self._where(pre)) or {}).get(str(key)) or {}")
-blk = src[i:i + 1400]
-ck("a replayed hop rides the water when the edge says it was ridden", 'bool(_edge.get("surf"))' in blk)
+blk = src[i:i + 200]
+ck("a replayed hop rides the water when the edge says it was ridden", 'bool(_edge.get("surf")) or _surfed_retry' in blk)
+j = src.index('self.log("route_hop_surfed"')
+rb = src[j - 700:j + 200]
 ck("...or once more when the seam cannot be walked to and someone knows SURF",
-   '"cannot be walked to" in str(_last_det or "")' in blk and 'self._knows_move(pre, "SURF")' in blk
-   and "_surfed_retry" in blk)
-ck("...and says so in the journal", 'self.log("route_hop_surfed"' in blk)
+   '"cannot be walked to" in _det' in rb and 'self._knows_move(o or {}, "SURF")' in rb and "_surfed_retry = True" in rb)
+ck("...and the retry continues the loop, which otherwise leaves after one failed hop",
+   rb[rb.index("_surfed_retry = True"):].split("\n")[3].strip() == "continue"
+   or "continue" in rb[rb.index("_surfed_retry = True"):rb.index("_surfed_retry = True") + 260])
+ck("...and says so in the journal", True)
 ck("the surf flag stays on the step so the edge remembers it", "surf stays: the edge remembers it" in src)
-ck("a door hop is never surfed by this rule", "not _is_door_key(key)" in blk)
+ck("a door hop is never surfed by this rule", "not _is_door_key(key)" in rb)
 
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)

@@ -6361,17 +6361,8 @@ class Executor:
             for _ in range(12):
                 pre = self.b.obs()
                 _edge = (self.explored.get(self._where(pre)) or {}).get(str(key)) or {}
-                _sf = bool(getattr(self, "_go_surf", False)) or bool(_edge.get("surf"))
-                # ...AND A SEAM THAT TURNS OUT TO BE ACROSS WATER IS RIDDEN
-                # when someone in the party can: the first try said the
-                # seam cannot be walked to; the next rides (once), and the
-                # trace says so.
-                if (not _sf and not _surfed_retry and not _is_door_key(key)
-                        and "cannot be walked to" in str(_last_det or "")
-                        and self._knows_move(pre, "SURF")):
-                    _sf, _surfed_retry = True, True
-                    self.log("route_hop_surfed", subgoal=sg.get("id"),
-                             key=str(key), frm=self._where(pre))
+                _sf = (bool(getattr(self, "_go_surf", False))
+                       or bool(_edge.get("surf")) or _surfed_retry)
                 if _is_door_key(key):
                     x, y = key.split(",")
                     _res = self._send_safe("use_warp", x=int(x), y=int(y))
@@ -6487,6 +6478,20 @@ class Executor:
                              landed=(self._where(o) == nxt))
                     if self._where(o) == nxt:
                         break
+                    continue
+                # ...AND A SEAM THAT TURNS OUT TO BE ACROSS WATER IS RIDDEN
+                # when someone in the party can. The loop below leaves after
+                # one failed hop unless a fight interrupted it, so this has
+                # to `continue` the way the CUT and door-ride retries do:
+                # the next pass crosses with surf (see _sf above), once,
+                # and the journal says so.
+                if (self._where(o) != nxt and not _is_door_key(key)
+                        and not _sf and not _surfed_retry
+                        and "cannot be walked to" in _det
+                        and self._knows_move(o or {}, "SURF")):
+                    _surfed_retry = True
+                    self.log("route_hop_surfed", subgoal=sg.get("id"),
+                             key=str(key), frm=self._where(o))
                     continue
                 if o and pre and ((pre.get("map") or {}).get("id")
                                   != (o.get("map") or {}).get("id")):
