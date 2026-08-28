@@ -4828,6 +4828,15 @@ class Executor:
             e["to"] = dst
             e.pop("shut", None)          # it opened; whatever shut it is gone
             e.pop("blocked_at", None)    # it landed; the block is gone
+            # A CROSSING MADE RIDING THE WATER IS REMEMBERED THAT WAY, so a
+            # replay rides it too. Route 20's east seam had been crossed
+            # surfing; `go FUCHSIA_POKECENTER` replayed it on foot, the
+            # seam was "unreachable" over 79 cells of land, and the
+            # fallback walked eight legs through Seafoam to another part
+            # of the same map joined to this one by nothing but water
+            # (user, 2026-08-28: "took it into seafoam for some reason").
+            if step.get("surf"):
+                e["surf"] = True
             self._clear_blocker(src, k, f"it opened — you came out at {dst}")
             # WHERE THIS DOOR PUT YOU. Only the region label was kept, and
             # a region is coarse: Cerulean's front door and the hole in the
@@ -6348,9 +6357,21 @@ class Executor:
             _last_pos = None
             _last_det = ""
             _rode = False
+            _surfed_retry = False
             for _ in range(12):
                 pre = self.b.obs()
-                _sf = bool(getattr(self, "_go_surf", False))
+                _edge = (self.explored.get(self._where(pre)) or {}).get(str(key)) or {}
+                _sf = bool(getattr(self, "_go_surf", False)) or bool(_edge.get("surf"))
+                # ...AND A SEAM THAT TURNS OUT TO BE ACROSS WATER IS RIDDEN
+                # when someone in the party can: the first try said the
+                # seam cannot be walked to; the next rides (once), and the
+                # trace says so.
+                if (not _sf and not _surfed_retry and not _is_door_key(key)
+                        and "cannot be walked to" in str(_last_det or "")
+                        and self._knows_move(pre, "SURF")):
+                    _sf, _surfed_retry = True, True
+                    self.log("route_hop_surfed", subgoal=sg.get("id"),
+                             key=str(key), frm=self._where(pre))
                 if _is_door_key(key):
                     x, y = key.split(",")
                     _res = self._send_safe("use_warp", x=int(x), y=int(y))
@@ -6372,8 +6393,7 @@ class Executor:
                     if _sf:
                         _args["surf"] = True
                     _res = self._send_safe("cross", **_args)
-                    step = dict(_args)
-                    step.pop("surf", None)
+                    step = dict(_args)          # surf stays: the edge remembers it
                 o = self.settle()
                 # KEEP THE OP'S OWN VERDICT. settle() overwrites result with
                 # its own, so "crossed mid-walk (door unknown)" was thrown
