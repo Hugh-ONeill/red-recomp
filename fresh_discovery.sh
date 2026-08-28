@@ -251,6 +251,91 @@ sweep_ahead() {
 # leg forward (the model reordering its own outline on play evidence), and
 # the loop must see the new order at once.
 while :; do
+  # (defined at the top of the loop: it is called from the pre-run
+  # phantom hook above where it used to be defined)
+  # "DO THESE GOALS MAKE SENSE AFTER EVIDENCE OF FAILURE, AND IF THEY DO,
+  # IS THERE A DIFFERENT WAY?" (user, 2026-08-25, watching leg 3 "Retrieve
+  # the Pokemon from the Poke Mart" spend attempt after attempt on a
+  # sentence describing nothing). Two questions, and the chain already
+  # asked both — in the wrong order. The evidence-based rewrite between
+  # attempts is the DIFFERENT WAY; the wording rung (reword / done under
+  # another name / VOID) is DOES IT MAKE SENSE, and it ran only after every
+  # attempt was spent. Now: one attempt, then the sense question once, then
+  # the remaining attempts only if the model stands by the objective. The
+  # ask is the model's, the verdict is the model's; the harness only moved
+  # the question forward. Budget and once-per-leg are unchanged.
+  wording_rung() {
+    # asked once after the first failed attempt and once more at the
+    # ladder, after the remaining attempts and their rewrites have added
+    # evidence (leg 19's first ask reworded a wrong fact into another;
+    # the second is where VOID has something to stand on)
+    # grep -c prints "0" AND exits 1 on no match, so "|| echo 0" printed
+    # a second 0 and the test died on "0\n0: integer expected" every leg
+    _asked=$(grep -Fxc "$leg" run/outline_wording_asked 2>/dev/null) || true
+    [ "${_asked:-0}" -ge 2 ] && return 1
+    # A ROLLING BUDGET, NOT A LIFETIME ONE. Three rewordings per CHAIN was
+    # written when a reworded objective was a cheap mistake to be rationed.
+    # On a 51-leg outline it means the ladder goes permanently blind about
+    # three-quarters of the way in: this run spent all three by leg 20
+    # (S.S. Ticket, Gold Teeth, Pokemon Tower) and arrived at leg 32
+    # "Obtain the Secret Key" — a key that is in the Pokemon Mansion on
+    # CINNABAR, eight legs later, behind a SURF the party cannot use — with
+    # reword, done-under-another-name and VOID all shut. check-done cannot
+    # save it either, because has_item SECRET_KEY simply never comes true
+    # in Fuchsia, so the leg can only burn attempts for the rest of the run
+    # (user, 2026-08-26: "yeah make the budget rolling"). Column 1 of
+    # outline_rewordings is the leg index it was spent on, so the window is
+    # free: three inside the last twelve legs still stops a thrash, and a
+    # run that has behaved for twelve legs gets its judgement back.
+    _recent=$(awk -F'\t' -v i="$i" -v w=12 \
+                  '($1+0) > i - w { n++ } END { print n+0 }' \
+                  run/outline_rewordings 2>/dev/null) || _recent=0
+    [ "${_recent:-0}" -lt 3 ] || return 1
+    echo "$leg" >> run/outline_wording_asked
+    set +e
+    said=$(python planner/author.py --check-wording \
+        --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
+        --asked "${1:-}" \
+        --start "$(python planner/state_text.py)" \
+        --observed run/explored.json \
+        --journal run/executor_log.jsonl --model "$AUTHOR_MODEL")
+    wrc=$?
+    set -e
+    if [ $wrc = 0 ] && [ -n "$said" ]; then
+      python planner/reword_leg.py "$i" "$said"
+      disposed "reworded to: $said"
+      return 0
+    fi
+    # EXIT 4: the restatement the model gave names something the run has
+    # ALREADY DONE. Both halves of that came from the model — what the
+    # objective means, and that the meaning is satisfied — so the leg is
+    # SPENT, not stuck, and stopping the chain on it throws away the
+    # answer while keeping the problem. This is the case that killed two
+    # runs: leg 7 "Reach Vermilion City" one night, leg 3 "Retrieve the
+    # Pokemon from the Poke Mart" the next.
+    if [ $wrc = 4 ]; then
+      echo "=== leg $i/${#LEGS[@]} is done under another name — " \
+           "crossing it off: $leg ===" >&2
+      echo "$leg" >> run/outline_skips
+      echo "$i" > "$PROGRESS"
+      sweep_ahead "$i"
+      return 0
+    fi
+    # EXIT 5: VOID — the model says the sentence describes nothing that
+    # is there ("there is no Pokemon to retrieve"). Its verdict, its
+    # reason (run/outline_void); the line is crossed off the same way a
+    # done-under-another-name is, and the objectives after it stand.
+    if [ $wrc = 5 ]; then
+      echo "=== leg $i/${#LEGS[@]} is VOID by the model's own account — " \
+           "crossing it off: $leg ===" >&2
+      echo "$leg" >> run/outline_skips
+      echo "$i" > "$PROGRESS"
+      sweep_ahead "$i"
+      return 0
+    fi
+    return 1
+  }
+
   mapfile -t LEGS < plans/outline.txt
   done_legs=$(cat "$PROGRESS" 2>/dev/null || echo 0)
   i=$((done_legs + 1))
@@ -391,88 +476,6 @@ while :; do
     echo "=== leg $i: keeping the baseline taken when this leg began ==="
   fi
 
-  # "DO THESE GOALS MAKE SENSE AFTER EVIDENCE OF FAILURE, AND IF THEY DO,
-  # IS THERE A DIFFERENT WAY?" (user, 2026-08-25, watching leg 3 "Retrieve
-  # the Pokemon from the Poke Mart" spend attempt after attempt on a
-  # sentence describing nothing). Two questions, and the chain already
-  # asked both — in the wrong order. The evidence-based rewrite between
-  # attempts is the DIFFERENT WAY; the wording rung (reword / done under
-  # another name / VOID) is DOES IT MAKE SENSE, and it ran only after every
-  # attempt was spent. Now: one attempt, then the sense question once, then
-  # the remaining attempts only if the model stands by the objective. The
-  # ask is the model's, the verdict is the model's; the harness only moved
-  # the question forward. Budget and once-per-leg are unchanged.
-  wording_rung() {
-    # asked once after the first failed attempt and once more at the
-    # ladder, after the remaining attempts and their rewrites have added
-    # evidence (leg 19's first ask reworded a wrong fact into another;
-    # the second is where VOID has something to stand on)
-    # grep -c prints "0" AND exits 1 on no match, so "|| echo 0" printed
-    # a second 0 and the test died on "0\n0: integer expected" every leg
-    _asked=$(grep -Fxc "$leg" run/outline_wording_asked 2>/dev/null) || true
-    [ "${_asked:-0}" -ge 2 ] && return 1
-    # A ROLLING BUDGET, NOT A LIFETIME ONE. Three rewordings per CHAIN was
-    # written when a reworded objective was a cheap mistake to be rationed.
-    # On a 51-leg outline it means the ladder goes permanently blind about
-    # three-quarters of the way in: this run spent all three by leg 20
-    # (S.S. Ticket, Gold Teeth, Pokemon Tower) and arrived at leg 32
-    # "Obtain the Secret Key" — a key that is in the Pokemon Mansion on
-    # CINNABAR, eight legs later, behind a SURF the party cannot use — with
-    # reword, done-under-another-name and VOID all shut. check-done cannot
-    # save it either, because has_item SECRET_KEY simply never comes true
-    # in Fuchsia, so the leg can only burn attempts for the rest of the run
-    # (user, 2026-08-26: "yeah make the budget rolling"). Column 1 of
-    # outline_rewordings is the leg index it was spent on, so the window is
-    # free: three inside the last twelve legs still stops a thrash, and a
-    # run that has behaved for twelve legs gets its judgement back.
-    _recent=$(awk -F'\t' -v i="$i" -v w=12 \
-                  '($1+0) > i - w { n++ } END { print n+0 }' \
-                  run/outline_rewordings 2>/dev/null) || _recent=0
-    [ "${_recent:-0}" -lt 3 ] || return 1
-    echo "$leg" >> run/outline_wording_asked
-    set +e
-    said=$(python planner/author.py --check-wording \
-        --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
-        --asked "${1:-}" \
-        --start "$(python planner/state_text.py)" \
-        --observed run/explored.json \
-        --journal run/executor_log.jsonl --model "$AUTHOR_MODEL")
-    wrc=$?
-    set -e
-    if [ $wrc = 0 ] && [ -n "$said" ]; then
-      python planner/reword_leg.py "$i" "$said"
-      disposed "reworded to: $said"
-      return 0
-    fi
-    # EXIT 4: the restatement the model gave names something the run has
-    # ALREADY DONE. Both halves of that came from the model — what the
-    # objective means, and that the meaning is satisfied — so the leg is
-    # SPENT, not stuck, and stopping the chain on it throws away the
-    # answer while keeping the problem. This is the case that killed two
-    # runs: leg 7 "Reach Vermilion City" one night, leg 3 "Retrieve the
-    # Pokemon from the Poke Mart" the next.
-    if [ $wrc = 4 ]; then
-      echo "=== leg $i/${#LEGS[@]} is done under another name — " \
-           "crossing it off: $leg ===" >&2
-      echo "$leg" >> run/outline_skips
-      echo "$i" > "$PROGRESS"
-      sweep_ahead "$i"
-      return 0
-    fi
-    # EXIT 5: VOID — the model says the sentence describes nothing that
-    # is there ("there is no Pokemon to retrieve"). Its verdict, its
-    # reason (run/outline_void); the line is crossed off the same way a
-    # done-under-another-name is, and the objectives after it stand.
-    if [ $wrc = 5 ]; then
-      echo "=== leg $i/${#LEGS[@]} is VOID by the model's own account — " \
-           "crossing it off: $leg ===" >&2
-      echo "$leg" >> run/outline_skips
-      echo "$i" > "$PROGRESS"
-      sweep_ahead "$i"
-      return 0
-    fi
-    return 1
-  }
   # IS THE LIST MISSING A STEP? Asked at the ladder as before, and ALSO
   # right after a first attempt that ended on a departure the run made by
   # its own decision (planner/departed.py): the tower leg's every
