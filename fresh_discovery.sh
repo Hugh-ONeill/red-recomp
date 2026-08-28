@@ -289,6 +289,24 @@ while :; do
   note=$(awk -F'\t' -v L="$leg" '$1==L{print $2; exit}' \
       plans/outline.notes 2>/dev/null || true)
   [ -n "$note" ] && goal="$leg (a doubt you recorded when outlining: $note)"
+  # ALREADY DONE? Asked once BEFORE any attempt is spent — and before
+  # a plan is AUTHORED: "Retrieve the HM03 from the Cinnabar Island gym"
+  # paid for a full author pass with HM_SURF in the bag (2026-08-28). The sweep at the
+  # end of the previous leg is a broad pass over the whole list; this is
+  # the leg's own judge, with the walked record in front of it. "Navigate
+  # the Safari Zone" reached its first attempt with every Safari map stood
+  # in and lit end to end, and spent it hunting a key that is not there
+  # (2026-08-28, user: "it's looking for the secret key in the safari zone
+  # again"). One model call per leg; the ledger refusals still apply.
+  if [ "${_no_plan:-0}" = 0 ] \
+      && python planner/author.py --check-done --goal "$goal" \
+          --start "$(python planner/state_text.py)" --gained "" \
+          --observed run/explored.json --model "$AUTHOR_MODEL"; then
+    echo "=== leg $i/${#LEGS[@]} judged already accomplished before running: $leg ==="
+    echo "$i" > "$PROGRESS"
+    sweep_ahead "$i"
+    continue
+  fi
 
   if [ -s "$plan" ]; then
     echo "=== leg $i/${#LEGS[@]}: keeping existing $plan"
@@ -492,22 +510,6 @@ while :; do
   # in a row that gained nothing in the world, and no disposition since,
   # send it straight to the ladder — it moves, changes, or goes, or the
   # run stops for a person. 37 attempts on one leg is what this replaces.
-  # ALREADY DONE? Asked once BEFORE any attempt is spent. The sweep at the
-  # end of the previous leg is a broad pass over the whole list; this is
-  # the leg's own judge, with the walked record in front of it. "Navigate
-  # the Safari Zone" reached its first attempt with every Safari map stood
-  # in and lit end to end, and spent it hunting a key that is not there
-  # (2026-08-28, user: "it's looking for the secret key in the safari zone
-  # again"). One model call per leg; the ledger refusals still apply.
-  if [ "${_no_plan:-0}" = 0 ] \
-      && python planner/author.py --check-done --goal "$goal" \
-          --start "$(python planner/state_text.py)" --gained "" \
-          --observed run/explored.json --model "$AUTHOR_MODEL"; then
-    echo "=== leg $i/${#LEGS[@]} judged already accomplished before running: $leg ==="
-    echo "$i" > "$PROGRESS"
-    sweep_ahead "$i"
-    continue
-  fi
   _dry=$(python planner/author.py --dry-tail --goal "$leg" 2>/dev/null || echo 0)
   if [ "${_dry:-0}" -ge 2 ] || [ "${_no_plan:-0}" = 1 ]; then
     echo "=== leg $i/${#LEGS[@]}: its last $_dry runs yielded nothing new —" \

@@ -19,7 +19,9 @@ ck("the script parses", subprocess.run(["bash", "-n", str(ROOT / "fresh_discover
 i = sh.index("judged already accomplished before running")
 blk = sh[max(0, i - 900):i]
 ck("check-done is asked before the leg runs", "--check-done" in blk and "--observed run/explored.json" in blk)
-ck("...after the leg baseline is taken", sh.index("leg_delta.py snap run/leg_start.json") < i)
+ck("...before a plan is authored for it (an author pass costs minutes; a judged-done leg needs none)",
+   i < sh.index('echo "=== leg $i/${#LEGS[@]}: authoring — $goal"'))
+ck("...and after the leg's wording and doubt are settled", sh.index('goal="$leg (a doubt you recorded') < i)
 ck("...before the dry gate and the first campaign call",
    i < sh.index("--dry-tail --goal") and i < sh.index('run_campaign "$cont" 1'))
 ck("...not for a leg that could not be written (that goes to the ladder)", '[ "${_no_plan:-0}" = 0 ]' in blk)
