@@ -885,13 +885,24 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight",
     ctx = {"turn": 0, "used": {}, "intent": intent,
            "journal": DAMAGE_JOURNAL, "want": want}
     while obs and turns < max_turns:
-        if obs.get("mode") != "battle":
+        # THE FORCED PICK UNDER A BATTLE FRAME. Since a menu over a fight
+        # reports the fight (battle_under_a_menu, 2026-08-26), "Use next
+        # POKeMON?" -> party menu arrives as mode=battle with the lead gone
+        # (me None) and PartyMenu on top — and the branch below, keyed on
+        # mode=ui, never ran: the policy took a turn instead, battle_move
+        # said "not in battle", and the round spun eight fights of nothing
+        # in Victory Road with KABUTO and CHARIZARD both at 0 (2026-08-28).
+        _bb = obs.get("battle") or {}
+        _forced = (obs.get("mode") == "battle"
+                   and str(_bb.get("behind_a_menu") or "") == "PartyMenu"
+                   and not _bb.get("me"))
+        if obs.get("mode") != "battle" or _forced:
             # the active mon may have fainted into the forced party pick
             # ("Use next POKeMON?" -> party menu). With a backup alive,
             # send the replacement the spec's rule chooses — party depth
             # exists precisely so a lead faint is not a blackout.
             slot = battle_policy.choose_replacement(obs, spec)
-            if (obs.get("mode") == "ui" and picks < 6 and slot):
+            if ((obs.get("mode") == "ui" or _forced) and picks < 6 and slot):
                 picks += 1
                 log("battle_turn", turn=turns, op="pick_party",
                     params={"slot": slot}, why="replacement")
