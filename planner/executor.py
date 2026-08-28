@@ -3330,6 +3330,29 @@ class Executor:
         if not (anchors and mid):
             return
         store = self.region_anchors.setdefault(mid, {})
+        # A SPLIT MOVES THE DOORS WITH THE GROUND. The shim has just given
+        # a cut-off component its own name (see the split block in
+        # observe): the door edges it recorded while it still answered to
+        # the old name — the Mansion's (21,23) to B1F, filed under 1F|1,1,
+        # a region that cannot walk to it — are re-keyed under the new
+        # name, and the old name's remembered anchors that lay on this
+        # side are dropped so the next boot cannot seed it back here.
+        sp = m.get("region_split") or {}
+        if sp.get("from") and sp.get("to"):
+            _old, _new = f"{mid}|{sp['from']}", f"{mid}|{sp['to']}"
+            _src = self.explored.get(_old) or {}
+            _dst = self.explored.setdefault(_new, {})
+            moved = []
+            for k in list(sp.get("doors") or []):
+                if k in _src and k not in _dst:
+                    _dst[k] = _src.pop(k)
+                    moved.append(k)
+            for c in [c for c, n in store.items()
+                      if n == sp["from"] and c != sp["from"]]:
+                store.pop(c, None)
+            self.log("region_split", map=mid, frm=sp["from"], to=sp["to"],
+                     doors_moved=moved)
+            self._save_memory()
         added = {c: n for c, n in anchors.items() if store.get(c) != n}
         if added:
             store.update(added)

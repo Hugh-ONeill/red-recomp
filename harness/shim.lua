@@ -1803,6 +1803,41 @@ local function observe(G, seq, result)
           end
         end
         name = name or (bx and (bx .. "," .. by))
+        -- A COMPONENT CUT OFF FROM THE CELL IT IS NAMED FOR IS ITS OWN
+        -- PLACE. Names are painted once and kept, which is right for a
+        -- tree cut or a boulder pushed (the space only grows). But the
+        -- Mansion's statue switches also SHRINK it: both halves of 1F were
+        -- first walked in a setting where they were joined, so every cell
+        -- of both carries "1,1", the sealed basement-stairs half kept
+        -- answering to the main half's name, and its door to B1F was
+        -- filed under a region that cannot reach it (TODO 2026-08-23; the
+        -- user: "the rooms change depending on the switch position").
+        -- The name IS a cell. Standing in a component that does not
+        -- contain that cell, and holds well under the ground carrying the
+        -- name (an NPC parked on the anchor takes one cell, not half), is
+        -- standing somewhere that needs its own name: mint it from this
+        -- component's own top-left cell, repaint only THIS component, and
+        -- tell the executor so the doors on this side move with it. Done
+        -- once — the new name's cell is in here, so it never trips again;
+        -- and when the switch rejoins the halves each keeps its name, the
+        -- way Cerulean's main and strip do after the tree.
+        local split_from
+        if name and bx and not rreach[name] and known[name] == name then
+          local total, here_n = 0, 0
+          for k, v in pairs(known) do
+            if v == name then
+              total = total + 1
+              if rreach[k] then here_n = here_n + 1 end
+            end
+          end
+          local new = bx .. "," .. by
+          if total >= 12 and here_n * 10 < total * 7 and new ~= name then
+            for k in pairs(rreach) do
+              if known[k] == name then known[k] = new end
+            end
+            split_from, name = name, new
+          end
+        end
         if name then
           o.map.region = name
           -- paint only the ground that has never been named, and only
@@ -1814,11 +1849,28 @@ local function observe(G, seq, result)
           known[here] = name
           -- one cell per name is all the executor needs to store: the
           -- component walk above re-spreads it on the next load.
+          -- THE ANCHOR OF A NAME IS THE CELL IT NAMES, whenever that cell
+          -- still carries it; `pairs` order handed back any cell, and
+          -- after a split the remembered cell for the OLD name could sit
+          -- in the half that was just renamed, seeding it back there on
+          -- the next boot.
           local seen_name, anchors = {}, {}
           for k, v in pairs(known) do
-            if not seen_name[v] then seen_name[v] = true; anchors[k] = v end
+            if known[v] == v then
+              if not seen_name[v] then seen_name[v] = true; anchors[v] = v end
+            elseif not seen_name[v] then
+              seen_name[v] = true; anchors[k] = v
+            end
           end
           o.map.region_anchors = anchors
+          if split_from then
+            local doors = {}
+            for _, w in ipairs(md.warps or {}) do
+              local wk = tostring(w.x) .. "," .. tostring(w.y)
+              if rreach[wk] then doors[#doors + 1] = wk end
+            end
+            o.map.region_split = { from = split_from, to = name, doors = doors }
+          end
         end
       end
       -- LAST_MAP is gen1's "back outdoors where you came from" and it is
