@@ -10607,8 +10607,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # a press by coordinates is a press of the thing on that
                 # cell (see _name_at): file it under its name
                 if not step.get("name") and step.get("x") is not None:
-                    _nm_xy = self._name_at(pre_obs or obs, step.get("x"),
-                                           step.get("y"))
+                    _nm_xy = self._name_at(obs, step.get("x"), step.get("y"))
                     if _nm_xy:
                         step = dict(step, name=_nm_xy)
                         self.log("touch_by_coords", subgoal=sg.get("id"),

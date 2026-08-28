@@ -30,7 +30,7 @@ src = (ROOT / "planner/executor.py").read_text()
 i = src.index('if op == "interact":')
 blk = src[i:i + 1400]
 ck("an interact by coordinates is filed under the thing's name",
-   "_nm_xy = self._name_at(pre_obs or obs" in blk and "step = dict(step, name=_nm_xy)" in blk)
+   "_nm_xy = self._name_at(obs, step.get(\"x\"), step.get(\"y\"))" in blk and "step = dict(step, name=_nm_xy)" in blk)
 ck("...and the journal says so", 'self.log("touch_by_coords"' in blk)
 j = src.index("things = sorted((c for c in cands")
 ck("explore never presses a switch statue first", '"SWITCH" not in str(c.key).upper()' in src[j:j + 1400])
@@ -40,6 +40,15 @@ ck("...and never stamped from a seen-ground downgrade", '"you have seen" in str(
 led = (ROOT / "planner/ledger.py").read_text()
 ck("the ledger reads the region entry first, then the old map entry",
    "(_ss_all.get(here) or {}).get(c.key)" in led and "(_rs.get(_here) or {}).get(str(name))" in led)
+# the name lookup reads only names that exist in that scope (an UnboundLocalError on
+# pre_obs killed every attempt of leg 40 at its first coordinate press, 2026-08-28)
+import ast
+tree = ast.parse(src)
+fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "_run_traced")
+assigned = {t.id for n in ast.walk(fn) for t in getattr(n, "targets", []) if isinstance(t, ast.Name)}
+assigned |= {a.arg for a in fn.args.args}
+used = {n.id for n in ast.walk(fn) if isinstance(n, ast.Name) and isinstance(n.ctx, ast.Load)}
+ck("_run_traced does not read a pre_obs it never binds", "pre_obs" not in used or "pre_obs" in assigned)
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)
