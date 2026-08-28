@@ -292,10 +292,23 @@ def _is_service(region: str) -> bool:
     return str(region).split("|")[0].endswith(SERVICE_SUFFIXES)
 
 
+# THE DOORS THIS RUN HAS SEEN, outdoor map -> {door: destination map} —
+# the executor points this at its door_dests so _doorstep can resolve a
+# building the static tables do not know (CINNABAR_LAB is not a gym, a
+# mart, a center or a gate, and "CINNABAR_ISLAND" does not end in _CITY),
+# so "HOW FAR OFF YOU ARE" said "nothing you have walked joins ROUTE_14
+# to CINNABAR_LAB" to a run that had stood beside the lab's door
+# (2026-08-28, user: "running around east kanto looking for cinnabar
+# which it's already been to"). A door seen from walked ground is walked-
+# ground recall, not a printed map.
+_SEEN_DOORS_REF: list = [{}]
+
+
 def _doorstep(map_id: str) -> str:
     """The printed-map place a target sits in: itself if the town map
     draws it, else the road it opens off, else the city its name carries
-    (CELADON_GYM -> CELADON_CITY, the same fallback badge routing uses)."""
+    (CELADON_GYM -> CELADON_CITY, the same fallback badge routing uses),
+    else the outdoor map a door this run has SEEN leads in from."""
     if not map_id or map_id in MAP_EDGES:
         return map_id
     if map_id in INTERIOR_ROAD:
@@ -312,6 +325,9 @@ def _doorstep(map_id: str) -> str:
         if city.endswith("_CITY") and map_id.startswith(
                 city[: -len("_CITY")] + "_"):
             return city
+    for outer, doors in (_SEEN_DOORS_REF[0] or {}).items():
+        if outer != map_id and map_id in set((doors or {}).values()):
+            return outer if outer in MAP_EDGES else _doorstep(outer)
     return map_id
 import battle_oracle
 import brock_probe   # reuse the live model driver (chat/parse) for escalation
@@ -1182,6 +1198,7 @@ class Executor:
                                             # you off (seen while standing
                                             # there; see note_frontier)
         self.door_dests: dict = {}          # map id -> {key: destMap} —
+        _SEEN_DOORS_REF[0] = self.door_dests
                                             # INTERNAL, never printed: kept
                                             # only so the one-doorway
                                             # grouping (_door_groups) can be
@@ -2988,6 +3005,7 @@ class Executor:
                                    for k, v
                                    in (data.get("reach_settings") or {}).items()}
             self.door_dests = data.get("door_dests") or {}
+            _SEEN_DOORS_REF[0] = self.door_dests
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
             # reset before ever reaching 2 — the TOO-WEAK note was aimed at
@@ -4198,10 +4216,19 @@ class Executor:
                     if tgt.startswith(("map:", "area:")) else None)
         if not want_map and tgt.startswith("badge:"):
             want_map = BADGE_GYMS.get(tgt.split(":", 1)[1])
+        want_raw = want_map
         want_map = _doorstep(want_map) if want_map else None
         here_map = ((obs or {}).get("map") or {}).get("id")
         if not (want_map and here_map):
             return "", False
+        # a building resolved through a door the run has seen: say which
+        _door_of = ""
+        if want_map != want_raw:
+            for _k, _dst in ((self.door_dests or {}).get(want_map) or {}).items():
+                if _dst == want_raw:
+                    _door_of = (f" (its door, ({_k}), stands on {want_map}, "
+                                f"ground you have walked)")
+                    break
         try:
             d = static_cost(_doorstep(here_map), want_map, {},
                             self._walked_map_links())
@@ -4247,7 +4274,7 @@ class Executor:
                    else "by your own walking, and by nothing else — you "
                         "carry no TOWN MAP — ")
                 + f"{here_map} is "
-                f"{d} leg(s) from {want_map}. The closest you have been "
+                f"{d} leg(s) from {want_raw}{_door_of}. The closest you have been "
                 f"this subgoal is {st['best']} (at {st['at']})"
                 + (f", and you have not improved on it for {st['since']} "
                    f"rounds." if st["since"] else "."))
