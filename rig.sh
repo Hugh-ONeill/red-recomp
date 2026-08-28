@@ -37,8 +37,16 @@ rig_register() {    # rig_register <kind> [pid]   (pid<0 means "its group")
   printf '%s\t%s\t%s\n' "$pid" "$st" "$kind" >> "$RIG_PIDS"
 }
 
+rig_state() {       # rig_state <pid> -> R/S/D/Z/T..., or fail
+  [ -r "/proc/$1/stat" ] || return 1
+  sed 's/.*) //' "/proc/$1/stat" 2>/dev/null | awk '{print $1}'
+}
 rig_alive() {       # rig_alive <pid> <starttime> — same process, still here?
+  # A ZOMBIE IS GONE: it has exited and only waits on its parent to reap
+  # it; /proc still answers for it, so start time alone said "alive" and
+  # stop_all refused ALL CLEAR over a corpse (2026-08-28).
   local probe="${1#-}" now
   now=$(rig_starttime "$probe") || return 1
-  [ "$now" = "$2" ]
+  [ "$now" = "$2" ] || return 1
+  [ "$(rig_state "$probe")" != "Z" ]
 }

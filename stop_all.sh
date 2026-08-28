@@ -71,6 +71,41 @@ strays() {      # NOT killed by default: reported, so a miss is still visible
 # So the order is: silence the LOOPS, ask the EXECUTOR to stop and let it
 # write, and only then tear down the game. Signalling them all at once —
 # which is what the sweep below does — kills love out from under the save.
+# EVERYTHING BENEATH WHAT REGISTERED, SNAPSHOTTED BEFORE THE FIRST SIGNAL.
+# A loop killed with a child still running leaves that child to PID 1 —
+# planner/author.py went on talking to ollama for a whole leg after the
+# chain it belonged to was gone (2026-08-28), and nothing here could see it
+# because only the loops and the executor ever register. The process tree
+# is the record of what we started; read it while it still exists.
+_PSTREE=$(mktemp)
+ps -eo pid=,ppid= > "$_PSTREE"
+descendants() {   # descendants <pid>... -> "pid depth", every live descendant
+  local frontier="$*" depth=0 seen="" next p c
+  while [ -n "$frontier" ]; do
+    depth=$((depth + 1)); next=""
+    for p in $frontier; do
+      for c in $(awk -v P="$p" '$2 == P {print $1}' "$_PSTREE"); do
+        case " $seen " in *" $c "*) continue ;; esac
+        seen="$seen $c"; next="$next $c"
+        echo "$c $depth"
+      done
+    done
+    frontier="$next"
+  done
+}
+_skip=$(ancestors | tr '\n' '|' | sed 's/|$//')
+OURS=$(descendants $(registered | awk '{print $1}' | sed 's/^-//' | sort -u) \
+       | grep -vE "^(${_skip}) " || true)
+# ...and the inhibitor that wraps the chain (systemd-inhibit is the chain's
+# PARENT, so no registration and no descent reaches it); killed last.
+INHIBITOR=""
+for _c in $(registered | awk '$2=="chain"{print $1}'); do
+  _pp=$(ps -o ppid= -p "$_c" 2>/dev/null | tr -d ' ')
+  [ -n "$_pp" ] && ps -o args= -p "$_pp" 2>/dev/null | grep -q "systemd-inhibit" \
+    && ! echo "$_pp" | grep -qE "^(${_skip})$" && INHIBITOR="$INHIBITOR $_pp"
+done
+rm -f "$_PSTREE"
+
 loops=$(registered | awk '$2=="chain" || $2=="campaign" || $2=="run" {print $1}')
 if [ -n "$loops" ]; then
   echo "quieting the loops so nothing starts another attempt: $(echo $loops)"
@@ -105,6 +140,31 @@ done
 
 # prune entries whose process is gone, so the registry does not grow a tail
 # of dead PIDs that a later reuse could turn into a stranger
+# CHILDREN OF OURS THAT NEVER REGISTERED, deepest first — the orphan class.
+ours_left() {
+  echo "$OURS" | while read -r pid depth; do
+    [ -n "${pid:-}" ] || continue
+    kill -0 "$pid" 2>/dev/null && [ "$(rig_state "$pid")" != "Z" ] && echo "$pid $depth"
+  done | sort -k2,2nr
+}
+left=$(ours_left)
+if [ -n "$left" ]; then
+  echo "stopping children of ours that never registered (deepest first):"
+  ps -o pid,args -p "$(echo "$left" | awk '{print $1}' | tr '\n' ',' | sed 's/,$//')" 2>/dev/null | sed 's/^/   /'
+  for sig in TERM KILL; do
+    left=$(ours_left)
+    [ -z "$left" ] && break
+    echo "$left" | while read -r pid depth; do kill -"$sig" "$pid" 2>/dev/null || true; done
+    sleep 3
+  done
+fi
+for _p in $INHIBITOR; do
+  if kill -0 "$_p" 2>/dev/null; then
+    echo "releasing the sleep inhibitor: $_p"
+    kill -TERM "$_p" 2>/dev/null || true
+  fi
+done
+
 if [ -f "$RIG_PIDS" ]; then
   keep=$(while IFS=$'\t' read -r pid st kind; do
            [ -n "${pid:-}" ] || continue
@@ -116,6 +176,11 @@ fi
 left=$(registered)
 if [ -n "$left" ]; then
   echo "!! REGISTERED AND STILL RUNNING: $(echo "$left" | tr '\n' ' ')" >&2
+  exit 1
+fi
+left=$(ours_left)
+if [ -n "$left" ]; then
+  echo "!! OF OURS AND STILL RUNNING (children of what registered): $(echo "$left" | awk '{print $1}' | tr '\n' ' ')" >&2
   exit 1
 fi
 
