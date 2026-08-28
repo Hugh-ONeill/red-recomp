@@ -182,6 +182,26 @@ disposed() {
   printf '%s\t%s\t0\tDISPOSED: %s\n' "$leg" "$i" "$1" >> run/attempt_yield
 }
 
+# A MOVED LEG IS AUTHORED AGAIN WHERE IT NOW SITS. A plan is written "at
+# the moment the leg starts", with the walked graph and the journal in
+# front of the author; a leg pushed or pulled keeps its old plan by name,
+# so "Obtain the Secret Key", moved to after Cinnabar, started on a
+# v37 written in the Safari Zone and went straight back there
+# (2026-08-28). The old versions are archived, not deleted, and the
+# leg's next start writes a plan from where the run actually is.
+archive_plans_of() {
+  local _f _base _g _stamp
+  _stamp=$(date +%H%M%S)
+  mkdir -p plans/archive
+  for _f in $(python planner/find_plan.py "$1" 2>/dev/null || true); do
+    _base="${_f%.json}"; _base="${_base%%.v[0-9]*}"
+    for _g in "$_base".json "$_base".v*.json; do
+      [ -e "$_g" ] && mv -f "$_g" "plans/archive/${_stamp}-moved-$(basename "$_g")"
+    done
+  done
+  return 0
+}
+
 pushes_in_force() {
   awk -F'\t' -v want="$1" -v now="$2" \
       '$3 == want && ($2+0) < now { n++ } END { print n+0 }' \
@@ -309,6 +329,7 @@ while :; do
       [ "$_after" -gt "${#LEGS[@]}" ] && _after=${#LEGS[@]}
       if python planner/push_leg.py "$i" "$_after"; then
         disposed "authoring failed; moved to after leg $_after"
+        archive_plans_of "$leg"
         continue
       fi
       # push refused (already deferred twice): leave the order alone and
@@ -547,6 +568,7 @@ while :; do
     if [ "$(cat run/outline_pulls_failed 2>/dev/null | wc -l)" -lt 2 ] \
         && python planner/pull_leg.py undo "$i"; then
       disposed "a pull that put it here was undone"
+      archive_plans_of "$leg"
       continue
     fi
     # Or the leg is stuck because a LATER leg of the model's own outline
@@ -659,6 +681,7 @@ while :; do
       # has slid into this position, and that is the one to run now.
       python planner/push_leg.py "$i" "$at"
       disposed "moved to after leg $at"
+      archive_plans_of "$leg"
       continue
     fi
     # the sense question, last, told exactly what was asked before it
