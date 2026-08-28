@@ -103,7 +103,53 @@ def replaced(sg, old: dict, new: dict) -> bool:
     return False
 
 
-def carry(old: dict, new: dict, journal: Path | None = None) -> tuple:
+def live_flags(state: Path | None = None):
+    """The event flags SET in the state snapshot the re-author reads, or
+    None when there is no snapshot to read."""
+    srcs = [state] if state else [Path("run/last_state.json"),
+                                  Path("run/obs.json")]
+    for src in srcs:
+        try:
+            o = json.loads(src.read_text())
+        except Exception:
+            continue
+        if isinstance(o, dict) and isinstance(o.get("flags"), list):
+            return {str(f) for f in o["flags"]}
+    return None
+
+
+def fired_and_cleared(journal: Path | None, live) -> dict:
+    """flag -> where it fired, for every flag the journal watched fire that
+    is NOT set now. A gate on such a flag is not a milestone the rewrite
+    dropped by mistake: it is a condition that came and went (a boulder-
+    switch event is kept only while the boulder sits on the switch and is
+    cleared on leaving the floor). Victory Road, 2026-08-28: the author,
+    refused a step on EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH, wrote a clean
+    2F -> 3F -> Indigo plan, and this file put the step back — twice, on
+    two flags — so the run went on warping between floors after an event
+    that cannot be true from where the plan had brought it."""
+    if not journal or not journal.exists() or live is None:
+        return {}
+    out = {}
+    try:
+        with journal.open() as fh:
+            for line in fh:
+                if '"flag_fired"' not in line:
+                    continue
+                try:
+                    r = json.loads(line)
+                except Exception:
+                    continue
+                f = r.get("flag")
+                if f and f not in live:
+                    out[f] = r.get("region") or "?"
+    except Exception:
+        return {}
+    return out
+
+
+def carry(old: dict, new: dict, journal: Path | None = None,
+          live=None) -> tuple:
     """Return (merged, carried_ids). Matching is by CONDITION, not id, so a
     renamed subgoal with the same done_when is not duplicated."""
     have = {json.dumps(sg.get("done_when") or {}, sort_keys=True)
@@ -115,9 +161,17 @@ def carry(old: dict, new: dict, journal: Path | None = None) -> tuple:
               f"{json.dumps(_died_on.get('done_when') or {})} — the attempt "
               f"failed on it and the rewrite put a different gate of the "
               f"same kind in its place. That is a replacement, not a drop.")
+    _gone = fired_and_cleared(journal, live_flags() if live is None else live)
     missing, spent = [], []
     for sg in gates(old):
         if _swap and sg.get("id") == _died_on.get("id"):
+            continue
+        _fl = (sg.get("done_when") or {}).get("flag")
+        if _fl in _gone:
+            print(f"[gates] not carrying {sg.get('id')} — its flag {_fl} "
+                  f"fired in {_gone[_fl]} and is NOT set now; a condition "
+                  f"that came and went is not a milestone the rewrite "
+                  f"dropped by mistake")
             continue
         if json.dumps(sg.get("done_when") or {}, sort_keys=True) in have:
             continue

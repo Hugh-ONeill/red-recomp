@@ -415,8 +415,8 @@ def _fired_row_note(f: str, live) -> str:
     if "BOULDER_ON_SWITCH" in str(f):
         note += (": a boulder-switch event is kept only while the boulder "
                  "sits on the switch, and the game clears it when you "
-                 "leave that floor, so what it opened is ground already "
-                 "walked")
+                 "leave that floor, and a way it opened is shut again when "
+                 "you come back to that floor")
     return note
 
 

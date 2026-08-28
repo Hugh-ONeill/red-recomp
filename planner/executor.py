@@ -7254,6 +7254,32 @@ class Executor:
                  answer=a, why=str(d.get("why") or "")[:200])
         return a == "yes"
 
+    def _boulders_now_text(self, obs) -> str:
+        """Where this floor's boulders stand now, against where they stood
+        when the run first came in (boulder_start, recorded on arrival)."""
+        mid = ((obs or {}).get("map") or {}).get("id")
+        now = [(int(o.get("x")), int(o.get("y")))
+               for o in ((obs or {}).get("map") or {}).get("objects", [])
+               if o.get("kind") == "boulder" and o.get("x") is not None]
+        if not now:
+            return ""
+        first = []
+        for c in (getattr(self, "boulder_start", {}) or {}).get(mid) or []:
+            try:
+                x, y = str(c).split(",")
+                first.append((int(x), int(y)))
+            except ValueError:
+                continue
+        cells = ", ".join(f"({x},{y})" for x, y in now)
+        if first and sorted(first) == sorted(now):
+            return (f" — the boulders on this floor stand where they stood "
+                    f"when you first came in: {cells}")
+        if first:
+            return (f" — the boulders on this floor stand at {cells}; when "
+                    f"you first came in they stood at "
+                    + ", ".join(f"({x},{y})" for x, y in first))
+        return f" — the boulders on this floor stand at {cells}"
+
     def _reset_flag_note(self, obs, sg) -> str:
         """The event this step waits for fired before and is not set now.
 
@@ -7278,20 +7304,26 @@ class Executor:
             _reset_note = (f"\n\nTHE EVENT THIS STEP WAITS FOR, {_want}, HAS FIRED "
                            f"ONCE ALREADY — in {_at} — and it is NOT set now")
             if "BOULDER_ON_SWITCH" in str(_want):
-                _reset_note += (". A boulder-switch event is kept only while the "
-                                "boulder sits on the switch, and the game clears "
-                                "it when you leave that floor; it cannot be true "
-                                "from any other floor. What it opened, you have "
-                                "walked through" if _here.split("|")[0] != str(_at).split("|")[0]
-                                else ". A boulder-switch event is kept only while "
-                                "the boulder sits on the switch, and the game "
-                                "cleared it when you left the floor; it would be "
-                                "set again only by putting a boulder back on the "
-                                "switch, and what it opened the first time is "
-                                "ground you have walked since")
-            _reset_note += (". A step that waits on a thing already done, or "
-                            "that cannot come true as written, is what "
-                            "{\"op\":\"skip\"} is for.")
+                if _here.split("|")[0] != str(_at).split("|")[0]:
+                    _reset_note += (
+                        ". A boulder-switch event is kept only while the "
+                        "boulder sits on the switch, and the game clears it "
+                        "when you leave that floor; it cannot be true from "
+                        "any other floor, and a way it opened is shut again "
+                        "when you come back to that floor")
+                else:
+                    _reset_note += (
+                        ". A boulder-switch event is kept only while the "
+                        "boulder sits on the switch, and the game cleared it "
+                        "when you left the floor; a way it opened is shut "
+                        "again now, and it is set again by a boulder on the "
+                        "switch") + self._boulders_now_text(obs)
+                _reset_note += (". {\"op\":\"skip\"} declares this step moot "
+                                "and moves the plan on; {\"op\":\"push\"} is "
+                                "what moves a boulder.")
+            else:
+                _reset_note += (". {\"op\":\"skip\"} declares this step moot "
+                                "and moves the plan on.")
         if _reset_note:
             try:
                 self.log("reset_flag_note", subgoal=sg.get("id"), flag=_want,

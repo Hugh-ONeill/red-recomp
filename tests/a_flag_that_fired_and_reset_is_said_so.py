@@ -25,17 +25,24 @@ t = ex._fired_text(obs, sg)
 ck("the target flag is said to have fired, and where", "HAS FIRED ONCE ALREADY — in VICTORY_ROAD_1F|5,9" in t)
 ck("...and to be unset now", "it is NOT set now" in t)
 ck("...with the boulder-switch reset rule, from another floor", "cannot be true from any other floor" in t)
-ck("...and the op for a step that cannot come true as written", '"skip"' in t)
+ck("...and the contracts of skip and push, neither chosen for it", '"skip"' in t and '"push"' in t)
 ck("the events still set are listed after it", "EVENT_BEAT_VICTORY_ROAD_1_TRAINER_0 (fired in" in t)
 obs2 = dict(obs); obs2["flags"] = ["EVENT_VICTORY_ROAD_1_BOULDER_ON_SWITCH"]
 ck("a target flag that IS set gets no such note", "HAS FIRED ONCE ALREADY" not in ex._fired_text(obs2, sg))
 sg2 = {"id": "x", "done_when": {"flag": "EVENT_NEVER_SEEN"}}
 ck("a target flag that never fired gets none either", "HAS FIRED ONCE ALREADY" not in ex._fired_text(obs, sg2))
-obs3 = {"map": {"id": "VICTORY_ROAD_1F", "region": "14,0"}, "flags": []}
+obs3 = {"map": {"id": "VICTORY_ROAD_1F", "region": "14,0", "objects": [
+    {"kind": "boulder", "name": "B1", "x": 14, "y": 2}, {"kind": "boulder", "name": "B2", "x": 2, "y": 10}]}, "flags": []}
+ex.boulder_start = {"VICTORY_ROAD_1F": ["14,2", "2,10"]}
 t3 = ex._fired_text(obs3, sg)
-ck("on the switch's own floor the note says what setting it again would take, and that its work is walked",
-   "HAS FIRED ONCE ALREADY" in t3 and "any other floor" not in t3 and "putting a boulder back on the switch" in t3
-   and "ground you have walked since" in t3)
+ck("on the switch's own floor the note says the way is shut again and what sets it again",
+   "HAS FIRED ONCE ALREADY" in t3 and "any other floor" not in t3 and "shut again now" in t3
+   and "set again by a boulder on the switch" in t3)
+ck("...and where the boulders stand against where they started",
+   "stand where they stood when you first came in: (14,2), (2,10)" in t3)
+ex.boulder_start = {"VICTORY_ROAD_1F": ["14,2", "5,15"]}
+ck("...or that one has moved", "when you first came in they stood at (14,2), (5,15)" in ex._fired_text(obs3, sg))
+ck("no inference about walked ground rides on it", "walked since" not in t3 and "walked through" not in t3)
 src = (ROOT / "planner" / "executor.py").read_text()
 ck("the note stands on the round-1 page too, not only in feedback",
    "memory += self._reset_flag_note(start, sg)" in src)
