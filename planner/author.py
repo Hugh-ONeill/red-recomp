@@ -635,6 +635,22 @@ def outline_so_far(cap: int = 12) -> str:
     return out + done_ledger_text()
 
 
+def objective_history_text(goal: str) -> str:
+    """THIS OBJECTIVE'S OWN HISTORY, for the author. The rungs that judge
+    a leg read its lineage, its yield record and the ground its runs
+    walked; the author that WRITES the leg read none of it, so "Obtain
+    the Secret Key", moved by hand to after Cinnabar after six runs in
+    the Safari Zone, was authored a seventh time as a walk to the Secret
+    House (2026-08-28, user: "it's authored it wrong now"). The same
+    record, in front of the same model, before it writes."""
+    bare = re.sub(r"\s*\(a doubt you recorded when outlining:.*$", "", goal).strip()
+    out = _wording_lineage(bare) + attempt_yield_text(bare)[0] + new_ground_text(bare)
+    if not out:
+        return ""
+    return ("\n\nTHIS OBJECTIVE HAS BEEN TRIED BEFORE. Its record, before "
+            "you write the plan:" + out)
+
+
 def build_prompt(goal: str, start: str | None = None) -> str:
     return (
         f"GOAL: {goal}\n\n"
@@ -661,6 +677,7 @@ def build_prompt(goal: str, start: str | None = None) -> str:
         + "\n".join(f"  {k}: {v}" for k, v in KEY_ITEMS.items())
         + recent_events()
         + outline_so_far()
+        + objective_history_text(goal)
         + f"\n\nBADGES: {', '.join(BADGES)}\n\n"
         "Author the ordered subgoal list now. Remember the granularity rule.")
 
