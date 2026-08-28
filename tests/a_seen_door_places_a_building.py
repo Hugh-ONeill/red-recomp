@@ -35,6 +35,18 @@ ck("a door only LOOKED at (n=0) places nothing", E._walked_door_into("POKEMON_MA
 graph({"CINNABAR_ISLAND|1,0": {"2,3": {"to": "POKEMON_MANSION_1F|1,1", "n": 1}}})
 ck("a door walked through places the building", E._doorstep("POKEMON_MANSION_1F") == "CINNABAR_ISLAND"
    and E._walked_door_into("POKEMON_MANSION_1F") == ("CINNABAR_ISLAND", "2,3"))
+# stairs run both ways: a floor whose only walked door is from the floor above, and vice versa
+graph({"POKEMON_MANSION_1F|1,1": {"5,10": {"to": "POKEMON_MANSION_2F|10,1", "n": 2}},
+       "POKEMON_MANSION_2F|10,1": {"5,10": {"to": "POKEMON_MANSION_1F|1,1", "n": 2}}})
+ck("two floors that only lead to each other resolve without recursing forever",
+   E._doorstep("POKEMON_MANSION_2F") in ("POKEMON_MANSION_2F", "POKEMON_MANSION_1F"))
+graph({"CINNABAR_ISLAND|1,0": {"2,3": {"to": "POKEMON_MANSION_1F|1,1", "n": 1}},
+       "POKEMON_MANSION_1F|1,1": {"5,10": {"to": "POKEMON_MANSION_2F|10,1", "n": 2}},
+       "POKEMON_MANSION_2F|10,1": {"5,10": {"to": "POKEMON_MANSION_1F|1,1", "n": 2}}})
+ck("...and a floor reached from a building entered off the street places on the street",
+   E._doorstep("POKEMON_MANSION_2F") == "CINNABAR_ISLAND")
+ck("a door from the street is preferred over one from another floor",
+   E._walked_door_into("POKEMON_MANSION_1F") == ("CINNABAR_ISLAND", "2,3"))
 src = (ROOT / "planner/executor.py").read_text()
 ck("the executor registers itself as the graph's owner", "_WALKED_REF[0] = self" in src)
 d = src[src.index("def _doorstep("):src.index("def _doorstep(") + 1800]

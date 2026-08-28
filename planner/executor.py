@@ -309,24 +309,36 @@ _WALKED_REF: list = [None]
 
 
 def _walked_door_into(map_id: str):
-    """(outdoor map, door key) of a door this run has WALKED into map_id
-    through, or None."""
+    """(map, door key) of a door this run has WALKED into map_id through,
+    or None — a door from a map the town map draws first, so a building
+    entered from the street places on the street even when its stairs
+    were also walked from the floor above."""
     graph = getattr(_WALKED_REF[0], "explored", None) or {}
+    best = None
     for region, exits in graph.items():
         for k, e in (exits or {}).items():
             if ("," in str(k) and isinstance(e, dict) and int(e.get("n") or 0) >= 1
                     and str(e.get("to") or "").split("|")[0] == map_id):
-                return region.split("|")[0], str(k)
-    return None
+                hit = (region.split("|")[0], str(k))
+                if hit[0] in MAP_EDGES:
+                    return hit
+                best = best or hit
+    return best
 
 
-def _doorstep(map_id: str) -> str:
+def _doorstep(map_id: str, _seen=None) -> str:
     """The printed-map place a target sits in: itself if the town map
     draws it, else the road it opens off, else the city its name carries
     (CELADON_GYM -> CELADON_CITY, the same fallback badge routing uses),
-    else the outdoor map a door this run has SEEN leads in from."""
+    else the map a door this run has WALKED leads in from — following
+    that door outward at most once per map, since stairs run both ways
+    (Mansion 2F <-> 1F recursed without end, 2026-08-28)."""
     if not map_id or map_id in MAP_EDGES:
         return map_id
+    _seen = set(_seen or ())
+    if map_id in _seen:
+        return map_id
+    _seen.add(map_id)
     if map_id in INTERIOR_ROAD:
         return INTERIOR_ROAD[map_id]
     fam = _re.sub(r"_(B?\d+F|ROOF|ELEVATOR)$", "", map_id)
@@ -344,8 +356,8 @@ def _doorstep(map_id: str) -> str:
                     city[: -len(kind)] + "_"):
                 return city
     hit = _walked_door_into(map_id)
-    if hit and hit[0] != map_id:
-        return hit[0] if hit[0] in MAP_EDGES else _doorstep(hit[0])
+    if hit and hit[0] != map_id and hit[0] not in _seen:
+        return hit[0] if hit[0] in MAP_EDGES else _doorstep(hit[0], _seen)
     return map_id
 import battle_oracle
 import brock_probe   # reuse the live model driver (chat/parse) for escalation
