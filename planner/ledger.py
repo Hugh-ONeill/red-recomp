@@ -1517,6 +1517,11 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # untouched on Oak's table; the model, told the room was finished,
     # reached for a menu that was not there (2026-08-25, leg 1, attempt
     # 1). What is on screen is the only fact available; say that.
+    if "None" in str(here) and obs.get("ending"):
+        return ("THE HALL OF FAME SEQUENCE IS ON SCREEN — the induction, "
+                "then the credits. It is not a menu to close: the harness "
+                "presses on through it, and when the save's Hall of Fame "
+                "count has risen the game is finished.")
     if "None" in str(here):
         _said = str(obs.get("recent_text") or obs.get("last_text") or "").strip()
         return ("THE SCREEN IS NOT THE OVERWORLD RIGHT NOW"

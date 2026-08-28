@@ -2581,6 +2581,17 @@ local function observe(G, seq, result)
   elseif top then
     o.mode = "ui"
     o.ui = scalars(top, 0)
+    -- every screen on the stack, bottom to top: {"screen": X} holds when
+    -- X is anywhere on it, not only when nothing sits on top of X
+    do
+      local _ids = {}
+      for _, _s in ipairs((G.stack and G.stack.states) or {}) do
+        if type(_s) == "table" and _s.screenId then
+          _ids[#_ids + 1] = tostring(_s.screenId)
+        end
+      end
+      if #_ids > 0 then o.ui.stack = _ids end
+    end
     -- IS THIS A QUESTION OR A MENU? scalars() copies only scalar fields, so
     -- a menu's `items` table never reaches the observation -- and the
     -- executor's "a cursor and no items means yes/no" test was therefore
@@ -2748,6 +2759,23 @@ local function observe(G, seq, result)
     if v and type(k) == "string" then o.flags[#o.flags + 1] = k end
   end
   table.sort(o.flags)
+  -- THE ENDING, AND THE RECORD OF IT. The Hall of Fame induction and the
+  -- credits are screens on the stack ("HallOfFame", then "Credits", see
+  -- Commands.record_hall_of_fame); a text box rides on top of them, so
+  -- the top's screenId alone never said "HallOfFame" and the model's
+  -- {"screen":"HallOfFame"} matched nothing while it tapped B through the
+  -- dex rating (2026-08-28). hall_of_fame is the save's own count of
+  -- inductions — the PC's HALL OF FAME entry shows the same thing.
+  do
+    local _e = nil
+    for _, _s in ipairs((G.stack and G.stack.states) or {}) do
+      local _id = type(_s) == "table" and _s.screenId or nil
+      if _id == "HallOfFame" then _e = "hall_of_fame"
+      elseif _id == "Credits" then _e = "credits" end
+    end
+    if _e then o.ending = _e end
+    o.hall_of_fame = #((G.save and G.save.hallOfFame) or {})
+  end
   local f = io.open(BRIDGE .. "/obs.json.tmp", "w")
   if f then
     f:write(jenc(o))

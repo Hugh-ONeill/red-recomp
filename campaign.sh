@@ -93,6 +93,10 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   # Either verdict means the plan RAN TO THE END; whether the leg is
   # actually done is check-done's call, upstream. The second one says
   # subgoals were carried past unmet, which the judge should see.
+  if grep -qE "RESULT: GAME FINISHED" "$LOG"; then
+    echo "=== THE GAME IS FINISHED: the party was entered into the Hall of Fame ===" | tee -a "$LOG"
+    exit 0
+  fi
   if grep -qE "RESULT: (ALL PLANS COMPLETE|PLANS ENDED WITH UNMET)" \
       "$LOG"; then
     echo "=== campaign finished on attempt $attempt ===" | tee -a "$LOG"

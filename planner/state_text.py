@@ -101,6 +101,18 @@ def money_text(m):
     return f", {int(m)} money"
 
 
+def hof_text(n):
+    """The save's own count of Hall of Fame inductions (the PC shows it)."""
+    try:
+        n = int(n or 0)
+    except (TypeError, ValueError):
+        n = 0
+    if n <= 0:
+        return ""
+    return (f" — the party has been entered into the HALL OF FAME "
+            f"{n} time{'s' if n != 1 else ''}: the game is finished")
+
+
 def respawn_text(r):
     """Where a faint sends you back to — the stake on every fight.
 
@@ -141,6 +153,7 @@ if "region" in o:                    # last_state.json is already flattened
           f"{party or 'no party'}, {badges}"
           + money_text(o.get("money")) + f", and {bag}"
           + daycare_text(o.get("daycare"))
+          + hof_text(o.get("hall_of_fame"))
           + respawn_text(o.get("respawn")))
     raise SystemExit
 m = (o.get("map") or {}).get("id")
@@ -153,4 +166,5 @@ bag = bag_text(o.get("bag"))
 print(f"standing in {m} with {party or 'no party'}, {badges}"
       + money_text(o.get("money")) + f", and {bag}"
       + daycare_text(o.get("daycare"))
+      + hof_text(o.get("hall_of_fame"))
       + respawn_text(o.get("respawn")))

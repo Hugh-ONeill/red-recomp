@@ -14,7 +14,10 @@ A plan (JSON) is an ordered list of subgoals. Each subgoal has:
 Predicate DSL (all listed keys must hold):
   {"map": "PALLET_TOWN"}       current map id
   {"mode": "overworld"}        obs mode
-  {"screen": "BoxMenu"}        WHICH ui screen is open (obs.ui.screenId)
+  {"screen": "BoxMenu"}        WHICH ui screen is open (obs.ui.screenId, or
+                               anywhere on obs.ui.stack)
+  {"hall_of_fame": true}       the party has been entered into the Hall of
+                               Fame (obs.hall_of_fame, the save's count)
   {"party_nonempty": true}     at least one party mon
   {"badge": "BOULDERBADGE"}    badge earned
   {"flag": "EVENT_..."}        save event flag set (executor instrumentation)
@@ -602,7 +605,18 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             # has always passed the name through as ui.screenId; nothing
             # could test it. This is that test, and nothing more: it reads
             # the label already on the observation.
-            if ((obs.get("ui") or {}).get("screenId")) != want:
+            _ui = obs.get("ui") or {}
+            if _ui.get("screenId") != want and \
+                    want not in (_ui.get("stack") or []):
+                return False
+        elif key == "hall_of_fame":
+            # the save's own count of inductions (obs.hall_of_fame); true
+            # means at least one. After the credits the game soft-resets
+            # and the count may read 0 again at the title, so the run also
+            # keeps the highest count it has seen.
+            _n = int(obs.get("hall_of_fame") or 0)
+            _need = 1 if want is True else (int(want) if str(want).isdigit() else 1)
+            if _n < _need:
                 return False
         elif key == "party_nonempty":
             want = _as_bool(want)
@@ -1273,6 +1287,10 @@ class Executor:
         self._rounds_here: dict = {}        # target|region -> rounds spent
         self._fight_region: str | None = None   # where the last trainer fought
         self.flag_sites: dict = {}          # flag -> area it fired in
+        self.finished = False        # the credits rolled: the game is done
+        self.hall_of_fame_seen = 0   # highest induction count observed
+        self._riding = False         # inside _ride_ending (settle re-enters)
+        self._final_obs: dict = {}   # the last observation with a party in it
         self.shut_doors: dict = {}   # region -> doors seen but unreachable
         self._last_obs_dormant = 0   # objects this map has yet to reveal
         self._last_key_items: list = []
@@ -9746,9 +9764,64 @@ class Executor:
             return {}
         for _ in range(12):
             if not obs or obs.get("mode") != "dialog":
-                return self._note(obs) or {}
+                return self._after_settle(obs)
             obs = self._send_safe("wait", frames=6)
-        return self._note(obs) or {}
+        return self._after_settle(obs)
+
+    def _after_settle(self, obs):
+        """Every settled observation passes here: the ending is ridden out
+        rather than handed to the model as "a box is up"."""
+        o = self._note(obs) or {}
+        try:
+            _n = int(o.get("hall_of_fame") or 0)
+        except (TypeError, ValueError):
+            _n = 0
+        if _n > getattr(self, "hall_of_fame_seen", 0):
+            self.hall_of_fame_seen = _n
+        if o.get("party"):
+            self._final_obs = o
+        if o.get("ending") and not getattr(self, "_riding", False):
+            o = self._ride_ending(o)
+        return o
+
+    def _ride_ending(self, obs):
+        """The Hall of Fame induction and the credits are not a menu to
+        close. The model tapped B through the dex rating until the
+        repeat-refusal ended the plan, and the chain then rewrote the
+        Elite Four leg from the title screen (2026-08-28). The sequence
+        wants A at THE END and nothing else; ride it, and when the save's
+        induction count has risen, the game is finished."""
+        self._riding = True
+        try:
+            _hof0 = getattr(self, "hall_of_fame_seen", 0)
+            print(f"[ending] the Hall of Fame sequence is on screen "
+                  f"({obs.get('ending')}); riding it to the end")
+            self.log("ending", stage=obs.get("ending"),
+                     hall_of_fame=obs.get("hall_of_fame"))
+            _t0 = time.time()
+            while obs and obs.get("ending") and time.time() - _t0 < 900:
+                self._send_safe("tap", btn="a")
+                try:
+                    obs = self._note(self._send_safe("wait", frames=30)) or {}
+                except Exception:
+                    obs = {}
+                try:
+                    _n = int((obs or {}).get("hall_of_fame") or 0)
+                except (TypeError, ValueError):
+                    _n = 0
+                if _n > getattr(self, "hall_of_fame_seen", 0):
+                    self.hall_of_fame_seen = _n
+            if getattr(self, "hall_of_fame_seen", 0) > 0:
+                self.finished = True
+                print(f"[ending] the party was entered into the Hall of Fame "
+                      f"({self.hall_of_fame_seen} induction(s)); the game is "
+                      f"finished")
+                self.log("finished", hall_of_fame=self.hall_of_fame_seen)
+            else:
+                self.log("ending_unresolved", stage=(obs or {}).get("ending"))
+            return obs or {}
+        finally:
+            self._riding = False
 
     MACRO_AUTHOR_SYS = """You AUTHOR a macro — an ordered list of ops — to
 achieve one Pokemon Red subgoal, then the executor RUNS it. You do NOT pilot
@@ -11930,6 +12003,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         _visit_marks: dict = {}   # ...and the world mark on the FIRST visit,
                                   # so a shuttle can be told it bought nothing
         while spent < rounds and rnd < rounds * 3:
+            if getattr(self, "finished", False):
+                self.log("escalate_finished", subgoal=sg.get("id"))
+                return True, []
             if getattr(self, "_plan_regress", None) is not None:
                 # an earlier deed came undone (see _watch_for_a_wipe): this
                 # step's rounds would be spent on a plan that is behind
@@ -14036,6 +14112,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         return True
 
     def run_subgoal(self, sg: dict) -> bool:
+        if getattr(self, "finished", False):
+            self.log("finished_skip", subgoal=sg.get("id"))
+            return True
         done = sg.get("done_when")
         for attempt in range(1, sg.get("max_attempts", 3) + 1):
             obs = self.settle()
@@ -14686,7 +14765,8 @@ def _obs_nosketch(obs):
     return o2
 
 
-def _write_last_state(b, failed_plan=None, failed_subgoal=None):
+def _write_last_state(b, failed_plan=None, failed_subgoal=None,
+                      obs=None, finished=False, hall_of_fame=0):
     """Snapshot where the run stands, for the campaign's re-author.
 
     Called on the normal exit path AND from the crash handler: a snapshot
@@ -14703,7 +14783,7 @@ def _write_last_state(b, failed_plan=None, failed_subgoal=None):
     fight knocks the run backwards.
     """
     try:
-        o = b.obs() or {}
+        o = obs or b.obs() or {}
         # ...AND A SNAPSHOT OF THE PRE-LOAD SCREEN IS WORSE THAN MISSING.
         # An attempt that dies in bootstrap has an observation — the title
         # screen — with no party in it, and writing that as "where the run
@@ -14746,6 +14826,9 @@ def _write_last_state(b, failed_plan=None, failed_subgoal=None):
             # re-author sees one Magikarp and no reason for it
             "daycare": o.get("daycare"),
             "flags": o.get("flags") or [],
+            "hall_of_fame": max(int(o.get("hall_of_fame") or 0),
+                                int(hall_of_fame or 0)),
+            "finished": bool(finished),
             "failed_plan": failed_plan,
             "failed_subgoal": failed_subgoal,
         }, indent=1))
@@ -14867,10 +14950,18 @@ def main():
     # Taken BEFORE the save below: save_game drives the START menu, and an
     # observation caught mid-menu carries no map at all, which is exactly
     # the "unknown location" the snapshot exists to prevent.
+    if ex.finished:
+        # the title screen has no party in it; the last real observation
+        # is the snapshot of this run (the game saved the post-game world)
+        ok = True
+        o = ex._final_obs or o
     _write_last_state(b, failed_plan=(None if ok else
                                       getattr(ex, "plan_path", None)
                                       and ex.plan_path.name),
-                      failed_subgoal=(None if ok else ex.failed_subgoal))
+                      failed_subgoal=(None if ok else ex.failed_subgoal),
+                      obs=(o if ex.finished else None),
+                      finished=ex.finished,
+                      hall_of_fame=ex.hall_of_fame_seen)
     # SAVE WHAT WAS EARNED, even when the plan failed. The save above only
     # fires for a plan that fully succeeded — `if not ok: break` skips it —
     # so an attempt that crossed two maps, beat fifteen trainers and banked
@@ -14880,7 +14971,7 @@ def main():
     # UP in gen1, so persisting a failed attempt's state cannot lose
     # progress; position is the one thing that can be worse, and walking is
     # what this harness is best at.
-    if args.save_after_each and not ok:
+    if args.save_after_each and not ok and not ex.finished:
         r = (ex._send_safe("save_game") or {}).get("result") or {}
         print(f"[save] (after a failed plan, to keep what it earned) "
               f"{r.get('detail') or 'save failed'}")
@@ -14888,6 +14979,10 @@ def main():
     _verdict = ("ALL PLANS COMPLETE" if ok and not _carried else
                 (f"PLANS ENDED WITH UNMET SUBGOALS ({', '.join(_carried)})"
                  if ok else "PLAN FAILED"))
+    if ex.finished:
+        _verdict = (f"GAME FINISHED — the party was entered into the Hall "
+                    f"of Fame ({ex.hall_of_fame_seen} induction(s)); the "
+                    f"credits rolled and the game saved the post-game world")
     print(f"\nRESULT: {_verdict} | "
           f"map={(o.get('map') or {}).get('id')} "
           f"party={[(m.get('species'), m.get('level')) for m in o.get('party') or []]} "

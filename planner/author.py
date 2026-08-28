@@ -142,6 +142,10 @@ PREDICATES = {
         "is satisfied by landing in ANY of them — use this when the thing "
         "you need is in one particular room. Only use area codes that appear "
         "in the observed evidence below; do not invent one",
+    "hall_of_fame": "the party has been entered into the Hall of Fame "
+        "({\"hall_of_fame\":true}) — the game records the induction, rolls "
+        "the credits and saves; it is the last thing a run can witness, and "
+        "the harness rides the credits itself",
     "party_min_level": "EVERY party member is at least VALUE (e.g. "
         "{\"party_min_level\":15}). Note lead_level only reads slot 1, so it "
         "is already true whenever the lead alone is strong enough",

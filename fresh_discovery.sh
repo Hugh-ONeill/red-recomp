@@ -525,6 +525,15 @@ while :; do
     _rc=$?
     _y=$(python planner/leg_delta.py diff run/attempt_start.json 2>/dev/null || true)
     [ -n "$_y" ] && printf '%s\t%s\t%s\t%s\n' "$leg" "$i" "$2" "$_y" >> run/attempt_yield
+    # A FINISHED GAME ENDS THE CHAIN. The Hall of Fame soft-resets to the
+    # title; without this the ladder rewrote leg 49 from "an unknown
+    # location" after the credits (2026-08-28).
+    if _fin=$(python planner/finished.py 2>/dev/null); then
+      echo "=== THE GAME IS FINISHED on leg $i/${#LEGS[@]} ($leg): $_fin ==="
+      echo "${#LEGS[@]}" > "$PROGRESS"
+      echo "=== OUTLINE CHAIN COMPLETE: the Hall of Fame was reached ==="
+      exit 0
+    fi
     return $_rc
   }
   cont=0; [ "$i" -gt 1 ] && cont=1
