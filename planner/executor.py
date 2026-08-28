@@ -1930,7 +1930,14 @@ class Executor:
                          # the obs's word while interact kept failing "no
                          # reachable tile adjacent to target".
                          and "no reachable tile" not in
-                         ((outs.get(c.key) or {}).get("last") or "")),
+                         ((outs.get(c.key) or {}).get("last") or "")
+                         # A SWITCH IS A CHOICE, NOT AN UNTRIED THING. It
+                         # moves the walls of the whole building; explore
+                         # pressing it "first" undid the setting the model
+                         # had just chosen, on both Mansion floors
+                         # (2026-08-28). The ledger still lists it; whether
+                         # to press it is the model's call.
+                         and "SWITCH" not in str(c.key).upper()),
                         key=_thing_key)
         # A WAY THAT JUST REFUSED YOU IS NOT AN UNTRIED WAY — and this is
         # the half that never learned it. plan_explore has filtered
@@ -3547,10 +3554,20 @@ class Executor:
             # that both answers were already in hand (2026-08-23).
             _on = _m.get("switches_on")
             if _on is not None:
-                _ss = self.shut_settings.setdefault(_mid, {})
+                # A SETTING IS STAMPED ON A DOOR ONLY WHEN THE WALK ACTUALLY
+                # FAILED, AND ONLY FOR THIS PART OF THE FLOOR. The footprint
+                # downgrades a doorway to reachable=false when no SEEN
+                # ground joins here to it (its `why` says so), and this
+                # stamped every such door "no walk reached it in this
+                # setting" while the sweep still had a frontier; pooled by
+                # MAP, two parts of a floor read as one verdict (Mansion 2F,
+                # 2026-08-28). Keyed by region now, never from a downgrade.
+                _ss = self.shut_settings.setdefault(here, {})
                 for _w in (_m.get("warps") or []):
                     if _w.get("x") is None or _w.get("reachable"):
                         continue
+                    if "you have seen" in str(_w.get("why") or ""):
+                        continue        # not yet looked at, not shut
                     _k = f"{_w.get('x')},{_w.get('y')}"
                     _ss[_k] = sorted(set(_ss.get(_k, ()))
                                      | {"pressed" if _on else "unpressed"})
@@ -3564,7 +3581,7 @@ class Executor:
                 # unreachable" and left to look for the Secret Key
                 # elsewhere (2026-08-24). Which setting reached it is the
                 # fact that was missing.
-                _rs = self.reach_settings.setdefault(_mid, {})
+                _rs = self.reach_settings.setdefault(here, {})
                 for _o in (_m.get("objects") or []):
                     if not _o.get("name") or not _o.get("reachable"):
                         continue
@@ -5650,6 +5667,25 @@ class Executor:
         finally:
             self._recrossing = False
         return final if self._where(final) != here else None
+
+    @staticmethod
+    @staticmethod
+    def _name_at(obs, x, y):
+        """The name of the listed object standing on this exact cell, or
+        None. A press sent by coordinates is a press of THAT thing: the
+        Mansion's switch at (2,11) was pressed as interact(x=2,y=11), the
+        touch was never filed under SWITCH_POKEMON_MANSION_2F_2_11, the
+        ledger went on calling it "never pressed", and explore pressed it
+        again "first" — toggling the walls back every time the model set
+        them (2026-08-28)."""
+        try:
+            for ob in (((obs or {}).get("map") or {}).get("objects") or []):
+                if (ob.get("x") == int(x) and ob.get("y") == int(y)
+                        and ob.get("name")):
+                    return str(ob["name"])
+        except (TypeError, ValueError):
+            return None
+        return None
 
     @staticmethod
     def _thing_at(obs, x, y):
@@ -10556,6 +10592,16 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self._cant_afford.pop(step["item"], None)   # wallet grew
             if op == "interact":
                 here_r = self._where(obs)
+                # a press by coordinates is a press of the thing on that
+                # cell (see _name_at): file it under its name
+                if not step.get("name") and step.get("x") is not None:
+                    _nm_xy = self._name_at(pre_obs or obs, step.get("x"),
+                                           step.get("y"))
+                    if _nm_xy:
+                        step = dict(step, name=_nm_xy)
+                        self.log("touch_by_coords", subgoal=sg.get("id"),
+                                 at=f"{step.get('x')},{step.get('y')}",
+                                 name=_nm_xy)
                 # NOTE: marked provisionally, and RETRACTED below if the
                 # interact did not actually happen. Marking on intent alone
                 # let an unreachable item count as touched, so a floor with

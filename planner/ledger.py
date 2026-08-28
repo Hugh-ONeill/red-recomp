@@ -1415,8 +1415,10 @@ def _reached_before(obs, ex, name) -> str:
     somewhere else (2026-08-24)."""
     try:
         mid = str(((obs or {}).get("map") or {}).get("id") or "")
-        seen = ((getattr(ex, "reach_settings", None) or {})
-                .get(mid, {}).get(str(name)) or [])
+        _here = ex._where(obs)
+        _rs = getattr(ex, "reach_settings", None) or {}
+        seen = ((_rs.get(_here) or {}).get(str(name))
+                or (_rs.get(mid) or {}).get(str(name)) or [])
         if not seen:
             return ""
         return (" — BUT YOU HAVE REACHED IT BEFORE, with the statues "
@@ -2111,9 +2113,13 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         if c.status == "unreachable" and c.kind in ("door", "seam"):
             _seen_in = []
             try:
+                # keyed by REGION (this part of the floor) since 2026-08-28;
+                # an older map-keyed entry is still read, as it was written
+                _ss_all = getattr(ex, "shut_settings", None) or {}
                 _mid_now = str((obs.get("map") or {}).get("id") or "")
-                _seen_in = list((getattr(ex, "shut_settings", None)
-                                 or {}).get(_mid_now, {}).get(c.key) or [])
+                _seen_in = list((_ss_all.get(here) or {}).get(c.key)
+                                or (_ss_all.get(_mid_now) or {}).get(c.key)
+                                or [])
             except Exception:
                 _seen_in = []
             if len(_seen_in) > 1:
