@@ -4616,11 +4616,31 @@ class Executor:
             # about which door you just used.
             _ak = f"{ap['x']},{ap['y']}"
             _smap = src.split("|")[0]
+            # ...AND A CAVE EXIT LANDS YOU BESIDE THE DOOR, NOT ON IT.
+            # Coming out of Seafoam's west door put the party at ROUTE_20
+            # (58,10) with the door at (58,9), so the tile-equality test
+            # above never matched, the outdoor side of every cave and
+            # tunnel exit stayed unrecorded, and `go FUCHSIA_CITY` from
+            # Cinnabar said "no walked way" over a chain the run had
+            # walked an hour before (2026-08-28). Landing OUTDOORS from an
+            # indoor map, a doorway one step away that leads back to the
+            # map you left is the door you came out of.
+            _out_now = ((after_obs or {}).get("map") or {}).get("outdoor")
+            _from_in = (((before_obs or {}).get("map") or {})
+                        .get("outdoor") is False)
             for _w in ((after_obs or {}).get("map") or {}).get("warps") or []:
-                if f"{_w.get('x')},{_w.get('y')}" != _ak:
+                _wk = f"{_w.get('x')},{_w.get('y')}"
+                try:
+                    _adj = (_out_now is True and _from_in
+                            and abs(int(_w.get("x")) - int(ap["x"]))
+                            + abs(int(_w.get("y")) - int(ap["y"])) == 1)
+                except (TypeError, ValueError):
+                    _adj = False
+                if _wk != _ak and not _adj:
                     continue
                 if str(_w.get("dest") or "") != _smap:
                     continue
+                _ak = _wk                    # the door itself
                 _back = self.explored.setdefault(dst, {})
                 # ...AND ARRIVING THROUGH A DOOR OUTRANKS A SELF-LOOP.
                 # A door stepped through that fires nothing is recorded
@@ -4786,7 +4806,9 @@ class Executor:
             # about the one building that joins the city's two halves. The
             # tile you land on is the difference between those doors, and
             # it is simply where you were standing when you came out.
-            _ap = ((after_obs or {}).get("map") or {}).get("player") or {}
+            # (the player is top-level in the observation, not under map:
+            # this read map.player and no edge ever carried a landing)
+            _ap = (after_obs or {}).get("player") or {}
             if _ap.get("x") is not None and _ap.get("y") is not None:
                 e["land"] = f"{_ap['x']},{_ap['y']}"
         self.log("explored", frm=src, via=str(key), to=dst,
