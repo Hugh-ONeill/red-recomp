@@ -7305,13 +7305,52 @@ class Executor:
         # The live observation is the authority on what is SET; flag_sites
         # only supplies where it happened.
         live = set((obs or {}).get("flags") or [])
+        # THE EVENT THIS STEP WAITS FOR HAS FIRED BEFORE AND IS NOT SET NOW.
+        # A boulder-switch event lives only while the boulder sits on the
+        # switch and is cleared when you leave the floor (the shim states
+        # the same rule of the 1F switch); a step written on it cannot be
+        # met from any other floor. Victory Road, 2026-08-28: the switch
+        # was pressed on 1F at dt 968, the run climbed to 2F, and the plan
+        # sent it back down after a flag that resets (user: "it's fired
+        # but it resets").
+        _reset_note = ""
+        _want = None
+        _dw = sg.get("done_when") or {}
+        if isinstance(_dw, dict):
+            _want = _dw.get("flag")
+            if not _want:
+                for _alt in (_dw.get("any_of") or []):
+                    if isinstance(_alt, dict) and _alt.get("flag"):
+                        _want = _alt["flag"]
+                        break
+        if _want and _want not in live and (self.flag_sites or {}).get(_want):
+            _at = (self.flag_sites or {}).get(_want)
+            _here = self._where(obs)
+            _reset_note = (f"\n\nTHE EVENT THIS STEP WAITS FOR, {_want}, HAS FIRED "
+                           f"ONCE ALREADY — in {_at} — and it is NOT set now")
+            if "BOULDER_ON_SWITCH" in str(_want):
+                _reset_note += (". A boulder-switch event is kept only while the "
+                                "boulder sits on the switch, and the game clears "
+                                "it when you leave that floor; it cannot be true "
+                                "from any other floor. What it opened, you have "
+                                "walked through" if _here.split("|")[0] != str(_at).split("|")[0]
+                                else ". A boulder-switch event is kept only while "
+                                "the boulder sits on the switch, and the game "
+                                "cleared it when you left the floor; it would be "
+                                "set again only by putting a boulder back on the "
+                                "switch, and what it opened the first time is "
+                                "ground you have walked since")
+            _reset_note += (". A step that waits on a thing already done, or "
+                            "that cannot come true as written, is what "
+                            "{\"op\":\"skip\"} is for.")
         rows = [f"  {f} (fired in {where})"
                 for f, where in reversed(list(
                     (self.flag_sites or {}).items()))
                 if f in live]
         if not rows:
-            return ""
-        return ("\n\nEVENTS THIS RUN HAS ALREADY WATCHED FIRE, newest "
+            return _reset_note
+        return (_reset_note
+                + "\n\nEVENTS THIS RUN HAS ALREADY WATCHED FIRE, newest "
                 "first — the condition you are waiting on has not, and one "
                 "of these may be what it is waiting BEHIND:\n"
                 + "\n".join(rows[:12]))
