@@ -5589,6 +5589,75 @@ def check_later(goal: str, n: int, ahead: list, start: str, journal: str,
     return after
 
 
+def _plan_slug(goal: str) -> str:
+    """The plan file stem fresh_discovery.sh derives from a leg's wording
+    (tr to lower, non-alphanumerics to _, cut to 40, trailing _ dropped)."""
+    t = re.sub(r"[^a-z0-9]+", "_", str(goal).lower())[:40]
+    return t.rstrip("_")
+
+
+def plan_finish_text(goal: str, plans_dir=None, observed=None,
+                     fired=None, leg: int = 0) -> str:
+    """What the plans written FOR THIS LEG ended on, and whether the run
+    ever met it — recall of the leg's own record, said back to the rung
+    that judges the leg done.
+
+    Leg 45, "Navigate the Victory Road", 2026-08-28: seventeen plan
+    versions, every one ending on {"map": "INDIGO_PLATEAU"}, a map the run
+    had never stood on; the done rung was shown the three floors walked
+    and the trainers beaten, judged the road navigated, and the chain went
+    on to leg 46 from the middle of 2F. The rung was not lied to; it was
+    not told the one thing the model's own plans had said the finish was.
+    Whether that finish line was the right one is still the model's call.
+    """
+    plans_dir = Path(plans_dir) if plans_dir else Path("plans")
+    slug = _plan_slug(goal)
+    if not slug:
+        return ""
+    pat = (f"leg_{int(leg):02d}_{slug}*.json" if leg
+           else f"leg_*_{slug}*.json")
+    ends, n = {}, 0
+    for f in sorted(plans_dir.glob(pat)):
+        try:
+            plan = json.loads(f.read_text())
+        except (OSError, ValueError):
+            continue
+        subs = plan.get("subgoals") or []
+        if not subs or not isinstance(subs[-1], dict):
+            continue
+        dw = subs[-1].get("done_when")
+        if not isinstance(dw, dict) or not dw:
+            continue
+        n += 1
+        k = json.dumps(dw, sort_keys=True)
+        ends[k] = ends.get(k, 0) + 1
+    if not ends:
+        return ""
+    stood = set()
+    if observed:
+        try:
+            d = json.loads(Path(observed).read_text() or "{}")
+            stood = {r.split("|")[0] for r in (d.get("visits") or {})}
+        except (OSError, ValueError):
+            stood = set()
+    fired = set(fired_flags()) if fired is None else set(fired)
+    rows = []
+    for k, c in sorted(ends.items(), key=lambda kv: -kv[1]):
+        dw = json.loads(k)
+        verdict = ""
+        if "map" in dw and observed:
+            verdict = (" — a map the run has stood on"
+                       if str(dw["map"]) in stood else
+                       " — a map the run has NEVER stood on")
+        elif "flag" in dw:
+            verdict = (" — an event that has fired" if str(dw["flag"]) in fired
+                       else " — an event that has never fired")
+        rows.append(f"  {k} ({c} of {n} version{'s' if n != 1 else ''})"
+                    + verdict)
+    return ("\n\nWHAT THE PLANS YOU WROTE FOR THIS LEG ENDED ON, and "
+            "whether the run ever met it:\n" + "\n".join(rows))
+
+
 def check_done(goal: str, start: str, model: str,
                observed=None, gained: str = "") -> bool:
     """The model judges whether a failed leg's objective is already met.
@@ -5703,18 +5772,27 @@ def check_done(goal: str, start: str, model: str,
           + _wording_lineage(goal)
           + f"\n\nWHERE THE RUN STANDS: {start}"
           + walked_ground_text([(0, goal)], observed)
+          + plan_finish_text(goal, observed=observed)
           # WHAT THE LEG ACHIEVED, not just where it ended. A leg can fail
           # every subgoal and still have done the thing — and a FUSED
           # objective ("deliver the parcel from Bill", two errands welded
           # into one) can only be judged against what actually changed.
           + (f"\n\n{gained}" if gained else "") + bearing}], model)
+    # EVERY ANSWER IS SAID (see check_blocker). "DONE" stood alone in the
+    # chain log when leg 45 was judged accomplished from the middle of
+    # Victory Road 2F, and the reason could not be audited.
     m = re.search(r"\{.*\}", reply, re.S)
     if not m:
+        print("[check-done] no parseable answer")
         return False
     try:
-        return bool(json.loads(m.group(0)).get("done"))
+        _ans = json.loads(m.group(0))
     except (ValueError, AttributeError):
+        print("[check-done] no parseable answer")
         return False
+    _why = str(_ans.get("why") or "")[:240]
+    print(f"[check-done] {'done' if _ans.get('done') else 'not done'}: {_why}")
+    return bool(_ans.get("done"))
 
 
 def main():
