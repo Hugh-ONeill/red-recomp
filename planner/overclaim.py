@@ -24,13 +24,16 @@ own limits stated:
      caused the stall, but a quoted-back absolute in a stalled escalation
      is the shape the audit was looking for, and this counts it.
 
-  3. CONTRADICTED BY THE RUN — a verdict the world later disproved:
-       * dead_op_cleared: an op the harness marked dead and then cleared
-         because it worked (the harness retracting itself; already logged).
-       * an escalation whose context carried a "you are finished here"
-         absolute (FULLY WORKED / EVERYTHING YOU CAN REACH / proven
-         uncrossable / no walked way) and which nonetheless PROGRESSED
-         (no escalate_end) — the room said done, the run moved anyway.
+  3. THE HARNESS RETRACTING ITSELF — dead_op_cleared: an op it marked dead
+     and then cleared because it worked. The one unambiguous self-
+     contradiction the journal records.
+
+  4. 'FINISHED HERE' AND THEN STALLED — escalations shown a "you are
+     finished here" absolute (FULLY WORKED / EVERYTHING YOU CAN REACH /
+     proven uncrossable) that then stalled. NOTE the earlier draft counted
+     "shown the absolute, progressed anyway" as a contradiction; that was
+     wrong — leaving by a listed exit is the verdict working. Only the
+     stalls are reported, and only as correlation.
 
 No model calls; nothing is written during play.
 """
@@ -181,14 +184,20 @@ def main() -> int:
           f"stall rate.")
     print()
 
-    prog = n_ctx_absolute_progressed
-    print("3. CONTRADICTED BY THE RUN")
-    print(f"   dead ops the harness marked then cleared (retracted itself): "
+    fh_stall = n_ctx_absolute - n_ctx_absolute_progressed
+    fh_rate = (fh_stall / n_ctx_absolute * 100) if n_ctx_absolute else 0.0
+    print("3. THE HARNESS RETRACTING ITSELF")
+    print(f"   dead ops it marked, then cleared because they worked: "
           f"{dead_cleared}")
-    print(f"   escalations told 'you are finished here' that PROGRESSED "
-          f"anyway: {prog}/{n_ctx_absolute}")
-    print("   (a room called done, out of which the run still found a way — "
-          "the verdict was wider than the world.)")
+    print()
+    print("4. 'FINISHED HERE' AND THEN STALLED")
+    print(f"   escalations shown a 'you are finished here' absolute: "
+          f"{n_ctx_absolute}")
+    print(f"   ...of those, stalled: {fh_stall} ({fh_rate:.1f}%)")
+    print("   (An escalation that was shown the absolute and PROGRESSED is "
+          "not counted against it — leaving by a listed exit is the verdict\n"
+          "   working, not a contradiction. Only the stalls are the concern, "
+          "and only as correlation.)")
     return 0
 
 

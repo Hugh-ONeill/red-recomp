@@ -13114,11 +13114,22 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     else:
                         print(f"   (target unreachable from {here} — "
                               f"{len(ways)} untried exit(s) left, keeping on)")
+                        # SCOPE THE CLAIM TO THE EVIDENCE (absolutes audit,
+                        # 2026-08-28). "PROVEN ... NOT in {here}" said the
+                        # goal was absent from the whole area in the same
+                        # breath as listing exits never taken — a claim
+                        # wider than a sweep of the reached-and-seen ground,
+                        # and the word the model quoted back before 80% of
+                        # its stalls (planner/overclaim.py). What is actually
+                        # known is that the ground reached and seen here does
+                        # not serve the goal; an untried exit is not searched.
                         trace.append(
-                            f"PROVEN: what this goal needs is NOT in {here}. "
-                            f"But {len(ways)} way(s) out of here have never "
-                            f"been taken: {', '.join(ways)}. Take one — do "
-                            f"not give up and do not re-search this area.")
+                            f"What this goal needs is not on the ground you "
+                            f"have reached and seen in {here} — but {len(ways)} "
+                            f"way(s) out of here have never been taken: "
+                            f"{', '.join(ways)}. That is not proof about what "
+                            f"lies past an exit you have not walked: take one, "
+                            f"and do not re-search this area.")
             if not cur:
                 # bridge hiccup lost the state: fall back to the subgoal start
                 self.log("escalate_state_lost", subgoal=sg["id"], round=rnd)
