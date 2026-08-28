@@ -4499,9 +4499,10 @@ chasing something else.
 
 Judge only on what the run holds and what it has recorded doing. An
 objective is about its OUTCOME: if the thing is in the bag, the badge is
-earned, or the event has fired, it is done however it came about, and the
-wording it was written in does not matter. If you cannot point at
-something that shows it is done, it is NOT done — say so.
+earned, the event has fired, or the ground it names has been walked, it is
+done however it came about, and the wording it was written in does not
+matter. If you cannot point at something that shows it is done, it is NOT
+done — say so.
 
 Reply with ONLY {"why": "<one sentence>", "done": true} or
 {"why": "<one sentence>", "done": false} — the why comes first."""
@@ -4532,7 +4533,8 @@ def check_already_done(deed: str, start: str, model: str,
               f"run is not wearing it", file=sys.stderr)
         return False
     body = (f"THE OBJECTIVE: {deed}\n\nWHERE THE RUN STANDS: {start}"
-            + recent_events() + _events_bearing(deed))
+            + recent_events() + _events_bearing(deed)
+            + walked_ground_text([(0, deed)], observed))
     try:
         reply = brock_probe.chat(
             [{"role": "system", "content": ALREADY_SYS},
@@ -4555,8 +4557,9 @@ and what it has recorded doing.
 Some of them may be finished anyway. Work gets done early, in passing, or
 while chasing something else, and nothing crosses it off. Name the ones
 you can SHOW are already accomplished: the item is in the bag, the badge
-is earned, the event has fired. If you cannot point at something, leave it
-alone. Naming nothing is the ordinary answer and a perfectly good one.
+is earned, the event has fired, the ground has been walked. If you cannot
+point at something, leave it alone. Naming nothing is the ordinary answer
+and a perfectly good one.
 
 Reply with ONLY a JSON object, the reason FIRST:
 {"why": "one sentence", "done": [3, 7]}   or   {"why": "...", "done": []}"""
@@ -4588,7 +4591,8 @@ def sweep_already_done(ahead: list, start: str, model: str,
                + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
             + done_ledger_text()
             + "\n\nSTILL ON YOUR LIST, in order:\n"
-            + "\n".join(f"  {n}. {t}" for n, t in ahead))
+            + "\n".join(f"  {n}. {t}" for n, t in ahead)
+            + walked_ground_text(ahead, observed))
     try:
         reply = brock_probe.chat(
             [{"role": "system", "content": SWEEP_SYS},
@@ -5072,6 +5076,96 @@ def new_ground_text(goal: str) -> str:
               "yours to say.")
 
 
+# WHERE THE RUN HAS BEEN, for the places an objective names. The sweep
+# and the already-done judge were told to point only at "the item is in
+# the bag, the badge is earned, the event has fired", and were shown the
+# state and the events — never the walked record. So "Navigate the Safari
+# Zone", with every Safari map stood in and lit end to end, could never be
+# shown done and was authored four times (user, 2026-08-28: "didn't skip
+# the safari zone leg despite that whole area being explored"). This is
+# recall of walked ground: stood-in counts from the atlas, tiles seen
+# from the footprint's mask, the map's size from the engine's data.
+_MAP_DIMS = None
+
+
+def _map_dims() -> dict:
+    """Map id -> (width, height) in cells, from the engine's generated
+    map table; empty when the engine is not beside this checkout."""
+    global _MAP_DIMS
+    if _MAP_DIMS is not None:
+        return _MAP_DIMS
+    _MAP_DIMS = {}
+    import os
+    cands = [Path(os.environ.get("RED_ENGINE_DIR") or "") / "data/generated/maps.lua",
+             Path(__file__).resolve().parents[2] / "gen1recomp/data/generated/maps.lua"]
+    for c in cands:
+        try:
+            txt = c.read_text()
+        except OSError:
+            continue
+        for m in re.finditer(r"^  ([A-Z0-9_]+) = \{(.*?)^  \},", txt, re.S | re.M):
+            w = re.search(r"^    width = (\d+)", m.group(2), re.M)
+            h = re.search(r"^    height = (\d+)", m.group(2), re.M)
+            if w and h:
+                _MAP_DIMS[m.group(1)] = (int(w.group(1)) * 2, int(h.group(1)) * 2)
+        break
+    return _MAP_DIMS
+
+
+def maps_named(goal: str, map_ids) -> list:
+    """The maps an objective's words name: every id whose first two
+    parts (at least) all appear in the objective — so "Safari Zone" takes
+    the whole SAFARI_ZONE_* family and "Cinnabar Island" takes the island
+    and not its gym."""
+    words = set(re.sub(r"[^A-Z0-9]+", " ", goal.upper()).split())
+    out = []
+    for mid in sorted(set(map_ids)):
+        parts = mid.split("_")
+        k = min(2, len(parts))
+        if parts[:k] and all(p in words for p in parts[:k]):
+            out.append(mid)
+    return out
+
+
+def walked_ground_text(goals, observed=None) -> str:
+    """For each (n, objective) that names a place: how many times the
+    run has stood on each of its maps and how much of each it has seen."""
+    try:
+        d = json.loads(Path(observed).read_text() or "{}") if observed else {}
+    except (OSError, ValueError):
+        d = {}
+    from collections import Counter
+    visits = Counter()
+    for reg, n in (d.get("visits") or {}).items():
+        visits[str(reg).split("|")[0]] += int(n or 0)
+    try:
+        import leg_delta
+        seen = leg_delta._seen_counts()
+    except Exception:
+        seen = {}
+    dims = _map_dims()
+    ids = set(dims) | set(seen) | set(visits) | set(ROUTE_MAPS)
+    lines = []
+    for n, text in goals:
+        maps = maps_named(text, ids)
+        if not maps:
+            continue
+        bits = []
+        for mid in maps[:8]:
+            v, s = visits.get(mid, 0), seen.get(mid, 0)
+            tot = dims.get(mid)
+            bits.append(f"{mid} " + ("never stood in" if not v else f"stood in {v}x")
+                        + (f", {s}/{tot[0] * tot[1]} tiles seen" if tot else f", {s} tiles seen"))
+        if len(maps) > 8:
+            bits.append(f"and {len(maps) - 8} more")
+        lines.append(f"  {n}. {text}: " + "; ".join(bits))
+    if not lines:
+        return ""
+    return ("\n\nWHERE THE RUN HAS BEEN, for the places your list names — "
+            "stood-in counts and tiles seen, from the walked record:\n"
+            + "\n".join(lines))
+
+
 def attempt_yield_text(goal: str) -> tuple:
     """The record as the model reads it, and how many runs on the tail
     yielded nothing."""
@@ -5400,6 +5494,7 @@ def check_done(goal: str, start: str, model: str,
          {"role": "user", "content": f"THE OBJECTIVE: {goal}"
           + _wording_lineage(goal)
           + f"\n\nWHERE THE RUN STANDS: {start}"
+          + walked_ground_text([(0, goal)], observed)
           # WHAT THE LEG ACHIEVED, not just where it ended. A leg can fail
           # every subgoal and still have done the thing — and a FUSED
           # objective ("deliver the parcel from Bill", two errands welded
