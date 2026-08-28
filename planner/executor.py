@@ -11221,7 +11221,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 while _tries < 4:
                     self.log("push_retry_after_battle", subgoal=sg.get("id"),
                              step=dict(step), attempt=_tries + 1)
-                    r = self.b.send("push", **step)
+                    # send() answers with the OBSERVATION; the op's own
+                    # verdict sits under its "result". Taking the envelope
+                    # for the verdict printed "FAILED — None" over the
+                    # shim's "no sequence of shoves puts it on (9,16)"
+                    # (Victory Road 2F, 2026-08-28).
+                    _ro = self.b.send("push", **step)
+                    r = (_ro or {}).get("result") or {}
                     obs = self.settle()
                     _tries += 1
                     # the floor, again — not the op's own verdict
