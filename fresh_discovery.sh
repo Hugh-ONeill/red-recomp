@@ -308,6 +308,19 @@ while :; do
     continue
   fi
 
+  # A LEG THAT NAMES A THING THE GAME DOES NOT HAVE is said so before a
+  # plan is written for it, and the wording rung is asked with that fact
+  # in front of it (reword, done-under-another-name, VOID are its
+  # answers). "Retrieve the HM08 from the Victory Road warden" was
+  # authored, refused twice, moved, pulled, moved, and finally authored
+  # as a walk to Fuchsia for HM_FLY (2026-08-28). Judgment stays the
+  # model's: if it keeps the sentence, the leg is authored as written.
+  if [ ! -s "$plan" ] \
+      && _ph=$(python planner/author.py --phantom --goal "$leg" 2>/dev/null); then
+    echo "=== leg $i/${#LEGS[@]} names a thing this game does not have: $_ph ==="
+    if wording_rung "phantom"; then continue; fi
+    echo "    (the sentence stands as written; authoring it)"
+  fi
   if [ -s "$plan" ]; then
     echo "=== leg $i/${#LEGS[@]}: keeping existing $plan"
   else

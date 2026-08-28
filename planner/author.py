@@ -954,7 +954,18 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                 probs.append(f"{tag} ({sid}) map '{v}' not in the route list")
             elif k == "has_item" and isinstance(v, dict):
                 for item in v:
-                    if ENGINE_ITEMS and item not in ENGINE_ITEMS:
+                    if ENGINE_ITEMS and item not in ENGINE_ITEMS \
+                            and _phantom_item(item):
+                        # A NUMBER THE GAME DOES NOT REACH IS NOT A TYPO.
+                        # "did you mean HM_FLY, HM_CUT?" for HM08 handed
+                        # the author a real item it never meant, and the
+                        # plan walked to Fuchsia for HM_FLY (2026-08-28).
+                        probs.append(
+                            f"{tag} ({sid}) '{item}': {_phantom_item(item)}. "
+                            f"A subgoal cannot be written for a thing the "
+                            f"game does not have, and another item is not "
+                            f"a stand-in for it.")
+                    elif ENGINE_ITEMS and item not in ENGINE_ITEMS:
                         # cutoff 0.4: "HM01" rates only 0.4 against
                         # "HM_CUT" and the bare error left the author
                         # guessing three rounds to death
@@ -4291,7 +4302,7 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
             + f"\n\nWHERE THE RUN STANDS: {start}\n"
             f"{journal}" + attempt_yield_text(goal)[0]
             + "\n\nTHE LEGS STILL AHEAD:\n"
-            + "\n".join(f"  {n}. {t}" for n, t in ahead
+            + "\n".join(_leg_line(n, t) for n, t in ahead
                         if _norm_obj(t) not in refused))
     reply = brock_probe.chat(
         [{"role": "system", "content": BLOCKER_SYS},
@@ -4623,7 +4634,7 @@ def recognize_done(start: str, model: str, listed: list) -> list:
     body = ("WHERE THE RUN STANDS: " + start + recent_events()
             + done_ledger_text("ACCOMPLISHMENTS YOU HAVE ALREADY RECOGNISED")
             + "\n\nYOUR LIST OF OBJECTIVES, in order:\n"
-            + "\n".join(f"  {n}. {t}" for n, t in listed))
+            + "\n".join(_leg_line(n, t) for n, t in listed))
     try:
         reply = brock_probe.chat(
             [{"role": "system", "content": RECOGNIZE_SYS},
@@ -4768,10 +4779,10 @@ def sweep_already_done(ahead: list, start: str, model: str,
     # the next author pass inherits, not just this one answer.
     body = ("WHERE THE RUN STANDS: " + start + recent_events()
             + ("\n\nOBJECTIVES YOU HAVE FINISHED, in order:\n"
-               + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
+               + "\n".join(_leg_line(n, t) for n, t in behind) if behind else "")
             + done_ledger_text()
             + "\n\nSTILL ON YOUR LIST, in order:\n"
-            + "\n".join(f"  {n}. {t}" for n, t in ahead)
+            + "\n".join(_leg_line(n, t) for n, t in ahead)
             + walked_ground_text(ahead, observed))
     try:
         reply = brock_probe.chat(
@@ -4962,10 +4973,10 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
             f"WHAT THE GAME HAS RECORDED YOU DOING ({len(done)} events): "
             + ", ".join(done[:60])
             + ("\n\nOBJECTIVES YOU HAVE ALREADY FINISHED:\n"
-               + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
+               + "\n".join(_leg_line(n, t) for n, t in behind) if behind else "")
             + done_ledger_text()
             + "\n\nSTILL ON THE DOCKET, in order:\n"
-            + "\n".join(f"  {n}. {t}" for n, t in ahead)
+            + "\n".join(_leg_line(n, t) for n, t in ahead)
             + (departure_text(journal) if journal else "")
             + (words_text(journal) if journal else "")
             + (people_said_text(observed) if observed else ""))
@@ -5120,7 +5131,20 @@ _ASKED_WORDS = {
     "blocker": "must a later objective of yours come first? — no",
     "missing": "is a step missing before it? — none was named",
     "later": "is it simply too early? — it was not moved",
+    "phantom": "does the game have the thing it names? — no (see above)",
 }
+
+
+def _leg_line(n, t) -> str:
+    """One outline line as the rungs see it. A line naming a thing this
+    game does not have says so on the line itself: "Retrieve the HM08 from
+    the Victory Road warden" steered a blocker pull, a missing-rung
+    answer and a later-rung move ("Victory Road is blocked by the need for
+    HM08") in one afternoon, 2026-08-28, and none of those rungs had been
+    told the item does not exist."""
+    ph = _phantom_item(t)
+    return f"  {n}. {t}" + (f"  [names a thing this game does not have: {ph}]"
+                            if ph else "")
 
 
 def _asked_text(asked) -> str:
@@ -5431,15 +5455,18 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
              "\n\nA REWRITE IS NOT ON OFFER for this objective: " + no_reword
              + ". The answers open to you are two: the wording stands, or "
                "the line is VOID.")
+    _ph = _phantom_item(goal)
     body = (f"THE OBJECTIVE YOU ARE STUCK ON: {goal}\n\n"
-            f"WHERE THE RUN STANDS: {start}\n{journal}"
+            + (f"THIS OBJECTIVE NAMES A THING THE GAME DOES NOT HAVE: "
+               f"{_ph}.\n\n" if _ph else "")
+            + f"WHERE THE RUN STANDS: {start}\n{journal}"
             + _asked_text(asked)
             + _reword_history(goal) + ytext + offer
             + recent_events() + done_ledger_text()
             + ("\n\nOBJECTIVES YOU HAVE FINISHED:\n"
-               + "\n".join(f"  {n}. {t}" for n, t in behind) if behind else "")
+               + "\n".join(_leg_line(n, t) for n, t in behind) if behind else "")
             + "\n\nSTILL ON YOUR LIST, in order:\n"
-            + "\n".join(f"  {n}. {t}" for n, t in ahead))
+            + "\n".join(_leg_line(n, t) for n, t in ahead))
     try:
         reply = brock_probe.chat(
             [{"role": "system", "content": WORDING_SYS},
@@ -5809,6 +5836,10 @@ def main():
     ap.add_argument("--gained", help="what changed while the leg ran "
                     "(planner/leg_delta.py diff), as evidence for judging "
                     "whether a partly-successful leg is in fact done")
+    ap.add_argument("--phantom", action="store_true",
+                    help="print why --goal names a thing this game does "
+                         "not have (an HM/TM number past its list); exit 0 "
+                         "if it does, 3 if not")
     ap.add_argument("--check-done", action="store_true",
                     help="ask the model whether --goal is already "
                          "accomplished at --start; exit 0 yes, 3 no")
@@ -5873,6 +5904,11 @@ def main():
     if args.dry_tail:
         print(dry_tail(args.goal))
         sys.exit(0)
+    if args.phantom:
+        _ph = _phantom_item(args.goal)
+        if _ph:
+            print(_ph)
+        sys.exit(0 if _ph else 3)
     if args.check_done:
         done = check_done(args.goal, args.start or "a brand new game",
                           args.model, observed=args.observed,
