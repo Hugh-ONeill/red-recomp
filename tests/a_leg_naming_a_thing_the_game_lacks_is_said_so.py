@@ -39,7 +39,17 @@ with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.St
     A.check_wording(L, [(47, "Reach the Indigo Plateau")], [], "start", "", "m", asked=["phantom"])
 ck("the wording rung is told the fact at the top", "THIS OBJECTIVE NAMES A THING THE GAME DOES NOT HAVE: there is no HM08" in seen.get("body", ""))
 ck("...and what was asked", "does the game have the thing it names? — no" in seen.get("body", ""))
+seen.clear()
+with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+    A.check_wording(L, [(47, "x")], [], "start", "", "m", asked=["phantom"],
+                    no_reword_reason="the rolling budget of 3 rewordings per 12 legs is spent")
+ck("a spent budget withholds the rewrite, not the question",
+   "A REWRITE IS NOT ON OFFER for this objective: the rolling budget" in seen.get("body", "")
+   and "the line is VOID" in seen.get("body", ""))
 sh = (ROOT / "fresh_discovery.sh").read_text()
+ck("the chain passes the budget as a reason instead of returning unasked",
+   '--no-reword "$_nr"' in sh and '[ "${_recent:-0}" -lt 3 ] || return 1' not in sh
+   and "[wording] not asked: this leg has been asked twice already" in sh)
 ck("the chain asks the wording rung before authoring such a leg",
    "--phantom --goal \"$leg\"" in sh and 'wording_rung "phantom"' in sh
    and sh.index('wording_rung "phantom"') < sh.index('echo "=== leg $i/${#LEGS[@]}: authoring — $goal"'))

@@ -5404,7 +5404,8 @@ def attempt_yield_text(goal: str) -> tuple:
 
 
 def check_wording(goal: str, ahead: list, behind: list, start: str,
-                  journal: str, model: str, observed=None, asked=None) -> str:
+                  journal: str, model: str, observed=None, asked=None,
+                  no_reword_reason: str = "") -> str:
     """The last rung: is the objective itself wrong?
 
     The chain halted at "Obtain the Secret Key from the Rocket Hideout" —
@@ -5451,6 +5452,12 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
         no_reword = (f"its last {dry} runs yielded nothing new — no event, "
                      "no item, no badge, no new ground — and a new sentence "
                      "over the same ground is not what is missing")
+    # THE BUDGET WITHHOLDS THE REWRITE, NOT THE QUESTION. The chain used to
+    # return before asking when the rolling reword budget was spent, so a
+    # leg naming HM08 could be neither reworded nor VOIDed nor crossed off
+    # - only authored, refused, and moved (2026-08-28).
+    if not no_reword and no_reword_reason:
+        no_reword = no_reword_reason
     offer = ("" if not no_reword else
              "\n\nA REWRITE IS NOT ON OFFER for this objective: " + no_reword
              + ". The answers open to you are two: the wording stands, or "
@@ -5866,6 +5873,9 @@ def main():
     ap.add_argument("--dry-tail", action="store_true",
                     help="print how many runs at --goal, since its last "
                          "disposition, have yielded nothing (run/attempt_yield)")
+    ap.add_argument("--no-reword", default="",
+                    help="check-wording: why a rewrite is not on offer "
+                         "(the rolling budget); the question is still asked")
     ap.add_argument("--asked", default=None,
                     help="comma list of the rungs already asked about the "
                          "stuck leg before --check-wording (done, blocker, "
@@ -5928,7 +5938,8 @@ def main():
                             args.model, observed=args.observed,
                             asked=None if args.asked is None else
                             tuple(a.strip() for a in args.asked.split(",")
-                                  if a.strip()))
+                                  if a.strip()),
+                            no_reword_reason=args.no_reword or "")
         if new:
             print(new)
             sys.exit(0)

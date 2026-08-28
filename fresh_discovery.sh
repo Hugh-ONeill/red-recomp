@@ -272,7 +272,10 @@ while :; do
     # grep -c prints "0" AND exits 1 on no match, so "|| echo 0" printed
     # a second 0 and the test died on "0\n0: integer expected" every leg
     _asked=$(grep -Fxc "$leg" run/outline_wording_asked 2>/dev/null) || true
-    [ "${_asked:-0}" -ge 2 ] && return 1
+    if [ "${_asked:-0}" -ge 2 ]; then
+      echo "[wording] not asked: this leg has been asked twice already"
+      return 1
+    fi
     # A ROLLING BUDGET, NOT A LIFETIME ONE. Three rewordings per CHAIN was
     # written when a reworded objective was a cheap mistake to be rationed.
     # On a 51-leg outline it means the ladder goes permanently blind about
@@ -290,12 +293,16 @@ while :; do
     _recent=$(awk -F'\t' -v i="$i" -v w=12 \
                   '($1+0) > i - w { n++ } END { print n+0 }' \
                   run/outline_rewordings 2>/dev/null) || _recent=0
-    [ "${_recent:-0}" -lt 3 ] || return 1
+    # THE BUDGET WITHHOLDS THE REWRITE, NOT THE QUESTION: stands, done
+    # under another name and VOID are still the model's to answer.
+    _nr=""
+    [ "${_recent:-0}" -lt 3 ] \
+      || _nr="the rolling budget of 3 rewordings per 12 legs is spent (${_recent} in the last 12)"
     echo "$leg" >> run/outline_wording_asked
     set +e
     said=$(python planner/author.py --check-wording \
         --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
-        --asked "${1:-}" \
+        --asked "${1:-}" --no-reword "$_nr" \
         --start "$(python planner/state_text.py)" \
         --observed run/explored.json \
         --journal run/executor_log.jsonl --model "$AUTHOR_MODEL")

@@ -29,11 +29,13 @@ ck("...keyed on the leg index in column 1",
    "-F'\\t'" in blk and "($1+0) > i - w" in blk)
 ck("...over the current leg", '-v i="$i"' in blk)
 ck("...with the window named, not magic", "-v w=12" in blk)
-ck("...still three inside that window", '-lt 3 ] || return 1' in blk)
+ck("...still three inside that window — the rewrite is withheld, the question still asked",
+   '-lt 3 ] \\' in blk and 'the rolling budget of 3 rewordings per 12 legs is spent' in blk
+   and '-lt 3 ] || return 1' not in blk)
 ck("a missing file does not break the rung",
    "2>/dev/null) || _recent=0" in blk)
 ck("the per-leg cap is untouched — a single leg still gets two asks",
-   '[ "${_asked:-0}" -ge 2 ] && return 1' in sh)
+   'if [ "${_asked:-0}" -ge 2 ]; then' in sh and "asked twice already" in sh)
 
 ck("the script still parses",
    subprocess.run(["bash", "-n", "fresh_discovery.sh"]).returncode == 0)
