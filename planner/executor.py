@@ -12120,7 +12120,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         + ". Anywhere else is refused, however near it is "
                         "on the printed map. Which of them is worth flying "
                         "to, or whether to fly at all, is yours.\n")
-                       if (obs or {}).get("fly_towns") else "")
+                       if (obs or {}).get("fly_towns")
+                       and self._knows_move(obs, "FLY") else "")
                     + f"{plan_echo}"
                     f"FEEDBACK FROM YOUR LAST MACRO:\n{feedback}\n"
                     + (("THIS PLACE, AS IT IS DRAWN (" +

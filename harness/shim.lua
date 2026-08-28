@@ -1147,7 +1147,20 @@ local function observe(G, seq, result)
     -- so (FLY to CINNABAR_ISLAND, twice; user, 2026-08-23: "add the
     -- standing fly list so it knows it cant fly to cinnabar"). The list
     -- is stated; which row is worth taking is not.
-    do
+    -- ...AND ONLY WHEN THE SCREEN EXISTS. The fly picker is reached from
+    -- a party member's FLY; with nobody knowing it there is no screen to
+    -- read, and listing the towns anyway had the run trying FLY on every
+    -- long walk (user, 2026-08-28: "we shouldn't display the fly list
+    -- until someone actually knows fly").
+    local _knows_fly = false
+    for _, mon in ipairs((G.save or {}).party or {}) do
+      for _, mv in ipairs(mon.moves or {}) do
+        if tostring(type(mv) == "table" and mv.id or mv) == "FLY" then
+          _knows_fly = true
+        end
+      end
+    end
+    if _knows_fly then
       local okM, MapM = pcall(require, "src.world.Map")
       local fd = G.data and G.data.field
       local visited = (G.save and G.save.visited) or {}
