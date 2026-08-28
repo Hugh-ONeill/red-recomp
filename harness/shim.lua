@@ -393,6 +393,26 @@ local function battle_frame(G)
   return nil
 end
 
+-- A LEVEL-UP MOVE PROMPT OVER A BATTLE IS A QUESTION, NOT A BATTLE. At
+-- the end of a fight a Pokemon that gained a level can be "trying to
+-- learn" a move — the yes/no and the forget list sit on the stack ABOVE
+-- the battle frame, which has not been popped yet. battle_frame() found
+-- that frame and observe() called the moment mode=battle, so the
+-- executor ran its battle policy against "foe None", battle_move failed
+-- "not in battle" eight times a round, and nobody answered LAPRAS's
+-- "Abandon learning MIST?" until the user did (2026-08-28). Same scan
+-- grind() already makes before it lets go: a learn anywhere on the
+-- stack is the model's choice to make, so it is reported as ui.
+local function learn_on_stack(G)
+  local st = G and G.stack and G.stack.states
+  if type(st) == "table" then
+    for _, s in ipairs(st) do
+      if type(s) == "table" and s.newMoveId ~= nil then return true end
+    end
+  end
+  local t = G and G.stack and G.stack:top()
+  return (t and t.screenId == "MoveLearnMenu") and true or false
+end
 local function _is_fade(t)
   return t ~= nil and t.phase ~= nil and t.frames ~= nil
      and t.map == nil and t.items == nil
@@ -2427,7 +2447,7 @@ local function observe(G, seq, result)
                  page = top.pageIndex, pages = #top.pages,
                  waiting = top.waiting and true or false,
                  done = top.done and true or false }
-  elseif battle_frame(G) then
+  elseif battle_frame(G) and not learn_on_stack(G) then
     -- A MENU OVER A FIGHT REPORTS THE FIGHT. mode decides who handles the
     -- round: "ui" sends it back to the model as a screen to dismiss, and
     -- the model cannot dismiss a party menu that a battle is waiting

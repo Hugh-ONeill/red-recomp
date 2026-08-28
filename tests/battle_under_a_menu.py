@@ -39,15 +39,15 @@ ck("need_overworld leaves a menu that sits on a battle alone",
 
 # observe
 ck("observe reports the fight, not the menu",
-   'elseif battle_frame(G) then' in lua
+   'elseif battle_frame(G) and not learn_on_stack(G) then' in lua
    and 'o.mode = "battle"' in lua)
-o = lua[lua.find("elseif battle_frame(G) then"):][:800]
+o = lua[lua.find("elseif battle_frame(G) and not learn_on_stack(G) then"):][:800]
 ck("...and still names what is on top",
    "behind_a_menu = _screen_name(G)" in o)
 ck("...placed after the dialog branch so text still reads as text",
-   lua.index('o.mode = "dialog"') < lua.index("elseif battle_frame(G) then"))
+   lua.index('o.mode = "dialog"') < lua.index("elseif battle_frame(G) and not learn_on_stack(G) then"))
 ck("...and before the plain ui branch",
-   lua.index("elseif battle_frame(G) then") < lua.index('o.mode = "ui"'))
+   lua.index("elseif battle_frame(G) and not learn_on_stack(G) then") < lua.index('o.mode = "ui"'))
 
 # in_battle
 i = lua[lua.find("local function in_battle(G)"):][:1400]

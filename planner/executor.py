@@ -932,6 +932,13 @@ def _run_policy(spec, bridge, obs, log, max_turns, intent="fight",
             log("battle_move_failed", turn=turns, detail=r.get("detail"))
             turns -= 1
             op_fails += 1
+            # NOT IN BATTLE IS NOT A TURN TO RETRY. The op itself says the
+            # fight is over (or was never on): whatever is on screen — a
+            # level-up prompt, a box — is the executor's business, not the
+            # policy's. Leave at once rather than eight failures on.
+            if "not in battle" in str(r.get("detail") or "").lower():
+                log("battle_loop_left", turn=turns, why="not in battle")
+                break
             if op_fails >= 8:
                 break
             continue
