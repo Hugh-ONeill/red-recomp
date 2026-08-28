@@ -1166,6 +1166,7 @@ class Executor:
         # region -> names once sighted there and since found absent
         self._gone: dict = {}
         self.region_anchors: dict = {}   # map -> {cell: region name}
+        self._parts_by_map: dict = {}    # map -> region names joined on the latest look
         self.searched: dict = {}    # "*" -> {region: fully worked};
                                     # flag:/item: keys add per-target claims
         self.contested: dict = {}   # target -> {region: a fight ran here}
@@ -1860,10 +1861,36 @@ class Executor:
                     f"it was tried in this world state: {_src} --{_k}--> "
                     f"{_dst}. Walking the legs yourself is still open, and "
                     f"whatever stopped that one is what has to change"], []
+            # THE CUT RULE'S HONEST TWIN. A hop stopped by a bush is cut
+            # and re-walked, because a bush has one outcome; a boulder has
+            # a destination, and where it goes is the puzzle. So `go` does
+            # not push — but when the part asked for is on THIS floor and
+            # boulders the party can move stand at the edge of the ground,
+            # it says so and hands over the op, instead of a bare "no
+            # walked way" that reads like the part is elsewhere (Victory
+            # Road 1F, 2026-08-28; user: "maybe we can do the same thing we
+            # do with cut in regards to that?").
+            _note_b = ""
+            _mid_here = str(here).split("|")[0]
+            if str(want).split("|")[0] == _mid_here \
+                    and self._knows_move(obs, "STRENGTH"):
+                _rocks = [o for o in ((obs or {}).get("map") or {}).get("objects") or []
+                          if o.get("kind") == "boulder" and o.get("reachable")]
+                if _rocks:
+                    _note_b = (
+                        f" {want} is on THIS floor, and between the ground "
+                        f"you can walk and the rest of it stand boulder(s) "
+                        f"a party Pokemon can move: "
+                        + ", ".join(f"{o.get('name')} at ({o.get('x')},{o.get('y')})"
+                                    for o in _rocks[:3])
+                        + ". go does not push; {\"op\":\"push\",\"x\":N,\"y\":N,"
+                          "\"to_x\":N,\"to_y\":N} does, and where a boulder "
+                          "should end up is yours — a boulder that has cut you "
+                          "off from ground is one you moved")
             return False, [f"go: no walked way from {here} to {want} is "
                            f"known — you have never walked a connected "
                            f"chain of exits between them (or a hop on it "
-                           f"has failed in this world state)"], []
+                           f"has failed in this world state)" + _note_b], []
         region, path = best
         self.log("go_step", subgoal=sg.get("id"), to=region, legs=len(path))
         arrived = self._walk_route(sg, path)
@@ -1883,6 +1910,16 @@ class Executor:
             return True, tr, [dict(step)]
         if not self._same_area(self._where(cur), region):
             _why = getattr(self, "_route_why", "") or ""
+            _cm = (cur.get("map") or {})
+            _parts = [f"{_cm.get('id')}|{p}" for p in (_cm.get("parts_here") or [])]
+            if (not _why and _cm.get("id") == str(region).split("|")[0]
+                    and _parts and region not in _parts):
+                _why = (f"it landed on {self._where(cur)}, and the part named "
+                        f"{region} is NOT joined to it right now — the ground "
+                        f"you stand on carries the name(s) {', '.join(_parts)} "
+                        f"and no walk from it reaches {region}. Something "
+                        f"moved between them (a boulder, a switch), or they "
+                        f"were never one place")
             tr.append("go: the walk did not arrive; author from here"
                       + (f". WHAT STOPPED IT: {_why}" if _why else ""))
             return False, tr, []
@@ -2665,6 +2702,7 @@ class Executor:
             self._gone = {r: set(v) for r, v in
                           (data.get("gone") or {}).items()}
             self.region_anchors = data.get("region_anchors", {}) or {}
+            self._parts_by_map = data.get("parts_by_map", {}) or {}
             self.searched = data.get("searched", {})
             self.contested = data.get("contested", {})
             self._bad_seam = {tuple(x) for x in data.get("bad_seam", [])
@@ -3235,6 +3273,7 @@ class Executor:
                  "touch_bag": self._touch_bag,
                  "touch_mark": self._touch_mark,
                  "region_anchors": self.region_anchors,
+                 "parts_by_map": getattr(self, "_parts_by_map", {}),
                  "contested": self.contested,
                  "bad_seam": sorted(list(x) for x in
                                     getattr(self, "_bad_seam", set())),
@@ -3357,20 +3396,21 @@ class Executor:
         # then crossed 'east' from the stub — the walk-back replanned into
         # the same wall four times and the KNOWN-WAY advice line fed the
         # model the same impossible cross for a whole escalation.
-        by_map: dict = {}
-        for region, exits in (self.frontier or {}).items():
-            tiles = {k for k in exits if "," in k}
-            if not tiles:
-                continue
-            by_map.setdefault(region.split("|")[0], []).append(
-                (region, tiles))
+        # ...AND ONLY WHILE A WALK JOINS THEM. Sharing an exit tile was the
+        # old test, and it welded Victory Road 1F's 5,9 and 14,0 into one
+        # place — the same stairway is in both records — while a pushed
+        # boulder had cut the two apart, so `go 1F|5,9` landed on 14,0
+        # and called it arrival, fifty rounds running (2026-08-28). The
+        # shim now says which names the ground you stand on carries
+        # (map.parts_here), and only names seen joined on the latest look
+        # at a map are one place.
         AREA_ALIASES.clear()
-        for regions in by_map.values():
-            for i, (ra, ea) in enumerate(regions):
-                for rb, eb in regions[i + 1:]:
-                    if ea & eb:
-                        AREA_ALIASES.setdefault(ra, set()).add(rb)
-                        AREA_ALIASES.setdefault(rb, set()).add(ra)
+        for parts in (getattr(self, "_parts_by_map", {}) or {}).values():
+            names = sorted(set(parts or []))
+            for i, ra in enumerate(names):
+                for rb in names[i + 1:]:
+                    AREA_ALIASES.setdefault(ra, set()).add(rb)
+                    AREA_ALIASES.setdefault(rb, set()).add(ra)
 
     def note_flag_site(self, obs):
         """Where an event actually fired.
@@ -3415,6 +3455,17 @@ class Executor:
         m = (obs or {}).get("map") or {}
         anchors = m.get("region_anchors")
         mid = m.get("id")
+        # which names this floor's ground carries as one component right
+        # now: the only basis on which two names are one place
+        _parts = m.get("parts_here")
+        if mid and isinstance(_parts, list) and m.get("region"):
+            _new = sorted({f"{mid}|{p}" for p in _parts if p} | {f"{mid}|{m.get('region')}"})
+            if (getattr(self, "_parts_by_map", {}) or {}).get(mid) != _new:
+                if not hasattr(self, "_parts_by_map"):
+                    self._parts_by_map = {}
+                self._parts_by_map[mid] = _new
+                self._rebuild_area_aliases()
+                self.log("parts_joined", map=mid, parts=_new)
         if not (anchors and mid):
             return
         store = self.region_anchors.setdefault(mid, {})

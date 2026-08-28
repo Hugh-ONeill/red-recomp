@@ -1916,6 +1916,21 @@ local function observe(G, seq, result)
             end
           end
           o.map.region_anchors = anchors
+          -- THE NAMES THIS GROUND CARRIES NOW. Two names on one floor are
+          -- one place only while a walk joins them; Victory Road 1F's
+          -- 5,9 (the entrance side) and 14,0 (the stairs side) share a
+          -- stairway in the record and were welded into one place by it,
+          -- while a pushed boulder had cut them apart — so `go 1F|5,9`
+          -- landed on 14,0 and called it arrival, fifty rounds running
+          -- (2026-08-28). What is joined right now is readable: the names
+          -- painted on the cells of this component.
+          local parts, seenp = {}, {}
+          for k in pairs(rreach) do
+            local v = known[k]
+            if v and not seenp[v] then seenp[v] = true; parts[#parts + 1] = v end
+          end
+          table.sort(parts)
+          o.map.parts_here = parts
           if split_from then
             local doors = {}
             for _, w in ipairs(md.warps or {}) do
