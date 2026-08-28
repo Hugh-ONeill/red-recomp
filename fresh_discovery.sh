@@ -239,6 +239,7 @@ while :; do
     exit 0
   fi
   leg="${LEGS[$((i - 1))]}"
+  _no_plan=0
   # A PLAN BELONGS TO AN OBJECTIVE, NOT TO A SLOT. Plans were addressed by
   # outline position, so any rearrangement left every plan from the shift
   # onward naming the wrong objective — and the rungs "fixed" that by
@@ -287,6 +288,22 @@ while :; do
     # push it and carry on, the same answer the ladder gives for a leg that
     # is right but not yet.
     if ! python planner/author.py "${aargs[@]}"; then
+      # A LEG THAT CANNOT BE WRITTEN IS A RUN THAT YIELDED NOTHING, and
+      # the second time it is not pushed two legs on again — "Navigate
+      # the Safari Zone" was pushed 34->36, 34->36, 35->37, 36->38 by
+      # this branch alone, each a failed author pass (2026-08-28). It
+      # goes to the ladder like a dry leg: it moves, changes, or goes.
+      printf '%s\t%s\t0\t%s\n' "$leg" "$i" \
+        "NOTHING new while this leg ran: no plan could even be written for it (the author failed)" \
+        >> run/attempt_yield
+      _prior=$(awk -F'\t' -v L="$leg" \
+          '$1 == L && $4 ~ /^DISPOSED: authoring failed/ { n++ } END { print n+0 }' \
+          run/attempt_yield 2>/dev/null) || _prior=0
+      if [ "${_prior:-0}" -ge 1 ]; then
+        echo "!! authoring failed AGAIN for leg $i ($goal) — not pushed again:" \
+             "to the ladder (it moves, changes, or goes)"
+        _no_plan=1
+      else
       echo "!! authoring failed for leg $i ($goal) — pushing it later"
       _after=$(( i + 2 ))
       [ "$_after" -gt "${#LEGS[@]}" ] && _after=${#LEGS[@]}
@@ -300,6 +317,7 @@ while :; do
       echo "$i" >> run/outline_unauthored
       echo "$i" > "$PROGRESS"
       continue
+      fi
     fi
   fi
 
@@ -454,7 +472,7 @@ while :; do
   # send it straight to the ladder — it moves, changes, or goes, or the
   # run stops for a person. 37 attempts on one leg is what this replaces.
   _dry=$(python planner/author.py --dry-tail --goal "$leg" 2>/dev/null || echo 0)
-  if [ "${_dry:-0}" -ge 2 ]; then
+  if [ "${_dry:-0}" -ge 2 ] || [ "${_no_plan:-0}" = 1 ]; then
     echo "=== leg $i/${#LEGS[@]}: its last $_dry runs yielded nothing new —" \
          "not run again as it stands (it moves, changes, or goes): $leg ==="
     crc=2
