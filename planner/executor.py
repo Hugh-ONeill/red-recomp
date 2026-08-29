@@ -2244,13 +2244,30 @@ class Executor:
                        .get(region, 0) or 0)
             if _dry >= 2:
                 _pri = 3
+            # SEARCH THE WHOLE AREA YOU ARE IN BEFORE MOVING ON (user,
+            # 2026-08-29: "we really want the bot to search the whole area
+            # its in before moving on so this crap doesnt keep
+            # happening"). Cerulean's TRASHED HOUSE was entered twice and
+            # left after a second, with EIGHT spots of unseen ground
+            # inside and the city's only way south behind them; the picker
+            # ranked Route 4's untried seam, one leg the other way, above
+            # it. A room whose door you took from here is the area you are
+            # in, as a player means it: finish it before travelling.
+            # A ROOM IS SOMETHING YOU STEP INTO THROUGH A DOOR — not the
+            # next route over a seam. Counting seams as local made Route 4
+            # (one seam west) as "here" as the house one door away.
+            _rooms = {(e or {}).get("to")
+                      for k, e in (self.explored.get(here) or {}).items()
+                      if str(k)[:1].isdigit() and (e or {}).get("to")}
+            _local = 0 if (region.split("|")[0] == here.split("|")[0]
+                           or region in _rooms) else 1
             # WITHIN A TIER, DISTANCE LEADS; THEN A WAY OUT BEATS GROUND
             # TO LOOK AT. Raw counts made 4 unseen spots in an empty
             # pocket outweigh the one untaken way out of Mt Moon B2F, at
             # the same distance — but a way out is what changes the map a
             # map goal asks for, and unseen ground only MIGHT hold one.
             _way_here = 0 if (left or _unr) else 1
-            r = (_pri, len(path), _way_here,
+            r = (_pri, _local, len(path), _way_here,
                  -(len(left) + len(unpressed) + unseen + len(_unr)),
                  region)
             if best is None or r < best[0]:
@@ -2293,6 +2310,13 @@ class Executor:
               f"{len(unpressed)} thing(s) never pressed"
               + (f" and {unseen} spot(s) where its seen ground ends"
                  if unseen else "")
+              + (" — a room off the area you are in, its door taken from "
+                 "here, so this is finishing where you stand"
+                 if (region.split("|")[0] != here.split("|")[0]
+                     and region in {(e or {}).get("to")
+                                    for k, e in (self.explored.get(here)
+                                                 or {}).items()
+                                    if str(k)[:1].isdigit()}) else "")
               + (f" and {len(getattr(self, '_best_unreached', []) or [])} "
                  f"way(s) out never taken that no walk reached when you "
                  f"last stood there ("

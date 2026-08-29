@@ -271,12 +271,31 @@ def _left_parts(ex, region: str) -> list:
         return []
     left = ex._frontier_left(region)
     things = untouched_in(ex, region)
+    # ...AND GROUND IN THERE NOBODY HAS LOOKED AT. This counted exits and
+    # things only, so the row for a door already taken read "still has 1
+    # thing(s) never pressed" about CERULEAN_TRASHED_HOUSE — a room the
+    # run had stepped into twice and left, with EIGHT spots of unseen
+    # ground inside it and the city's only way south behind them (user,
+    # 2026-08-29: "so the trashed house was simply entered for a second
+    # and then not looked at further since it couldnt see the exit from
+    # the start"; "search the whole room youre in because its cheap when
+    # youre there already"). A room half unlooked-at is unfinished, and
+    # the door into it is where that is worth saying.
+    unseen = int((getattr(ex, "region_seen", None) or {}).get(region, 0) or 0)
+    _unr = [k for k in ((getattr(ex, "unreached_at", None) or {}).get(region)
+                        or [])
+            if k not in set(ex._taken_here(region) or {})]
     parts = []
     if left:
         parts.append(f"{len(left)} exit(s) never taken")
     if things:
         parts.append(f"{len(things)} thing(s) never pressed "
                      f"({', '.join(things[:3])})")
+    if unseen:
+        parts.append(f"{unseen} spot(s) of ground in there never on screen")
+    if _unr:
+        parts.append(f"{len(_unr)} way(s) out of it never taken that no "
+                     f"walk reached")
     return parts
 
 
@@ -1356,9 +1375,16 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         # two explore walks there that saw nothing new: last (executor rule)
         if int((getattr(ex, "_dry_walks", None) or {}).get(region, 0) or 0) >= 2:
             _pri = 3
-        # same tie-break as the deed (_explore_step): distance, then a way
-        # out (reachable or not) before ground to look at
-        r = (_pri, len(path), 0 if (left or _unr) else 1,
+        # same order as the deed (_explore_step): finish the area you are
+        # in first (this map, or a room whose door you took from here),
+        # then distance, then a way out before ground to look at
+        _rooms = {(e or {}).get("to")
+                  for k, e in (((getattr(ex, "explored", {}) or {})
+                                .get(here) or {}).items())
+                  if str(k)[:1].isdigit() and (e or {}).get("to")}
+        _local = 0 if (region.split("|")[0] == here.split("|")[0]
+                       or region in _rooms) else 1
+        r = (_pri, _local, len(path), 0 if (left or _unr) else 1,
              -(len(left) + len(things) + unseen + len(_unr)), region)
         found.append((r, region, left, things, path, unseen, _unr))
     found.sort(key=lambda f: f[0])

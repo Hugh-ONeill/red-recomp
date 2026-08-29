@@ -28,7 +28,7 @@ ck("the hop count already gates the printed adjacency",
 # --- _far_note now asks ---
 i = src.find("AND THE MAP MUST BE IN THE BAG BEFORE IT CAN BE QUOTED")
 ck("the distance line asks whether the map is held", i > 0)
-blk = src[i:i + 3400]
+blk = src[i:i + 5200]      # the block grew when the paper distance learned to say what a map cannot
 ck("...before saying 'on the printed map'",
    '"on the printed map " if _held' in blk)
 ck("...and says whose knowledge it is otherwise",
