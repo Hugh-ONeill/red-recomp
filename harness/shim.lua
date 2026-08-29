@@ -4067,9 +4067,18 @@ local function bfs_to_edge(G, dir, skip, surf, blind)
   local nfound = 0
   -- the (skip+1)-th qualifying cell; BFS order means "farther along" is
   -- also "farther to walk", which is the right order to try them in
+  -- A SKIP IS A PREFERENCE, NOT A REQUIREMENT. The replayed hop
+  -- "north#skip1" out of Pallet wanted the second seam cell while a
+  -- wanderer stood on it, so ONE cell qualified, nothing was returned,
+  -- and the op said "cannot be walked to — no walkable path reaches it"
+  -- about a seam its own diagnostic put at 0 cells away (2026-08-29).
+  -- Remember the cells passed over; when the asked-for one is not there,
+  -- cross at the last one that was and say which.
+  local fb_x, fb_y
   local function take(x, y)
     nfound = nfound + 1
     if nfound > skipn then return x, y end
+    fb_x, fb_y = x, y
     return nil
   end
   if hit(p.cellX, p.cellY) and landing_ok(G, dir, p.cellX, p.cellY) then
@@ -4298,6 +4307,11 @@ local function bfs_to_edge(G, dir, skip, surf, blind)
         end
       end
     end
+  end
+  if fb_x then
+    return fb_x, fb_y, ("you asked for seam cell #%d and only %d of that "
+      .. "seam could be reached just now, so the crossing used (%d,%d)")
+      :format(skipn + 1, nfound, fb_x, fb_y)
   end
   return nil, nil, ("BFS from %d,%d walked %d cells (%d ledge hop%s, %d arrow-tile "
     .. "slide%s); closest to "
@@ -5611,6 +5625,8 @@ function OPS.cross(G, c)
     return ("crossed — now on %s at (%s,%s)"):format(
       tostring(ow.map and ow.map.id),
       tostring(p2 and p2.cellX), tostring(p2 and p2.cellY))
+      -- a found seam carries no why; a fallback landing says which cell
+      .. ((ex and bfs_why) and (" — " .. tostring(bfs_why)) or "")
   end
   -- step off the seam repeatedly until the map changes
   for _ = 1, 8 do
