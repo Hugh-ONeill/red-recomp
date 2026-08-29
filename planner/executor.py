@@ -10831,7 +10831,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                              if c.kind in ("door", "seam")] \
                         if op != "interact" else \
                         [c.key for c in _cands
-                         if c.kind not in ("door", "seam", "op")]
+                         if c.kind not in ("door", "seam", "op",
+                                           "frontier")]
                     trace.append(
                         f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
                         f": REFUSED — OFF-LEDGER: there is no such "

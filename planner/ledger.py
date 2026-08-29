@@ -61,6 +61,7 @@ from dataclasses import dataclass, field
 # status vocabulary — the order here IS the rank order within a kind
 STATUS_RANK = {
     "untried": 0,       # a door / seam never taken from here
+    "unlooked": 0,      # a spot where the seen ground ends (frontier)
     "untouched": 0,     # a thing / person here never pressed
     "unspoken": 0,      # a person here never spoken to (alias of untouched)
     "reopened": 1,      # a shut door, now that the world has moved
@@ -137,6 +138,8 @@ class Candidate:
             if _l == "threshold":        # an older shim's word for a door
                 return f"door ({self.key}){_tw}"
             return f"door ({self.key}){_tw}"
+        if self.kind == "frontier":
+            return f"seen ground ends at ({self.key})"
         if self.kind == "op":
             return self.key
         return f"{self.key}"
@@ -427,7 +430,7 @@ def other_part_note(ex, dest: str, here: str) -> str:
 
 
 UNWORKED = ("untried", "untouched", "unspoken", "reopened", "cuttable",
-            "pushable")
+            "pushable", "unlooked")
 
 
 def switches(cands: list) -> list:
@@ -477,7 +480,16 @@ def fully_worked(cands: list) -> bool:
     is a puzzle about which and when.)"""
     if switches(cands) or unreached_ways(cands):
         return False
-    return not any(c.status in UNWORKED for c in cands if c.kind != "op")
+    # ...and a WATER frontier row does not block the claim: "done on foot"
+    # is exactly what the header's water branch needs to be allowed to say
+    # ("Everything you can reach ON FOOT here is done, but the WATER you
+    # can ride has N spot(s)...") — counting it here silenced that very
+    # sentence. An ON-FOOT unlooked spot still blocks: ground you can walk
+    # to has not been looked at, so nothing here is finished.
+    return not any(c.status in UNWORKED for c in cands
+                   if c.kind != "op"
+                   and not (c.kind == "frontier"
+                            and getattr(c, "by_water", False)))
 
 
 # -------------------------------------------------------------------- build
@@ -933,6 +945,42 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                 c.note = _join(c.note, str(o.get("why") or ""))
         out.append(c)
 
+    # ---- the edges of the seen ground ---------------------------------
+    # Footprint leftover (b): the frontier reached the model only as head
+    # TEXT, never as candidates, so the one thing the footprint calls
+    # unfinished here never competed with the doors in the ranked list —
+    # and position is the budget. A frontier cell is minted fresh from
+    # THIS observation on every build: it vanishes by itself the moment
+    # the ground past it comes on screen, which is exactly why a STORED
+    # door-style status would mean nothing. Its status is computed, never
+    # remembered. The shim orders spots nearest-first; n carries that
+    # walked distance so the rank keeps the order. A frontier key can
+    # never collide with a door's: seen_reach excludes warp tiles from
+    # its frontier.
+    for f in (m.get("frontier") or [])[:4]:
+        if f.get("x") is None or f.get("y") is None:
+            continue
+        c = Candidate(key=f"{f['x']},{f['y']}", kind="frontier",
+                      x=f["x"], y=f["y"], status="unlooked")
+        c.n = int(f.get("d") or 0)
+        c.note = (f"{c.n} step(s) from you over seen ground; "
+                  "{\"op\":\"walk_to\",\"x\":%d,\"y\":%d} stands there"
+                  % (f["x"], f["y"]))
+        out.append(c)
+    # ...and the spots only a swim reaches (the shim lists these only
+    # while a party Pokemon knows SURF and you are on foot)
+    for f in (m.get("frontier_water") or [])[:2]:
+        if f.get("x") is None or f.get("y") is None:
+            continue
+        c = Candidate(key=f"{f['x']},{f['y']}", kind="frontier",
+                      x=f["x"], y=f["y"], status="unlooked", by_water=True)
+        c.n = int(f.get("d") or 0)
+        c.note = ("across the WATER — no walk reaches it, but a party "
+                  "Pokemon knows SURF: {\"op\":\"walk_to\",\"x\":%d,"
+                  "\"y\":%d,\"surf\":true} rides there, and explore "
+                  "rides and sweeps it for you" % (f["x"], f["y"]))
+        out.append(c)
+
     # ---- rank ---------------------------------------------------------
     _goal_kinds = _goal_kinds_of(target)
     for c in out:
@@ -973,7 +1021,8 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             _bucket = 1
         c.rank = (_bucket, not c.reachable, STATUS_RANK.get(c.status, 9),
                   1 if _refused(c) else 0,
-                  0 if c.kind in _goal_kinds else 1, into_seen,
+                  0 if c.kind in _goal_kinds else 1,
+                  0 if c.kind == "frontier" else 1, into_seen,
                   c.n, c.kind, c.key)
     out.sort(key=lambda c: c.rank)
 
@@ -1360,6 +1409,10 @@ def untried_keys(cands: list[Candidate]) -> set:
 
 _STATUS_WORDS = {
     "untried": "never taken from here",
+    "unlooked": "the ground PAST it has NEVER BEEN ON SCREEN — standing "
+                "there brings it into view; {{\"op\":\"sweep\"}} walks "
+                "every such spot on this floor and stops at the first "
+                "new thing",
     "reopened": "turned you back once, but the world has moved since",
     "taken": "taken {n}x",
     "came_in_by": "the door you came in by; taken {n}x",
@@ -2268,7 +2321,7 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         if c.kind in ("door", "seam") and not c.dest and c.status in (
                 "untried", "reopened", "spent", "shut", "unreachable"):
             arrow = " -> UNKNOWN"
-        kind = ("" if c.kind in ("door", "seam") else
+        kind = ("" if c.kind in ("door", "seam", "frontier") else
                 f" ({c.kind}" + (f" at {c.x},{c.y}" if c.x is not None
                                  else "") + ")")
         note = ""
