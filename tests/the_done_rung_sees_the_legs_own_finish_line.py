@@ -72,3 +72,11 @@ ck("a boxed-up snapshot WITH a party is this world, told apart from a partyless 
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)
+# --- a building named by its kind alone is found in the walked record ---
+import json as _json, tempfile as _tf
+with _tf.NamedTemporaryFile("w", suffix=".json", delete=False) as _f:
+    _json.dump({"visits": {"VIRIDIAN_MART|0,2": 5, "OAKS_LAB|4,1": 12}}, _f); _obs = _f.name
+_wg = __import__("author").walked_ground_text([(1, "Retrieve the Pokemon from the Poke Mart")], observed=_obs)
+print(("ok  " if "VIRIDIAN_MART stood in 5x" in _wg and "OAKS_LAB" not in _wg else "FAIL"),
+      "a 'Poke Mart' with no town named still shows the mart the run stood in")
+if "VIRIDIAN_MART stood in 5x" not in _wg: sys.exit(1)

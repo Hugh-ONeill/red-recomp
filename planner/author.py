@@ -5354,8 +5354,23 @@ def walked_ground_text(goals, observed=None) -> str:
     dims = _map_dims()
     ids = set(dims) | set(seen) | set(visits) | set(ROUTE_MAPS)
     lines = []
+    # A BUILDING NAMED BY ITS KIND. "Retrieve the Pokemon from the Poke
+    # Mart" names no town, so maps_named found nothing and the done rung
+    # was handed no walked ground at all — and answered "nor is there
+    # evidence the player has visited it" with VIRIDIAN_MART stood in 5x
+    # in the record it was not shown (2026-08-29). Only maps the run has
+    # STOOD IN qualify: this is the run's own record, never a directory.
+    _KINDS = {"MART": ("MART",), "POKECENTER": ("CENTER",),
+              "GYM": ("GYM",), "GATE": ("GATE",)}
     for n, text in goals:
         maps = maps_named(text, ids)
+        _words = set(re.sub(r"[^A-Z0-9]+", " ", text.upper()).split())
+        for token, keys in _KINDS.items():
+            if any(k in _words for k in keys):
+                for mid in sorted(visits):
+                    if visits[mid] > 0 and token in mid.split("_") \
+                            and mid not in maps:
+                        maps.append(mid)
         if not maps:
             continue
         bits = []
