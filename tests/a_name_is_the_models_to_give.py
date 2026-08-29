@@ -76,6 +76,9 @@ ck("settle resolves a naming screen; bootstrap resolves the new game's names",
    'if o.get("naming") and not getattr(self, "_naming", False):' in ex
    and 'if "asking for a NAME" in str(r.get("detail") or ""):' in ex
    and 'globals()["NAMING_MODEL"] = args.model' in ex)
+ck("a gift's or purchase's nickname question is ridden to the naming screen",
+   'if "nickname" in _t and o.get("mode") in ("dialog", "ui"):' in ex
+   and "A GIFT'S NICKNAME QUESTION IS THE DOOR TO THE NAMING SCREEN" in ex)
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)

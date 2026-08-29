@@ -10037,6 +10037,22 @@ class Executor:
             self._final_obs = o
         if o.get("ending") and not getattr(self, "_riding", False):
             o = self._ride_ending(o)
+        # A GIFT'S NICKNAME QUESTION IS THE DOOR TO THE NAMING SCREEN.
+        # throw_ball rides it for a catch; a gift or a purchase arrives
+        # through interact/menu instead, so the Magikarp bought in the Mt
+        # Moon Center was never named — the subgoal completed on the party
+        # change and the plan ended with the box still up (2026-08-29).
+        # The YES is mechanics, exactly as it is after a catch; the NAME
+        # that follows is the model's, and an empty one keeps the default.
+        if not o.get("naming") and not getattr(self, "_naming", False):
+            _t = str((o.get("dialog") or {}).get("text")
+                     or o.get("last_text") or "").lower()
+            if "nickname" in _t and o.get("mode") in ("dialog", "ui"):
+                self._send_safe("tap", btn="a")
+                try:
+                    o = self._note(self.b.obs()) or o
+                except TimeoutError:
+                    pass
         if o.get("naming") and not getattr(self, "_naming", False):
             o = self._resolve_naming(o)
         return o
