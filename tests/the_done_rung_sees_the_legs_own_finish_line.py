@@ -65,6 +65,10 @@ with contextlib.redirect_stdout(out):
     r = A.check_done("Obtain a starter Pokemon", "an unknown location", "m", observed=None)
 ck("no snapshot (no party), no verdict — and the model is not asked",
    r is False and "refused: no snapshot of this run's world" in out.getvalue())
+st = (ROOT / "planner" / "state_text.py").read_text()
+ck("a boxed-up snapshot WITH a party is this world, told apart from a partyless one",
+   st.count("a box was up when the snapshot was taken") == 2
+   and 'if not (o.get("party") or []):\n        print("an unknown location")' in st)
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)

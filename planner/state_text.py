@@ -149,7 +149,12 @@ if "region" in o:                    # last_state.json is already flattened
     party = party_text(o.get("party") or [])
     badges = ", ".join(o.get("badges") or []) or "no badges"
     bag = bag_text(o.get("bag"))
-    print(f"standing in {m or 'an unknown location'} with "
+    # A BOX UP AT THE SNAPSHOT IS NOT AN UNKNOWN WORLD. map is None while a
+    # text box is open; with a party in hand that is still this run's world
+    # and the done rung must be allowed to judge it (2026-08-29: leg 1 ended
+    # holding CHARMANDER under a box and was refused as "no party").
+    _where = m or "a spot not yet on record (a box was up when the snapshot was taken)"
+    print(f"standing in {_where} with "
           f"{party or 'no party'}, {badges}"
           + money_text(o.get("money")) + f", and {bag}"
           + daycare_text(o.get("daycare"))
@@ -157,8 +162,21 @@ if "region" in o:                    # last_state.json is already flattened
           + respawn_text(o.get("respawn")))
     raise SystemExit
 m = (o.get("map") or {}).get("id")
-if not m:                      # stale/missing obs: say so rather than
-    print("an unknown location")   # inventing "standing in None"
+if not m:
+    # no map AND no party: a stale or title-screen obs, not this world
+    if not (o.get("party") or []):
+        print("an unknown location")   # never "standing in None"
+        raise SystemExit
+    # no map but a party: a box was up when the snapshot was taken; the
+    # party, badges and bag are this run's and the done rung may read them
+    party = party_text(o.get("party") or [])
+    badges = ", ".join(o.get("badges") or []) or "no badges"
+    print("standing in a spot not yet on record (a box was up when the "
+          f"snapshot was taken) with {party}, {badges}"
+          + money_text(o.get("money")) + f", and {bag_text(o.get('bag'))}"
+          + daycare_text(o.get("daycare"))
+          + hof_text(o.get("hall_of_fame"))
+          + respawn_text(o.get("respawn")))
     raise SystemExit
 party = party_text(o.get("party") or [])
 badges = ", ".join(o.get("badges") or []) or "no badges"
