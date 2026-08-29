@@ -698,15 +698,34 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         elif not w.get("reachable"):
             c.status = "unreachable"
             # the nearest person is context, never the cause
+            # WHAT STANDS NEAREST IT ON YOUR SIDE, and whether it has been
+            # pressed. This said "nearest person MTMOONB2F_DOME_FOSSIL"
+            # about the fossil standing in the corridor to Mt Moon's exit
+            # ladder — not a person, and the one thing on the floor that
+            # had never been pressed (2026-08-29, user: "it didnt try to
+            # pick up the fossil"). Say the kind, the distance and the
+            # press count; what is beside the way is not claimed to be the
+            # cause, the same rule as the walk refusal's fence line.
             folk = [(abs((o.get("x") or 0) - (w.get("x") or 0))
                      + abs((o.get("y") or 0) - (w.get("y") or 0)),
-                     o.get("name"))
+                     o.get("name"), str(o.get("kind") or "thing"),
+                     o.get("name") in tried)
                     for o in (m.get("objects") or [])
                     if o.get("reachable") and o.get("name")
                     and o.get("x") is not None]
-            near = min(folk, default=(None, None))
-            if near[0] is not None and near[0] <= 8:
-                c.note = c.note or f"nearest person {near[1]}"
+            # an unpressed thing outranks a pressed one at the same distance
+            near = min(folk, key=lambda f: (f[0], f[3]), default=None)
+            if near and near[0] <= 8:
+                _kind = ("a person" if near[2] in ("npc", "trainer")
+                         and "FOSSIL" not in str(near[1]).upper()
+                         else f"a {near[2]}")
+                c.note = _join(c.note,
+                               f"{near[1]} ({_kind}, "
+                               f"{'pressed before' if near[3] else 'NEVER pressed'}) "
+                               f"stands {near[0]} cell(s) from it on your side — "
+                               f"what is beside the way, not a claim it is what "
+                               f"stops you; a thing standing in a corridor "
+                               f"sometimes is, and pressing it is how you find out")
             # WHICH PART OF THIS FLOOR REACHES IT, IF ANY. The shim floods
             # the seen ground from every other part the run has stood in
             # (the head's seen_unreached rule, applied to this door). Bare
