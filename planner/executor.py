@@ -2057,6 +2057,20 @@ class Executor:
                          # reachable tile adjacent to target".
                          and "no reachable tile" not in
                          ((outs.get(c.key) or {}).get("last") or "")
+                         # A QUESTION IS NOT ANSWERED BY ASKING IT AGAIN.
+                         # An interact with no answer holds the box open on
+                         # purpose (the Dome Fossil rule) and the touch is
+                         # then retracted, so the thing stays "never
+                         # pressed" — and explore, which presses without an
+                         # answer, offered PEWTERCITY_SUPER_NERD1 first
+                         # eighteen times running while he asked "Did you
+                         # check out the MUSEUM?" (user, 2026-08-29:
+                         # "explore sends it back to the already explored
+                         # pewter to talk to the same guy over and over").
+                         # What is missing is a yes or a no, and that is
+                         # the model's to give.
+                         and ASKING not in
+                         ((outs.get(c.key) or {}).get("last") or "")
                          # A SWITCH IS A CHOICE, NOT AN UNTRIED THING. It
                          # moves the walls of the whole building; explore
                          # pressing it "first" undid the setting the model
@@ -2340,6 +2354,8 @@ class Executor:
                           and c.reachable
                           and c.kind not in ("door", "seam", "op")
                           and "no reachable tile" not in
+                          ((outs2.get(c.key) or {}).get("last") or "")
+                          and ASKING not in
                           ((outs2.get(c.key) or {}).get("last") or "")),
                          key=_thing_key)
         exits2 = [c for c in cands2

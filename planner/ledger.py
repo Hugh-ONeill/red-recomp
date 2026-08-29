@@ -1113,6 +1113,20 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
     return out
 
 
+def _asking(c) -> bool:
+    """Is this thing waiting on a yes or no it has already asked for?
+
+    An interact with no answer holds the box open (the Dome Fossil rule)
+    and the touch is retracted, so the thing reads "never pressed" — and
+    explore, which presses without an answer, offered the same Pewter
+    Super Nerd first eighteen times while he asked "Did you check out the
+    MUSEUM?" (2026-08-29). Pressing again only re-asks; what is missing is
+    the answer, and that is the model's to give.
+    """
+    return "is ASKING something and the box is STILL OPEN" in str(
+        getattr(c, "note", "") or "")
+
+
 def _refused(c) -> bool:
     """Has this candidate turned the run back? The status cannot say: a
     crossing that failed never completed, so it stays "untried"."""
@@ -1219,6 +1233,7 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
     things = sorted((c for c in cands
                      if c.status in ("untouched", "unspoken", "cuttable")
                      and c.reachable and not _refused(c)
+                     and not _asking(c)
                      and c.kind not in ("door", "seam", "op")),
                     key=lambda c: (0 if c.kind in _goal_kinds_of(target) else 1,
                                    _crowd.get(_stem(c.key), 1),
@@ -2422,6 +2437,11 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                             "from here")
         if c.status == "unreachable" and c.kind not in ("door", "seam"):
             words += _reached_before(obs, ex, c.key)
+        if _asking(c):
+            words += (" — and it is WAITING ON YOUR ANSWER: it asked, the "
+                      "box is still open, and pressing it again only asks "
+                      "the same question. Answer it with {\"op\":\"menu\","
+                      "\"index\":1} for YES or 2 for NO")
         if getattr(c, "spoke", ""):
             words += (" — trying it said: \"" + str(c.spoke)[:120] + "\"")
         # ONLY A TOGGLE IS "PRESSABLE AGAIN". The line was written for the
