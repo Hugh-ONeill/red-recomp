@@ -716,8 +716,9 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             # an unpressed thing outranks a pressed one at the same distance
             near = min(folk, key=lambda f: (f[0], f[3]), default=None)
             if near and near[0] <= 8:
-                _kind = ("a person" if near[2] in ("npc", "trainer")
-                         and "FOSSIL" not in str(near[1]).upper()
+                _kind = ("a fossil" if "FOSSIL" in str(near[1]).upper()
+                         else "a person" if near[2] in ("npc", "trainer")
+                         else "an item" if near[2] == "item"
                          else f"a {near[2]}")
                 c.note = _join(c.note,
                                f"{near[1]} ({_kind}, "

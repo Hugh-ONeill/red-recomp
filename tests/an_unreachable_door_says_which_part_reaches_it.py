@@ -28,6 +28,12 @@ ck("a part that reaches it is named", "the ground you stood on in MT_MOON_B2F|20
 ck("none reaching it is said, with what that means",
    "nor does any of the 3 other part(s) of this floor you have stood in" in cands["9,9"].note
    and "unseen ground on this floor, or another floor" in cands["9,9"].note)
+o2 = C.obs(ex, ["5,7"], objects=[{"name": "MTMOONB2F_DOME_FOSSIL", "kind": "npc", "x": 6, "y": 8, "reachable": True}])
+o2["map"]["warps"][0]["reachable"] = False
+c2 = {c.key: c for c in L.build(ex, o2, target="map:CERULEAN_CITY")}["5,7"]
+ck("the nearest thing on your side is named with its kind, distance and press count",
+   "MTMOONB2F_DOME_FOSSIL (a fossil, NEVER pressed) stands 2 cell(s) from it" in c2.note
+   and "not a claim it is what stops you" in c2.note)
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)
