@@ -299,10 +299,22 @@ while :; do
     # grep -c prints "0" AND exits 1 on no match, so "|| echo 0" printed
     # a second 0 and the test died on "0\n0: integer expected" every leg
     _asked=$(grep -Fxc "$leg" run/outline_wording_asked 2>/dev/null) || true
-    if [ "${_asked:-0}" -ge 2 ]; then
+    # ...AND THE LAST WORD IS NEVER BUDGETED. The rolling reword budget
+    # below already says "the budget withholds the REWRITE, not the
+    # QUESTION: stands, done under another name and VOID are still the
+    # model's to answer" — and then this outer cap shut the question
+    # itself, VOID included. Leg 13 ("Clear Route 4 of trainers") stopped
+    # the chain twice with its one trainer behind a ONE-WAY LEDGE and the
+    # way round unwalked: exactly what VOID is for, never asked, because
+    # of a count (2026-08-29). Stopping the run to save one model call is
+    # the worst trade on the board, so the rung is asked once more when
+    # the alternative is stopping.
+    if [ "${_asked:-0}" -ge 2 ] && [ "${2:-}" != "last-word" ]; then
       echo "[wording] not asked: this leg has been asked twice already"
       return 1
     fi
+    [ "${_asked:-0}" -ge 2 ] && echo "[wording] asked once more, because" \
+      "the alternative is stopping the chain"
     # A ROLLING BUDGET, NOT A LIFETIME ONE. Three rewordings per CHAIN was
     # written when a reworded objective was a cheap mistake to be rationed.
     # On a 51-leg outline it means the ladder goes permanently blind about
@@ -799,6 +811,10 @@ while :; do
       echo "$i" > "$PROGRESS"
       continue
     fi
+    # THE LAST WORD BEFORE STOPPING. Everything else has been spent; a
+    # leg that cannot be done from here is what VOID exists to answer,
+    # and the rung is the only thing that can say so.
+    if wording_rung "" last-word; then continue; fi
     echo "=== chain stopped at leg $i/${#LEGS[@]}: $leg ===" >&2
     exit 1
   fi
