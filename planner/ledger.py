@@ -139,6 +139,8 @@ class Candidate:
                 return f"door ({self.key}){_tw}"
             return f"door ({self.key}){_tw}"
         if self.kind == "frontier":
+            if getattr(self, "look", "") == "arrow":
+                return f"arrow tile ({self.key}) slides onto unseen ground"
             return f"seen ground ends at ({self.key})"
         if self.kind == "op":
             return self.key
@@ -963,9 +965,19 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         c = Candidate(key=f"{f['x']},{f['y']}", kind="frontier",
                       x=f["x"], y=f["y"], status="unlooked")
         c.n = int(f.get("d") or 0)
-        c.note = (f"{c.n} step(s) from you over seen ground; "
-                  "{\"op\":\"walk_to\",\"x\":%d,\"y\":%d} stands there"
-                  % (f["x"], f["y"]))
+        if f.get("slide"):
+            # an ARROW whose slide ends on ground never on screen: you
+            # cannot stand on it, you step on and are carried (leftover (c))
+            c.look = "arrow"
+            c.note = (f"{c.n} step(s) from you; an ARROW tile — stepping "
+                      "onto it carries you onto ground that has never been "
+                      "on screen: {\"op\":\"walk_to\",\"x\":%d,\"y\":%d} "
+                      "steps on and reports where the slide put you"
+                      % (f["x"], f["y"]))
+        else:
+            c.note = (f"{c.n} step(s) from you over seen ground; "
+                      "{\"op\":\"walk_to\",\"x\":%d,\"y\":%d} stands there"
+                      % (f["x"], f["y"]))
         out.append(c)
     # ...and the spots only a swim reaches (the shim lists these only
     # while a party Pokemon knows SURF and you are on foot)
@@ -1072,6 +1084,12 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
     if _fr0:
         _f = _fr0[0]
         _n0 = int(((_m0.get("seen") or {}).get("frontier_n")) or len(_fr0))
+        if _f.get("slide"):
+            return (f"step onto the ARROW tile at ({_f.get('x')},"
+                    f"{_f.get('y')}) — it carries you onto ground that has "
+                    f"never been on screen — and see what comes into view; "
+                    f"{_n0} such spot(s) on this floor; nothing past them "
+                    f"is known yet")
         return (f"walk to the nearest edge of the ground you have seen, "
                 f"({_f.get('x')},{_f.get('y')}), and keep going until "
                 f"something new comes into view — {_n0} such spot(s) on "

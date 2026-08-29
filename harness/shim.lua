@@ -796,7 +796,7 @@ local function seen_filter(G, o)
   local fl = {}
   for i, f in ipairs(front) do
     if i > 24 then break end
-    fl[i] = { x = f.x, y = f.y, d = f.d }
+    fl[i] = { x = f.x, y = f.y, d = f.d, slide = f.slide or nil }
   end
   m.seen = { n = mask.n or 0, frontier_n = #front }
   m.frontier = fl
@@ -2886,6 +2886,27 @@ local function is_warp_cell(md, x, y)
   return false
 end
 
+-- LET A SLIDE FINISH. An arrow tile carries the party several cells and
+-- p.moving drops BETWEEN them, so "wait until not moving" returned with
+-- the party one cell along a four-cell slide — and walk_to reported
+-- "carried to (11,13)" about a ride that ended at (14,13) (probe,
+-- 2026-08-29). Still is: the cell has not changed for a dozen frames and
+-- nothing says we are mid-step.
+local function settle_slide(G)
+  local p = G.overworld and G.overworld.player
+  if not p then return end
+  local lx, ly, still = p.cellX, p.cellY, 0
+  for _ = 1, 300 do
+    if p.cellX == lx and p.cellY == ly and not p.moving then
+      still = still + 1
+      if still >= 12 then return end
+    else
+      lx, ly, still = p.cellX, p.cellY, 0
+    end
+    coroutine.yield()
+  end
+end
+
 local function walk(G, dir, steps)
   local ow = G.overworld
   for step = 1, steps do
@@ -3448,6 +3469,7 @@ seen_reach = function(G, sx, sy, surf)
   local dist = { [start] = 0 }
   local q, head = { { x = p.cellX, y = p.cellY } }, 1
   local front = {}
+  local slid = {}
   while q[head] do
     local cur = q[head]; head = head + 1
     local ck = key(cur.x, cur.y)
@@ -3463,8 +3485,36 @@ seen_reach = function(G, sx, sy, surf)
                                    { __index = p })
         if Collision.canMove(ow.map, STATIC, probe, dn)
            and not hidden_open(nx, ny, nk) then
-          dist[nk] = dist[ck] + 1
-          q[#q + 1] = { x = nx, y = ny }
+          -- AN ARROW TILE IS NOT SOMEWHERE YOU STAND (footprint leftover
+          -- (c)): you arrive and are slid on. warp_reach and both walkers
+          -- follow the slide; this fill expanded FROM the arrow as if it
+          -- were floor and never followed it, so a spinner floor (Rocket
+          -- Hideout B3F is sixteen arrows) read reachable where no walk
+          -- stands and unreachable where the slide actually puts you. The
+          -- arrow counts as reached ground (a door on it stays reachable)
+          -- and is not expanded from; the LANDING is. A landing that has
+          -- never been on screen is a way INTO unseen ground, and the
+          -- arrow is then a frontier spot of its own kind (slide=true):
+          -- stepping onto it is how that ground gets looked at.
+          local lx2, ly2 = spinner_landing(G, ow.map, nx, ny)
+          if lx2 then
+            dist[nk] = dist[ck] + 1
+            local lk2 = key(lx2, ly2)
+            if mask[lk2] then
+              if not dist[lk2] and not hidden_open(lx2, ly2, lk2) then
+                dist[lk2] = dist[ck] + 2
+                q[#q + 1] = { x = lx2, y = ly2 }
+              end
+            elseif lx2 >= 0 and ly2 >= 0 and lx2 < W and ly2 < H
+                   and not slid[nk] then
+              slid[nk] = true
+              front[#front + 1] = { x = nx, y = ny, d = dist[ck] + 1,
+                                    slide = true }
+            end
+          else
+            dist[nk] = dist[ck] + 1
+            q[#q + 1] = { x = nx, y = ny }
+          end
         else
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dn)
           if lx then
@@ -3583,6 +3633,9 @@ local function bfs_dir_pass(G, tx, ty, wblock, gate)
           -- its step budget doing it. Rocket Hideout B3F is 16 such tiles.
           local sx, sy = spinner_landing(G, ow.map, nx, ny)
           if sx then
+            -- the ARROW itself as the destination: stepping onto it is
+            -- the act (sweep rides one to look at what its slide reaches)
+            if nx == tx and ny == ty then return first end
             if sx == tx and sy == ty then return first end
             if not seen[key(sx, sy)] and not wblock[key(sx, sy)]
                and not gated(sx, sy) then
@@ -4434,7 +4487,12 @@ function OPS.walk_to(G, c)
     G.input.state["up"] = false
     return p.cellY < y0
   end
+  -- AIMED AT AN ARROW TILE: you cannot stand on it, you step on and are
+  -- carried. The step onto it is the whole of what was asked; say where
+  -- the slide put you instead of re-pathing back onto it for ever.
+  local _arrow = spinner_landing(G, ow.map, c.x, c.y) ~= nil
   for _ = 1, (c.max_steps or 200) do
+    settle_slide(G)                   -- let a slide or hop finish first
     if G.stack:top() ~= ow then
       return true, "interrupted (battle or script)"
     end
@@ -4502,6 +4560,7 @@ function OPS.walk_to(G, c)
       end
     end
     local moved
+    local _x0, _y0 = p.cellX, p.cellY
     for attempt = 1, 3 do
       moved = _step(dir)
       if moved then break end
@@ -4510,6 +4569,12 @@ function OPS.walk_to(G, c)
     if not moved then
       return false, ("blocked at (%d,%d) heading %s"):format(
         p.cellX, p.cellY, dir)
+    end
+    if _arrow and DIRS[dir]
+       and _x0 + DIRS[dir][1] == c.x and _y0 + DIRS[dir][2] == c.y then
+      settle_slide(G)
+      return true, ("stepped onto the arrow tile at (%d,%d) and were "
+        .. "carried to (%d,%d)"):format(c.x, c.y, p.cellX, p.cellY)
     end
   end
   return false, "step budget exhausted"
@@ -9691,6 +9756,9 @@ function OPS.sweep(G, c)
       end
     end
     for _ = 1, budget - steps do
+      -- an arrow tile keeps moving the party after the step returns; let
+      -- the slide finish before reading where we are or stepping again
+      settle_slide(G)
       if p.cellX == target.x and p.cellY == target.y then break end
       if G.stack:top() ~= ow or (ow.map and ow.map.id) ~= map0 then break end
       local dir = bfs_dir_pass(G, target.x, target.y, avoid,
@@ -9701,6 +9769,7 @@ function OPS.sweep(G, c)
       steps = steps + 1
       if p.cellX == x0 and p.cellY == y0 then break end     -- bumped
     end
+    settle_slide(G)                   -- the last step may have been a slide
     hops = hops + 1
     if hops > 200 then why = "hop budget spent"; break end
   end
