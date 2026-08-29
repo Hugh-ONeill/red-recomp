@@ -95,6 +95,49 @@ OVERWORLD = [
     Field("flags", "pred_holds flag"),
     Field("pokedex.owned", "pred_holds dex_owned (the Route 2 aide)"),
     Field("pokedex.seen", "pokedex line in the state text"),
+    # ---- the footprint (2026-08-24 landing; leftover (f) closed 08-29) ----
+    Field("map.seen.n", "ledger coverage; grind's no-grass-on-seen-ground claim"),
+    Field("map.seen.frontier_n", "ledger head; plan_explore; _explore_step"),
+    Field("map.frontier", "ledger frontier rows + head; explore's sweep-first;"
+                          " plan_explore item 1"),
+    Field("map.frontier[].x", "frontier candidate key; the walk target"),
+    Field("map.frontier[].y", "frontier candidate key; the walk target"),
+    Field("map.frontier[].d", "frontier rank (nearest first); head distances"),
+    Field("map.frontier[].slide", "an arrow whose slide lands on unseen ground"
+                                  " (ledger look=arrow; explore's words)",
+          required=False, note="only on such an arrow -- cannot be sampled here"),
+    Field("map.frontier_water", "explore rides to it; ledger water rows/head",
+          required=False, note="only with SURF known, on foot, beside water"),
+    Field("map.seen.frontier_water_n", "ledger head; _explore_step log",
+          required=False, note="as frontier_water"),
+    Field("map.sides_unseen", "ledger: which sides have never been on screen",
+          required=False, note="outdoor maps only, and only while a side is unseen"),
+    Field("map.seen_unreached", "ledger head: seen ground no walk from here reaches",
+          required=False, note="only when such ground exists"),
+    Field("map.seen_unreached.n", "ledger head", required=False),
+    Field("map.seen_unreached.near", "ledger head", required=False),
+    Field("map.seen_unreached.from", "ledger head (which stood-in part reaches it)",
+          required=False),
+    Field("map.connections_reach", "ledger: a seam no reached cell touches is"
+                                   " unreachable (build, seams)",
+          required=False, note="per side; absent indoors"),
+    Field("map.outdoor", "ledger sides_unseen; FLY listing note; state text"),
+    Field("map.dark", "sweep sightings nameless in the dark; ledger",
+          required=False, note="nil unless the map is dark"),
+    Field("map.width", "ledger corridor note (leftover (e): still published)",
+          required=False),
+    Field("map.holes", "ledger ONE-WAY DROP head; explore",
+          required=False, note="only on a floor with drops"),
+    Field("map.holes[].drop", "ledger folds the tiles of one drop", required=False),
+    Field("map.holes[].boulder", "ledger: a drop that is also a boulder hole",
+          required=False),
+    Field("map.holes[].reachable", "ledger head walk-to count", required=False),
+    Field("map.boulder_holes", "ledger boulder-hole head", required=False),
+    Field("hall_of_fame", "finished.py; _after_settle; state text hof line"),
+    Field("ending", "_ride_ending; ledger dark-screen head", required=False,
+          note="only during the Hall of Fame sequence"),
+    Field("ui.stack", "{screen} predicate matches anywhere on the stack",
+          required=False, note="only while a screen is up"),
 ]
 
 BATTLE = [
@@ -292,6 +335,12 @@ def find_battle(b, tries=10):
         if "grass" not in detail:
             continue                       # paced without luck -- grind again
         conns = ((b.obs() or {}).get("map") or {}).get("connections") or {}
+        # THE OBSERVATION'S CONNECTIONS ARE SEEN-FILTERED (footprint): on a
+        # fresh mask a town shows none, and this wander gave up in PALLET
+        # with Route 1's grass one screen north. This is tooling, not the
+        # model: try every side, blind (the cross below is blind too).
+        if not conns:
+            conns = {d: "?" for d in ("north", "south", "east", "west")}
         used = tried.setdefault(here, set())
         nxt = next((d for d in sorted(conns) if d not in used), None)
         if nxt is None:
