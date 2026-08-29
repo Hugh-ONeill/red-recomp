@@ -9701,18 +9701,20 @@ function OPS.throw_ball(G, c)
     if ui_is_choice(G) then                 -- "give a nickname?" — YES:
       ui_cursor_to(G, "index", 1)           -- the name is the model's to give
       U.tap(G, "a"); U.wait(6)
-    elseif t and t.pages then
-      -- "X was caught!", the dex page, the nickname question typing out:
-      -- TEXT, not the battle's end. Breaking here (as this did) left the
-      -- question box up for the next op's back-out to press B through —
-      -- which is how every catch was declined (2026-08-29, first catches
-      -- of the run: PIDGEY and RATTATA, no name asked).
-      U.tap(G, "a"); U.wait(4)
-    elseif not battle_frame(G) and not (t and (t.enemy or t.kind)) then
-      break                                 -- battle over (caught or done)
-    elseif t.phase == "menu" or t.phase == "moveSelect" then
+    elseif G.overworld and t == G.overworld then
+      break                                 -- battle over: back in the field
+    elseif t and (t.enemy or t.kind)
+       and (t.phase == "menu" or t.phase == "moveSelect") then
       break                                 -- miss: battle continues
     else
+      -- "X was caught!", the DexEntryMenu a new species opens, the
+      -- nickname question typing out: none of it is the battle's end.
+      -- Two earlier shapes of this loop broke at "no battle object on
+      -- top" and at "not a text box", each leaving the question up for
+      -- the next op's back-out to press B through — which is how PIDGEY,
+      -- RATTATA and PARAS went un-named (2026-08-29). Only the overworld
+      -- on top ends the ride; everything else is advanced with A until
+      -- the question (answered YES above) or the naming screen appears.
       U.tap(G, "a"); U.wait(4)
     end
   end
