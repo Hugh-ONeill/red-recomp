@@ -12169,6 +12169,39 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                  f"on {_land}, where you came from")
                 except Exception:
                     pass
+            # A THING TAKEN OUT OF A CORRIDOR OPENS IT, AND THE ROUND MUST
+            # SAY SO. The fossils stand in the neck of Mt Moon B2F; the run
+            # pressed one, answered "yes" and walked back upstairs IN THE
+            # SAME MACRO — written before the fossil was taken — so the
+            # ladder that had just become walkable was never on any page
+            # (user, 2026-08-29: "what could it have seen at the fossils
+            # that it picked up the fossil but didnt continue on to the
+            # unseen/unwalked ground"). The observation already carries
+            # every way's reachable flag: when one flips, say which, and
+            # let what to do about it stay the model's.
+            try:
+                _pm = ((pre_obs or {}).get("map") or {})
+                _nm = (obs or {}).get("map") or {}
+                if _pm.get("id") and _pm.get("id") == _nm.get("id"):
+                    _was = {f"{w.get('x')},{w.get('y')}"
+                            for w in (_pm.get("warps") or [])
+                            if w.get("x") is not None and not w.get("reachable")}
+                    _now = {f"{w.get('x')},{w.get('y')}"
+                            for w in (_nm.get("warps") or [])
+                            if w.get("x") is not None and w.get("reachable")}
+                    _opened = sorted(_was & _now)
+                    if _opened:
+                        note += (" — AND THAT OPENED A WAY: "
+                                 + ", ".join(f"({k})" for k in _opened[:3])
+                                 + (" can now be walked to from where you "
+                                    "stand; it could not before"
+                                    if len(_opened) == 1 else
+                                    " can now be walked to from where you "
+                                    "stand; they could not before"))
+                        self.log("way_opened", subgoal=sg.get("id"), op=op,
+                                 keys=",".join(_opened))
+            except Exception:
+                pass
             note += self._goods_delta(pre_obs, obs)
             if heard:
                 note += f' — it said: "{heard[:160]}"'
