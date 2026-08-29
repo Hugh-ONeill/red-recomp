@@ -2197,7 +2197,17 @@ class Executor:
             if _sweep_intent:
                 _pri = 0 if unseen else 1 if left else 2
             else:
-                _pri = (0 if left else 1 if unseen else 2) if _map_goal else 0
+                # UNSEEN GROUND IS WHERE UNSEEN EXITS LIVE. For a map goal
+                # an area with an untried exit outranked one with only
+                # unseen ground, distance deciding only within a tier — so
+                # from Route 4 the museum's one untried door at 3 legs beat
+                # Mt Moon's 63 unseen spots at 1 leg, and explore walked
+                # the party back to Pewter with the way through the
+                # mountain sitting in ground nobody had looked at
+                # (2026-08-29, user watching). Under the footprint an
+                # untried exit and unseen ground are one tier; distance
+                # decides between them; only a things-only area ranks below.
+                _pri = (0 if (left or unseen) else 1) if _map_goal else 0
             r = (_pri, len(path), -(len(left) + len(unpressed) + unseen), region)
             if best is None or r < best[0]:
                 best = (r, region, left, unpressed, path, unseen)

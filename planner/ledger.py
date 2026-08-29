@@ -1295,7 +1295,12 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         path = ex._route(here, region)
         if not path:
             continue
-        r = (len(path), -(len(left) + len(things) + unseen), region)
+        # THE WORDS FOLLOW THE DEED (executor _explore_step): for a map
+        # goal, an untried exit or unseen ground first, things-only areas
+        # after; distance decides within a tier.
+        _pri = ((0 if (left or unseen) else 1)
+                if str(target or "").startswith("map:") else 0)
+        r = (_pri, len(path), -(len(left) + len(things) + unseen), region)
         found.append((r, region, left, things, path, unseen))
     found.sort(key=lambda f: f[0])
     best = found[0] if found else None
