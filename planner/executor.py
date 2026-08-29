@@ -6684,7 +6684,8 @@ class Executor:
                 # and the journal says so.
                 if (self._where(o) != nxt and not _is_door_key(key)
                         and not _sf and not _surfed_retry
-                        and "cannot be walked to" in _det
+                        and ("cannot be walked to" in _det
+                             or "cannot be reached over the ground" in _det)
                         and self._knows_move(o or {}, "SURF")):
                     _surfed_retry = True
                     self.log("route_hop_surfed", subgoal=sg.get("id"),
@@ -9844,10 +9845,15 @@ coordinates. Read:
     use_warp on it goes BACKWARD. To go forward, pick a warp elsewhere on
     the map (the ledger says which are untried and where the walked ones
     go), or cross an edge.
-Ops: {"op":"walk_to","x":N,"y":N} (within-map; when a building splits the
+Ops: {"op":"walk_to","x":N,"y":N} (within-map, over ground that has BEEN
+ON SCREEN — you know only what you have seen, and no op searches ground
+you have never looked at for you; explore is how you look. When a building
+splits the
 map and you have already walked through it, you are taken round through the
 doors you actually used, and told that is what happened), {"op":"cross","dir":"north|
-south|east|west"} (to the adjacent map; if that seam cannot be reached from
+south|east|west"} (to the adjacent map, its gap found over ground you have
+seen — a side of this map nobody has looked at cannot be crossed, or even
+called absent, until you look; if that seam cannot be reached from
 where you stand but another part of this map you have walked HAS crossed it,
 you are taken there first through the doors you used, and told so. AN EDGE IS
 A ROW, NOT A POINT: cross walks to a gap on that edge and steps off, and WHICH
@@ -10622,7 +10628,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             != (obs.get("map") or {}).get("id")):
                         self.note_transition(_pre, step, obs, op_detail=_d0)
                     continue
-                if "cannot be walked to" in _d0 or "no walkable path" in _d0:
+                if ("cannot be walked to" in _d0
+                        or "no walkable path" in _d0
+                        or "cannot be reached over the ground" in _d0):
                     _here = self._where(_pre)
                     _mid = _here.split("|")[0]
                     _dir = step["dir"]
@@ -10916,7 +10924,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # sitting in the ledger.
                 _rr = (obs or {}).get("result") or {}
                 if (op == "cross" and not _rr.get("ok")
-                        and "cannot be walked to" in str(_rr.get("detail"))):
+                        and ("cannot be walked to" in str(_rr.get("detail"))
+                             or "cannot be reached over the ground"
+                             in str(_rr.get("detail")))):
                     _alt = self._cross_by_recall(obs, sg, step.get("dir"))
                     if _alt is None:
                         _alt = self._uncork_seam(obs, sg, step.get("dir"))
@@ -11509,8 +11519,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             self.searched.get(self._cur_target, {}).pop(reg, None)
                             self.searched.get("*", {}).pop(reg, None)
                             self._save_memory()
-                if ("couldn't reach the warp tile" in det
-                        or "no path" in det):
+                if (("couldn't reach the warp tile" in det
+                        or "no path" in det)
+                        and "NEVER BEEN ON SCREEN" not in det):
                     near = [o.get("name") for o in
                             ((obs.get("map") or {}).get("objects") or [])
                             if o.get("reachable")
@@ -14202,7 +14213,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # the seam is unwalkable FROM HERE; the ledger may know
                     # a part of this map it IS walkable from
                     if (op == "cross" and not r.get("ok")
-                            and "cannot be walked to" in str(r.get("detail"))):
+                            and ("cannot be walked to"
+                                 in str(r.get("detail"))
+                                 or "cannot be reached over the ground"
+                                 in str(r.get("detail")))):
                         _re_obs = self._cross_by_recall(obs, sg,
                                                         step.get("dir"))
                         if _re_obs is None:

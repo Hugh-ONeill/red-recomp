@@ -51,7 +51,7 @@ for site in ("this = real_water(G, map, cx, cy)",        # the sketch
              "if surf and (real_water(G, ow.map, cur.x, cur.y)",  # swim flood
              "if d2 and real_water(G, ow.map, x + d2[1], y + d2[2])",
              "if real_water(G, ow.map, a[1], a[2])",     # interact approach
-             "if not any_water and real_water(G, map, xx, yy)"):  # grind note
+             "and real_water(G, map, xx, yy) then"):  # grind note (seen-mask first)
     ck(f"gated: {site[:44]}", site in lua)
 
 ck("the floor-water counter skips an indoor tileset entirely",

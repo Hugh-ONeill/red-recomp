@@ -298,7 +298,7 @@ def find_battle(b, tries=10):
             print(f"[contract] {here}: every edge tried, giving up")
             return None
         used.add(nxt)
-        r = (b.send("cross", dir=nxt) or {}).get("result") or {}
+        r = (b.send("cross", dir=nxt, blind=True) or {}).get("result") or {}
         now = ((b.obs() or {}).get("map") or {}).get("id")
         print(f"[contract]   cross {nxt} -> {conns[nxt]}: "
               f"ok={r.get('ok')} {r.get('detail') or ''} (now {now})")

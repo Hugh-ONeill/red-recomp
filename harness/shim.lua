@@ -3518,11 +3518,50 @@ local function warp_block(G, tx, ty)
   return blocked
 end
 
-local function bfs_dir_pass(G, tx, ty, wblock)
+-- A WALK ONLY KNOWS GROUND THAT HAS BEEN ON SCREEN. The ledger, sweep
+-- and go already hold that line; the walking ops did not -- walk_to,
+-- use_warp and cross would thread a maze the run had never looked at, so
+-- the model could learn a map's corridors by aiming an op at them instead
+-- of by looking (the obs called a door unreachable-over-seen-ground and
+-- use_warp opened it anyway). The gate: a routing step may enter a cell
+-- only if it has been on screen, and (the same freeze seen_reach applies)
+-- an off-screen cell that was a WALL at last view is not routable just
+-- because it is open now. Live collision still applies on top -- a live
+-- wall stops the walk with its own message. RED_BLIND_ROUTING=1, or
+-- blind=true on the op, keeps the old full-map search (probes and tooling
+-- only; the model's vocabulary does not carry it).
+local BLIND_ROUTING = (os.getenv("RED_BLIND_ROUTING") == "1")
+local function route_gate(G)
+  local ow = G.overworld
+  local p = ow and ow.player
+  if not (ow and ow.map and ow.map.id and p and p.cellX) then return nil end
+  local mask = SEEN[ow.map.id] or {}
+  local WT = WALK[ow.map.id] or {}
+  local map = ow.map
+  local rpx, rpy = p.cellX, p.cellY
+  -- says WHY a cell may not be routed into ("unseen" | "frozen"), or nil
+  return function(nx, ny, nk)
+    if not mask[nk] then return "unseen" end
+    if seen_wall_since_view(map, WT, rpx, rpy, nx, ny, nk,
+                            VIEW_L, VIEW_R, VIEW_U, VIEW_D) then
+      return "frozen"
+    end
+    return nil
+  end
+end
+
+local function bfs_dir_pass(G, tx, ty, wblock, gate)
   local Collision = require("src.world.Collision")
   local ow = G.overworld
   local p = ow.player
   local key = function(x, y) return x .. "," .. y end
+  local gate_unseen = 0
+  local function gated(x, y)
+    if not gate then return false end
+    local g = gate(x, y, key(x, y))
+    if g == "unseen" then gate_unseen = gate_unseen + 1 end
+    return g ~= nil
+  end
   local seen = { [key(p.cellX, p.cellY)] = true }
   local queue = { { x = p.cellX, y = p.cellY, first = nil } }
   local head = 1
@@ -3533,7 +3572,8 @@ local function bfs_dir_pass(G, tx, ty, wblock)
       if not seen[key(nx, ny)] and not wblock[key(nx, ny)] then
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
                                    { __index = p })
-        if Collision.canMove(ow.map, ow.entities, probe, dir) then
+        if Collision.canMove(ow.map, ow.entities, probe, dir)
+           and not gated(nx, ny) then
           seen[key(nx, ny)] = true
           local first = cur.first or dir
           -- THE WALKER'S OWN PATHFINDER HAS TO KNOW THIS TOO. Stepping
@@ -3544,7 +3584,8 @@ local function bfs_dir_pass(G, tx, ty, wblock)
           local sx, sy = spinner_landing(G, ow.map, nx, ny)
           if sx then
             if sx == tx and sy == ty then return first end
-            if not seen[key(sx, sy)] and not wblock[key(sx, sy)] then
+            if not seen[key(sx, sy)] and not wblock[key(sx, sy)]
+               and not gated(sx, sy) then
               seen[key(sx, sy)] = true
               queue[#queue + 1] = { x = sx, y = sy, first = first }
             end
@@ -3554,7 +3595,8 @@ local function bfs_dir_pass(G, tx, ty, wblock)
           end
         else
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dir)
-          if lx and not seen[key(lx, ly)] and not wblock[key(lx, ly)] then
+          if lx and not seen[key(lx, ly)] and not wblock[key(lx, ly)]
+             and not gated(lx, ly) then
             seen[key(lx, ly)] = true
             local first = cur.first or dir
             if lx == tx and ly == ty then return first end
@@ -3580,9 +3622,10 @@ local function bfs_dir_pass(G, tx, ty, wblock)
       if d < best then best, bx, by = d, cx, cy end
     end
   end
-  local said = ("no path — the ground you can walk from here is %d cell(s) "
+  local said = ("no path — the ground you %scan walk from here is %d cell(s) "
     .. "and the closest it comes to %d,%d is %s,%s"):format(
-      nseen, tx, ty, tostring(bx), tostring(by))
+      gate and "have SEEN and " or "", nseen, tx, ty,
+      tostring(bx), tostring(by))
   -- YOU ARE ALREADY AS CLOSE AS ANYONE GETS. When the nearest walkable
   -- cell is RIGHT BESIDE the target, the walk did not fail to approach —
   -- the target itself is a thing you cannot stand on, and beside it is
@@ -3642,12 +3685,19 @@ local function bfs_dir_pass(G, tx, ty, wblock)
       .. " — that is what is beside the boundary, not a claim that any of "
       .. "it is what stops you; ground can simply not join up"
   end
+  if gate and gate_unseen > 0 then
+    said = said .. ". THIS SEARCH RAN OVER GROUND THAT HAS BEEN ON SCREEN "
+      .. "ONLY: it stopped where your footprint ends, not at a proven "
+      .. "wall — ground you have never looked at may join up. explore "
+      .. "walks toward it"
+  end
   return nil, said
 end
 
-local function bfs_dir(G, tx, ty)
+local function bfs_dir(G, tx, ty, blind)
   local p = G.overworld.player
   if p.cellX == tx and p.cellY == ty then return nil, "arrived" end
+  local gate = (not (blind or BLIND_ROUTING)) and route_gate(G) or nil
   local wblock = warp_block(G, tx, ty)
   -- first around every learned script tile (bar the destination itself);
   -- only if that leaves no way at all, straight through
@@ -3659,10 +3709,10 @@ local function bfs_dir(G, tx, ty)
     if k ~= (tx .. "," .. ty) then soft[k] = true; any = true end
   end
   if any then
-    local dir = bfs_dir_pass(G, tx, ty, soft)
+    local dir = bfs_dir_pass(G, tx, ty, soft, gate)
     if dir then return dir end
   end
-  return bfs_dir_pass(G, tx, ty, wblock)
+  return bfs_dir_pass(G, tx, ty, wblock, gate)
 end
 
 -- Nearest reachable tile on a given map edge (the walkable gap in a fence is
@@ -3772,7 +3822,7 @@ local function doorway_labels(ws)
   return out
 end
 
-local function bfs_to_edge(G, dir, skip, surf)
+local function bfs_to_edge(G, dir, skip, surf, blind)
   local Collision = require("src.world.Collision")
   local ow = G.overworld
   local p = ow.player
@@ -3800,6 +3850,14 @@ local function bfs_to_edge(G, dir, skip, surf)
   end
   local key = function(x, y) return x .. "," .. y end
   local wblock = warp_block(G, -1, -1)   -- edge walks never end on a warp
+  local gate = (not (blind or BLIND_ROUTING)) and route_gate(G) or nil
+  local gate_unseen = 0
+  local function gated(x, y)
+    if not gate then return false end
+    local g = gate(x, y, key(x, y))
+    if g == "unseen" then gate_unseen = gate_unseen + 1 end
+    return g ~= nil
+  end
   local seen = { [key(p.cellX, p.cellY)] = true }
   local queue = { { x = p.cellX, y = p.cellY } }
   local head = 1
@@ -3893,7 +3951,8 @@ local function bfs_to_edge(G, dir, skip, surf)
           { __index = p })
         local dname = (d[1] == 0 and (d[2] < 0 and "up" or "down"))
                       or (d[1] < 0 and "left" or "right")
-        if Collision.canMove(ow.map, ow.entities, probe, dname) then
+        if Collision.canMove(ow.map, ow.entities, probe, dname)
+           and not gated(nx, ny) then
           seen[key(nx, ny)] = true
           local sx, sy = spinner_landing(G, ow.map, nx, ny)
           if sx then
@@ -3904,7 +3963,7 @@ local function bfs_to_edge(G, dir, skip, surf)
             -- a spinner floor (Rocket Hideout B3F is sixteen of them,
             -- Viridian Gym more) was handed to cross as a place to walk to,
             -- and the walk ended somewhere else entirely.
-            if not seen[key(sx, sy)] then
+            if not seen[key(sx, sy)] and not gated(sx, sy) then
               seen[key(sx, sy)] = true
               nspin = nspin + 1
               note(sx, sy)
@@ -3928,7 +3987,8 @@ local function bfs_to_edge(G, dir, skip, surf)
           end
         else
           local lx, ly = ledge_landing(G, ow.map, cur.x, cur.y, dname)
-          if lx and not seen[key(lx, ly)] and not wblock[key(lx, ly)] then
+          if lx and not seen[key(lx, ly)] and not wblock[key(lx, ly)]
+             and not gated(lx, ly) then
             seen[key(lx, ly)] = true
             nledge = nledge + 1
             note(lx, ly)
@@ -4126,7 +4186,12 @@ local function bfs_to_edge(G, dir, skip, surf)
              .. "ground you can reach and that edge — a ledge is a ONE-WAY "
              .. "drop: it can be hopped DOWN and never climbed, so this "
              .. "direction is not a way back")
-        or ""), bestx, besty, seen, nseen
+        or "")
+    .. ((gate and gate_unseen > 0)
+        and (". THIS SEARCH RAN OVER GROUND THAT HAS BEEN ON SCREEN ONLY —"
+             .. " it stopped where your footprint ends, not at a proven "
+             .. "wall; ground you have never looked at may hold the way")
+        or ""), bestx, besty, seen, nseen, gate_unseen
 end
 
 local OPS = {}
@@ -4324,6 +4389,21 @@ function OPS.walk_to(G, c)
   local startMap = ow.map and ow.map.id
   local p = ow.player
   local _sf0 = safari_running(G)
+  local blind = (c.blind and true) or BLIND_ROUTING
+  -- YOU ONLY KNOW GROUND THAT HAS BEEN ON SCREEN, and a walk is made
+  -- over known ground. The ledger, sweep and go already hold this line;
+  -- aiming a walk at a cell nobody has looked at was the one way left to
+  -- make the harness search unseen ground for you.
+  if not blind and c.x and c.y then
+    local _m0 = SEEN[startMap] or {}
+    if not _m0[c.x .. "," .. c.y] then
+      return false, ("(%s,%s) has NEVER BEEN ON SCREEN — you only know "
+        .. "ground that has been on screen, and a walk is made over "
+        .. "known ground. explore walks toward ground you have not "
+        .. "looked at and says what comes into view"):format(
+          tostring(c.x), tostring(c.y))
+    end
+  end
   -- CLIMBING A SLOPE: HOLD UP WHERE UP IS OPEN, STEP ROUND WHERE IT IS NOT.
   -- On a slope map the game moves you one cell downhill on every poll with
   -- no direction held, so releasing the d-pad between cells (which walk_to
@@ -4363,7 +4443,7 @@ function OPS.walk_to(G, c)
         .. safari_ended_note(G, _sf0)
     end
     if p.cellX == c.x and p.cellY == c.y then return true end
-    local dir, why = bfs_dir(G, c.x, c.y)
+    local dir, why = bfs_dir(G, c.x, c.y, blind)
     if not dir then
       -- OPT IN TO SWIMMING. `surf=true` says: if the way on is water, get
       -- on it. The harness does the mechanics (find the water tile beside
@@ -4383,7 +4463,9 @@ function OPS.walk_to(G, c)
           return false, "no party Pokemon knows SURF, so water cannot be "
             .. "crossed (" .. tostring(why) .. ")"
         end
-        local reach = warp_reach(G) or {}
+        local reach = blind and (warp_reach(G) or {})
+                      or (seen_reach(G) or {})
+        local _wm = SEEN[startMap] or {}
         local bx, by, bland, bd
         for k in pairs(reach) do
           local sx, sy = k:match("^(-?%d+),(-?%d+)$")
@@ -4391,6 +4473,7 @@ function OPS.walk_to(G, c)
           for _, d in pairs(DIRS) do
             local wx, wy = sx + d[1], sy + d[2]
             if ow.map:inBounds(wx, wy)
+               and (blind or _wm[wx .. "," .. wy])
                and real_water(G, ow.map, wx, wy) then
               local dd = math.abs(wx - c.x) + math.abs(wy - c.y)
               if not bd or dd < bd then
@@ -4403,12 +4486,13 @@ function OPS.walk_to(G, c)
           return false, "nothing here is water to surf on ("
             .. tostring(why) .. ")"
         end
-        OPS.walk_to(G, { x = bland[1], y = bland[2], max_steps = 200 })
+        OPS.walk_to(G, { x = bland[1], y = bland[2], max_steps = 200,
+                         blind = c.blind })
         local ok2, why2 = OPS.field_move(G, { move = "SURF", x = bx, y = by })
         if not ok2 then
           return false, "could not get onto the water: " .. tostring(why2)
         end
-        dir = bfs_dir(G, c.x, c.y)
+        dir = bfs_dir(G, c.x, c.y, blind)
         if not dir then
           return false, "even on the water there is no path to (" .. c.x
             .. "," .. c.y .. ")"
@@ -4509,7 +4593,7 @@ function OPS.use_warp(G, c)
       local nx, ny = x + d[1], y + d[2]
       if not warps[nx .. "," .. ny]
          and Collision2.canMove(ow.map, ow.entities, p, dn) then
-        OPS.walk_to(G, { x = nx, y = ny, max_steps = 4 })
+        OPS.walk_to(G, { x = nx, y = ny, max_steps = 4, blind = true })
         return
       end
     end
@@ -4539,7 +4623,8 @@ function OPS.use_warp(G, c)
     for pass = 1, 3 do
       if p.cellX ~= x or p.cellY ~= y then
         local _wok, _wwhy = OPS.walk_to(
-          G, { x = x, y = y, max_steps = c.max_steps or 400 })
+          G, { x = x, y = y, max_steps = c.max_steps or 400,
+               blind = c.blind })
         walk_why = _wwhy or walk_why
         local _ok, _why = crossed()
         if _ok then return _ok, _why end
@@ -4592,7 +4677,8 @@ function OPS.use_warp(G, c)
       -- right-press that actually exits the bow was being made two tiles
       -- adrift with the frame budget already spent walking
       if p.cellX ~= x or p.cellY ~= y then
-        OPS.walk_to(G, { x = x, y = y, max_steps = 12 })
+        OPS.walk_to(G, { x = x, y = y, max_steps = 12,
+                         blind = c.blind })
         if (ow.map and ow.map.id) ~= startMap
            and (p.cellX ~= x or p.cellY ~= y) then
           break
@@ -4689,10 +4775,14 @@ function OPS.use_warp(G, c)
   -- gate out loud, but only to someone who walks up to him, and the run
   -- could not even learn he existed from this message.
   local blockers = {}
+  local _bm = ((c.blind and true) or BLIND_ROUTING) and nil
+              or (SEEN[startMap] or {})
   for _, npc in ipairs(ow.npcs or {}) do
     for _, t in ipairs(tiles) do
       if math.abs((npc.cellX or -99) - t.x)
-         + math.abs((npc.cellY or -99) - t.y) <= 2 then
+         + math.abs((npc.cellY or -99) - t.y) <= 2
+         and (not _bm
+              or _bm[(npc.cellX or -99) .. "," .. (npc.cellY or -99)]) then
         local nm = (npc.def or {}).name
         if nm and not blockers[nm] then
           -- SAY WHICH KIND OF PERSON, same as the seam report. A posted
@@ -4799,6 +4889,38 @@ function OPS.cross(G, c)
   -- reads like a pathing problem and sent the model chasing phantom paths
   -- when a subgoal started inside OAKS_LAB (brock7 go_to_route_1).
   local md = startMap and G.data and G.data.maps and G.data.maps[startMap]
+  local blind = (c.blind and true) or BLIND_ROUTING
+  -- A SIDE NOBODY HAS LOOKED AT IS NOT A KNOWN SEAM — and not a known
+  -- wall either. The ledger already withholds a map's connections until
+  -- a cell of that side has been on screen (sides_unseen); the op said
+  -- more than the ledger would: "no north edge" reads the map table for
+  -- ground never looked at, and the full-map seam search walked mazes
+  -- the run had never seen. Look first; explore does the looking.
+  if not blind then
+    local _m0 = SEEN[startMap] or {}
+    local _W, _H = seen_dims(G, ow.map)
+    local edge_seen = false
+    if _W > 0 and _H > 0 then
+      if dir == "up" or dir == "down" then
+        local row = (dir == "up") and 0 or (_H - 1)
+        for x = 0, _W - 1 do
+          if _m0[x .. "," .. row] then edge_seen = true break end
+        end
+      else
+        local col = (dir == "left") and 0 or (_W - 1)
+        for y = 0, _H - 1 do
+          if _m0[col .. "," .. y] then edge_seen = true break end
+        end
+      end
+    end
+    if not edge_seen then
+      return false, ("no cell of the %s side of %s has ever been ON "
+        .. "SCREEN — you only know ground that has been on screen, so "
+        .. "whether that side even joins another map is not known yet. "
+        .. "explore walks toward ground you have not looked at")
+        :format(cmap[dir], tostring(startMap))
+    end
+  end
   if md and not (md.connections and md.connections[cmap[dir]]) then
     local outs = {}
     if md.connections then
@@ -4843,10 +4965,10 @@ function OPS.cross(G, c)
   end
 
   local ex, ey, bfs_why, stallx, stally
-  local seen_cells, nseen_cells
+  local seen_cells, nseen_cells, unseen_touched
   for round = 1, 4 do
-    ex, ey, bfs_why, stallx, stally, seen_cells, nseen_cells =
-      bfs_to_edge(G, dir, c.skip, c.surf)
+    ex, ey, bfs_why, stallx, stally, seen_cells, nseen_cells,
+      unseen_touched = bfs_to_edge(G, dir, c.skip, c.surf, blind)
     if ex then break end
     U.wait(40)
     if G.stack:top() ~= ow then
@@ -4877,6 +4999,7 @@ function OPS.cross(G, c)
     -- Cerulean trashed house is a PASSAGE (a hole in its back wall), and
     -- a door is a way through that BFS over open ground cannot see.
     local lm = ow.map
+    local mask0 = blind and nil or (SEEN[startMap] or {})
     local W = (lm and lm.widthCells) or 0
     local H = (lm and lm.heightCells) or 0
     -- DISTANCE TO THE SEAM, not a fixed band. A five-cell strip missed
@@ -4921,6 +5044,7 @@ function OPS.cross(G, c)
     -- bush is worth naming wherever it is; a wandering trainer is only
     -- worth naming if it is next to where you actually stopped.
     local function add(tag, x, y, actionable)
+      if mask0 and not mask0[x .. "," .. y] then return end
       local d = (stallx and stally)
         and (math.abs(x - stallx) + math.abs(y - stally))
         or seam_dist(x, y)
@@ -4975,7 +5099,8 @@ function OPS.cross(G, c)
         for cy = 0, math.min(H3 - 1, 71) do
           for cx = 0, math.min(W3 - 1, 71) do
             if lm:cellTile(cx, cy) == want2 and not lm:isWalkableCell(cx, cy)
-               and fences_pocket(cx, cy) then
+               and fences_pocket(cx, cy)
+               and (not mask0 or mask0[cx .. "," .. cy]) then
               fence[#fence + 1] = ("CUT_TREE (a bush CUT clears) at (%d,%d)")
                 :format(cx, cy)
             end
@@ -4988,7 +5113,8 @@ function OPS.cross(G, c)
       if nx and ny then
         local by_stall = stallx and stally
           and (math.abs(nx - stallx) + math.abs(ny - stally)) <= 1
-        if fences_pocket(nx, ny) and not by_stall then
+        if fences_pocket(nx, ny) and not by_stall
+           and (not mask0 or mask0[nx .. "," .. ny]) then
           fence[#fence + 1] = ("%s at %d,%d"):format(
             tostring((npc.def or {}).name or "someone"), nx, ny)
         elseif by_stall or near_seam(nx, ny) then
@@ -5030,7 +5156,8 @@ function OPS.cross(G, c)
     do
       local near_ws = {}
       for _, w in ipairs((md and md.warps) or {}) do
-        if w.x and w.y and near_seam(w.x, w.y) then
+        if w.x and w.y and near_seam(w.x, w.y)
+           and (not mask0 or mask0[w.x .. "," .. w.y]) then
           near_ws[#near_ws + 1] = { x = w.x, y = w.y, dest = w.destMap }
         end
       end
@@ -5097,7 +5224,8 @@ function OPS.cross(G, c)
     -- least say which exist and are reachable right now.
     do
       local md3 = G.data and G.data.maps and G.data.maps[startMap]
-      local reach = warp_reach(G) or {}
+      local reach = blind and (warp_reach(G) or {})
+                    or (seen_reach(G) or {})
       local open_ws = {}
       for _, w in ipairs((md3 and md3.warps) or {}) do
         if reach[w.x .. "," .. w.y] then
@@ -5112,9 +5240,25 @@ function OPS.cross(G, c)
             #open_doors, table.concat(open_doors, ", "))
       end
     end
-    return false, ("the %s seam of %s (to %s) cannot be walked to from "
-      .. "here — no walkable path reaches it."):format(
-        cmap[dir], tostring(startMap), tostring(dest and dest.map or "?"))
+    -- A FOOTPRINT EDGE IS NOT A PROVEN WALL. The strong verdict below
+    -- is read as geometry ("cannot be walked to" + "no walkable path
+    -- reaches it" feed the executor's no_cross proofs), and under the
+    -- seen gate the search stops where the LOOKING stopped — that proves
+    -- nothing about the map. Say which failure this is, in words the
+    -- proof-reader does not match.
+    local _verdict
+    if (unseen_touched or 0) > 0 then
+      _verdict = ("the %s seam of %s (to %s) cannot be reached over the "
+        .. "ground you have SEEN — the search stopped where your "
+        .. "footprint ends, NOT at a proven wall: ground you have never "
+        .. "looked at may hold the way. explore walks toward it."):format(
+          cmap[dir], tostring(startMap), tostring(dest and dest.map or "?"))
+    else
+      _verdict = ("the %s seam of %s (to %s) cannot be walked to from "
+        .. "here — no walkable path reaches it."):format(
+          cmap[dir], tostring(startMap), tostring(dest and dest.map or "?"))
+    end
+    return false, _verdict
       .. (bfs_why and (" " .. bfs_why .. ".") or "") .. said
   end
   if p.cellX ~= ex or p.cellY ~= ey then
@@ -5125,7 +5269,7 @@ function OPS.cross(G, c)
       -- walk reported "stuck" having barely moved. Scale it to the
       -- distance actually being walked (and keep a floor for short hops).
       local _need = math.abs((ex or 0) - p.cellX) + math.abs((ey or 0) - p.cellY)
-      OPS.walk_to(G, { x = ex, y = ey, surf = c.surf,
+      OPS.walk_to(G, { x = ex, y = ey, surf = c.surf, blind = c.blind,
                        max_steps = c.max_steps or math.max(200, _need * 3) })
       if (ow.map and ow.map.id) ~= startMap then
         return true, "crossed (mid-walk)"
@@ -5137,7 +5281,7 @@ function OPS.cross(G, c)
       end
       if p.cellX == ex and p.cellY == ey then break end
       U.wait(30)
-      local nx, ny = bfs_to_edge(G, dir, nil, c.surf)   -- NPC moved: retarget the gap
+      local nx, ny = bfs_to_edge(G, dir, nil, c.surf, blind)   -- NPC moved: retarget the gap
       if nx then ex, ey = nx, ny end
     end
     if p.cellX ~= ex or p.cellY ~= ey then
@@ -6528,7 +6672,7 @@ function OPS.field_move(G, c)
           end
         end
       end
-      local reach = warp_reach(G) or {}
+      local reach = seen_reach(G) or {}
       local any_side = false
       for _, a in ipairs(adj) do
         if reach[a[1] .. "," .. a[2]] then any_side = true end
@@ -8137,7 +8281,8 @@ function OPS.grind(G, c)
       return false, "no party Pokemon knows SURF, so the water here cannot "
         .. "be paced"
     end
-    local reach = warp_reach(G) or {}
+    local reach = seen_reach(G) or {}
+    local _gm0 = SEEN[map.id] or {}
     local bx, by, bland, bd
     for k in pairs(reach) do
       local sx, sy = k:match("^(-?%d+),(-?%d+)$")
@@ -8145,6 +8290,7 @@ function OPS.grind(G, c)
       for _, d in pairs(DIRS) do
         local wx, wy = sx + d[1], sy + d[2]
         if map.isWaterCell and map:inBounds(wx, wy)
+           and _gm0[wx .. "," .. wy]
            and map:isWaterCell(wx, wy) then
           local dd = math.abs(wx - p.cellX) + math.abs(wy - p.cellY)
           if not bd or dd < bd then
@@ -8191,6 +8337,7 @@ function OPS.grind(G, c)
     local seen = { [key(p.cellX, p.cellY)] = true }
     local queue = { { x = p.cellX, y = p.cellY } }
     local head, gx, gy = 1, nil, nil
+    local gate = route_gate(G)
     while queue[head] and not gx do
       local cur = queue[head]; head = head + 1
       for _, d in pairs(DIRS) do
@@ -8198,7 +8345,8 @@ function OPS.grind(G, c)
         if not seen[key(nx, ny)] then
           local probe = setmetatable({ cellX = cur.x, cellY = cur.y },
                                      { __index = p })
-          if Collision.canMove(map, ow.entities, probe, dirname_of(d)) then
+          if Collision.canMove(map, ow.entities, probe, dirname_of(d))
+             and not (gate and gate(nx, ny, key(nx, ny))) then
             seen[key(nx, ny)] = true
             if enc_cell(nx, ny) then gx, gy = nx, ny break end
             queue[#queue + 1] = { x = nx, y = ny }
@@ -8221,15 +8369,17 @@ function OPS.grind(G, c)
       -- attempts. The grass is drawn on the screen; its nearest tile is
       -- an on-screen fact like the walk report's closest-reach cell.
       local ngx, ngy, ngd
+      local _gm = SEEN[map.id] or {}
       local W2, H2 = map_dims_cells(G)
       for yy = 0, math.max(0, H2 - 1) do
         for xx = 0, math.max(0, W2 - 1) do
-          if map:isGrassCell(xx, yy) then
+          if map:isGrassCell(xx, yy) and _gm[xx .. "," .. yy] then
             any_ground = true
             local dd = math.abs(xx - p.cellX) + math.abs(yy - p.cellY)
             if not ngd or dd < ngd then ngd, ngx, ngy = dd, xx, yy end
           end
-          if not any_water and real_water(G, map, xx, yy) then
+          if not any_water and _gm[xx .. "," .. yy]
+             and real_water(G, map, xx, yy) then
             any_water = true
           end
         end
@@ -8248,7 +8398,13 @@ function OPS.grind(G, c)
           .. "part of the map you are in has none, so the walking to do "
           .. "is toward there." .. extra)
       end
-      return false, "no " .. ground .. " anywhere on this map." .. extra
+      local _sw, _sh = seen_dims(G, map)
+      local _all = (seen_of(map.id).n or 0) >= _sw * _sh
+      return false, "no " .. ground .. " anywhere on the ground you have "
+        .. "seen of this map."
+        .. (_all and ""
+            or " Ground you have not looked at may hold some; explore "
+               .. "shows more.") .. extra
     end
     OPS.walk_to(G, { x = gx, y = gy, max_steps = c.max_steps or 200 })
     if G.stack:top() ~= ow then return true, "battle en route to " .. ground end
@@ -9146,7 +9302,7 @@ function OPS.interact(G, c)
     end
   end
   do
-    local _b = bushes_blocking(G, tx, ty, warp_reach(G) or {})
+    local _b = bushes_blocking(G, tx, ty, seen_reach(G) or {})
     if #_b > 0 then
       return false, "no reachable tile adjacent to target — standing "
         .. "between the ground you can reach and the rest of this map: "
@@ -9537,7 +9693,8 @@ function OPS.sweep(G, c)
     for _ = 1, budget - steps do
       if p.cellX == target.x and p.cellY == target.y then break end
       if G.stack:top() ~= ow or (ow.map and ow.map.id) ~= map0 then break end
-      local dir = bfs_dir_pass(G, target.x, target.y, avoid)
+      local dir = bfs_dir_pass(G, target.x, target.y, avoid,
+                               route_gate(G))
       if not dir then break end
       local x0, y0 = p.cellX, p.cellY
       walk(G, dir, 1)
