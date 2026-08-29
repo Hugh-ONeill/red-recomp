@@ -658,6 +658,10 @@ seen_paint = function(G)
   local p, map = ow and ow.player, ow and ow.map
   if not (p and map and map.id and p.cellX and p.cellY) then return end
   if ow.transitioning then return end
+  -- OFF THE MAP IS NOT A PLACE. Mid-crossing the engine slides the player
+  -- in from outside the edge (cellX -1); painting or flooding from there
+  -- marks nothing and reaches nothing.
+  if p.cellX < 0 or p.cellY < 0 then return end
   if seen_lmap == map.id and seen_lx == p.cellX and seen_ly == p.cellY then
     return
   end
@@ -3670,6 +3674,9 @@ seen_reach = function(G, sx, sy, surf)
   if not (okc and ow and p and ow.map and ow.map.id and p.cellX) then
     return {}, {}
   end
+  -- ...and not from off the edge mid-crossing (see seen_paint): a flood
+  -- from (-1,y) reaches nothing and reads as "everything here is done"
+  if not (sx and sy) and (p.cellX < 0 or p.cellY < 0) then return {}, {} end
   -- from another stand-point (a remembered region's cell) when asked
   if sx and sy then
     p = setmetatable({ cellX = sx, cellY = sy }, { __index = p })
@@ -5676,7 +5683,36 @@ function OPS.cross(G, c)
   -- landing itself in the same area"). The map and the cell are on the
   -- screen the moment you arrive; saying them costs nothing and decides
   -- nothing.
+  -- A CROSSING IS NOT FINISHED UNTIL THE PARTY IS ON THE MAP. The engine
+  -- slides the player in from off the edge, so for a few frames cellX is
+  -- -1 (or past the far edge) — and an observation taken there floods the
+  -- seen ground from a cell that is on no map: nothing is reachable, the
+  -- frontier reads 0, and the page says "EVERYTHING YOU CAN REACH HERE IS
+  -- DONE" about a city with 20 unlooked-at spots in it. That is how the
+  -- run ping-ponged Route 4 <-> Cerulean: cross in at (-1,19), explore
+  -- judges the city finished, walks back out (2026-08-29, user watching).
+  -- Wait for a cell that is actually in bounds and standing still.
+  local function land_settled()
+    local p2 = ow.player or p
+    local W2, H2 = seen_dims(G, ow.map)
+    local lx, ly, still = nil, nil, 0
+    for _ = 1, 300 do
+      p2 = ow.player or p
+      local x, y = p2 and p2.cellX, p2 and p2.cellY
+      local inb = x and y and x >= 0 and y >= 0
+                  and (W2 <= 0 or x < W2) and (H2 <= 0 or y < H2)
+      if inb and not p2.moving and x == lx and y == ly then
+        still = still + 1
+        if still >= 6 then return end
+      else
+        still = 0
+      end
+      lx, ly = x, y
+      coroutine.yield()
+    end
+  end
   local function crossed_at()
+    land_settled()
     local p2 = ow.player or p
     return ("crossed — now on %s at (%s,%s)"):format(
       tostring(ow.map and ow.map.id),
