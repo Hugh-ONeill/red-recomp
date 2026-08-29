@@ -1440,8 +1440,26 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         # the only other direction with anything left, still never
         # appeared. The first leg is the choice actually being made; list
         # each one once, nearest example first.
+        # ONE PER FIRST LEG, AND THE RICHEST OF THEM — not the nearest.
+        # `found` is sorted by distance, so the first entry behind a door
+        # won its slot by being closest: behind Mt Moon's entrance that is
+        # 1F's unpressed items, while THREE floors deeper sat 11 spots of
+        # ground never on screen and two ways out never taken. The run read
+        # "MT_MOON_1F has 12 thing(s) never pressed", concluded it had
+        # explored the mountain, and ping-ponged between Pewter and Route 4
+        # for a dozen rounds (user, 2026-08-29). The leg is the choice
+        # being made; what is worth the walk is decided by what is back
+        # there, so name the most there is behind each door.
+        _by_leg = {}
+        for _e in found[1:]:
+            _fk0 = _e[4][0][0]
+            _n0 = len(_e[2]) + len(_e[3]) + _e[5] + len(_e[6])
+            if _fk0 not in _by_leg or _n0 > _by_leg[_fk0][0]:
+                _by_leg[_fk0] = (_n0, _e)
+        _ranked = [e for _, (_, e) in sorted(_by_leg.items(),
+                                             key=lambda kv: -kv[1][0])]
         _more, _legs_seen = [], {path[0][0]}
-        for _r2, _reg2, _left2, _things2, _path2, _unseen2, _unr2 in found[1:]:
+        for _r2, _reg2, _left2, _things2, _path2, _unseen2, _unr2 in _ranked:
             if len(_more) >= 3:
                 break
             _fk2, _fd2 = _path2[0]
