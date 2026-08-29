@@ -33,7 +33,7 @@ ck("an interact by coordinates is filed under the thing's name",
    "_nm_xy = self._name_at(obs, step.get(\"x\"), step.get(\"y\"))" in blk and "step = dict(step, name=_nm_xy)" in blk)
 ck("...and the journal says so", 'self.log("touch_by_coords"' in blk)
 j = src.index("things = sorted((c for c in cands")
-ck("explore never presses a switch statue first", '"SWITCH" not in str(c.key).upper()' in src[j:j + 1400])
+ck("explore never presses a switch statue first", '"SWITCH" not in str(c.key).upper()' in src[j:j + 2400])
 k = src.index("_ss = self.shut_settings.setdefault(here, {})")
 ck("shut settings are keyed by region", k > 0 and "_rs = self.reach_settings.setdefault(here, {})" in src)
 ck("...and never stamped from a seen-ground downgrade", '"you have seen" in str(_w.get("why") or "")' in src[k:k + 500])

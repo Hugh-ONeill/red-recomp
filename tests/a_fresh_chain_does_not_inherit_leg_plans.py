@@ -20,8 +20,10 @@ def ck(n, ok): checks.append((n, bool(ok)))
 ck("the fresh block archives this world's leg plans",
    "for _p in plans/leg_[0-9]*.json; do" in blk
    and 'mv -f "$_p" "plans/archive/${ts}-pre-discovery-$(basename "$_p")"' in blk)
-ck("...and the outline's per-leg sidecars with them",
-   "for _f in plans/outline.stages plans/outline.upkeep plans/outline.notes" in blk)
+ck("...and the sidecars that name legs by this chain's wordings",
+   "for _f in plans/outline.stages plans/outline.upkeep" in blk)
+ck("...but NOT the outline's own notes, which belong to the list that is kept",
+   "plans/outline.notes; do" not in blk)
 ck("...archived, never deleted", "rm -f plans/leg_" not in blk)
 ck("the outline itself is still kept (banked luck)",
    "keeping existing plans/outline.txt" in sh

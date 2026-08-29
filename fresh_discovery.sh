@@ -146,7 +146,11 @@ if [ "$done_legs" = 0 ]; then
   fi
   # the outline's own per-leg sidecars belong to the chain that wrote them
   # (stages holds this chain's rewordings; upkeep names legs by wording)
-  for _f in plans/outline.stages plans/outline.upkeep plans/outline.notes; do
+  # NOT outline.notes: those are the outline pass's own doubts ABOUT THE
+  # LIST, and the list is kept — tests/fresh_world.py pins them as
+  # surviving a reset. stages and upkeep name legs by THIS chain's
+  # wordings, which the fresh block has just reverted.
+  for _f in plans/outline.stages plans/outline.upkeep; do
     [ -f "$_f" ] && mv -f "$_f" "plans/archive/${ts}-pre-discovery-$(basename "$_f")"
   done
   echo "archived ${ts}.pre-discovery; ledgers cleared"
