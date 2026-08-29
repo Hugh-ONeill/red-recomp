@@ -26,9 +26,28 @@ ck("sweep watches the script-declared drop cells as well as the warp table",
 ck("a warp is labelled by its look, asked only at warp cells",
    "local function way_look(x, y)" in sw
    and "ow.map:warpPadOrHoleAt(x, y)" in sw and "isDoorTileCell(x, y)" in sw)
-ck("a hole is reported as a HOLE and said to be one-way",
+ck("a boulder hole is reported as a HOLE that takes a boulder; a plain drop as a one-way exit",
    'kind = "hole"' in sw and "a HOLE in the floor at (%d,%d)" in sw
+   and "a BOULDER shoved onto it falls" in sw
+   and "a one-way DROP at (%d,%d) — an exit like " in sw
    and "no climbing" in sw)
+ck("the split is data (the boulder-hole list), not a map name",
+   "local bh_set = {}" in sw and "_v2.boulder_holes" in sw
+   and "G.data.field.seafoam" in sw and 'if look == "hole" and bh_set[k] then' in sw
+   and "MANSION" not in sw)
+ck("the observation flags a drop that is also a boulder hole",
+   'if _bhs[_h.x .. "," .. _h.y] then _h.boulder = true end' in sh)
+# the ledger's head splits the same way
+sys.path.insert(0, str(ROOT / "planner")); sys.path.insert(0, str(ROOT / "tests"))
+import candidates as C, untried as U, ledger as L   # noqa: E402
+_ex = C.make(frontier={U.HERE: []})
+_o = C.obs(_ex, ["1,0"])
+_o["map"]["holes"] = [{"x": 16, "y": 14, "reachable": True},
+                      {"x": 23, "y": 15, "reachable": True, "boulder": True}]
+_pg = L.render(L.build(_ex, _o, target="flag:X"), _ex, _o, target="flag:X")
+ck("the ledger says ONE-WAY DROP, names the boulder hole, and calls the rest exits",
+   "2 ONE-WAY DROP(S) IN IT" in _pg and "(23,15) is also a HOLE" in _pg
+   and "the rest are exits like a doorway" in _pg and "floor below" not in _pg)
 ck("a pad is a pad, a door a doorway",
    "a warp pad at (%d,%d)" in sw and "a doorway at (%d,%d)" in sw)
 ck("until:door also stops at a hole",

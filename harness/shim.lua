@@ -1552,6 +1552,17 @@ local function observe(G, seq, result)
             end
           end
           if #_bh > 0 then o.map.boulder_holes = _bh end
+          -- ...AND SAY WHICH DROPS ARE ALSO BOULDER HOLES (user, 2026-08-29:
+          -- all one-way; the Mansion's sit where a doorway would, Seafoam's
+          -- and Victory Road's sit mid-floor and take a boulder). Data, not
+          -- map names: a hole cell that is also in the boulder list.
+          do
+            local _bhs = {}
+            for _, _c in ipairs(_bh) do _bhs[_c.x .. "," .. _c.y] = true end
+            for _, _h in ipairs(o.map.holes or {}) do
+              if _bhs[_h.x .. "," .. _h.y] then _h.boulder = true end
+            end
+          end
           if #_sw > 0 then
             o.map.switch_statues = _sw
             -- ...AND A STATUE IS A FIXTURE, not just a paragraph. Named
@@ -9692,6 +9703,25 @@ function OPS.sweep(G, c)
       if hx and hy then script_holes[hx .. "," .. hy] = true end
     end
   end
+  -- ...AND WHICH DROPS ARE ALSO BOULDER HOLES. All of them are one-way;
+  -- the Mansion's sit where a doorway would and are exits, while Seafoam's
+  -- and Victory Road 3F's sit mid-floor and take a boulder too (user,
+  -- 2026-08-29). Data, not map names: the boulder list the observation
+  -- already reads (MapScripts view.boulder_holes + field.seafoam holes).
+  local bh_set = {}
+  do
+    local okms2, MS2 = pcall(require, "src.script.MapScripts")
+    local _v2 = okms2 and MS2.get and MS2.get(map0) or nil
+    for _, c2 in ipairs((_v2 and _v2.boulder_holes) or {}) do
+      local hx, hy = c2[1] or c2.x, c2[2] or c2.y
+      if hx and hy then bh_set[hx .. "," .. hy] = true end
+    end
+    local _sf2 = ((G.data and G.data.field and G.data.field.seafoam)
+                  or {})[tostring(map0)]
+    for _, h2 in ipairs((_sf2 and _sf2.holes) or {}) do
+      if h2.x and h2.y then bh_set[h2.x .. "," .. h2.y] = true end
+    end
+  end
   local function way_look(x, y)
     if ow.map.isDoorTileCell and ow.map:isDoorTileCell(x, y) then
       return "door"
@@ -9710,12 +9740,20 @@ function OPS.sweep(G, c)
         x, y = tonumber(x), tonumber(y)
         if warps[k] or script_holes[k] then
           local look = script_holes[k] and "hole" or way_look(x, y)
-          if look == "hole" then
+          if look == "hole" and bh_set[k] then
             out[#out + 1] = { kind = "hole", x = x, y = y,
                               text = ("a HOLE in the floor at (%d,%d) — a way "
-                                      .. "DOWN: stepping on it drops you to the "
-                                      .. "floor below, and there is no climbing "
-                                      .. "back up it"):format(x, y) }
+                                      .. "DOWN: step onto it and you fall to the "
+                                      .. "floor below with no climbing back up, "
+                                      .. "and a BOULDER shoved onto it falls "
+                                      .. "through too"):format(x, y) }
+          elseif look == "hole" then
+            out[#out + 1] = { kind = "hole", x = x, y = y,
+                              text = ("a one-way DROP at (%d,%d) — an exit like "
+                                      .. "a doorway you cannot come back "
+                                      .. "through: step onto it and you are "
+                                      .. "taken to another floor, and there is "
+                                      .. "no climbing back up"):format(x, y) }
           elseif look == "pad" then
             out[#out + 1] = { kind = "door", x = x, y = y,
                               text = ("a warp pad at (%d,%d)"):format(x, y) }

@@ -1897,13 +1897,31 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # could not be chosen. It is taken by WALKING ONTO IT.
         _hr = [h for h in _holes if h.get("reachable")]
         _hx = ", ".join(f"({h.get('x')},{h.get('y')})" for h in _holes[:6])
-        head += (f". THIS FLOOR HAS {len(_holes)} HOLE(S) IN IT, at {_hx}"
+        # ALL ONE-WAY; TWO PLACEMENTS. The Mansion's drops sit where a
+        # doorway would and are exits to another floor (3F's go to 1F and
+        # 2F, so "the floor below" was an over-claim); Seafoam's and Victory
+        # Road 3F's sit mid-floor and are also the holes a boulder is sent
+        # down (user, 2026-08-29). The shim flags the boulder ones from the
+        # boulder-hole data; nothing here is keyed on a map name.
+        _hb = [h for h in _holes if h.get("boulder")]
+        head += (f". THIS FLOOR HAS {len(_holes)} ONE-WAY DROP(S) IN IT, at "
+                 f"{_hx}"
                  + (f" — {len(_hr)} of them you can walk to"
                     if _hr and len(_hr) != len(_holes) else "")
-                 + ". A hole is not a doorway and takes no use_warp: you "
-                 "step ONTO it and DROP to the floor below, and there is no "
-                 "climbing back up it. {\"op\":\"walk_to\",\"x\":N,"
-                 "\"y\":N} onto one is how it is taken")
+                 + ". A drop is not a doorway and takes no use_warp: you "
+                 "step ONTO it and are taken to another floor, and there is "
+                 "no climbing back up it. {\"op\":\"walk_to\",\"x\":N,"
+                 "\"y\":N} onto one is how it is taken"
+                 + ((". " + ", ".join(f"({h.get('x')},{h.get('y')})"
+                                      for h in _hb[:4])
+                     + (" is" if len(_hb) == 1 else " are")
+                     + " also a HOLE in the floor a BOULDER can be sent "
+                       "down"
+                     + (" — the rest are exits like a doorway you cannot "
+                        "come back through"
+                        if len(_hb) < len(_holes) else ""))
+                    if _hb else
+                    " — an exit like a doorway you cannot come back through"))
     _w = (m.get("water") or {}) if isinstance(m.get("water"), dict) else {}
     if _w.get("cells"):
         _knows = any("SURF" in [str(x.get("id") if isinstance(x, dict) else x)
