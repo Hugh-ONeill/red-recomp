@@ -535,6 +535,16 @@ while :; do
       echo "=== OUTLINE CHAIN COMPLETE: the Hall of Fame was reached ==="
       exit 0
     fi
+    # A RIG FAILURE IS NOT A LEG FAILURE. campaign.sh exits 3 when the
+    # game never established a world (new_game hit CONTINUE); nothing was
+    # walked, there is nothing to judge, and the ladder asked anyway: the
+    # done rung was handed "an unknown location" and answered that the
+    # party was non-empty (2026-08-29). Stop for a person.
+    if [ "$_rc" = 3 ]; then
+      echo "!! rig failure on leg $i ($leg): the game never established a" \
+           "world — stopping the chain; nothing to judge"
+      exit 3
+    fi
     return $_rc
   }
   cont=0; [ "$i" -gt 1 ] && cont=1

@@ -5715,6 +5715,18 @@ def check_done(goal: str, start: str, model: str,
     # with EVENT_OAK_GOT_PARCEL set since leg 3, and nothing in front of the
     # model said so. Matching is mechanical and names only what already
     # happened; whether it satisfies the objective is the model's call.
+    # NO SNAPSHOT, NO VERDICT. state_text says "an unknown location" when
+    # the snapshot has no party — an attempt that died at the title, a
+    # bootstrap that never established the world. Asked anyway, the model
+    # answered "The party is non-empty, meaning a starter Pokemon has been
+    # acquired" about a world with no party at all, and the chain moved on
+    # to leg 2 without a starter (2026-08-29). A world with no party can
+    # satisfy no objective; say so and do not ask.
+    _st = str(start or "").strip()
+    if not _st or "an unknown location" in _st or "with no party" in _st:
+        print("[check-done] refused: no snapshot of this run's world (no "
+              "party) — not judging")
+        return False
     bearing = _events_bearing(goal)
     never = _never_stood_in(goal, observed)
     if never:

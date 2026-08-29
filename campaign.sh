@@ -45,6 +45,15 @@ state_text() {
 # replaying the whole route from Pallet.
 first=1
 [ "${RED_CONTINUE:-0}" = "1" ] && first=0
+# ...AND A SAVE ON DISK IS THIS WORLD. new_game with a save present makes
+# the title's first row CONTINUE (bootstrap raises "did it CONTINUE
+# instead?"), and the fresh chain deletes the save on purpose before its
+# first attempt — so the only honest reading of "a save exists" is
+# "resume it". Leg 1's re-authored attempt hit this: attempt 1 had saved
+# after each subgoal, the re-author launched new_game, and the run died
+# at the title (2026-08-29).
+SAVE="$HOME/.local/share/love/pokemon-love2d/saves/red/slot1.lua"
+[ -f "$SAVE" ] && first=0
 for attempt in $(seq 1 "$ATTEMPTS"); do
   echo "=== attempt $attempt/$ATTEMPTS: ${PLANS[*]} ===" | tee -a "$LOG"
 
@@ -108,10 +117,13 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   # was never established: a leftover save made new_game hit CONTINUE and
   # the "fresh" chain calmly authored a route from Route 6 to Pallet Town to
   # go and collect a starter it had already evolved twice. Stop instead.
+  # Exit 3, not 2: fresh_discovery.sh already uses 2 for "a dry leg, not
+  # run again", and both fell into the same "failed" branch — which then
+  # asked the done rung about a world that was never established.
   if grep -q "new game failed" "$LOG"; then
     echo "!! bootstrap never established the world — refusing to re-author" \
         | tee -a "$LOG"
-    exit 2
+    exit 3
   fi
 
   # Which leg died. Do NOT parse stdout for this: python block-buffers when

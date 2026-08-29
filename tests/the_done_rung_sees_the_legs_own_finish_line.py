@@ -57,6 +57,14 @@ out = io.StringIO()
 with contextlib.redirect_stdout(out):
     r = A.check_done("Navigate the Victory Road", "standing in VICTORY_ROAD_2F", "m", observed=None)
 ck("...not done too", r is False and "[check-done] not done: no" in out.getvalue())
+def _boom(msgs, model):
+    raise AssertionError("the model must not be asked about a world with no party")
+A.brock_probe.chat = _boom
+out = io.StringIO()
+with contextlib.redirect_stdout(out):
+    r = A.check_done("Obtain a starter Pokemon", "an unknown location", "m", observed=None)
+ck("no snapshot (no party), no verdict — and the model is not asked",
+   r is False and "refused: no snapshot of this run's world" in out.getvalue())
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)
