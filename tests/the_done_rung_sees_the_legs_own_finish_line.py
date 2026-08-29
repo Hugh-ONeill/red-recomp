@@ -12,6 +12,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "planner"))
 import author as A          # noqa: E402
+_real_wgt = A.walked_ground_text    # captured before the stubs below
 
 checks = []
 def ck(name, ok): checks.append((name, bool(ok)))
@@ -72,7 +73,7 @@ ck("a boxed-up snapshot WITH a party is this world, told apart from a partyless 
 import json as _json, tempfile as _tf
 with _tf.NamedTemporaryFile("w", suffix=".json", delete=False) as _f:
     _json.dump({"visits": {"VIRIDIAN_MART|0,2": 5, "OAKS_LAB|4,1": 12}}, _f); _obs = _f.name
-_wg = A.walked_ground_text([(1, "Retrieve the Pokemon from the Poke Mart")], observed=_obs)
+_wg = _real_wgt([(1, "Retrieve the Pokemon from the Poke Mart")], observed=_obs)
 ck("a 'Poke Mart' with no town named still shows the mart the run stood in (and only stood-in maps)",
    "VIRIDIAN_MART stood in 5x" in _wg and "OAKS_LAB" not in _wg)
 bad = [n for n, ok in checks if not ok]
