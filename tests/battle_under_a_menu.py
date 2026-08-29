@@ -47,7 +47,8 @@ ck("...and still names what is on top",
 ck("...placed after the dialog branch so text still reads as text",
    lua.index('o.mode = "dialog"') < lua.index("elseif battle_frame(G) and not learn_on_stack(G) then"))
 ck("...and before the plain ui branch",
-   lua.index("elseif battle_frame(G) and not learn_on_stack(G) then") < lua.index('o.mode = "ui"'))
+   lua.index("elseif battle_frame(G) and not learn_on_stack(G) then")
+   < lua.index('elseif top then\n    o.mode = "ui"'))
 
 # in_battle
 i = lua[lua.find("local function in_battle(G)"):][:1400]

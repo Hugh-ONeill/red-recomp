@@ -9783,7 +9783,34 @@ class Executor:
             self._final_obs = o
         if o.get("ending") and not getattr(self, "_riding", False):
             o = self._ride_ending(o)
+        if o.get("naming") and not getattr(self, "_naming", False):
+            o = self._resolve_naming(o)
         return o
+
+    def _resolve_naming(self, obs):
+        """The game is asking for a name: put it to the model and type
+        the answer. Not a box to close and not a battle to fight — a
+        question, answered where it is asked (user, 2026-08-29)."""
+        self._naming = True
+        try:
+            o = obs or {}
+            for _ in range(4):
+                if not o.get("naming"):
+                    break
+                name = ask_name(o, getattr(self, "model", None), self.log)
+                r = (self._send_safe("name", text=name) or {}).get("result") or {}
+                det = str(r.get("detail") or "")
+                print(f"[naming] {(o.get('naming') or {}).get('title')}: "
+                      f"{name!r} -> {det[:120]}")
+                self.log("named", title=str((o.get("naming") or {}).get("title")),
+                         name=name, ok=bool(r.get("ok")), detail=det[:200])
+                try:
+                    o = self._note(self.b.obs()) or {}
+                except TimeoutError:
+                    break
+            return o
+        finally:
+            self._naming = False
 
     def _ride_ending(self, obs):
         """The Hall of Fame induction and the credits are not a menu to
@@ -14742,6 +14769,102 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         return True
 
 
+NAMING_MODEL = None       # set by main() before bootstrap; None = defaults
+
+NAME_SYS = (
+    "You are playing Pokemon Red and the game is asking you to type a "
+    "NAME. Reply with a JSON object and nothing else: {\"name\":\"...\"}. "
+    "Letters A-Z and a-z, space and - ? ! . , are typed; anything else is "
+    "dropped; the game cuts the name at its length limit. An empty name "
+    "keeps the game's default. Name it the way the player you are would."
+)
+
+
+def _naming_prompt(obs: dict) -> str:
+    """What is being named, in the game's own words plus what is on
+    screen: the title, the newest party member for a NICKNAME, the
+    ready-made names when the game offers them."""
+    nm = (obs or {}).get("naming") or {}
+    title = str(nm.get("title") or "NAME?")
+    party = (obs or {}).get("party") or []
+    what = ""
+    t = title.upper()
+    if "NICKNAME" in t:
+        if party:
+            m = party[-1]
+            what = (f" — for the {m.get('species')} L{m.get('level')} that "
+                    f"just joined you")
+        else:
+            what = " — for the Pokemon you just got"
+    elif "YOUR NAME" in t:
+        what = " — your own name, the player's"
+    elif "HIS NAME" in t or "RIVAL" in t:
+        what = " — your rival's name"
+    lines = [f"THE GAME ASKS: \"{title}\"{what}.",
+             f"UP TO {nm.get('max') or 7} CHARACTERS."]
+    if nm.get("presets"):
+        lines.append("READY-MADE NAMES THE GAME OFFERS (sending one exactly "
+                     "picks it): " + ", ".join(str(p) for p in nm["presets"]))
+    if nm.get("default"):
+        lines.append(f"THE DEFAULT IF YOU SEND NOTHING: {nm['default']}")
+    if party:
+        lines.append("YOUR PARTY: " + ", ".join(
+            f"{m.get('species')} L{m.get('level')}"
+            + (f" (\"{m.get('nickname')}\")" if m.get("nickname") else "")
+            for m in party))
+    return "\n".join(lines)
+
+
+def ask_name(obs: dict, model, log=None) -> str:
+    """The model's name for whatever the screen asks about, sanitised to
+    what the grid can type. Never raises: no model, or an unreadable
+    reply, means "" (the game's default) — a name must never wedge a run."""
+    if not model:
+        return ""
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": NAME_SYS},
+             {"role": "user", "content": _naming_prompt(obs)}], model)
+    except Exception as e:
+        if log:
+            log("name_chat_error", err=str(e)[:200])
+        return ""
+    m = _re.search(r"\{.*\}", reply or "", _re.S)
+    name = ""
+    if m:
+        try:
+            name = str(json.loads(m.group(0)).get("name") or "")
+        except (json.JSONDecodeError, AttributeError):
+            name = ""
+    name = "".join(ch for ch in name.strip()
+                   if ch.isalnum() or ch in " -?!.,():;")
+    try:
+        cap = int(((obs or {}).get("naming") or {}).get("max") or 10)
+    except (TypeError, ValueError):
+        cap = 10
+    name = name[:cap]
+    if log:
+        log("name_asked", title=str(((obs or {}).get("naming") or {})
+                                    .get("title")), name=name,
+            reply=str(reply)[:200])
+    return name
+
+
+def resolve_naming_raw(b: Bridge, model, log=None, rounds: int = 4) -> dict:
+    """Type names until no naming screen is up (the new game asks two in a
+    row: yours, then the rival's)."""
+    obs = b.obs() or {}
+    for _ in range(rounds):
+        if not (obs or {}).get("naming"):
+            break
+        name = ask_name(obs, model, log)
+        r = (b.send("name", text=name) or {}).get("result") or {}
+        print(f"[naming] {((obs.get('naming') or {}).get('title'))}: "
+              f"{name!r} -> {str(r.get('detail'))[:120]}")
+        obs = b.obs() or {}
+    return obs
+
+
 def bootstrap(b: Bridge, cont: bool = False):
     """New game, or CONTINUE from the on-disk save (mash A: with a save
     present the title's first option is CONTINUE, and A confirms the info
@@ -14753,6 +14876,9 @@ def bootstrap(b: Bridge, cont: bool = False):
         r = (b.send("new_game") or {}).get("result") or {}
         if not r.get("ok"):
             raise RuntimeError(f"new game failed: {r.get('detail')}")
+        # YOUR NAME? and HIS NAME? — the model's, not AAAAAAA (2026-08-29)
+        if "asking for a NAME" in str(r.get("detail") or ""):
+            resolve_naming_raw(b, NAMING_MODEL)
     # Mash A through the title/info box, then STOP: a save resumes exactly
     # where it was written, and if that spot faces an NPC every further A
     # talks to them. The Pokemon Center save died on the nurse this way;
@@ -14910,6 +15036,7 @@ def main():
     VERIFY_MACROS = args.verify_macros
     b = Bridge()
     if args.bootstrap:
+        globals()["NAMING_MODEL"] = args.model
         bootstrap(b, cont=args.cont)
     ex = Executor(b, max_battle_turns=args.max_battle_turns,
                   can_escalate=args.escalate, model=args.model,

@@ -27,7 +27,7 @@ def ck(name, ok): checks.append((name, bool(ok)))
 
 sh = (ROOT / "fresh_discovery.sh").read_text()
 i = sh.index("run_campaign() {")
-blk = sh[i:i + 900]
+blk = sh[i:i + 1800]
 ck("run_campaign snaps the world before the call",
    "leg_delta.py snap run/attempt_start.json" in blk)
 ck("...and diffs it after", "leg_delta.py diff run/attempt_start.json" in blk)

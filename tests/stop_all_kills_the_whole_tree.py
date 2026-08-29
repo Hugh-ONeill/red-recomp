@@ -11,6 +11,11 @@ Runs against a TEMP registry and a fake tree it spawns itself; the live
 registry and any live chain are never touched.
 """
 from __future__ import annotations
+import subprocess as _sp
+if _sp.run(["pgrep", "-f", "^bash ./fresh_discovery.sh"], capture_output=True).returncode == 0:
+    print("SKIP: a live chain is registered; this test needs the rig idle (it asserts ALL CLEAR)")
+    raise SystemExit(0)
+
 import os, subprocess, sys, tempfile, time
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]

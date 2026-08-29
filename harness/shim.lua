@@ -221,6 +221,68 @@ local function scalars(t, depth)
   return out
 end
 
+-- THE NAMING SCREEN (user, 2026-08-29: "give it the ability to actually
+-- name things with the nickname screen instead of everything being
+-- AAAAAAAAAA"). The game asks for a name three ways — the player and the
+-- rival at a new game (with a NEW NAME / presets menu on top), a caught
+-- Pokemon (YES/NO, then the grid), a gift Pokemon (same) — and every one
+-- of them used to be answered by whatever key the harness was mashing:
+-- A picks the letter under the cursor, which starts on A. A name is the
+-- model's to give. The harness says the screen is up and what it asks,
+-- and {"op":"name","text":...} drives the grid letter by letter.
+local function naming_on_stack(G)
+  for _, s in ipairs((G and G.stack and G.stack.states) or {}) do
+    if type(s) == "table" and type(s.glyphs) == "table" and s.maxLen
+       and s.confirm then
+      return s
+    end
+  end
+  return nil
+end
+-- the NEW NAME / presets list the player naming pushes over the grid
+local function naming_presets_menu(G, ns)
+  local t = G and G.stack and G.stack:top()
+  if t and t ~= ns and type(t.items) == "table" and t.index then
+    for _, it in ipairs(t.items) do
+      if tostring(it.label or ""):upper():find("NEW NAME", 1, true) then
+        return t
+      end
+    end
+  end
+  return nil
+end
+local function naming_preset_labels(pm)
+  local ls = {}
+  for _, it in ipairs((pm and pm.items) or {}) do
+    local l = tostring(it.label or "")
+    if not l:upper():find("NEW NAME", 1, true) then ls[#ls + 1] = l end
+  end
+  return ls
+end
+local function naming_fields(G, ns)
+  local pm = naming_presets_menu(G, ns)
+  local ls = pm and naming_preset_labels(pm) or nil
+  return { title = tostring(ns.title or "NAME?"), max = ns.maxLen or 7,
+           typed = table.concat(ns.glyphs or {}),
+           presets = (ls and #ls > 0) and ls or nil,
+           default = ns.default and tostring(ns.default) or nil }
+end
+local function naming_words(G)
+  local ns = naming_on_stack(G)
+  if not ns then return "" end
+  local f = naming_fields(G, ns)
+  return ("the game is asking for a NAME — \"%s\" — and the naming screen "
+    .. "is open. {\"op\":\"name\",\"text\":\"...\"} types it letter by "
+    .. "letter and confirms: up to %d characters from A-Z, a-z, space and "
+    .. "- ? ! . , ( ) : ; — an empty text keeps the default%s%s")
+    :format(f.title, f.max,
+            f.default and (" (" .. f.default .. ")") or "",
+            f.presets and (". The game also offers these ready-made names: "
+                           .. table.concat(f.presets, ", ")
+                           .. " — sending one of them as the text picks it")
+                       or "")
+end
+
 local events = {}
 do
   local Runtime = require("src.mods.Runtime")
@@ -2712,6 +2774,17 @@ local function observe(G, seq, result)
                  page = top.pageIndex, pages = #top.pages,
                  waiting = top.waiting and true or false,
                  done = top.done and true or false }
+  elseif naming_on_stack(G) then
+    -- A NAMING SCREEN IS NOT A FIGHT, even after a catch with the battle
+    -- still on the stack under it: reported as battle, the policy would
+    -- send battle_move into the letter grid. It is a question for the
+    -- model; the executor's settle puts it to the model and types the
+    -- answer (_resolve_naming).
+    local ns = naming_on_stack(G)
+    o.mode = "ui"
+    o.ui = scalars(top, 0)
+    o.ui.naming = naming_fields(G, ns)
+    o.naming = o.ui.naming
   elseif battle_frame(G) and not learn_on_stack(G) then
     -- A MENU OVER A FIGHT REPORTS THE FIGHT. mode decides who handles the
     -- round: "ui" sends it back to the model as a screen to dismiss, and
@@ -2919,6 +2992,15 @@ local function observe(G, seq, result)
     end
     if _e then o.ending = _e end
     o.hall_of_fame = #((G.save and G.save.hallOfFame) or {})
+    -- the names the run gave itself: on the trainer card, and on every
+    -- sign that says "<NAME>'s house" (naming, 2026-08-29)
+    do
+      local _pl = G.save and G.save.player
+      if _pl then
+        if _pl.name then o.player_name = tostring(_pl.name) end
+        if _pl.rival then o.rival_name = tostring(_pl.rival) end
+      end
+    end
   end
   local f = io.open(BRIDGE .. "/obs.json.tmp", "w")
   if f then
@@ -4348,7 +4430,10 @@ function OPS.new_game(G)
     end
   end
   U.tap(G, "a"); U.wait(10)
-  for _ = 1, 400 do                    -- Oak speech + naming (defaults)
+  for _ = 1, 400 do                    -- Oak speech, up to the first name
+    if naming_on_stack(G) then
+      return true, "new game: " .. naming_words(G)
+    end
     U.tap(G, "a"); U.wait(2)
     if G.overworld and G.stack:top() == G.overworld then break end
   end
@@ -5592,6 +5677,9 @@ ui_back_out = function(G)
   for i = 1, 400 do
     local t = ui_top(G)
     dlg_trace(G, "back_out", i)
+    -- a naming screen is not closed by B (B deletes a letter) and must
+    -- not be confirmed by the harness: the name is the model's to give
+    if naming_on_stack(G) then return false end
     if t == G.overworld or (t and (t.enemy or t.kind)) then return true end
     -- A SLOT MACHINE MID-SPIN IGNORES B: its spinup/spin/payout/flash
     -- stages only advance on A (each A stops a wheel), and B exits only
@@ -9109,6 +9197,9 @@ function OPS.interact(G, c)
     for _i = 1, SETTLE_TAPS do
       local t = G.stack:top()
       dlg_trace(G, "settle", _i)
+      -- A NAME IS NOT A BOX TO TAP THROUGH: every A here would type a
+      -- letter. Stop with the screen open and say what it asks.
+      if naming_on_stack(G) then return true, naming_words(G) end
       if t == seen_top and (t and t.pageIndex) == seen_idx then
         stall = stall + 1
         if stall > SETTLE_STALL then return true, "dialog still open" end
@@ -9567,10 +9658,12 @@ function OPS.throw_ball(G, c)
   U.tap(G, "a"); U.wait(10)
   -- ride the throw: shakes text; on success a nickname YES/NO appears
   -- (answer NO) and the battle ends; on a miss the turn plays out
+  local asked_name = false
   for _ = 1, 200 do
     local t = G.stack:top()
-    if ui_is_choice(G) then                 -- "give a nickname?"
-      ui_cursor_to(G, "index", 2)           -- NO
+    if naming_on_stack(G) then asked_name = true; break end
+    if ui_is_choice(G) then                 -- "give a nickname?" — YES:
+      ui_cursor_to(G, "index", 1)           -- the name is the model's to give
       U.tap(G, "a"); U.wait(6)
     elseif not (t and (t.enemy or t.kind)) then
       break                                 -- battle over (caught or done)
@@ -9580,9 +9673,119 @@ function OPS.throw_ball(G, c)
       U.tap(G, "a"); U.wait(4)
     end
   end
-  local caught = #((G.save and G.save.party) or {}) > party0
-  return true, caught and "CAUGHT (party grew)" or
-    ("threw " .. ball .. ", not caught")
+  local caught = #((G.save and G.save.party) or {}) > party0 or asked_name
+  return true, caught and ("CAUGHT" .. (asked_name
+                                         and (" — " .. naming_words(G))
+                                         or " (party grew)"))
+    or ("threw " .. ball .. ", not caught")
+end
+
+-- Type a name on the naming screen. The model chose the text; every
+-- press here is mechanics: which page (SELECT flips case), which cell
+-- (the d-pad; rows first, then columns, never wrapping), A to take it,
+-- START to confirm. A preset menu on top is driven the same way: a text
+-- matching a ready-made name picks it, anything else opens NEW NAME.
+-- After the confirm the dialogue behind it is ridden to the next stop:
+-- another name asked, the overworld, a battle menu, or a question.
+local function naming_grid_find(grid, ch)
+  for r, row in ipairs(grid) do
+    for col, cell in ipairs(row) do
+      if cell == ch then return r, col end
+    end
+  end
+  return nil
+end
+local function naming_move_to(G, ns, r, col)
+  for _ = 1, 12 do
+    if ns.row == r then break end
+    U.tap(G, ns.row < r and "down" or "up"); U.wait(3)
+  end
+  for _ = 1, 12 do
+    if ns.col == col then break end
+    U.tap(G, ns.col < col and "right" or "left"); U.wait(3)
+  end
+  return ns.row == r and ns.col == col
+end
+local function naming_type(G, ns, ch)
+  local grid = ns:grid()
+  local r, col = naming_grid_find(grid, ch)
+  if not r then
+    U.tap(G, "select"); U.wait(4)          -- the other case page
+    grid = ns:grid()
+    r, col = naming_grid_find(grid, ch)
+    if not r then return false end
+  end
+  if r == #grid or grid[r][col] == "ED" then return false end
+  if not naming_move_to(G, ns, r, col) then return false end
+  local n0 = #ns.glyphs
+  U.tap(G, "a"); U.wait(4)
+  return #ns.glyphs > n0
+end
+function OPS.name(G, c)
+  local ns = naming_on_stack(G)
+  if not ns then return false, "no naming screen is open" end
+  local text = tostring(c.text or "")
+  local function ride(said)
+    for _ = 1, 400 do
+      local t = G.stack:top()
+      if naming_on_stack(G) then
+        return true, said .. "; " .. naming_words(G)
+      end
+      if G.overworld and t == G.overworld then return true, said end
+      if t and (t.enemy or t.kind)
+         and (t.phase == "menu" or t.phase == "moveSelect") then
+        return true, said .. "; the battle continues"
+      end
+      if ui_is_choice(G) then
+        return true, said .. "; then the game is ASKING something and the "
+          .. "box is STILL OPEN"
+      end
+      U.tap(G, "a"); U.wait(3)
+    end
+    return true, said .. "; dialog still open"
+  end
+  local pm = naming_presets_menu(G, ns)
+  if pm then
+    local want
+    for i, it in ipairs(pm.items or {}) do
+      if text ~= "" and tostring(it.label or ""):upper() == text:upper() then
+        want = i
+      end
+    end
+    if want then
+      ui_cursor_to(G, "index", want); U.tap(G, "a"); U.wait(10)
+      return ride(("picked the ready-made name \"%s\""):format(text))
+    end
+    ui_cursor_to(G, "index", 1); U.tap(G, "a"); U.wait(10)   -- NEW NAME
+    if G.stack:top() ~= ns then
+      return false, "the letter grid did not open behind the NEW NAME menu"
+    end
+  end
+  local typed, dropped = {}, {}
+  for ch in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+    if #typed >= (ns.maxLen or 7) then break end
+    if naming_type(G, ns, ch) then typed[#typed + 1] = ch
+    else dropped[#dropped + 1] = ch end
+  end
+  U.tap(G, "start"); U.wait(10)               -- confirm (START = ED)
+  if naming_on_stack(G) == ns then
+    local _, edRow, edCol = 5, 5, 9
+    for r, row in ipairs(ns:grid()) do
+      for col, cell in ipairs(row) do
+        if cell == "ED" then edRow, edCol = r, col end
+      end
+    end
+    naming_move_to(G, ns, edRow, edCol); U.tap(G, "a"); U.wait(10)
+  end
+  if naming_on_stack(G) == ns then
+    return false, "the name would not confirm"
+  end
+  local got = table.concat(typed)
+  local said = (got == "" and "kept the default name"
+                or ("named it \"" .. got .. "\""))
+    .. (#dropped > 0 and (" (not on the letter grid, dropped: "
+                          .. table.concat(dropped, "") .. ")") or "")
+  return ride(said)
 end
 
 -- Pick a party slot on a forced party menu (the lead fainted: "Use next

@@ -45,7 +45,15 @@ ck("a failed re-route falls back rather than breaking",
 
 # behaviour on the live atlas shape
 import json
-d = json.loads(Path("run/explored.json").read_text())
+
+def _atlas():
+    """The richest ledger on disk: the live one is whatever chain is running
+    (a fresh chain starts it empty); the Hall of Fame world's is archived
+    beside it as explored.<ts>.pre-discovery.bak.json."""
+    cands = sorted(Path("run").glob("explored*.json"), key=lambda f: f.stat().st_size)
+    return json.loads(cands[-1].read_text())
+
+d = _atlas()
 ex = E.Executor.__new__(E.Executor)
 ex.explored = d["explored"]
 ex._frontier_left = lambda r: []

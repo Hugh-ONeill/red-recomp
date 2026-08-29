@@ -287,6 +287,12 @@ def start_game(run_dir: Path, save: Path | None, speed: str):
                 shutil.copy(src, ident_dir / name)
         print(f"[contract] save: {save}")
     else:
+        # A NEW GAME MUST NOT FIND A SAVE: the identity keeps whatever the
+        # last probe copied in (a teleport save, the post-game save), and
+        # with one present the title's first row is CONTINUE — "new game
+        # did not start (on CERULEAN_CITY)" (2026-08-29).
+        for name in ("slot1.lua", "slot1.lua.bak"):
+            (ident_dir / "saves/red" / name).unlink(missing_ok=True)
         print("[contract] no save -- new game (overworld half only)")
     run_dir.mkdir(parents=True, exist_ok=True)
     for f in ("obs.json", "cmd.lua"):
