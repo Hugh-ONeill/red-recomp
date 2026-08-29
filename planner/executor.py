@@ -9606,6 +9606,7 @@ class Executor:
         # matchup — species and levels are on screen the whole fight.
         b0 = (obs or {}).get("battle") or {}
         foe, me = b0.get("foe") or {}, b0.get("me") or {}
+        self._op_battles = getattr(self, "_op_battles", 0) + 1
         self.log("battle_start", subgoal=subgoal["id"], policy=name,
                  foe=f"{foe.get('species')} L{foe.get('level')}",
                  me=f"{me.get('species')} L{me.get('level')} "
@@ -10926,6 +10927,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             low_hp_flee = ""
             wild_in_way = ""
             _op_det = ""
+            self._op_battles = 0        # wild encounters this op met
             # THE OP MAY SAY WHAT ITS BATTLES ARE FOR. The battle policy is
             # chosen per STEP from the step's predicate, so a knows_move
             # step whose model-authored plan was "catch something that can
@@ -11082,10 +11084,24 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     _bkind = (obs.get("battle") or {}).get("kind")
                     _hb = ((ACTIVE_SPEC.get("flee_wild") or {})
                            .get("hp_below"))
+                    # THE POLICY THAT ACTUALLY RUNS, intent included. This
+                    # asked the step's predicate alone, so grind(intent=
+                    # train) on a flag step — predicate policy traversal,
+                    # running policy fight — fled nine wilds at 5/27hp and
+                    # the round said only "no visible effect — fled"; the
+                    # model read it as "no encounters" (2026-08-29, user
+                    # watching).
+                    _eff = choose_battle_policy(sg)[0]
+                    _oi2 = getattr(self, "_op_intent", None)
+                    if _oi2 and _oi2.get("intent"):
+                        _eff = {"catch": "catch", "train": "default",
+                                "fight": "default", "pass": "traversal",
+                                "traversal": "traversal"}.get(
+                                    _oi2["intent"], _eff)
                     if (_bkind == "wild" and _hb is not None
                             and _bme.get("maxhp")
                             and (_bme.get("hp") or 0) / _bme["maxhp"] < _hb
-                            and choose_battle_policy(sg)[0] != "traversal"):
+                            and _eff != "traversal"):
                         low_hp_flee = (f"{_bme.get('species')} at "
                                        f"{_bme.get('hp')}/{_bme.get('maxhp')} "
                                        f"HP")
@@ -11392,6 +11408,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if _gain < 0:
                     _gain = 0        # a faint/heal reshuffled the party
                 note += f" earned {_gain} exp"
+                # HOW MANY WILDS IT MET. "earned 0 exp ... fled" read as
+                # "no encounters" when nine had been fled; the count is
+                # the journal's own and costs nothing to say.
+                _nb = getattr(self, "_op_battles", 0)
+                if _nb:
+                    note += f" over {_nb} wild encounter(s)"
                 if getattr(self, "_no_balls_note", False):
                     self._no_balls_note = False
                     note += (" — NO POKé BALLS of any kind in the bag, so "
@@ -11781,8 +11803,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # happened to "Okay! Say hi to PROF.OAK for me!".
                     # Nothing about the WORLD changed either way; only the
                     # framing moves.
+                    # ...AND A FOUGHT OR FLED ENCOUNTER IS NOT NOTHING
+                    # EITHER: name the count instead of "nothing changed"
+                    _nb0 = getattr(self, "_op_battles", 0)
                     note += (": the world did not change, but it SPOKE"
                              if heard else
+                             (f": ran; {_nb0} wild encounter(s) met and "
+                              f"nothing else changed")
+                             if _nb0 else
                              ": ran but had NO visible effect "
                              "(nothing changed)")
                     # ...AND KEEP WHAT THE OP ITSELF SAID. A no-change
