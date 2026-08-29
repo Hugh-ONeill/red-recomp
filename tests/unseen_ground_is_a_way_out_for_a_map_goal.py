@@ -32,11 +32,12 @@ txt = L.plan_explore(ex, o, cands, target="map:CERULEAN_CITY")
 ck("the words name the unseen mountain at 1 leg before the museum's untried door at 3",
    "never tried is MOON|1,1" in txt and "63 spot(s)" in txt)
 src = (ROOT / "planner" / "executor.py").read_text()
-ck("the deed tiers unseen ground with an untried exit for a map goal",
-   "_pri = (0 if (left or unseen) else 1) if _map_goal else 0" in src)
+ck("the deed tiers unseen ground (and an unreachable untaken way) with an untried exit for a map goal",
+   "_pri = (0 if (left or unseen or _unr) else 1) if _map_goal else 0" in src)
 lsrc = (ROOT / "planner" / "ledger.py").read_text()
-ck("...and the words carry the same tier", 'if str(target or "").startswith("map:") else 0)' in lsrc
-   and "r = (_pri, len(path), -(len(left) + len(things) + unseen), region)" in lsrc)
+ck("...and the words carry the same tier",
+   '_pri = ((0 if (left or unseen or _unr) else 1)' in lsrc
+   and "-(len(left) + len(things) + unseen + len(_unr)), region)" in lsrc)
 ex._dry_walks = {MOON: 2}
 txt2 = L.plan_explore(ex, o, L.build(ex, o, target="map:CERULEAN_CITY", want_explore=False), target="map:CERULEAN_CITY")
 ck("two dry walks to an area rank it last (the museum's ticket desk)", "never tried is MUSEUM|0,1" in txt2)

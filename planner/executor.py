@@ -1248,6 +1248,7 @@ class Executor:
         self.map_seen: dict = {}            # map id -> max frontier over its regions
         self.region_seen: dict = {}         # region -> frontier count at last look
         self._dry_walks: dict = {}          # region -> explore walks there that swept nothing new
+        self.unreached_at: dict = {}        # region -> ways out never taken no walk reached
         self.shut_settings: dict = {}       # map -> door -> switch settings
                                             # it was seen unreachable in
         self.reach_settings: dict = {}      # map -> thing -> switch settings
@@ -2199,12 +2200,15 @@ class Executor:
                 continue
             left = self._frontier_left(region)
             unpressed = ledger.untouched_in(self, region)
+            _unr = [k for k in ((getattr(self, "unreached_at", None) or {})
+                                .get(region) or [])
+                    if k not in set(self._taken_here(region) or {})]
             # a floor whose seen ground ends somewhere is not finished
             # either (the north gate's exit had never been on screen)
             unseen = int((getattr(self, "region_seen", None) or {})
                          .get(region, 0) or 0)
             unseen = max(unseen, _reach_from.get(region, 0))
-            if not (left or unpressed or unseen):
+            if not (left or unpressed or unseen or _unr):
                 continue
             path = self._route(here, region)
             if not path:
@@ -2230,7 +2234,7 @@ class Executor:
                 # (2026-08-29, user watching). Under the footprint an
                 # untried exit and unseen ground are one tier; distance
                 # decides between them; only a things-only area ranks below.
-                _pri = (0 if (left or unseen) else 1) if _map_goal else 0
+                _pri = (0 if (left or unseen or _unr) else 1) if _map_goal else 0
             # A WALK THAT SAW NOTHING, TWICE, RANKS LAST. The museum's
             # unseen spots sit behind a ticket desk whose script stops
             # every sweep, so the area never stopped looking unfinished
@@ -2240,9 +2244,18 @@ class Executor:
                        .get(region, 0) or 0)
             if _dry >= 2:
                 _pri = 3
-            r = (_pri, len(path), -(len(left) + len(unpressed) + unseen), region)
+            # WITHIN A TIER, DISTANCE LEADS; THEN A WAY OUT BEATS GROUND
+            # TO LOOK AT. Raw counts made 4 unseen spots in an empty
+            # pocket outweigh the one untaken way out of Mt Moon B2F, at
+            # the same distance — but a way out is what changes the map a
+            # map goal asks for, and unseen ground only MIGHT hold one.
+            _way_here = 0 if (left or _unr) else 1
+            r = (_pri, len(path), _way_here,
+                 -(len(left) + len(unpressed) + unseen + len(_unr)),
+                 region)
             if best is None or r < best[0]:
                 best = (r, region, left, unpressed, path, unseen)
+                self._best_unreached = _unr
         if not best:
             # ...AND SAY WHICH KIND OF NOTHING IT IS. "Something you have
             # done must be undone" is a claim about the WORLD, and it was
@@ -2280,6 +2293,11 @@ class Executor:
               f"{len(unpressed)} thing(s) never pressed"
               + (f" and {unseen} spot(s) where its seen ground ends"
                  if unseen else "")
+              + (f" and {len(getattr(self, '_best_unreached', []) or [])} "
+                 f"way(s) out never taken that no walk reached when you "
+                 f"last stood there ("
+                 + ", ".join(getattr(self, "_best_unreached", []) or [])
+                 + ")" if getattr(self, "_best_unreached", None) else "")
               + f" — now at {arrived or self._where(cur) or 'an unexpected stop'}"]
         if not ignore_done and pred_holds(sg.get("done_when"), cur):
             return True, tr, []
@@ -2790,6 +2808,7 @@ class Executor:
             self.map_seen = data.get("map_seen", {}) or {}
             self.region_seen = data.get("region_seen", {}) or {}
             self._dry_walks = data.get("dry_walks", {}) or {}
+            self.unreached_at = data.get("unreached_at", {}) or {}
             self._battle_regions = set(data.get("battle_regions") or ())
             # Money-dependent proofs do not survive a restart. "Fully
             # worked" recorded in a shop with an empty wallet is a fact
@@ -3371,6 +3390,7 @@ class Executor:
                  "map_seen": getattr(self, "map_seen", {}),
                  "region_seen": getattr(self, "region_seen", {}),
                  "dry_walks": getattr(self, "_dry_walks", {}),
+                 "unreached_at": getattr(self, "unreached_at", {}),
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
                  "no_cross_at": self._no_cross_at,
@@ -3794,6 +3814,30 @@ class Executor:
         # the observation, not from this ledger.
         keys = [f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])
                 if w.get("reachable")]
+        # ...AND THE WAYS OUT NO WALK FROM HERE REACHES, kept apart. Only
+        # reachable doorways enter the frontier, so an area holding a way
+        # out never taken that no walk reaches counts as having NOTHING
+        # LEFT — and Mt Moon B2F's fossil pocket, which holds the ladder
+        # (5,7) to the exit and the fossils standing in its corridor,
+        # ranked below empty pockets for explore (user, 2026-08-29: "if
+        # something is unreachable it should still try to explore near
+        # there"). Unfinished business of the strongest kind: the ledger's
+        # own unreached_ways line already says so about the floor you are
+        # standing on; this remembers it per region.
+        _unr = sorted(f"{w.get('x')},{w.get('y')}"
+                      for w in (m.get("warps") or [])
+                      if w.get("x") is not None and not w.get("reachable")
+                      and not w.get("by_water"))
+        if not hasattr(self, "unreached_at"):
+            self.unreached_at = {}
+        _taken_now = set(self._taken_here(here) or {})
+        _unr = [k for k in _unr if k not in _taken_now]
+        if (self.unreached_at.get(here) or []) != _unr:
+            if _unr:
+                self.unreached_at[here] = _unr
+            else:
+                self.unreached_at.pop(here, None)
+            self._save_memory()
         keys += list((m.get("connections") or {}).keys())
         # DOORS THAT EXIST BUT CANNOT BE WALKED TO stay out of the frontier
         # (you cannot take them now) and are recorded separately, because

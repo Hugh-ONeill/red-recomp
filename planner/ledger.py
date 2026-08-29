@@ -1338,7 +1338,12 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         unseen = int((getattr(ex, "region_seen", None) or {})
                      .get(region, 0) or 0)
         unseen = max(unseen, _reach_from.get(region, 0))
-        if not (left or things or unseen):
+        # ways out never taken that no walk reached from there (executor
+        # note_frontier keeps them apart from the frontier)
+        _unr = [k for k in ((getattr(ex, "unreached_at", None) or {})
+                            .get(region) or [])
+                if k not in set(ex._taken_here(region) or {})]
+        if not (left or things or unseen or _unr):
             continue
         path = ex._route(here, region)
         if not path:
@@ -1346,17 +1351,20 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         # THE WORDS FOLLOW THE DEED (executor _explore_step): for a map
         # goal, an untried exit or unseen ground first, things-only areas
         # after; distance decides within a tier.
-        _pri = ((0 if (left or unseen) else 1)
+        _pri = ((0 if (left or unseen or _unr) else 1)
                 if str(target or "").startswith("map:") else 0)
         # two explore walks there that saw nothing new: last (executor rule)
         if int((getattr(ex, "_dry_walks", None) or {}).get(region, 0) or 0) >= 2:
             _pri = 3
-        r = (_pri, len(path), -(len(left) + len(things) + unseen), region)
-        found.append((r, region, left, things, path, unseen))
+        # same tie-break as the deed (_explore_step): distance, then a way
+        # out (reachable or not) before ground to look at
+        r = (_pri, len(path), 0 if (left or _unr) else 1,
+             -(len(left) + len(things) + unseen + len(_unr)), region)
+        found.append((r, region, left, things, path, unseen, _unr))
     found.sort(key=lambda f: f[0])
     best = found[0] if found else None
     if best:
-        _, region, left, things, path, unseen = best
+        _, region, left, things, path, unseen, _unrb = best
         fk, fd = path[0]
         first = f"walk {fk}" if not fk[0].isdigit() else f"door ({fk})"
         # THE NEAREST-AREA RECALL OUTRANKS THE UNREACHABLES NOTE. That note
@@ -1380,6 +1388,10 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
             what.append(f"press {', '.join(things[:3])}")
         if unseen:
             what.append(f"sweep — {unseen} spot(s) where its seen ground ends")
+        if _unrb:
+            what.append("look for the way to " + ", ".join(_unrb[:2])
+                        + " — a way out never taken that no walk reached "
+                          "when you last stood there")
         _uw = unreached_ways(cands)
         _head = ("EVERYTHING YOU CAN REACH HERE IS DONE, but "
                  + ", ".join(c.label() for c in _uw[:3])
@@ -1403,7 +1415,7 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         # appeared. The first leg is the choice actually being made; list
         # each one once, nearest example first.
         _more, _legs_seen = [], {path[0][0]}
-        for _r2, _reg2, _left2, _things2, _path2, _unseen2 in found[1:]:
+        for _r2, _reg2, _left2, _things2, _path2, _unseen2, _unr2 in found[1:]:
             if len(_more) >= 3:
                 break
             _fk2, _fd2 = _path2[0]
@@ -1419,6 +1431,9 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                 _has.append(f"{len(_things2)} thing(s) never pressed")
             if _unseen2:
                 _has.append(f"{_unseen2} spot(s) of ground never on screen")
+            if _unr2:
+                _has.append(f"{len(_unr2)} way(s) out never taken that no "
+                            f"walk reached from there")
             _more.append(f"{_reg2} ({len(_path2)} leg(s), first {_first2}"
                          f" to {_fd2}) has " + " and ".join(_has))
         return (_head + f" The nearest "
