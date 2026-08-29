@@ -47,6 +47,14 @@ ck("the you-are-not-shut-in doors come from the seen flood",
    "local reach = blind and (warp_reach(G) or {})\n"
    "                    or (seen_reach(G) or {})" in sh)
 
+sys.path.insert(0, str(ROOT / "planner"))
+import ledger as L   # noqa: E402
+_c = L.Candidate(key="north", kind="seam", status="untried",
+                 note="cross(dir=north): FAILED — the north seam of VIRIDIAN_CITY (to ROUTE_2) cannot be reached over the ground you have SEEN — the search stopped where your footprint ends, NOT a proven wall")
+ck("a footprint-stopped seam is not a refusal (explore may open it)", not L._refused(_c))
+ck("...and its row says a walk over seen ground has not reached it yet, not that it turned you back",
+   "no walk over ground you have " in (ROOT / "planner" / "ledger.py").read_text()
+   and 'and "cannot be reached over the ground" in str(c.note or "")' in (ROOT / "planner" / "ledger.py").read_text())
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)

@@ -1059,6 +1059,14 @@ def _refused(c) -> bool:
     """Has this candidate turned the run back? The status cannot say: a
     crossing that failed never completed, so it stays "untried"."""
     n = str(getattr(c, "note", "") or "")
+    # A FOOTPRINT STOP IS NOT A REFUSAL. "cannot be reached over the ground
+    # you have SEEN" says the search ended where the looking ended, and
+    # explore's next sweep may open it — but the note carries the
+    # executor's FAILED prefix, so this called it "turned you back before"
+    # and Viridian's north road read as a wall (2026-08-29, user watching:
+    # "the north exit ... is blocked by bushes").
+    if "cannot be reached over the ground" in n:
+        return False
     return ("FAILED" in n or "cannot be walked to" in n
             or "no walkable path" in n)
 
@@ -2265,6 +2273,11 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         if c.status == "untried" and c.kind in ("door", "seam") \
                 and _refused(c):
             words = "never crossed — trying it has turned you back before"
+        elif (c.status == "untried" and c.kind in ("door", "seam")
+                and "cannot be reached over the ground" in str(c.note or "")):
+            words = ("never taken from here — no walk over ground you have "
+                     "SEEN has reached it yet; ground never on screen may "
+                     "join it (explore looks there)")
         # ...AND UNREACHABLE IS ONLY EVER TRUE OF A SETTING, where the
         # world has a lever that puts the walls back. The run had already
         # looked at this door in both statue settings and been turned away
