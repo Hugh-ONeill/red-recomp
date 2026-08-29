@@ -28,6 +28,7 @@ import argparse
 import difflib
 import json
 import re
+import re as _re
 import unicodedata
 import sys
 from pathlib import Path
@@ -1000,14 +1001,34 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                 # and burned all five rounds; the chain stopped there.
                 # Say the name is not real, say guessing again will not
                 # help, and name the doors that ARE open.
+                # ...EXCEPT WHEN THE GUESS IS A PLACEHOLDER IN A SERIES
+                # THE PLAN ITSELF NAMED. "Clear Route 4 of trainers" was
+                # authored five rounds running with flag
+                # EVENT_BEAT_ROUTE_4_TRAINER_N — a literal N — and the
+                # refusal only ever said the name was wrong, so the leg
+                # could not be written at all and the chain stopped
+                # (2026-08-29). Naming the members of a series the model
+                # has itself named leaks no story: the series is its own
+                # words, and how many trainers a route holds is on the
+                # screen. Nothing else is ever suggested — a different
+                # event's name is still the game's to reveal.
+                _ser = _re.sub(r"_[A-Z0-9]+$", "", str(v))
+                _mem = sorted(f for f in ENGINE_FLAGS
+                              if _ser and f.startswith(_ser + "_")
+                              and f != v)
+                _hint = (f" The events of that series this game does "
+                         f"define are: {', '.join(_mem[:6])}"
+                         + (" (and more)" if len(_mem) > 6 else "")
+                         + " — one of those exact ids, or none."
+                         if _mem else "")
                 probs.append(
                     f"{tag} ({sid}) flag '{v}' is not an event this game "
                     f"defines. You cannot look event names up and another "
                     f"guess will fail the same way — do not spell a "
-                    f"different one. Finish this subgoal on something you "
-                    f"can SEE instead: a map you could not stand in before, "
-                    f"an item the act leaves you holding, a badge, or a "
-                    f"party change.")
+                    f"different one.{_hint} Finish this subgoal on "
+                    f"something you can SEE instead: a map you could not "
+                    f"stand in before, an item the act leaves you holding, "
+                    f"a badge, or a party change.")
             elif k == "badge" and v not in BADGES:
                 probs.append(f"{tag} ({sid}) badge '{v}' unknown")
             elif k == "has_species" and ENGINE_SPECIES:
