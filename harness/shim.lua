@@ -9701,7 +9701,14 @@ function OPS.throw_ball(G, c)
     if ui_is_choice(G) then                 -- "give a nickname?" — YES:
       ui_cursor_to(G, "index", 1)           -- the name is the model's to give
       U.tap(G, "a"); U.wait(6)
-    elseif not (t and (t.enemy or t.kind)) then
+    elseif t and t.pages then
+      -- "X was caught!", the dex page, the nickname question typing out:
+      -- TEXT, not the battle's end. Breaking here (as this did) left the
+      -- question box up for the next op's back-out to press B through —
+      -- which is how every catch was declined (2026-08-29, first catches
+      -- of the run: PIDGEY and RATTATA, no name asked).
+      U.tap(G, "a"); U.wait(4)
+    elseif not battle_frame(G) and not (t and (t.enemy or t.kind)) then
       break                                 -- battle over (caught or done)
     elseif t.phase == "menu" or t.phase == "moveSelect" then
       break                                 -- miss: battle continues

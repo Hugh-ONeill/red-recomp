@@ -9712,6 +9712,11 @@ class Executor:
                                     self.max_battle_turns,
                                     (_oi.get("want") if _oi and _oi.get("want")
                                      else self._catch_target(subgoal)))
+        # A CATCH ENDS ON THE NAMING SCREEN: the policy leaves when the
+        # mode is no longer battle, and what is up is the game's question
+        # — answer it here, before any op's back-out can press B at it.
+        if (obs or {}).get("naming"):
+            obs = self._resolve_naming(obs)
         # spec-rule field cure/heal after the battle (no turn cost) for the
         # neediest party mon: the model's rules decide when an item beats
         # walking on. Cure first — poison keeps chipping until it is.
