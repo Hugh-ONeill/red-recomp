@@ -1895,8 +1895,28 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     if _holes:
         # A HOLE IS NOT IN THE WARP TABLE, so it was in no doorway list and
         # could not be chosen. It is taken by WALKING ONTO IT.
+        # ONE DROP CAN BE WIDER THAN ONE CELL: the shim stamps adjacent
+        # same-destination drop cells with one group id (drop=N); the
+        # tiles of it that have been SEEN fold into one label, the way a
+        # two-tile doorway does (user, 2026-08-29: "if there are two on
+        # the first floor they should count as one if theyre next to
+        # eachother").
+        _grp: dict = {}
+        for h in _holes:
+            _grp.setdefault(h.get("drop") or f"_{h.get('x')},{h.get('y')}",
+                            []).append(h)
+        _drops = []
+        for hs in _grp.values():
+            hs = sorted(hs, key=lambda h: (h.get("y") or 0, h.get("x") or 0))
+            _drops.append({
+                "label": "+".join(f"({h.get('x')},{h.get('y')})" for h in hs),
+                "reachable": any(h.get("reachable") for h in hs),
+                "boulder": any(h.get("boulder") for h in hs),
+                "wide": len(hs), "y": hs[0].get("y") or 0, "x": hs[0].get("x") or 0})
+        _drops.sort(key=lambda d: (d["y"], d["x"]))
+        _holes = _drops
         _hr = [h for h in _holes if h.get("reachable")]
-        _hx = ", ".join(f"({h.get('x')},{h.get('y')})" for h in _holes[:6])
+        _hx = ", ".join(h["label"] for h in _holes[:6])
         # ALL ONE-WAY; TWO PLACEMENTS. The Mansion's drops sit where a
         # doorway would and are exits to another floor (3F's go to 1F and
         # 2F, so "the floor below" was an over-claim); Seafoam's and Victory
@@ -1906,14 +1926,15 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         _hb = [h for h in _holes if h.get("boulder")]
         head += (f". THIS FLOOR HAS {len(_holes)} ONE-WAY DROP(S) IN IT, at "
                  f"{_hx}"
+                 + (" (a + joins the tiles of ONE drop wider than one cell)"
+                    if any(h["wide"] > 1 for h in _holes) else "")
                  + (f" — {len(_hr)} of them you can walk to"
                     if _hr and len(_hr) != len(_holes) else "")
                  + ". A drop is not a doorway and takes no use_warp: you "
                  "step ONTO it and are taken to another floor, and there is "
                  "no climbing back up it. {\"op\":\"walk_to\",\"x\":N,"
                  "\"y\":N} onto one is how it is taken"
-                 + ((". " + ", ".join(f"({h.get('x')},{h.get('y')})"
-                                      for h in _hb[:4])
+                 + ((". " + ", ".join(h["label"] for h in _hb[:4])
                      + (" is" if len(_hb) == 1 else " are")
                      + " also a HOLE in the floor a BOULDER can be sent "
                        "down"

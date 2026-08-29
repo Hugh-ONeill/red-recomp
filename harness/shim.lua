@@ -545,6 +545,52 @@ local function WALK_of(mid)
   if not t then t = {}; WALK[mid] = t end
   return t
 end
+-- ONE DROP CAN BE WIDER THAN ONE CELL (user, 2026-08-29): the Mansion's
+-- 3F drop to 1F is two tiles, (16,14)+(17,14), and its drop to 2F is one.
+-- Adjacent drop cells with the same destination are ONE drop — the rule
+-- doorways already follow (doorway_labels; the planner's _door_groups).
+-- cells: list of { x=, y=, dest= } (dest nil: never grouped). Returns
+-- { ["x,y"] = id } with ids numbered by each group's first cell (y, x).
+-- The destination is used to group and never published: unwalked ground
+-- is not ours to name.
+local function drop_groups(cells)
+  local n = #cells
+  local parent = {}
+  for i = 1, n do parent[i] = i end
+  local function find(i)
+    while parent[i] ~= i do parent[i] = parent[parent[i]]; i = parent[i] end
+    return i
+  end
+  for i = 1, n do
+    for j = i + 1, n do
+      local a, b = cells[i], cells[j]
+      if a.dest ~= nil and a.dest == b.dest
+         and math.abs(a.x - b.x) + math.abs(a.y - b.y) == 1 then
+        parent[find(i)] = find(j)
+      end
+    end
+  end
+  local first = {}
+  for i = 1, n do
+    local r, c = find(i), cells[i]
+    if not first[r] or c.y < first[r].y
+       or (c.y == first[r].y and c.x < first[r].x) then
+      first[r] = { x = c.x, y = c.y }
+    end
+  end
+  local order = {}
+  for r, c in pairs(first) do order[#order + 1] = { r = r, x = c.x, y = c.y } end
+  table.sort(order, function(a, b)
+    if a.y ~= b.y then return a.y < b.y end
+    return a.x < b.x
+  end)
+  local id_of = {}
+  for i, o in ipairs(order) do id_of[o.r] = i end
+  local out = {}
+  for i = 1, n do out[cells[i].x .. "," .. cells[i].y] = id_of[find(i)] end
+  return out
+end
+
 seen_paint = function(G)
   local ow = G and G.overworld
   local p, map = ow and ow.player, ow and ow.map
@@ -1345,8 +1391,9 @@ local function observe(G, seq, result)
         -- if the map's own warp table has an entry there.
         local _warp_at = {}
         for _, w in ipairs((md and md.warps) or {}) do
-          _warp_at[w.x .. "," .. w.y] = true
+          _warp_at[w.x .. "," .. w.y] = "warp:" .. tostring(w.destMap or "?")
         end
+        local _hcells = {}       -- { x, y, dest } for drop_groups; dest stays here
         for cy = 0, _H - 1 do
           for cx = 0, _W - 1 do
             if _warp_at[cx .. "," .. cy]
@@ -1354,6 +1401,8 @@ local function observe(G, seq, result)
               _holes[#_holes + 1] = { x = cx, y = cy,
                                       reachable = _rc[cx .. "," .. cy]
                                                   and true or false }
+              _hcells[#_hcells + 1] = { x = cx, y = cy,
+                                        dest = _warp_at[cx .. "," .. cy] }
             end
           end
         end
@@ -1381,7 +1430,20 @@ local function observe(G, seq, result)
               _seen[k] = true
               _holes[#_holes + 1] = { x = hx, y = hy,
                                       reachable = _rc[k] and true or false }
+              _hcells[#_hcells + 1] = { x = hx, y = hy,
+                                        dest = "script:" .. tostring(h[3] or h.dest or "?")
+                                          .. "@" .. tostring(h[4] or "") .. ","
+                                          .. tostring(h[5] or "") }
             end
+          end
+        end
+        -- ...AND WHICH CELLS ARE ONE DROP. Published as an opaque group id
+        -- (drop=N); the seen filter still keeps each tile by its own cell,
+        -- and the readers fold the tiles that HAVE been seen.
+        do
+          local _gid = drop_groups(_hcells)
+          for _, hh in ipairs(_holes) do
+            hh.drop = _gid[hh.x .. "," .. hh.y]
           end
         end
         if #_holes > 0 then o.map.holes = _holes end
@@ -9695,13 +9757,36 @@ function OPS.sweep(G, c)
   -- climbing back) is manual-tier and said beside it; where it drops you
   -- is not.
   local script_holes = {}
+  local _hcells = {}
   do
     local okms, MS = pcall(require, "src.script.MapScripts")
     local _view = okms and MS.get and MS.get(map0) or nil
     for _, h in ipairs((_view and _view.holes) or {}) do
       local hx, hy = h[1] or h.x, h[2] or h.y
-      if hx and hy then script_holes[hx .. "," .. hy] = true end
+      if hx and hy then
+        script_holes[hx .. "," .. hy] = true
+        _hcells[#_hcells + 1] = { x = hx, y = hy,
+                                  dest = "script:" .. tostring(h[3] or h.dest or "?")
+                                    .. "@" .. tostring(h[4] or "") .. ","
+                                    .. tostring(h[5] or "") }
+      end
     end
+    for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
+      if ow.map.warpPadOrHoleAt and ow.map:warpPadOrHoleAt(w.x, w.y) == "hole"
+         and not script_holes[w.x .. "," .. w.y] then
+        _hcells[#_hcells + 1] = { x = w.x, y = w.y,
+                                  dest = "warp:" .. tostring(w.destMap or "?") }
+      end
+    end
+  end
+  -- ONE DROP CAN BE WIDER THAN ONE CELL: adjacent drop cells with the same
+  -- destination are one drop (drop_groups; the doorway rule). Reported
+  -- once, naming the tiles of it that have been seen.
+  local gids = drop_groups(_hcells)
+  local members = {}
+  for k2, g in pairs(gids) do
+    members[g] = members[g] or {}
+    table.insert(members[g], k2)
   end
   -- ...AND WHICH DROPS ARE ALSO BOULDER HOLES. All of them are one-way;
   -- the Mansion's sit where a doorway would and are exits, while Seafoam's
@@ -9734,26 +9819,45 @@ function OPS.sweep(G, c)
   end
   local function came_into_view()
     local out, edge = {}, {}
+    local reported = {}
     for k, v in pairs(mask) do
       if v == true and not before[k] then
         local x, y = k:match("^(-?%d+),(-?%d+)$")
         x, y = tonumber(x), tonumber(y)
         if warps[k] or script_holes[k] then
           local look = script_holes[k] and "hole" or way_look(x, y)
-          if look == "hole" and bh_set[k] then
-            out[#out + 1] = { kind = "hole", x = x, y = y,
-                              text = ("a HOLE in the floor at (%d,%d) — a way "
-                                      .. "DOWN: step onto it and you fall to the "
-                                      .. "floor below with no climbing back up, "
-                                      .. "and a BOULDER shoved onto it falls "
-                                      .. "through too"):format(x, y) }
+          if look == "hole" and gids[k] and reported[gids[k]] then
+            -- another tile of a drop already reported in this list
           elseif look == "hole" then
-            out[#out + 1] = { kind = "hole", x = x, y = y,
-                              text = ("a one-way DROP at (%d,%d) — an exit like "
-                                      .. "a doorway you cannot come back "
-                                      .. "through: step onto it and you are "
-                                      .. "taken to another floor, and there is "
-                                      .. "no climbing back up"):format(x, y) }
+            local gid = gids[k]
+            if gid then reported[gid] = true end
+            local tiles, prior = {}, {}
+            for _, mk in ipairs((gid and members[gid]) or { k }) do
+              if mask[mk] == true then
+                tiles[#tiles + 1] = mk
+                if before[mk] then prior[#prior + 1] = mk end
+              end
+            end
+            table.sort(tiles)
+            local lab = "(" .. table.concat(tiles, ")+(") .. ")"
+            local wide = (#tiles > 1)
+              and (" — ONE drop, " .. #tiles .. " tiles wide") or ""
+            local seenb = (#prior > 0 and #prior < #tiles)
+              and (" (its tile at (" .. table.concat(prior, "),(")
+                   .. ") was on screen before)") or ""
+            local text
+            if bh_set[k] then
+              text = ("a HOLE in the floor at " .. lab .. " — a way DOWN: step "
+                      .. "onto it and you fall to the floor below with no "
+                      .. "climbing back up, and a BOULDER shoved onto it falls "
+                      .. "through too" .. wide .. seenb)
+            else
+              text = ("a one-way DROP at " .. lab .. " — an exit like a doorway "
+                      .. "you cannot come back through: step onto it and you "
+                      .. "are taken to another floor, and there is no climbing "
+                      .. "back up" .. wide .. seenb)
+            end
+            out[#out + 1] = { kind = "hole", x = x, y = y, text = text }
           elseif look == "pad" then
             out[#out + 1] = { kind = "door", x = x, y = y,
                               text = ("a warp pad at (%d,%d)"):format(x, y) }
