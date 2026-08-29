@@ -20,6 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "planner"))
 sh = (ROOT / "harness" / "shim.lua").read_text()
+ex = (ROOT / "planner" / "executor.py").read_text()
 checks = []
 def ck(name, ok): checks.append((name, bool(ok)))
 
