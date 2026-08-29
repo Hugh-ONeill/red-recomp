@@ -33,10 +33,15 @@ ck("settle_dialog and ui_back_out stop instead of typing",
    "if naming_on_stack(G) then return true, naming_words(G) end" in sh
    and "if naming_on_stack(G) then return false end" in sh)
 _tb = sh[sh.index("function OPS.throw_ball"):sh.index("function OPS.pick_party")]
-ck("a catch's ride ends only when the overworld is back on top (the dex page and text are ridden)",
+ck("a catch's ride ends only when the overworld is back on top AND stays that way",
    "elseif G.overworld and t == G.overworld then" in _tb
    and "the DexEntryMenu a new species opens" in _tb
-   and "not battle_frame(G)" not in _tb)
+   and "not battle_frame(G)" not in _tb
+   # the engine pops the battle before it asks for a nickname: the gap
+   # where the overworld is briefly on top is waited out, not taken as
+   # the end (PARAS and ODDISH came in un-named through it)
+   and "if not _back then break end" in _tb
+   and "pops the battle FIRST" in _tb)
 ck("the battle loop resolves a naming screen before any op can back out of it",
    'if (obs or {}).get("naming"):\n            obs = self._resolve_naming(obs)' in ex)
 ck("a catch says YES to the nickname and hands the grid over",
