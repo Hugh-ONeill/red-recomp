@@ -7512,6 +7512,20 @@ class Executor:
         species at all.
         """
         text = f"{sg.get('goal_text') or ''} {sg.get('id') or ''}".upper()
+        # A STEP THAT MEANS TO GET ONE IS NOT A STEP THAT ASSUMES YOU HAVE
+        # ONE. "catch_flying_type: catch a PIDGEY or SPEAROW" named two
+        # species the party lacks — which is the POINT of it — and this
+        # note told the run to skip it (2026-08-29). The condition says
+        # which: party_type / has_species / party_size / dex_owned are
+        # things to BECOME, and the words catch/obtain/get/find/buy say
+        # the same.
+        _dwk = json.dumps(sg.get("done_when") or {})
+        if any(k in _dwk for k in ("party_type", "has_species", "party_size",
+                                   "dex_owned", "party_min_level")):
+            return ""
+        if any(w in text for w in ("CATCH", "OBTAIN", "GET ", "FIND", "BUY",
+                                   "ACQUIRE", "RECEIVE")):
+            return ""
         words = set(_re.findall(r"[A-Z][A-Z0-9_]*", text))
         named = words & self._species_names()
         if not named:

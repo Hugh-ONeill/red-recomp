@@ -41,7 +41,11 @@ ck("a catch's ride ends only when the overworld is back on top AND stays that wa
    # where the overworld is briefly on top is waited out, not taken as
    # the end (PARAS and ODDISH came in un-named through it)
    and "if not _back then break end" in _tb
-   and "pops the battle FIRST" in _tb)
+   and "pops the battle FIRST" in _tb
+   # and it waits on the PARTY, not a frame count: a catch is worth
+   # being patient for, a miss leaves at once
+   and "for _ = 1, (_grew and 400 or 40) do" in _tb
+   and "WAIT ON THE PARTY, NOT ON A FRAME COUNT" in _tb)
 ck("the battle loop resolves a naming screen before any op can back out of it",
    'if (obs or {}).get("naming"):\n            obs = self._resolve_naming(obs)' in ex)
 ck("a catch says YES to the nickname and hands the grid over",

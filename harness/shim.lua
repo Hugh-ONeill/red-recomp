@@ -9801,10 +9801,18 @@ function OPS.throw_ball(G, c)
       -- there left PARAS and ODDISH un-named while the executor's settle
       -- mashed the box away (2026-08-29). Give the game a few frames to
       -- put its question up before calling the battle over.
+      -- WAIT ON THE PARTY, NOT ON A FRAME COUNT. A fixed 40 frames was a
+      -- guess and it lost the race: no throw in run 15 ever reported
+      -- CAUGHT, and PARAS, ODDISH and PIDGEY all arrived un-named while
+      -- the ride returned "threw, not caught" mid-catch (2026-08-29).
+      -- What tells the catch from the miss is the party growing, and
+      -- that is worth being patient for; a miss still leaves at once.
       local _back = false
-      for _ = 1, 40 do
+      local _grew = #((G.save and G.save.party) or {}) > party0
+      for _ = 1, (_grew and 400 or 40) do
         coroutine.yield()
         local t2 = G.stack:top()
+        if #((G.save and G.save.party) or {}) > party0 then _grew = true end
         if naming_on_stack(G) or ui_is_choice(G)
            or (t2 and t2.pages) or (t2 and (t2.enemy or t2.kind)) then
           _back = true; break

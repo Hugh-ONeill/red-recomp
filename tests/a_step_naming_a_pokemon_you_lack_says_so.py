@@ -43,6 +43,17 @@ ck("a step naming no species says nothing",
 src = (ROOT / "planner" / "executor.py").read_text()
 ck("the note rides the round-1 page beside the reset-flag note",
    "memory += self._absent_species_note(start, sg)" in src)
+# A STEP THAT MEANS TO GET ONE is not a step that assumes you have one
+_have = {"party": [{"species": "CHARMELEON"}], "pc_mons": []}
+ck("a catch step naming its quarry says nothing (that is the point of it)",
+   ex._absent_species_note(_have, {"id": "catch_flying_type",
+                                   "goal_text": "Catch a PIDGEY or SPEAROW",
+                                   "done_when": {"party_type": "FLYING"}}) == "")
+ck("...and neither does an obtain/get step",
+   ex._absent_species_note(_have, {"id": "x", "goal_text": "Obtain a MAGIKARP from the salesman",
+                                   "done_when": {"party_size": 2}}) == "")
+ck("a step that ASSUMES one still says so",
+   "GLOOM" in ex._absent_species_note(_have, SG))
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:
     print(("ok  " if ok else "FAIL"), n)
