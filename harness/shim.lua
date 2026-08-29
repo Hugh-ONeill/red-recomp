@@ -992,6 +992,22 @@ local function seen_filter(G, o)
           starts[name] = cell
         end
       end
+      -- ...AND THE SAME QUESTION FOR EVERY DOOR NO WALK FROM HERE REACHES:
+      -- which stood-in part of this floor reaches it, if any. "You cannot
+      -- walk to it from where you stand" left the run climbing back up the
+      -- ladder it came down to look for the way, five times over, while
+      -- the harness had already flooded every part of B2F it had stood in
+      -- (Mt Moon, 2026-08-29). Recall of walked ground; where an unwalked
+      -- way starts is still not claimed.
+      local function near_in(d2, x, y)
+        if x == nil or y == nil then return false end
+        if d2[x .. "," .. y] then return true end
+        for _, d in pairs(SDIRS) do
+          if d2[(x + d[1]) .. "," .. (y + d[2])] then return true end
+        end
+        return false
+      end
+      local nparts = 0
       local tried = 0
       for name, cell in pairs(starts) do
         tried = tried + 1
@@ -999,6 +1015,7 @@ local function seen_filter(G, o)
         local cx, cy = cell:match("^(-?%d+),(-?%d+)$")
         cx, cy = tonumber(cx), tonumber(cy)
         if cx and mask[cell] then
+          nparts = nparts + 1
           local d2 = seen_reach(G, cx, cy)
           local hit = 0
           for _, u in ipairs(unreached) do
@@ -1007,6 +1024,18 @@ local function seen_filter(G, o)
           if hit > 0 then
             from[#from + 1] = { region = m.id .. "|" .. name, n = hit }
           end
+          for _, w in ipairs(m.warps or {}) do
+            if w.reachable == false and not w.by_water
+               and near_in(d2, w.x, w.y) then
+              w.from = w.from or {}
+              w.from[#w.from + 1] = m.id .. "|" .. name
+            end
+          end
+        end
+      end
+      for _, w in ipairs(m.warps or {}) do
+        if w.reachable == false and not w.by_water then
+          w.stood_parts = nparts
         end
       end
       table.sort(from, function(a, b) return a.n > b.n end)

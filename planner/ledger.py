@@ -707,6 +707,25 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             near = min(folk, default=(None, None))
             if near[0] is not None and near[0] <= 8:
                 c.note = c.note or f"nearest person {near[1]}"
+            # WHICH PART OF THIS FLOOR REACHES IT, IF ANY. The shim floods
+            # the seen ground from every other part the run has stood in
+            # (the head's seen_unreached rule, applied to this door). Bare
+            # "you cannot walk to it from where you stand" left the run
+            # climbing back up the ladder it came down, five times, to find
+            # a way the harness already knew none of B2F's stood-in parts
+            # had (Mt Moon, 2026-08-29). Recall only: where an unwalked way
+            # starts is still not claimed.
+            _fr = [str(x) for x in (w.get("from") or []) if x]
+            _sp = int(w.get("stood_parts") or 0)
+            if _fr:
+                c.note = _join(c.note, "the ground you stood on in "
+                               + ", ".join(_fr[:2]) + " DOES reach it")
+            elif _sp:
+                c.note = _join(c.note,
+                               f"nor does any of the {_sp} other part(s) of "
+                               f"this floor you have stood in — its way in "
+                               f"is ground you have not stood on: unseen "
+                               f"ground on this floor, or another floor")
         elif key in spent:
             c.status = "spent"
             c.n = spent[key]
