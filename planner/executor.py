@@ -9588,6 +9588,12 @@ class Executor:
             why = "the op said so"
         if name not in BATTLE_POLICIES:          # never crash on a bad key
             name = "traversal"
+        # ...AND A CATCH POLICY WITH NO BALLS IS A FIGHT, said so. The
+        # policy stays (it already falls through to ordinary moves without
+        # a ball); the round's grind note carries the fact.
+        if name == "catch" and not _balls_in(obs):
+            self.log("catch_policy_without_balls", subgoal=subgoal["id"])
+            self._no_balls_note = True
         if why.startswith("the predicate"):
             # SAY IT, do not just do it. The harness has declined the
             # reading the numbers alone would have given, and the subgoal
@@ -10941,6 +10947,19 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     "intent": _int,
                     "want": ({"species": _species, "types": _types}
                              if (_species or _types) else None)}
+                # A CATCH WITH NO BALLS CANNOT HAPPEN, and the round said
+                # only "earned 0 exp, fled" about it (user, 2026-08-29:
+                # "its trying battle (catch policy) with no pokeballs").
+                # The bag is on the screen; say the fact and run nothing.
+                if _int == "catch" and not _balls_in(obs):
+                    trace.append(
+                        f"{op}(intent=catch): NOT RUN — the bag holds no "
+                        f"Poke Balls of any kind, so nothing can be caught; "
+                        f"a POKé MART sells them ({{\"op\":\"buy\","
+                        f"\"item\":\"POKE_BALL\",\"count\":N}} at its counter)")
+                    self.log("catch_without_balls", subgoal=sg.get("id"), op=op)
+                    self._op_intent = None
+                    continue
             for _ in range(12):
                 try:
                     obs = self.b.send(op, **step)
@@ -11373,6 +11392,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if _gain < 0:
                     _gain = 0        # a faint/heal reshuffled the party
                 note += f" earned {_gain} exp"
+                if getattr(self, "_no_balls_note", False):
+                    self._no_balls_note = False
+                    note += (" — NO POKé BALLS of any kind in the bag, so "
+                             "nothing could be caught (fought or fled as the "
+                             "policy chose)")
                 # WHO EARNED IT. The total hid that the one Pokemon the
                 # model meant to train — ODDISH, in slot 4 — earned nothing
                 # while the lead took every point, three grinds running
@@ -14792,6 +14816,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         self.log("plan_complete", goal=plan.get("goal"),
                  escalations=self.escalations)
         return True
+
+
+def _balls_in(obs) -> bool:
+    """Any ball of any kind in the bag (POKE/GREAT/ULTRA/SAFARI/MASTER)."""
+    try:
+        return any("BALL" in str(k).upper() and int(v or 0) > 0
+                   for k, v in ((obs or {}).get("bag") or {}).items())
+    except (TypeError, ValueError, AttributeError):
+        return False
 
 
 NAMING_MODEL = None       # set by main() before bootstrap; None = defaults
