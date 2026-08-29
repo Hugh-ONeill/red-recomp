@@ -9794,7 +9794,23 @@ function OPS.throw_ball(G, c)
       ui_cursor_to(G, "index", 1)           -- the name is the model's to give
       U.tap(G, "a"); U.wait(6)
     elseif G.overworld and t == G.overworld then
-      break                                 -- battle over: back in the field
+      -- ...BUT THE FIELD CAN BE A GAP, NOT THE END. On a catch the engine
+      -- pops the battle FIRST and pushes "X was caught!", the dex page and
+      -- the nickname question a moment later, so the overworld is briefly
+      -- on top with the question still to come — and the ride that broke
+      -- there left PARAS and ODDISH un-named while the executor's settle
+      -- mashed the box away (2026-08-29). Give the game a few frames to
+      -- put its question up before calling the battle over.
+      local _back = false
+      for _ = 1, 40 do
+        coroutine.yield()
+        local t2 = G.stack:top()
+        if naming_on_stack(G) or ui_is_choice(G)
+           or (t2 and t2.pages) or (t2 and (t2.enemy or t2.kind)) then
+          _back = true; break
+        end
+      end
+      if not _back then break end           -- battle over: back in the field
     elseif t and (t.enemy or t.kind)
        and (t.phase == "menu" or t.phase == "moveSelect") then
       break                                 -- miss: battle continues
