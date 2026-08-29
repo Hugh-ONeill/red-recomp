@@ -519,11 +519,14 @@ local function real_water(G, map, x, y)
   return true
 end
 local SEEN = {}                 -- map id -> { n = count, ["x,y"] = true }
+local WALK = {}                 -- map id -> { ["x,y"] = on-foot walkable AT LAST VIEW }
 local last_frontier = {}        -- the last observation's frontier, for the overlay
 local seen_dirty, seen_wrote = false, 0
 local seen_lmap, seen_lx, seen_ly = nil, nil, nil
 local seen_reach                -- assigned after warp_reach (shares its helpers)
+local seen_wall_since_view      -- pure freeze decision (defined below, before seen_reach)
 local SEEN_FILE = BRIDGE .. "/seen.json"
+local WALK_FILE = BRIDGE .. "/seen_walk.json"
 local SDIRS = { up = { 0, -1 }, down = { 0, 1 }, left = { -1, 0 }, right = { 1, 0 } }
 local VIEW_L, VIEW_R, VIEW_U, VIEW_D = 4, 5, 4, 4
 local function seen_dims(G, map)
@@ -535,6 +538,11 @@ end
 local function seen_of(mid)
   local t = SEEN[mid]
   if not t then t = { n = 0 }; SEEN[mid] = t end
+  return t
+end
+local function WALK_of(mid)
+  local t = WALK[mid]
+  if not t then t = {}; WALK[mid] = t end
   return t
 end
 seen_paint = function(G)
@@ -549,12 +557,24 @@ seen_paint = function(G)
   local W, H = seen_dims(G, map)
   if W <= 0 or H <= 0 then return end
   local t = seen_of(map.id)
+  local wt = WALK_of(map.id)
   for y = p.cellY - VIEW_U, p.cellY + VIEW_D do
     if y >= 0 and y < H then
       for x = p.cellX - VIEW_L, p.cellX + VIEW_R do
         if x >= 0 and x < W then
           local k = x .. "," .. y
           if not t[k] then t[k] = true; t.n = t.n + 1; seen_dirty = true end
+          -- FREEZE THE CHANGEABLE STATE AT LAST VIEW. A tile's
+          -- EXISTENCE is known once seen; its PASSABILITY only as of
+          -- the last time it was on screen. Snapshot on-foot
+          -- walkability for every in-view cell so a shutter that
+          -- opens off-screen (a switch flipped elsewhere) is not
+          -- routed through until the run walks back to see it
+          -- (user, 2026-08-28: "we dont have it set so the bot has
+          -- to see it updated to know that its actually updated").
+          local wcell = (map.isWalkableCell
+                         and map:isWalkableCell(x, y)) and true or false
+          if wt[k] ~= wcell then wt[k] = wcell; seen_dirty = true end
         end
       end
     end
@@ -581,6 +601,28 @@ local function seen_save(force)
   if not f then return end
   f:write(table.concat(parts)); f:close()
   os.rename(SEEN_FILE .. ".tmp", SEEN_FILE)
+  -- the frozen-walkability sidecar. seen.json keeps its list-of-cells
+  -- format (the Python side parses it); the freeze lives here, shim-only.
+  do
+    local wp = { "return {\n" }
+    for _, mid in ipairs(mids) do
+      local d = WALK[mid]
+      if d then
+        local ks = {}
+        for k, v in pairs(d) do
+          ks[#ks + 1] = ("[%q]=%s"):format(k, v and "true" or "false")
+        end
+        table.sort(ks)
+        wp[#wp + 1] = ("  [%q] = { %s },\n"):format(mid, table.concat(ks, ","))
+      end
+    end
+    wp[#wp + 1] = "}\n"
+    local wf = io.open(WALK_FILE .. ".tmp", "w")
+    if wf then
+      wf:write(table.concat(wp)); wf:close()
+      os.rename(WALK_FILE .. ".tmp", WALK_FILE)
+    end
+  end
   seen_dirty, seen_wrote = false, os.time()
 end
 local function seen_load()
@@ -594,6 +636,18 @@ local function seen_load()
     local st = seen_of(mid)
     for _, k in ipairs(cells) do
       if not st[k] then st[k] = true; st.n = st.n + 1 end
+    end
+    end
+  local wff = io.open(WALK_FILE, "r")
+  if wff then
+    local wbody = wff:read("*a"); wff:close()
+    local wchunk = wbody and load(wbody, "seen_walk", "t", {})
+    local wok, wt = pcall(wchunk or function() end)
+    if wok and type(wt) == "table" then
+      for mid, cells in pairs(wt) do
+        local d = WALK_of(mid)
+        for k, v in pairs(cells) do d[k] = v and true or false end
+      end
     end
   end
 end
@@ -632,6 +686,23 @@ local function seen_filter(G, o)
     if m[key] then
       local kept = keep_xy(m[key])
       m[key] = (#kept > 0) and kept or nil
+    end
+  end
+  -- AN OFF-SCREEN SWITCH'S POSITION IS NOT KNOWN UNTIL RE-SEEN. It is
+  -- seen ground, so it still appears; but whether it is thrown right
+  -- now is live state the run has not walked back to read.
+  do
+    local pp = ow and ow.player
+    if pp and pp.cellX then
+      for _, key in ipairs({ "boulder_switches", "switch_statues" }) do
+        for _, e in ipairs(m[key] or {}) do
+          local ex, ey = e.x or e[1], e.y or e[2]
+          if ex and not (ex >= pp.cellX - VIEW_L and ex <= pp.cellX + VIEW_R
+                         and ey >= pp.cellY - VIEW_U and ey <= pp.cellY + VIEW_D) then
+            e.open_now = nil
+          end
+        end
+      end
     end
   end
   if type(m.currents) == "table" then
@@ -3325,6 +3396,22 @@ end
 -- brought it back to rt 21 instead of continuing up victory road"). The
 -- probe now surfs when the party IS surfing, or when asked (surf=true),
 -- so the frontier over the water is counted and can be ridden to.
+-- THE FREEZE DECISION, pure and testable. An off-screen seen tile that was
+-- a WALL the last time it was on screen (WT[nk] == false) but is walkable
+-- on foot now is a change the run has not walked back to witness; the flood
+-- must not route through it (user, 2026-08-28: "we dont have it set so the
+-- bot has to see it updated to know that its actually updated"). On-screen
+-- tiles are live (the player can see them); a tile never frozen-shut is
+-- governed by live collision as before.
+seen_wall_since_view = function(map, WT, rpx, rpy, nx, ny, nk, VL, VR, VU, VD)
+  if rpx and nx >= rpx - VL and nx <= rpx + VR
+     and ny >= rpy - VU and ny <= rpy + VD then
+    return false
+  end
+  if (WT or {})[nk] ~= false then return false end
+  return map and map.isWalkableCell and map:isWalkableCell(nx, ny)
+         and true or false
+end
 seen_reach = function(G, sx, sy, surf)
   local okc, Collision = pcall(require, "src.world.Collision")
   local ow, p = G.overworld, G.overworld and G.overworld.player
@@ -3334,6 +3421,15 @@ seen_reach = function(G, sx, sy, surf)
   -- from another stand-point (a remembered region's cell) when asked
   if sx and sy then
     p = setmetatable({ cellX = sx, cellY = sy }, { __index = p })
+  end
+  -- WHERE THE PLAYER ACTUALLY STANDS (not the probe stand-point): the
+  -- box on screen right now, inside which live state is honest.
+  local rpx = ow.player and ow.player.cellX
+  local rpy = ow.player and ow.player.cellY
+  local WT = WALK[ow.map.id] or {}
+  local function hidden_open(nx, ny, nk)
+    return seen_wall_since_view(ow.map, WT, rpx, rpy, nx, ny, nk,
+                                VIEW_L, VIEW_R, VIEW_U, VIEW_D)
   end
   local mask = SEEN[ow.map.id] or {}
   local W, H = seen_dims(G, ow.map)
@@ -3365,7 +3461,8 @@ seen_reach = function(G, sx, sy, surf)
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y,
                                      surfing = (surf or p.surfing) and true or nil },
                                    { __index = p })
-        if Collision.canMove(ow.map, STATIC, probe, dn) then
+        if Collision.canMove(ow.map, STATIC, probe, dn)
+           and not hidden_open(nx, ny, nk) then
           dist[nk] = dist[ck] + 1
           q[#q + 1] = { x = nx, y = ny }
         else
