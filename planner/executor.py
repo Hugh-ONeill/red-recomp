@@ -4536,6 +4536,32 @@ class Executor:
         # than standing in Cerulean. Only a long stretch with no improvement
         # at all counts, and only while actually further off than the best.
         give_up = st["since"] >= 14 and d > st["best"]
+        # A MAP DRAWS ROADS; IT DOES NOT SAY WHICH ARE OPEN. The paper hop
+        # count is a real fact a player holding the TOWN MAP can read, and
+        # withholding it would be hiding — but quoted bare it reads as a
+        # route, and the shortest line on paper runs through gates that are
+        # shut for most of the game (Saffron's four, until the guards get
+        # their drink). The run's OWN record already holds which ways have
+        # turned it back; say that beside the number (user, 2026-08-29:
+        # "having the town map is actually probably bad for the model, it
+        # gives it false hope of saffron").
+        _paper = ""
+        if _held:
+            _shut = []
+            for _b in (self.blockers or {}).values():
+                if _b.get("cleared") or not _b.get("what"):
+                    continue
+                _shut.append((int(_b.get("n") or 0),
+                              f"{_b.get('where')} {_b.get('key')} — "
+                              f"\"{str(_b.get('what'))[:90]}\""))
+            _shut.sort(reverse=True)
+            _paper = (" The map draws the LAYOUT, not which roads are open: "
+                      "a gate can be shut and the map still draws the road "
+                      "through it, and a number on paper is not a route you "
+                      "have walked.")
+            if _shut:
+                _paper += (" Ways that have turned you back so far: "
+                           + "; ".join(t for _, t in _shut[:3]) + ".")
         note = (f"\nHOW FAR OFF YOU ARE: "
                 + ("on the printed map " if _held
                    else "by your own walking, and by nothing else — you "
@@ -4544,7 +4570,8 @@ class Executor:
                 f"{d} leg(s) from {want_raw}{_door_of}. The closest you have been "
                 f"this subgoal is {st['best']} (at {st['at']})"
                 + (f", and you have not improved on it for {st['since']} "
-                   f"rounds." if st["since"] else "."))
+                   f"rounds." if st["since"] else ".")
+                + _paper)
         if give_up:
             self.log("goal_drift_giveup", subgoal=sg.get("id"),
                      want=want_map, here=here_map, d=d, best=st["best"],
