@@ -10216,6 +10216,13 @@ function OPS.sweep(G, c)
   end
   local steps, hops, tried, why = 0, 0, {}, nil
   local _sf0 = safari_running(G)
+  -- LOOK NEAREST A WAY YOU HAVE NOT TAKEN FIRST. toward_x/y names a cell
+  -- (the executor passes a door no walk from here reaches, never taken);
+  -- the spots where seen ground ends are then taken nearest THAT cell
+  -- first instead of nearest the player. Still goal-blind: the floor's
+  -- own unfinished way out, not the objective (user, 2026-08-29: "if
+  -- something is unreachable it should still try to explore near there").
+  local tx, ty = tonumber(c.toward_x), tonumber(c.toward_y)
   while true do
     if G.stack:top() ~= ow then why = "interrupted (battle or script)"; break end
     if (ow.map and ow.map.id) ~= map0 then
@@ -10225,6 +10232,14 @@ function OPS.sweep(G, c)
     if fired(came_into_view()) then why = "something new came into view"; break end
     if steps >= budget then why = ("step budget (%d) spent"):format(budget); break end
     local _, front = seen_reach(G)
+    if tx and ty then
+      table.sort(front, function(a, b)
+        local da = math.abs(a.x - tx) + math.abs(a.y - ty)
+        local db = math.abs(b.x - tx) + math.abs(b.y - ty)
+        if da ~= db then return da < db end
+        return a.d < b.d
+      end)
+    end
     local target
     for _, f in ipairs(front) do
       local k = f.x .. "," .. f.y
@@ -10265,8 +10280,10 @@ function OPS.sweep(G, c)
     if i > 12 then parts[#parts + 1] = ("(+%d more)"):format(#things - 12); break end
     parts[#parts + 1] = t.text
   end
-  local detail = ("swept %d step(s), %d cell(s) newly on screen; %s — stopped: %s")
-    :format(steps, (mask.n or 0) - nbefore,
+  local detail = ("swept %d step(s)%s, %d cell(s) newly on screen; %s — stopped: %s")
+    :format(steps,
+            (tx and ty) and ((" (spots taken nearest (%d,%d) first)"):format(tx, ty)) or "",
+            (mask.n or 0) - nbefore,
             #parts > 0 and ("came into view: " .. table.concat(parts, "; "))
                         or "nothing new came into view", tostring(why))
   seen_save(true)

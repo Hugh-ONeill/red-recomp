@@ -1978,8 +1978,30 @@ class Executor:
             for _k in ("until", "steps"):
                 if _params.get(_k) is not None:
                     _st[_k] = _params[_k]
+            # NEAREST A WAY OUT NO WALK REACHES, FIRST. A door on this
+            # floor never taken and unreachable from here is the floor's
+            # own unfinished business; the unseen ground nearest it is
+            # where its way in is likeliest to be looked at (user,
+            # 2026-08-29: "if something is unreachable it should still try
+            # to explore near there"). Goal-blind: the untaken way, not
+            # the objective.
+            _near = ""
+            try:
+                _uw = ledger.unreached_ways(ledger.build(
+                    self, obs, target, outcomes=self._outcomes_here(obs),
+                    want_explore=False))
+                _d0 = next((c for c in _uw if c.kind == "door"), None)
+                if _d0 is not None:
+                    _st["toward_x"], _st["toward_y"] = (
+                        int(str(_d0.key).split(",")[0]),
+                        int(str(_d0.key).split(",")[1]))
+                    _near = (f" nearest {_d0.label()}, a way out never "
+                             f"taken that no walk from here reaches,")
+            except Exception:
+                _near = ""
             ok, tr, cl = self._run_traced(sg, [_st], ignore_done=ignore_done)
-            return ok, [f"explore (sweeping unseen ground): {t}" for t in tr], cl
+            return ok, [f"explore (sweeping unseen ground{_near}): {t}"
+                        for t in tr], cl
         # THE FRONTIER ACROSS THE WATER COMES BEFORE LEAVING THE MAP. With
         # nothing left on foot, explore used to walk to the nearest OTHER
         # area with untried ground — six legs back to Route 21 from Route

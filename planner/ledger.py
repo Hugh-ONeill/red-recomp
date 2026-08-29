@@ -1140,6 +1140,15 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
     if _fr0:
         _f = _fr0[0]
         _n0 = int(((_m0.get("seen") or {}).get("frontier_n")) or len(_fr0))
+        # the deed sweeps nearest a way out never taken that no walk from
+        # here reaches (executor _explore_step); say so
+        _uw0 = [c for c in unreached_ways(cands) if c.kind == "door"]
+        if _uw0:
+            return (f"walk to the unseen ground nearest {_uw0[0].label()} — "
+                    f"a way out never taken that no walk from here reaches — "
+                    f"and keep going until something new comes into view; "
+                    f"{_n0} such spot(s) on this floor; nothing past them is "
+                    f"known yet")
         if _f.get("slide"):
             return (f"step onto the ARROW tile at ({_f.get('x')},"
                     f"{_f.get('y')}) — it carries you onto ground that has "
