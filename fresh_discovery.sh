@@ -127,6 +127,28 @@ if [ "$done_legs" = 0 ]; then
         run/outline_pushes \
         run/outline_pulls run/outline_pulls_failed \
         run/attempt_yield run/attempt_start.json
+  # ...AND THE LEG PLANS, WHICH ARE WRITTEN AGAINST A WORLD. The outline
+  # is banked luck — an expensive list of objectives, kept on purpose —
+  # but a LEG PLAN is authored in front of a party, a bag and a walked
+  # graph, and this block has just archived all three. Run 15 inherited
+  # "Teach the move CUT to Gloom using HM01 from the bag" from the Hall of
+  # Fame world and opened every PC in Vermilion hunting a Pokemon that has
+  # never existed in this one (user, 2026-08-29: "we probably shouldnt
+  # keep the leg plans on a fresh chain, that wouldnt exactly be fresh
+  # would it?"). Archived, not deleted: what the model wrote is worth
+  # reading, and the drafts rung still shows earlier drafts by wording.
+  if ls plans/leg_[0-9]*.json >/dev/null 2>&1; then
+    mkdir -p plans/archive
+    for _p in plans/leg_[0-9]*.json; do
+      mv -f "$_p" "plans/archive/${ts}-pre-discovery-$(basename "$_p")"
+    done
+    echo "leg plans archived: this world's plans do not carry into a new one"
+  fi
+  # the outline's own per-leg sidecars belong to the chain that wrote them
+  # (stages holds this chain's rewordings; upkeep names legs by wording)
+  for _f in plans/outline.stages plans/outline.upkeep plans/outline.notes; do
+    [ -f "$_f" ] && mv -f "$_f" "plans/archive/${ts}-pre-discovery-$(basename "$_f")"
+  done
   echo "archived ${ts}.pre-discovery; ledgers cleared"
 fi
 

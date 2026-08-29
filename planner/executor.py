@@ -7466,6 +7466,65 @@ class Executor:
                     + ", ".join(f"({x},{y})" for x, y in first))
         return f" — the boulders on this floor stand at {cells}"
 
+    _SPECIES: set = set()
+
+    @classmethod
+    def _species_names(cls) -> set:
+        """Every species name the game knows, from its own data."""
+        if cls._SPECIES:
+            return cls._SPECIES
+        try:
+            import re as _r
+            _t = (Path.home() / "Developer/gen1recomp/data/generated"
+                  / "pokemon.lua").read_text()
+            cls._SPECIES = set(_r.findall(r"\n  ([A-Z][A-Z0-9_]*) = \{", _t))
+        except Exception:
+            cls._SPECIES = set()
+        return cls._SPECIES
+
+    def _absent_species_note(self, obs, sg) -> str:
+        """A step that names a Pokemon this world does not have.
+
+        Leg plans are banked luck and survive a fresh chain — but a plan
+        that names a PARTY MEMBER is world state, and run 15's kept plan
+        said "Teach the move CUT to Gloom using HM01": Gloom belonged to
+        the Hall of Fame world. The run opened every PC in Vermilion
+        hunting a Pokemon that has never existed here (user, 2026-08-29:
+        "why does it think it has gloom? that was a different run"). The
+        party and the boxes are both in the observation; say the fact and
+        leave the choice — the step's own condition usually names no
+        species at all.
+        """
+        text = f"{sg.get('goal_text') or ''} {sg.get('id') or ''}".upper()
+        words = set(_re.findall(r"[A-Z][A-Z0-9_]*", text))
+        named = words & self._species_names()
+        if not named:
+            return ""
+        o = obs or {}
+        have = {str(m.get("species") or "").upper()
+                for m in (o.get("party") or [])}
+        have |= {str(m.get("species") or "").upper()
+                 for m in (o.get("pc_mons") or [])}
+        gone = sorted(n for n in named if n not in have)
+        if not gone:
+            return ""
+        _dw = json.dumps(sg.get("done_when") or {})
+        _in_cond = any(n in _dw.upper() for n in gone)
+        self.log("absent_species_note", subgoal=sg.get("id"),
+                 named=",".join(gone), in_condition=_in_cond)
+        return ("\nTHIS STEP NAMES A POKEMON YOU DO NOT HAVE: "
+                + ", ".join(gone)
+                + " — not in your party, and not in any PC box this run has "
+                  "looked in. Nothing in this world is that Pokemon"
+                + (". Its own condition does not name it: "
+                   f"{_dw} — anything that satisfies that will do"
+                   if not _in_cond else
+                   ". Its own condition names it too, so the condition "
+                   "cannot be met as written")
+                + ". A step written for a party you do not have is one to "
+                  "say is moot ({\"op\":\"skip\"}) or to satisfy another "
+                  "way; hunting for it is not one of them.\n")
+
     def _reset_flag_note(self, obs, sg) -> str:
         """The event this step waits for fired before and is not set now.
 
@@ -12471,6 +12530,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             memory = self.exploration_text(start, self._target_key(sg), sg)
             if USE_LEDGER:
                 memory += self._reset_flag_note(start, sg)
+                memory += self._absent_species_note(start, sg)
             # A FULL BAG fails every gift silently: the captain's HM01
             # played its "got it!" text into a 20-of-20 bag and vanished.
             # The game normally says "no room" on screen; say it here.
