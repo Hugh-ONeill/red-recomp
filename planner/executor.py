@@ -41,6 +41,7 @@ import json
 import os
 import sys
 import time
+import types
 from pathlib import Path
 
 from bridge import Bridge, RUN
@@ -10908,6 +10909,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             if self._gated(sig, op, step, trace):
                 continue
             pre_obs = obs
+            # the door we came in by, as it stood BEFORE this op runs —
+            # note_transition rewrites it the moment a warp lands
+            _arr_snap = (getattr(self, "_arrived", None),
+                         getattr(self, "_came_from", None))
             before = self._snapshot(obs)
             traversal = op in ("cross", "walk_to", "use_warp", "grind", "sweep")
             blackout = None
@@ -11862,6 +11867,26 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # op is exactly as real when the op is reported as failing —
             # and "the world did not change" is flatly false about a wallet
             # that just lost 200.
+            # THE DOOR YOU CAME IN BY, SAID WHEN IT IS TAKEN. The forest
+            # gate's two-tile doorway read as two doors; the run took the
+            # other tile of the one it had come in by ("the other is
+            # untried") and the round said only "ok (map->ROUTE_2)" — that
+            # it was the SAME door and had put the party back where it
+            # started sat in the ledger's row and nowhere in the round's
+            # own words (2026-08-29, user watching). A fact, not advice.
+            if op == "use_warp" and r.get("ok") and step.get("x") is not None:
+                try:
+                    _ns = types.SimpleNamespace(_arrived=_arr_snap[0],
+                                                _came_from=_arr_snap[1])
+                    _land = str(self._where(obs))
+                    if ledger._came_in_by(_ns, pre_obs, self._where(pre_obs),
+                                          f"{step.get('x')},{step.get('y')}",
+                                          _land.split("|")[0]):
+                        note += (" — that was the door you came in by (a "
+                                 "doorway's tiles are ONE door): you are back "
+                                 f"on {_land}, where you came from")
+                except Exception:
+                    pass
             note += self._goods_delta(pre_obs, obs)
             if heard:
                 note += f' — it said: "{heard[:160]}"'

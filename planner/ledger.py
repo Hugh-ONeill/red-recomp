@@ -125,10 +125,19 @@ class Candidate:
             _l = getattr(self, "look", "door") or "door"
             # "(4,7)+(5,7)" read to the model as two doors, and it took the
             # twin as "the other door in this room" (2026-08-25): say it is one
-            _tw = "".join(f"+({t})"
-                          for t in (getattr(self, "twins", None) or []))
-            if _tw:
-                _tw += " — ONE doorway, two tiles wide"
+            # "(4,7)+(5,7) — ONE doorway, two tiles wide" still read as two
+            # doors: in the forest gate the run said "I see two doors; one
+            # leads back to Route 2, the other is untried", took the other
+            # tile of the door it came in by, and walked back out
+            # (2026-08-29, user watching). Say it as one door with a width,
+            # and name the other tiles as the SAME door.
+            _tws = [t for t in (getattr(self, "twins", None) or []) if t]
+            _tw = ""
+            if _tws:
+                _tw = (f" [ONE door, {len(_tws) + 1} tiles wide: "
+                       + " and ".join(f"({t})" for t in _tws)
+                       + (" is" if len(_tws) == 1 else " are")
+                       + " the SAME door, not another]")
             if _l == "pad":
                 return f"warp pad ({self.key}){_tw}"
             if _l == "hole":
