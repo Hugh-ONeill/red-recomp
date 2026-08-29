@@ -492,6 +492,30 @@ while :; do
     fi
   fi
 
+  # A LEG THAT CAN NOW BE WRITTEN IS NOT A DRY LEG. "Cannot be written" is
+  # recorded as a run that yielded nothing (see above) so the ladder gets
+  # its turn — but once the author DOES produce a plan, those rows say
+  # something that has stopped being true, and the dry-tail gate below
+  # then refuses to run the very plan that fixed it: leg 13 was authored
+  # on EVENT_BEAT_ROUTE_4_TRAINER_0 and never took a step, twice
+  # (2026-08-29). Same rule as a blocker that opens: the record of the
+  # obstacle goes when the obstacle does. Real dry runs — a leg that RAN
+  # and changed nothing — are untouched.
+  if [ "${_no_plan:-0}" != 1 ] && [ -s run/attempt_yield ] \
+      && grep -Fq "no plan could even be written" run/attempt_yield; then
+    if awk -F'\t' -v L="$leg" \
+        '!($1 == L && $4 ~ /no plan could even be written/)' \
+        run/attempt_yield > run/attempt_yield.tmp; then
+      if ! cmp -s run/attempt_yield run/attempt_yield.tmp; then
+        mv run/attempt_yield.tmp run/attempt_yield
+        echo "=== leg $i: a plan exists now, so its \"could not be written\"" \
+             "runs no longer count against it ==="
+      else
+        rm -f run/attempt_yield.tmp
+      fi
+    fi
+  fi
+
   # WHAT THIS LEG GAINS IS THE EVIDENCE FOR WHETHER IT IS DONE. Snapshot
   # before it runs so a failed leg can still be judged on what it actually
   # achieved — the fossil leg walked out of Mt Moon HOLDING the fossil and
