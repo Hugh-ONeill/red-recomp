@@ -37,6 +37,14 @@ ck("the deed tiers unseen ground with an untried exit for a map goal",
 lsrc = (ROOT / "planner" / "ledger.py").read_text()
 ck("...and the words carry the same tier", 'if str(target or "").startswith("map:") else 0)' in lsrc
    and "r = (_pri, len(path), -(len(left) + len(things) + unseen), region)" in lsrc)
+ex._dry_walks = {MOON: 2}
+txt2 = L.plan_explore(ex, o, L.build(ex, o, target="map:CERULEAN_CITY", want_explore=False), target="map:CERULEAN_CITY")
+ck("two dry walks to an area rank it last (the museum's ticket desk)", "never tried is MUSEUM|0,1" in txt2)
+ck("...the deed keeps the same rule and says it", "_pri = 3" in src and "ranks LAST for explore from " in src
+   and '"dry_walks": getattr(self, "_dry_walks", {})' in src)
+ck("a pocket's zero does not erase a region's unseen ground while the map still has some",
+   "if _fn_new == 0 and _fn_old > 0 and _fn_map > 0:" in src
+   and "frontier_map_n = fmap" in (ROOT / "harness" / "shim.lua").read_text())
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)

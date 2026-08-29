@@ -906,7 +906,34 @@ local function seen_filter(G, o)
     if i > 24 then break end
     fl[i] = { x = f.x, y = f.y, d = f.d, slide = f.slide or nil }
   end
-  m.seen = { n = mask.n or 0, frontier_n = #front }
+  -- ...AND THE MAP'S OWN COUNT, stand-point-free: seen walkable cells
+  -- anywhere on this map with an unseen in-bounds neighbour. frontier_n
+  -- is what THIS stand-point reaches; from a sealed pocket it reads 0,
+  -- and the executor stamped that on the whole region, so Mt Moon 1F's
+  -- 63 unseen spots read as none after one look from its ladder pocket
+  -- and explore ranked a museum door three legs back above the mountain
+  -- one door away (2026-08-29). The region keeps its count while the map
+  -- still has one.
+  local fmap = 0
+  if ow and ow.map and ow.map.isWalkableCell then
+    for k, v in pairs(mask) do
+      if v == true then
+        local x, y = k:match("^(-?%d+),(-?%d+)$")
+        x, y = tonumber(x), tonumber(y)
+        if x and ow.map:isWalkableCell(x, y) then
+          for _, d in pairs(SDIRS) do
+            local nx, ny = x + d[1], y + d[2]
+            if nx >= 0 and ny >= 0 and nx < W and ny < H
+               and not mask[nx .. "," .. ny] then
+              fmap = fmap + 1
+              break
+            end
+          end
+        end
+      end
+    end
+  end
+  m.seen = { n = mask.n or 0, frontier_n = #front, frontier_map_n = fmap }
   m.frontier = fl
   last_frontier = fl
   if #front_water > 0 then

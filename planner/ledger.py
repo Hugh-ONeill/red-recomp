@@ -1300,6 +1300,9 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         # after; distance decides within a tier.
         _pri = ((0 if (left or unseen) else 1)
                 if str(target or "").startswith("map:") else 0)
+        # two explore walks there that saw nothing new: last (executor rule)
+        if int((getattr(ex, "_dry_walks", None) or {}).get(region, 0) or 0) >= 2:
+            _pri = 3
         r = (_pri, len(path), -(len(left) + len(things) + unseen), region)
         found.append((r, region, left, things, path, unseen))
     found.sort(key=lambda f: f[0])

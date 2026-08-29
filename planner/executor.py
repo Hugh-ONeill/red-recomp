@@ -1247,6 +1247,7 @@ class Executor:
         self.map_holes: dict = {}           # map id -> holes seen in its floor
         self.map_seen: dict = {}            # map id -> max frontier over its regions
         self.region_seen: dict = {}         # region -> frontier count at last look
+        self._dry_walks: dict = {}          # region -> explore walks there that swept nothing new
         self.shut_settings: dict = {}       # map -> door -> switch settings
                                             # it was seen unreachable in
         self.reach_settings: dict = {}      # map -> thing -> switch settings
@@ -2208,6 +2209,15 @@ class Executor:
                 # untried exit and unseen ground are one tier; distance
                 # decides between them; only a things-only area ranks below.
                 _pri = (0 if (left or unseen) else 1) if _map_goal else 0
+            # A WALK THAT SAW NOTHING, TWICE, RANKS LAST. The museum's
+            # unseen spots sit behind a ticket desk whose script stops
+            # every sweep, so the area never stopped looking unfinished
+            # and explore walked the party there seven times in a row
+            # (2026-08-29). Two dry walks and it goes to the bottom.
+            _dry = int((getattr(self, "_dry_walks", None) or {})
+                       .get(region, 0) or 0)
+            if _dry >= 2:
+                _pri = 3
             r = (_pri, len(path), -(len(left) + len(unpressed) + unseen), region)
             if best is None or r < best[0]:
                 best = (r, region, left, unpressed, path, unseen)
@@ -2283,6 +2293,21 @@ class Executor:
         if ((cur or {}).get("map") or {}).get("frontier"):
             ok, t2, cl = _run({"op": "sweep"},
                               "sweeping the ground there never on screen")
+            # count the walk that saw nothing (see the picker's _dry rule)
+            _m2 = _re.search(r"(\d+) cell\(s\) newly on screen", " ".join(t2))
+            if not hasattr(self, "_dry_walks"):
+                self._dry_walks = {}
+            if _m2 and int(_m2.group(1)) == 0:
+                self._dry_walks[region] = int(self._dry_walks.get(region, 0) or 0) + 1
+                if self._dry_walks[region] >= 2:
+                    t2.append(
+                        f"explore: that is {self._dry_walks[region]} walk(s) "
+                        f"to {region} for its unseen ground with nothing new "
+                        f"coming into view; it ranks LAST for explore from "
+                        f"now on — what stops the sweep there is on the page")
+            else:
+                self._dry_walks.pop(region, None)
+            self._save_memory()
             return ok, tr + t2, cl
         if _map_goal and exits2:            # same rule as at home
             return _there(exits2[0])
@@ -2742,6 +2767,7 @@ class Executor:
             self.seen_far = data.get("seen_far", {}) or {}
             self.map_seen = data.get("map_seen", {}) or {}
             self.region_seen = data.get("region_seen", {}) or {}
+            self._dry_walks = data.get("dry_walks", {}) or {}
             self._battle_regions = set(data.get("battle_regions") or ())
             # Money-dependent proofs do not survive a restart. "Fully
             # worked" recorded in a shop with an empty wallet is a fact
@@ -3322,6 +3348,7 @@ class Executor:
                  "seen_far": getattr(self, "seen_far", {}),
                  "map_seen": getattr(self, "map_seen", {}),
                  "region_seen": getattr(self, "region_seen", {}),
+                 "dry_walks": getattr(self, "_dry_walks", {}),
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
                  "no_cross_at": self._no_cross_at,
@@ -3635,7 +3662,19 @@ class Executor:
                 # Rock Tunnel's entrance pocket reads frontier 0 and wiped
                 # the middle pocket's unseen ground, so the tunnel door
                 # read "nothing beyond" after eleven entries (2026-08-25).
-                self.region_seen[here] = int(_sn.get("frontier_n") or 0)
+                _fn_new = int(_sn.get("frontier_n") or 0)
+                _fn_old = int(self.region_seen.get(here, 0) or 0)
+                _fn_map = int(_sn.get("frontier_map_n") or 0)
+                # ...AND A POCKET'S VIEW IS NOT THE REGION'S. frontier_n is
+                # what THIS stand-point reaches; from Mt Moon 1F's sealed
+                # ladder pocket it read 0 and wiped the mountain's 63
+                # unseen spots, so explore ranked a museum door three legs
+                # back above the mountain one door away (2026-08-29).
+                # While the map itself still has unseen ground, a zero
+                # from a pocket keeps the region's last positive count.
+                if _fn_new == 0 and _fn_old > 0 and _fn_map > 0:
+                    _fn_new = _fn_old
+                self.region_seen[here] = _fn_new
                 self.map_seen[_mid] = max(
                     (n for r, n in self.region_seen.items()
                      if r.split("|")[0] == _mid), default=0)

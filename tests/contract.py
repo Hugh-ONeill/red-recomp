@@ -98,6 +98,7 @@ OVERWORLD = [
     # ---- the footprint (2026-08-24 landing; leftover (f) closed 08-29) ----
     Field("map.seen.n", "ledger coverage; grind's no-grass-on-seen-ground claim"),
     Field("map.seen.frontier_n", "ledger head; plan_explore; _explore_step"),
+    Field("map.seen.frontier_map_n", "region_seen keeps its count while the map still has unseen ground"),
     Field("map.frontier", "ledger frontier rows + head; explore's sweep-first;"
                           " plan_explore item 1"),
     Field("map.frontier[].x", "frontier candidate key; the walk target"),
