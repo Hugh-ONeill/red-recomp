@@ -9675,15 +9675,54 @@ function OPS.sweep(G, c)
   for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
     warps[w.x .. "," .. w.y] = true
   end
+  -- A HOLE COMING INTO VIEW IS A HOLE, NOT "A DOORWAY" (footprint
+  -- leftover (d)). Two kinds: a warp entry whose tile is a hole
+  -- (warpPadOrHoleAt, asked only AT warp cells — the observation's own
+  -- rubble lesson), and a script-declared drop cell in no warp table at
+  -- all (the Mansion's three; MapScripts view.holes) — that second kind
+  -- never appeared in this report. What a hole IS (a way DOWN, no
+  -- climbing back) is manual-tier and said beside it; where it drops you
+  -- is not.
+  local script_holes = {}
+  do
+    local okms, MS = pcall(require, "src.script.MapScripts")
+    local _view = okms and MS.get and MS.get(map0) or nil
+    for _, h in ipairs((_view and _view.holes) or {}) do
+      local hx, hy = h[1] or h.x, h[2] or h.y
+      if hx and hy then script_holes[hx .. "," .. hy] = true end
+    end
+  end
+  local function way_look(x, y)
+    if ow.map.isDoorTileCell and ow.map:isDoorTileCell(x, y) then
+      return "door"
+    end
+    if ow.map.warpPadOrHoleAt then
+      local k = ow.map:warpPadOrHoleAt(x, y)
+      if k then return tostring(k) end            -- "pad" | "hole"
+    end
+    return "door"
+  end
   local function came_into_view()
     local out, edge = {}, {}
     for k, v in pairs(mask) do
       if v == true and not before[k] then
         local x, y = k:match("^(-?%d+),(-?%d+)$")
         x, y = tonumber(x), tonumber(y)
-        if warps[k] then
-          out[#out + 1] = { kind = "door", x = x, y = y,
-                            text = ("a doorway at (%d,%d)"):format(x, y) }
+        if warps[k] or script_holes[k] then
+          local look = script_holes[k] and "hole" or way_look(x, y)
+          if look == "hole" then
+            out[#out + 1] = { kind = "hole", x = x, y = y,
+                              text = ("a HOLE in the floor at (%d,%d) — a way "
+                                      .. "DOWN: stepping on it drops you to the "
+                                      .. "floor below, and there is no climbing "
+                                      .. "back up it"):format(x, y) }
+          elseif look == "pad" then
+            out[#out + 1] = { kind = "door", x = x, y = y,
+                              text = ("a warp pad at (%d,%d)"):format(x, y) }
+          else
+            out[#out + 1] = { kind = "door", x = x, y = y,
+                              text = ("a doorway at (%d,%d)"):format(x, y) }
+          end
         end
         if y == 0 then edge.north = true end
         if y == H - 1 then edge.south = true end
@@ -9725,6 +9764,7 @@ function OPS.sweep(G, c)
       if wants[t.kind] then return true end
       if wants.person and t.kind == "trainer" then return true end
       if wants.door and t.kind == "way" then return true end
+      if wants.door and t.kind == "hole" then return true end   -- a way down
     end
     return false
   end

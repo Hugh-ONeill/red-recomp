@@ -10001,7 +10001,7 @@ WHAT HAS BEEN ON SCREEN: doors, people and things exist in the ledger
 once they have been in view. If this floor still has ground you have not
 looked at, explore walks to the nearest edge of what you have seen and
 keeps walking until something NEW comes into view, then stops and tells
-you what — add "until":"door"|"person"|"item"|"sign"|"map_change" (or a
+you what — add "until":"door"|"person"|"item"|"sign"|"hole"|"map_change" (or a
 list) to keep walking past ordinary sightings, "steps":N to bound the
 walk. Once the floor has been seen from all ground you can reach, it
 presses the first thing HERE never pressed; if nothing, takes an exit
