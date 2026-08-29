@@ -1132,8 +1132,28 @@ local function draw_seen_overlay()
   -- bled into every later frame ("it's all green", 2026-08-25).
   love.graphics.push("all")
   local okd, errd = pcall(function()
-    if overlay_wants("tiles") then draw_tiles(G, ow, map, mask, W, H) end
-    if overlay_wants("inset") then draw_inset(G, ow, map, mask, W, H) end
+    -- OVER A DIORAMA THE TILE OVERLAY MEANS NOTHING (user, 2026-08-29,
+    -- installing the Dramatic Shape voxel mod: "we wouldnt be using the
+    -- overlay for that though, or if we had anything just the lil overlay
+    -- hud map on the top right"). The world is a 3D projection there, so
+    -- cells drawn in flat tile space land nowhere. While a mod's world
+    -- pipeline owns the world pass (Pipelines.worldPipeline: the voxel
+    -- rung, or anything else registered), only the inset is drawn,
+    -- whatever the mode says; OFF stays off.
+    local diorama = false
+    do
+      local okp, P = pcall(require, "src.render.Pipelines")
+      if okp and type(P) == "table" and P.worldPipeline then
+        local okw, wp = pcall(P.worldPipeline)
+        diorama = (okw and wp) and true or false
+      end
+    end
+    if overlay_wants("tiles") and not diorama then
+      draw_tiles(G, ow, map, mask, W, H)
+    end
+    if overlay_wants("inset") or (diorama and overlay_mode ~= "off") then
+      draw_inset(G, ow, map, mask, W, H)
+    end
   end)
   love.graphics.pop()
   love.graphics.setColor(1, 1, 1, 1)
