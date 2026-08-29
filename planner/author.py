@@ -1016,11 +1016,26 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                 _mem = sorted(f for f in ENGINE_FLAGS
                               if _ser and f.startswith(_ser + "_")
                               and f != v)
-                _hint = (f" The events of that series this game does "
-                         f"define are: {', '.join(_mem[:6])}"
-                         + (" (and more)" if len(_mem) > 6 else "")
-                         + " — one of those exact ids, or none."
-                         if _mem else "")
+                # SAY IT AS A SUGGESTION, AND SAY HOW MANY THERE ARE. The
+                # retry prompt tells the author "where a problem offers a
+                # 'did you mean' suggestion, use that exact id verbatim",
+                # so a clause in any other shape reads as commentary — the
+                # author saw this hint and wrote EVENT_BEAT_ROUTE_4_TRAINER
+                # _ALL and then _N again. The count is the other half: it
+                # wanted a name meaning "all of them", and Route 4 defines
+                # exactly ONE such event, which is the answer to the
+                # question it was really asking.
+                _hint = ("" if not _mem else
+                         (f" Did you mean {_mem[0]}? That is the ONLY "
+                          f"event of that series this game defines, so it "
+                          f"is what 'all of them' comes to here; use that "
+                          f"exact id verbatim."
+                          if len(_mem) == 1 else
+                          f" Did you mean one of {', '.join(_mem[:6])}"
+                          + (" (and more)" if len(_mem) > 6 else "")
+                          + "? Those are every event of that series this "
+                            "game defines; use one of those exact ids "
+                            "verbatim."))
                 probs.append(
                     f"{tag} ({sid}) flag '{v}' is not an event this game "
                     f"defines. You cannot look event names up and another "

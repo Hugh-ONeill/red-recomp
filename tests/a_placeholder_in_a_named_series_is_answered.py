@@ -22,8 +22,11 @@ def probs_for(flag):
     return A.validate({"goal": "g", "subgoals": [
         {"id": "a", "goal_text": "t", "done_when": {"flag": flag}}]})
 p = " ".join(probs_for("EVENT_BEAT_ROUTE_4_TRAINER_N"))
-ck("the series the plan named is spelled out",
-   "EVENT_BEAT_ROUTE_4_TRAINER_0" in p and "of that series this game does define" in p, p[:220])
+ck("the series the plan named is spelled out, as a did-you-mean the retry prompt obeys",
+   "EVENT_BEAT_ROUTE_4_TRAINER_0" in p and "Did you mean" in p
+   and "use that exact id verbatim" in p, p[:260])
+ck("...and a one-member series says so, which answers 'all of them'",
+   "the ONLY event of that series" in p, p[:260])
 ck("...and the refusal still stands on its own terms",
    "is not an event this game defines" in p and "do not spell a different one" in p
    and "Finish this subgoal on something you can SEE" in p)
