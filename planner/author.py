@@ -1856,6 +1856,41 @@ def observed_text(path: Path) -> str:
 EVIDENCE_BUDGET = 22000
 
 
+# THE JOURNAL'S FLOOR, as a share of the evidence budget. Not a half: the
+# graph is what a plan is written ON, and the story is what it is corrected
+# BY. Two fifths leaves the graph the larger share and still fits the whole
+# causal account of a normal leg.
+JOURNAL_SHARE = 0.40
+
+
+def _hard(text: str, budget: int) -> str:
+    """The last resort: drop WHOLE sections, and NAME the ones dropped.
+
+    `text[:budget]` cut in the middle of whatever block straddled the mark
+    and deleted everything after it with no word at all — on leg 19 that was
+    DOORS SEEN BUT NEVER OPENED, WHERE EVENTS ACTUALLY FIRED and WAYS THAT
+    TURNED THE RUN BACK, three named sections the author had no way to know
+    it had not been given. A section is a unit of meaning; half of one is
+    worse than none, and an unmentioned absence is the hiding this project
+    exists to stop.
+    """
+    blocks = re.split(r"\n\n(?=[A-Z]{4,})", text)
+    kept, dropped, n = [], [], 0
+    for b in blocks:
+        if not kept or n + len(b) + 2 <= budget:
+            kept.append(b)
+            n += len(b) + 2
+        else:
+            _h = (b.splitlines() or [""])[0]
+            dropped.append(_h.split(" (")[0].split(",")[0].strip()[:52])
+    out = "\n\n".join(kept)
+    if dropped:
+        out += ("\n\n[EVIDENCE DID NOT FIT: " + str(len(dropped))
+                + " whole section(s) are missing from this page — "
+                + "; ".join(dropped) + ". They exist; they were not shown.]")
+    return out
+
+
 def _fit(text: str, budget: int = EVIDENCE_BUDGET,
          near: set | None = None) -> str:
     """Trim the growing blocks until the evidence fits, FAREST FIRST.
@@ -1867,7 +1902,19 @@ def _fit(text: str, budget: int = EVIDENCE_BUDGET,
     ground near where the party is or is going: those are the facts a plan
     written now can act on. Keep them, drop the far ones, and say how many
     went."""
+    # ...AND EVERY PASS MUST TAKE SOMETHING OUT. Skipping blocks that cannot
+    # give lines back (below) removed the accidental bail-out that used to
+    # stop this loop: with every trimmable block already at its floor of
+    # four units, each pass dropped one unit and appended a "... N line(s)
+    # ..." note in its place, so the text never shrank and the loop ran
+    # forever — the same 12-minute CPU burn, mid-chain, with the game down,
+    # that the guard further down was written for. Length is the thing
+    # being bounded, so length is what has to fall.
+    _last = None
     while len(text) > budget:
+        if _last is not None and len(text) >= _last:
+            return _hard(text, budget)
+        _last = len(text)
         # A HEADER IS A RUN OF CAPITALS, not thirteen characters drawn
         # from a set that happens to include lowercase-adjacent
         # punctuation. The old pattern needed 12+ chars of [A-Z ,'-] after
@@ -1876,10 +1923,21 @@ def _fit(text: str, budget: int = EVIDENCE_BUDGET,
         # whichever one came before it. Four consecutive capitals is what
         # every real header here has and no prose paragraph does.
         blocks = re.split(r"\n\n(?=[A-Z]{4,})", text)
-        i = max(range(len(blocks)), key=lambda j: len(blocks[j]))
+        # THE LARGEST BLOCK MAY BE ONE THAT CANNOT BE TRIMMED, and giving up
+        # there threw away the whole TAIL. AREA CODES is 2359 characters on
+        # TWO lines, so once the line-bearing blocks had been trimmed down
+        # past it, it became the largest, failed the eight-line test, and
+        # the hard cut at [:budget] deleted WHAT PEOPLE HAVE SAID, DOORS
+        # SEEN BUT NEVER OPENED, WHERE EVENTS ACTUALLY FIRED and WAYS THAT
+        # TURNED THE RUN BACK outright — four named blocks, gone with no
+        # word that they had been. Take the largest block that CAN give
+        # lines back; hard-cut only when none of them can.
+        _order = sorted(range(len(blocks)), key=lambda j: -len(blocks[j]))
+        i = next((j for j in _order
+                  if len(blocks[j].splitlines()) >= 8), None)
+        if i is None:
+            return _hard(text, budget)
         lines = blocks[i].splitlines()
-        if len(lines) < 8:
-            return text[:budget] + "\n[evidence truncated to fit]"
         head, body = lines[0], lines[1:]
         # A SENTENCE STAYS UNDER THE PLACE IT WAS SAID IN. The near-first
         # sort ran over single lines, so "  in CERULEAN_CITY|20,0:" (a map
@@ -1908,7 +1966,7 @@ def _fit(text: str, budget: int = EVIDENCE_BUDGET,
         # added, the text got LONGER, and the while loop never ended —
         # author.py burned 12 minutes of CPU mid-chain with the game down.
         if cut <= 0:
-            return text[:budget] + "\n[evidence truncated to fit]"
+            return _hard(text, budget)
         # ORDER IS INFORMATION; DO NOT RE-ALPHABETISE IT. The near-first
         # sort above is stable, so `kept` arrives in whatever order the
         # block was built in — and for the sightings block that order IS
@@ -1958,9 +2016,28 @@ def evidence_text(observed, journal, drafts) -> str:
     not exist. The three growing blocks are budgeted together; the
     vocabulary is appended AFTER this and is never trimmed.
     """
-    return _fit((observed_text(observed) if observed else "")
-                + (journal_text(journal) if journal else "")
-                + drafts_text(drafts or []))
+    # ...AS A WHOLE, BUT NOT WINNER-TAKE-ALL. _fit trims the LARGEST block
+    # and the graph arrives as a dozen middling blocks while the journal
+    # arrives as two big ones, so the two biggest things in the evidence
+    # were always "WHAT HAPPENED ON THE LAST RUN" (5644 chars) and "WHAT
+    # EACH STEP OF THAT PLAN TRIED" (5916) — the causal story — and they
+    # were trimmed first, every time, until they were gone. Measured on
+    # leg 19: observed 21958 of a 22000 budget, journal 12750, and SEVENTY
+    # characters of journal survived. Four "FRESH_WATER is not on
+    # CERULEANMART_CLERK's shelf" lines were in that journal and none
+    # reached the author, which is the same failure as the dead phrase they
+    # were classified by, one layer up. The graph says what EXISTS; the
+    # journal says what HAPPENED when the run tried it. Neither may starve
+    # the other, so each gets a floor and the unused half of one goes to
+    # the other.
+    _o = observed_text(observed) if observed else ""
+    _j = journal_text(journal) if journal else ""
+    _d = drafts_text(drafts or [])
+    _room = max(0, EVIDENCE_BUDGET - len(_d))
+    _j_floor = min(len(_j), int(_room * JOURNAL_SHARE))
+    _o = _fit(_o, max(0, _room - _j_floor))
+    _j = _fit(_j, max(0, _room - len(_o)))
+    return _o + _j + _d
 
 
 def journal_text(path: Path, limit: int = 60) -> str:
