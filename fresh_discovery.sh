@@ -230,8 +230,18 @@ archive_plans_of() {
 }
 
 pushes_in_force() {
+  # AT the position it was pushed to is still deferred. push_leg lands the
+  # leg exactly ON `after`, so a strict `<` said a push stopped holding the
+  # instant it was made — this counted 0 for a leg pushed to 25 and sitting
+  # at 25, and could only ever count 1 if something was INSERTED before it.
+  # The guard built on it was therefore dead: "Obtain Fresh Water" was
+  # pushed 21->25 and pulled straight back to 20 twenty minutes later, with
+  # the refusal that exists for exactly that never firing (2026-08-30). It
+  # stops holding when the outline SHRINKS the leg back in front of its
+  # target, which is what the Secret Key case in the comment above
+  # describes: pushed to 36, came up again at 34.
   awk -F'\t' -v want="$1" -v now="$2" \
-      '$3 == want && ($2+0) < now { n++ } END { print n+0 }' \
+      '$3 == want && ($2+0) <= now { n++ } END { print n+0 }' \
       run/outline_pushes 2>/dev/null || echo 0
 }
 

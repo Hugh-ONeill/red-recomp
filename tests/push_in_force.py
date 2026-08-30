@@ -16,8 +16,16 @@ is", never asked for (user: "wouldnt the real exit be pushing it back to
 cinnabar though?"). "Defeat the Silph Co. guards" shows the same shape four
 times over.
 
-Count a push only while it still HOLDS: the leg is now later than the position
-it was pushed to."""
+Count a push only while it still HOLDS: the leg is now AT OR AFTER the
+position it was pushed to.
+
+AT counts (2026-08-30). push_leg lands the leg exactly ON `after`, so a
+strict `<` said a push stopped holding the instant it was made: it could
+only ever count while something had been INSERTED before the leg. The guard
+built on it was dead, and "Obtain Fresh Water" — pushed 21->25 with the
+model's own reason that Celadon must be reached first — was pulled straight
+back to 20 twenty minutes later, rebuilding the deadlock, with the refusal
+that exists for exactly that never firing."""
 import sys, re, subprocess
 from pathlib import Path
 
@@ -29,10 +37,11 @@ sh = Path("fresh_discovery.sh").read_text()
 ck("the raw text count is gone",
    'grep -Fc "$leg" run/outline_pushes' not in sh)
 ck("a single helper decides it", "pushes_in_force() {" in sh)
-h = sh[sh.find("pushes_in_force() {"):][:400]
+# the helper grew the comment explaining AT-counts
+h = sh[sh.find("pushes_in_force() {"):][:1400]
 ck("...matching the objective by text in column 3", '$3 == want' in h)
-ck("...and counting only targets EARLIER than where it now sits",
-   "($2+0) < now" in h)
+ck("...and counting a target the leg has not slid back in front of",
+   "($2+0) <= now" in h)
 ck("both callers use it",
    sh.count('pushes_in_force "$leg" "$i"') == 2)
 ck("the blocker rung still declines a leg with a push in force",
@@ -64,16 +73,22 @@ def in_force(want, now):
 
 raw = _fx.read_text().count("Obtain the Secret Key")
 ck(f"the old count said {raw} — the rung's cap is 2", raw >= 2)
-ck("in force at leg 36: none, so the rung reopens",
-   in_force("Obtain the Secret Key", 36) == 0)
-ck("at leg 37 the first push holds and the second does not: one",
-   in_force("Obtain the Secret Key", 37) == 1)
+# THE OUTLINE SHRANK THE LEG BACK IN FRONT OF BOTH TARGETS: neither is
+# being honoured any more, so neither was spent.
+ck("in force at leg 34, in front of both targets: none",
+   in_force("Obtain the Secret Key", 34) == 0)
+ck("...so the rung reopens there, which was the whole bug",
+   in_force("Obtain the Secret Key", 34) < 2)
+# ...BUT SITTING EXACTLY WHERE A PUSH PUT IT IS THAT PUSH BEING HONOURED.
+ck("at leg 36 the first push is holding: one",
+   in_force("Obtain the Secret Key", 36) == 1)
+ck("at leg 37 both are holding: two, and a third is refused",
+   in_force("Obtain the Secret Key", 37) == 2)
 ck("a push is still counted while it holds",
    in_force("Obtain the Secret Key", 99) == 2)
-ck("the Silph leg shows the same undoing",
-   in_force("Defeat the Silph Co. guards to reach the President", 36)
-   < _fx.read_text().count(
-       "Defeat the Silph Co. guards to reach the President"))
+ck("the Silph leg reads the same way",
+   in_force("Defeat the Silph Co. guards to reach the President", 31) == 0
+   and in_force("Defeat the Silph Co. guards to reach the President", 36) == 2)
 ck("a name the ledger never saw is not in force anywhere",
    in_force("Reach Cinnabar Island", 99) == 0)
 

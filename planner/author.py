@@ -597,8 +597,30 @@ def visited_maps() -> set:
     return {str(r).split("|")[0] for r in (d.get("visits") or {})}
 
 
-def _place_names(dw) -> set:
-    """Map names a predicate can be satisfied by standing somewhere."""
+def visited_regions() -> set:
+    """Every REGION this run has stood in, MAP|x,y as the ledger names them.
+
+    A map is not a place when it has two of them. ROUTE_10 lies on BOTH
+    sides of Rock Tunnel and ROUTE_4 on both sides of Mt Moon, so a
+    condition naming the far side by area — the only way the language can
+    say "the side I have never been" — was read as its map name, matched
+    against the near side, and refused as somewhere the run had already
+    stood (2026-08-30). The observed_text docstring has described this trap
+    since the beginning; the predicate readers had not heard.
+    """
+    try:
+        d = json.loads(Path("run/explored.json").read_text() or "{}")
+    except (OSError, ValueError, json.JSONDecodeError):
+        return set()
+    return {str(r) for r in (d.get("visits") or {})}
+
+
+def _place_names(dw, exact: bool = False) -> set:
+    """Map names a predicate can be satisfied by standing somewhere.
+
+    With exact=True an `area` keeps its region (MAP|x,y), for callers that
+    can compare against visited_regions.
+    """
     out = set()
     if not isinstance(dw, dict):
         return out
@@ -606,10 +628,10 @@ def _place_names(dw) -> set:
         if k == "map" and isinstance(v, str):
             out.add(v)
         elif k == "area" and isinstance(v, str):
-            out.add(v.split("|")[0])
+            out.add(v if exact else v.split("|")[0])
         elif k == "any_of" and isinstance(v, list):
             for alt in v:
-                sub = _place_names(alt)
+                sub = _place_names(alt, exact)
                 if not sub:
                     return set()      # one alternative is not a place: the
                     # branch can be met without standing anywhere
@@ -915,6 +937,12 @@ def validate(plan: dict) -> list:
         dw0 = last0.get("done_when") or {}
         _places = _place_names(dw0)
         _vis = visited_maps()
+        # AN AREA IS A REGION, NOT A MAP. Judging "ROUTE_10|11,20" by its
+        # map name matched the near side of Rock Tunnel and refused the far
+        # one; the region ledger is what the condition actually asks about.
+        _ex = _place_names(dw0, exact=True)
+        if _ex != _places and _ex and not (_ex <= visited_regions()):
+            _places = set()
         if _places and _vis and _places <= _vis:
             probs.append(
                 f"subgoal[{len(subs) - 1}] ({last0.get('id')}) ends on "
@@ -944,8 +972,28 @@ def validate(plan: dict) -> list:
         # predicate in the language it is the most place-like: "standing
         # within radius R of a tile" is standing somewhere, and standing
         # somewhere is not the deed done.
-        if keys and keys <= {"map", "area", "player_at", "no_battle",
-                             "party_healthy"}:
+        # ...UNLESS THE PLACE IS ONE THE RUN HAS NEVER STOOD IN. The rule
+        # right above this one refuses a place already stood in and tells
+        # the author, in these words, to "end on what the objective
+        # CHANGES, or on a place the run has never reached" — and then this
+        # rule refused a place of ANY kind, so the second half of that
+        # sentence was a door painted on a wall. "Clear Rock Tunnel" is the
+        # leg it shut out: Kanto writes no flag for coming out of that
+        # tunnel, there is no item and no badge in it, and the only thing
+        # the deed leaves is that you are standing somewhere you have never
+        # stood. Five authoring rounds, every one refused, and the leg
+        # could not be written at all (2026-08-30). Arriving somewhere new
+        # IS a change the world can witness — which is why the travel
+        # exemption above exists; this is the same fact reached from the
+        # other side.
+        _pl = _place_names(dw) if isinstance(dw, dict) else set()
+        _vm = visited_maps()
+        _new_place = bool(_pl) and bool(_vm) and not (_pl <= _vm)
+        _ex2 = _place_names(dw, exact=True) if isinstance(dw, dict) else set()
+        if _ex2 != _pl and _ex2 and not (_ex2 <= visited_regions()):
+            _new_place = True
+        if keys and not _new_place and keys <= {
+                "map", "area", "player_at", "no_battle", "party_healthy"}:
             probs.append(
                 f"subgoal[{len(subs) - 1}] ({last.get('id')}) is the LAST step "
                 f"of a leg whose objective is a deed (\"{goal[:60]}\"), but "

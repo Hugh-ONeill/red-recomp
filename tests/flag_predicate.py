@@ -42,7 +42,9 @@ ck("push is a deed", '"push"' in deed)
 # ...and player_at counts as a place, or the guard never fires for the
 # shape that actually slipped through: "Push the boulders" ended on
 # {"player_at": {"x":3,"y":14,"radius":2}} and passed with nothing pushed.
-places = src.split("if keys and keys <= ")[1].split(":")[0]
+# the guard grew an exemption for a place never stood in, so the set
+# it tests is no longer the first thing after "keys <= "
+places = src.split("keys <= {")[1].split("}")[0]
 ck("player_at is a place", '"player_at"' in places)
 for k in ("map", "area", "no_battle", "party_healthy"):
     ck(f"{k} is still a place", f'"{k}"' in places)
