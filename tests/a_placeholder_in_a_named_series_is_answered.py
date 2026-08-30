@@ -40,6 +40,19 @@ ck("a made-up name in no series gets no suggestion at all",
 _lit = sorted(set(A.fired_flags()))
 _unfired = [f for f in sorted(A.ENGINE_FLAGS) if f not in set(_lit)]
 ck("a real flag is not refused", not probs_for(_unfired[0]), _unfired[0])
+# ...AND THE PLACEHOLDER NEED NOT BE THE LAST SEGMENT. Stripping only the
+# final piece missed EVENT_BEAT_ROCK_TUNNEL_N_TRAINER_N, where the tunnel's
+# FLOOR is a blank too — a shape the run had already fired six real members
+# of, on the one leg that could not be authored at all (2026-08-30).
+r = " ".join(probs_for("EVENT_BEAT_ROCK_TUNNEL_N_TRAINER_N"))
+ck("a series with a blank in the middle is answered too",
+   "Did you mean" in r and "EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_0" in r, r[:260])
+ck("...and only that series", "ROUTE" not in r.split("Did you mean")[1], r[:400])
+# A DIGIT IS A VALUE, NOT A BLANK. Reading 4 as a placeholder made
+# EVENT_BEAT_ROUTE_4_TRAINER_N suggest EVENT_BEAT_ROUTE_10's trainers.
+ck("a number the model wrote is kept",
+   "ROUTE_10" not in " ".join(probs_for("EVENT_BEAT_ROUTE_4_TRAINER_N")))
+
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:
     print(("ok  " if ok else "FAIL"), n)

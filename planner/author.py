@@ -1120,10 +1120,34 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                 # words, and how many trainers a route holds is on the
                 # screen. Nothing else is ever suggested — a different
                 # event's name is still the game's to reveal.
-                _ser = _re.sub(r"_[A-Z0-9]+$", "", str(v))
-                _mem = sorted(f for f in ENGINE_FLAGS
-                              if _ser and f.startswith(_ser + "_")
-                              and f != v)
+                # ...AND A SERIES CAN HAVE MORE THAN ONE PLACEHOLDER IN
+                # IT. Stripping only the LAST segment matches
+                # EVENT_BEAT_ROUTE_4_TRAINER_N and misses
+                # EVENT_BEAT_ROCK_TUNNEL_N_TRAINER_N, where the tunnel's
+                # FLOOR is a placeholder too — a shape the run had already
+                # fired six real members of (2026-08-30). Read every
+                # single-letter or bare-number segment as the blank it
+                # plainly is and match the rest in order.
+                _segs = str(v).split("_")
+                # A BLANK IS A LONE LETTER, NEVER A NUMBER. Reading a
+                # digit as a placeholder made EVENT_BEAT_ROUTE_4_TRAINER_N
+                # match EVENT_BEAT_ROUTE_10_TRAINER_0 and suggest a
+                # different route's trainers — a wrong answer is worse
+                # than none, and the 4 is a value the model chose.
+                _blank = [j for j, x in enumerate(_segs)
+                          if len(x) == 1 and x.isalpha()]
+                _mem = []
+                if _blank:
+                    _pat = _re.compile("^" + "_".join(
+                        r"[A-Z0-9]+" if j in _blank else _re.escape(x)
+                        for j, x in enumerate(_segs)) + "$")
+                    _mem = sorted(f for f in ENGINE_FLAGS
+                                  if _pat.match(f) and f != v)
+                if not _mem:
+                    _ser = _re.sub(r"_[A-Z0-9]+$", "", str(v))
+                    _mem = sorted(f for f in ENGINE_FLAGS
+                                  if _ser and f.startswith(_ser + "_")
+                                  and f != v)
                 # SAY IT AS A SUGGESTION, AND SAY HOW MANY THERE ARE. The
                 # retry prompt tells the author "where a problem offers a
                 # 'did you mean' suggestion, use that exact id verbatim",
