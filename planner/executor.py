@@ -2126,7 +2126,15 @@ class Executor:
             return ok, [f"explore ({why}): {t}" for t in tr], cl
 
         def _thing_op(c):
-            if c.status == "cuttable":
+            # A BUSH IS NEVER PRESSED, WHATEVER ITS STATUS. This dispatched
+            # on "cuttable" alone, so a bush in any other state — "recut"
+            # above all — fell through to interact-by-name, which cannot
+            # reach one at all: bushes come from the tileset scan and have
+            # no object to press, so the op came back "object 'CUT_TREE'
+            # not visible" and the row wore that failure while standing
+            # three cells away in plain sight. The kind is the thing that
+            # decides which op reaches it.
+            if c.kind == "cut_tree" and c.x is not None:
                 return ({"op": "field_move", "move": "CUT", "x": c.x, "y": c.y},
                         f"cutting the bush at ({c.x},{c.y})")
             return ({"op": "interact", "name": c.key},

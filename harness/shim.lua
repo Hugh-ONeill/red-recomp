@@ -9181,6 +9181,21 @@ function OPS.interact(G, c)
         if nm == c.name then tx, ty = sg.x, sg.y break end
       end
     end
+    -- ...AND A BUSH IS NOT INVISIBLE, IT IS NOT PRESSABLE. observe() lists
+    -- every cuttable bush on the floor as an object named CUT_TREE, so a
+    -- press by that name is a fair thing to try -- and "not visible" said
+    -- the one answer that is false about it, while it stood three cells
+    -- away in plain sight (2026-08-30). Bushes come from the tileset scan
+    -- and have no object to press. Say what it IS and which op reaches
+    -- it; WHICH bush, and whether to spend the walk, stays the caller's.
+    if not tx and c.name == "CUT_TREE" then
+      return false, "CUT_TREE is the name this observation gives every "
+        .. "cuttable bush on this floor. A bush is not a thing that "
+        .. "presses -- there is no object there to talk to. It is cleared "
+        .. "with {\"op\":\"field_move\",\"move\":\"CUT\",\"x\":N,"
+        .. "\"y\":N} at the bush's own cell, which the object list gives "
+        .. "for each one"
+    end
     if not tx then return false, "object '" .. c.name .. "' not visible" end
   elseif tx then
     -- an x,y press on a fixture that only answers from one side must
