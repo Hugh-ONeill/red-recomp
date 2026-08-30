@@ -12747,6 +12747,60 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     "obs.pc_items is what the PC already holds). "
                     "Whoever tried to hand you a thing will hand it "
                     "again once there is room.")
+            # A TM IS ONLY MENTIONED WHEN THE BAG IS FULL, which is the
+            # one moment it is least likely to be the right move: the note
+            # above lists using one as a way to FREE A SLOT, so TMs sit
+            # unread until the run is out of room and then get spent to
+            # make space (user, 2026-08-30: "we might want ... a more
+            # intense item-usage policy that encourages the usage of tms
+            # when we get them and/or when we get new pokemon, so we use
+            # the tms at some point other than just when the bag is full").
+            # The two moments when a TM is worth a thought are when it
+            # ARRIVES and when the party CHANGES, and both are things this
+            # process can see. Everything said here is on the item's own
+            # label or in the party: the move is IN the TM's name, and
+            # whether anybody already knows it is in obs.party. Which
+            # Pokemon, and whether the trade is worth it, is not ours —
+            # nor is compatibility, which this harness cannot know and the
+            # game states plainly when a TM will not take.
+            _tms = sorted(k for k in ((start or {}).get("bag") or {})
+                          if str(k).startswith("TM_"))
+            _knows = {str(mv.get("id") if isinstance(mv, dict) else mv).upper()
+                      for mon in ((start or {}).get("party") or [])
+                      for mv in (mon.get("moves") or [])}
+            _roster = tuple(sorted(
+                str(m.get("species") or "") for m in
+                ((start or {}).get("party") or [])))
+            _unused = [t for t in _tms if t[3:].upper() not in _knows]
+            _prev_tms, _prev_roster = getattr(self, "_tm_seen", (None, None))
+            _fresh = (_prev_tms is None
+                      or set(_tms) - set(_prev_tms or ())
+                      or _roster != _prev_roster)
+            self._tm_seen = (list(_tms), _roster)
+            if _unused and _fresh:
+                _why = ("a new TM is in the bag"
+                        if _prev_tms is not None and set(_tms) - set(_prev_tms or ())
+                        else "your party has changed"
+                        if _prev_tms is not None else
+                        "this is the first page of this run")
+                self.log("tm_note", subgoal=sg["id"], why=_why,
+                         tms=",".join(_unused[:8]))
+                memory += (
+                    f"\nTEACHABLE MOVES YOU ARE CARRYING ({_why}): "
+                    + ", ".join(_unused[:8])
+                    + ". A TM's NAME IS THE MOVE IT TEACHES, and no "
+                      "Pokemon in your party knows "
+                      + ("that one" if len(_unused) == 1 else "any of those")
+                    + " right now. Teaching is "
+                      "{\"op\":\"use_item\",\"item\":\"TM_...\","
+                      "\"slot\":N} — add \"forget\":\"MOVE\" when that "
+                      "Pokemon already knows four. A TM IS SPENT WHEN IT "
+                      "IS USED, and whether a given Pokemon can learn a "
+                      "given TM is not something this harness knows: the "
+                      "game says so plainly when one will not take, and "
+                      "nothing is lost by being told no. Which Pokemon, "
+                      "which move it would replace, and whether any of it "
+                      "is worth doing at all is yours to judge.\n")
             # Log what the model was actually TOLD. Most of this session's
             # bugs were "the signal never reached the model" (dead ends only
             # in failure feedback, the too-weak note shadowed by an elif,
