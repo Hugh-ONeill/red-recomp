@@ -14253,7 +14253,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # is worth a walk, and whether the ground behind it is wanted,
                 # is the model's to judge — the same rule the room sweep
                 # follows for everything else it cannot answer for you.
-                _bushes = [(o.get("name"), o.get("x"), o.get("y"))
+                _bushes = [(o.get("name"), o.get("x"), o.get("y"),
+                            bool(o.get("opens")))
                            for o in ((cur.get("map") or {}).get("objects")
                                      or [])
                            if o.get("kind") == "cut_tree" and o.get("reachable")
@@ -14268,7 +14269,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if loose or (_bushes and knows_cut):
                     self.log("room_sweep", subgoal=sg["id"], region=here_s,
                              objects=loose[:8],
-                             standing=[f"{n}@{x},{y}" for n, x, y in _bushes[:4]])
+                             standing=[f"{n}@{x},{y}" + ("*" if _op else "")
+                                       for n, x, y, _op in _bushes[:4]])
                     asked_back, listed_back = [], []
                     for name in loose[:8]:
                         o2 = self._send_safe("interact", name=name)
@@ -14319,8 +14321,16 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             f"{', '.join(_pressed)} — everything reachable "
                             f"here that PRESSES has now been tried)")
                     if _bushes and knows_cut:
-                        _bn = ", ".join(f"{n} at ({x},{y})"
-                                        for n, x, y in _bushes[:4])
+                        # WHICH OF THEM IS ACTUALLY IN THE WAY. Saying a
+                        # bush "is only in the way if it is in the way" and
+                        # then not saying which is which leaves the model
+                        # to guess at a fact the harness has computed.
+                        _bn = ", ".join(
+                            f"{n} at ({x},{y})"
+                            + (" — and walkable ground on its far side is "
+                               "ground NO walk from here reaches"
+                               if _op else "")
+                            for n, x, y, _op in _bushes[:4])
                         _bx, _by = _bushes[0][1], _bushes[0][2]
                         _one = len(_bushes[:4]) == 1
                         trace.append(

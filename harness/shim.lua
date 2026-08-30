@@ -2687,9 +2687,32 @@ local function observe(G, seq, result)
           for cx = 0, math.min(w - 1, 71) do
             if lm:cellTile(cx, cy) == want
                and not lm:isWalkableCell(cx, cy) then
+              -- ...AND WHETHER FELLING IT WOULD OPEN ANYTHING. A bush
+              -- that touches ground you can reach is not the same as a
+              -- bush that is IN THE WAY, and the difference is the whole
+              -- of the user's rule (2026-08-30: "we dont need to use cut
+              -- unless its actually barring the path"). It is also what
+              -- tells a REGROWN bush apart: cutting one again usually
+              -- reopens ground already open, but ROUTE_9|0,8 is a nine-
+              -- cell pocket whose east seam is that bush, and there the
+              -- regrown one is the only way out. One step is enough to
+              -- say it: walkable ground on the far side that no walk
+              -- from here reaches. How much lies beyond it is not
+              -- claimed, and whether to spend the walk stays the
+              -- model's.
+              local _opens = false
+              for _, d in ipairs({ {0, 1}, {0, -1}, {1, 0}, {-1, 0} }) do
+                local nx, ny = cx + d[1], cy + d[2]
+                if nx >= 0 and ny >= 0 and lm.isWalkableCell
+                   and lm:isWalkableCell(nx, ny)
+                   and not stand_ok(nx .. "," .. ny) then
+                  _opens = true
+                end
+              end
               o.map.objects[#o.map.objects + 1] = {
                 x = cx, y = cy, kind = "cut_tree", name = "CUT_TREE",
                 reachable = adjacent_reachable(cx, cy, false),
+                opens = _opens or nil,
               }
             end
           end

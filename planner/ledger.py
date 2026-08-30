@@ -976,6 +976,22 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             # then doesnt").
             _cut = (getattr(ex, "_cut_bushes", {}) or {}).get(mid) or []
             _again = f"{o.get('x')},{o.get('y')}" in _cut
+            # ...UNLESS IT GREW BACK ACROSS THE ONLY WAY OUT. "recut" is
+            # right when the first cut already opened that ground — but a
+            # bush is only "already open" from where you can still stand.
+            # ROUTE_9|0,8 is a nine-cell pocket whose east seam is the bush
+            # at (5,8): it regrew, the ledger retired it as a recut, the
+            # pocket read FULLY WORKED, and explore walked at a wall it had
+            # been told nothing about (2026-08-30). The shim says whether
+            # felling one reaches walkable ground no walk from here does;
+            # when it would, this is a way on whether or not it was cut
+            # before.
+            if _again and o.get("opens"):
+                _again = False
+                c.note = _join(c.note,
+                               "you cut this one before and it grew back — "
+                               "and it is across the only way out of the "
+                               "ground you can reach from here now")
             c.status = ("unreachable" if not o.get("reachable")
                         else ("recut" if _again else "cuttable")
                         if knows_cut else "bush")

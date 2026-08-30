@@ -35,7 +35,7 @@ def _flat(t): return re.sub(r'"\s*\n\s*f?"', "", t)
 i = src.find("A BUSH IS NOT SWEPT EITHER")
 ck("the sweep says why it no longer fells", i > 0)
 # the window spans the collection, the press loop and the trace
-blk = src[i:i + 6500]
+blk = src[i:i + 8200]
 flat = _flat(blk)
 ck("...a reachable bush is collected, not swept",
    "_bushes = [" in blk and 'o.get("kind") == "cut_tree"' in blk
@@ -79,6 +79,32 @@ ck("...and searching only that half",
 shim = (ROOT / "harness" / "shim.lua").read_text()
 ck("the disclaimer this splits on is the shim's own words",
    "Also near that edge, though not what stopped you" in shim)
+
+# --- AND THE HARNESS SAYS WHICH ONE IS IN THE WAY ---
+# The rule needs the fact behind it, or the model is left to guess at
+# something the flood already knows. ROUTE_9|0,8 is the case: a nine-cell
+# pocket whose east seam is a bush that GREW BACK, so the ledger retired it
+# as a recut, the pocket read fully worked, and explore walked at a wall.
+shim_src = (ROOT / "harness" / "shim.lua").read_text()
+k = shim_src.find("AND WHETHER FELLING IT WOULD OPEN ANYTHING")
+ck("the shim computes whether felling one opens ground", k > 0)
+sblk = shim_src[k:k + 1600]
+ck("...as walkable ground on the far side that no walk reaches",
+   "lm:isWalkableCell(nx, ny)" in sblk and "not stand_ok(" in sblk)
+ck("...published on the object, and absent when it opens nothing",
+   "opens = _opens or nil," in sblk)
+ck("...claiming only that, never how much lies behind it",
+   "opens_n" not in sblk and "cells beyond" not in sblk)
+
+led = (ROOT / "planner" / "ledger.py").read_text()
+ck("a regrown bush across the only way out is a way on again",
+   'if _again and o.get("opens"):' in led and "_again = False" in led)
+ck("...and says so in its own words",
+   "it is across the only way out of the " in led)
+ck("an ordinary regrown bush is still a recut",
+   '"recut" if _again else "cuttable"' in led)
+ck("the sweep's line marks the one that is in the way",
+   "ground NO walk from here reaches" in blk)
 
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:
