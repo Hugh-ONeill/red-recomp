@@ -891,6 +891,52 @@ def validate(plan: dict) -> list:
                       f"IS — only that it is not there.")
                 break
 
+    # NOT-STANDING-SOMEWHERE IS TRUE OF ALMOST EVERYWHERE. `not_area`
+    # exists for one job, and its own comment in the executor says so:
+    # "A PART OF A MAP OTHER THAN THE ONE YOU KNOW... Pair it with 'map'".
+    # Written ALONE it means "you are not in this one region", which holds
+    # in every room in Kanto but one — so "Clear Rock Tunnel" ended on
+    # {"not_area": "ROUTE_10|0,0"}, passed validation, and the campaign
+    # reported it complete on attempt 1 from Vermilion City with no event
+    # fired, no item gained and no new place entered (2026-08-30). Same
+    # family as has_item count 0 above: a condition true of the world as
+    # it already is cannot witness a deed.
+    #
+    # And the region it excludes must be one the run has STOOD IN. You
+    # cannot leave somewhere you have never been, and ROUTE_10|0,0 is not
+    # where the party stands on Route 10 — it was a guess at a name, so
+    # the exclusion excluded nothing at all.
+    for _i3, _s3 in enumerate(subs or []):
+        if not isinstance(_s3, dict):
+            continue
+        _dw3 = _s3.get("done_when") or {}
+        if not isinstance(_dw3, dict) or "not_area" not in _dw3:
+            continue
+        _na = _dw3["not_area"]
+        _nas = [str(x) for x in (_na if isinstance(_na, (list, tuple))
+                                 else [_na]) if x]
+        if not ({"map", "area"} & set(_dw3)):
+            probs.append(
+                f"subgoal[{_i3}] ({_s3.get('id')}) ends on not_area alone, "
+                f"which is true of every place in the game except "
+                f"{', '.join(_nas) or 'one region'} — it holds where you "
+                f"are standing right now. not_area says WHICH PART of a "
+                f"map, so it only means anything beside the map it is "
+                f"carving up: {{\"map\": \"THAT_MAP\", \"not_area\": "
+                f"\"THAT_MAP|x,y\"}} reads 'on that map, in a part other "
+                f"than the one I know'.")
+            continue
+        _walked = visited_regions()
+        _unknown = [n for n in _nas if _walked and n not in _walked]
+        if _unknown:
+            probs.append(
+                f"subgoal[{_i3}] ({_s3.get('id')}) excludes "
+                f"{', '.join(_unknown)}, which this run has never stood "
+                f"in — so the exclusion excludes nothing and the condition "
+                f"is satisfied by the part of that map you already know. "
+                f"not_area carves off the region you are LEAVING, and the "
+                f"ledger names the ones you have stood in.")
+
     # A FINAL FLAG THAT HAS ALREADY FIRED can witness nothing: the inserted
     # "Defeat the Team Rocket Admin" leg ended on EVENT_GOT_TM34 — Brock's
     # TM, fired hours before — so the plan completed in seconds twice and
@@ -942,6 +988,11 @@ def validate(plan: dict) -> list:
         # one; the region ledger is what the condition actually asks about.
         _ex = _place_names(dw0, exact=True)
         if _ex != _places and _ex and not (_ex <= visited_regions()):
+            _places = set()
+        # ...AND A MAP PAIRED WITH not_area IS THE FAR SIDE OF IT, which is
+        # the one thing that phrase exists to say. Refusing it as "already
+        # stood in" would shut the only door out of the split-route class.
+        if isinstance(dw0, dict) and dw0.get("not_area"):
             _places = set()
         if _places and _vis and _places <= _vis:
             probs.append(
