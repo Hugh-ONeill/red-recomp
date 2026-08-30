@@ -6111,7 +6111,9 @@ def check_done(goal: str, start: str, model: str,
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--goal", required=True)
+    # NOT required: --validate reads a plan off disk and needs no goal to
+    # check it against. Every other mode does, and is told so below.
+    ap.add_argument("--goal", default=None)
     ap.add_argument("--out", type=Path, default=None)
     ap.add_argument("--outline-skeleton", action="store_true",
                     help="author the outline from the fixed badge spine, "
@@ -6187,10 +6189,30 @@ def main():
     ap.add_argument("--observed", type=Path, default=None,
                     help="explored.json from earlier runs: real connectivity "
                          "evidence for the audit pass")
+    ap.add_argument("--validate", type=Path, default=None,
+                    help="check an existing plan file and print its problems; "
+                         "exit 0 if it validates, 3 if it does not")
     ap.add_argument("--journal", type=Path, default=None,
                     help="executor_log.jsonl: what actually happened last "
                          "run (money, wipes, failed steps) for the audit")
     args = ap.parse_args()
+    if not args.goal and not args.validate:
+        ap.error("--goal is required")
+    if args.validate:
+        # A PLAN ON DISK, CHECKED AGAINST THE WORLD AS IT IS NOW. The
+        # campaign falls back to the last plan when a re-author produces
+        # nothing, which is right for a flaky model call and wrong when
+        # every rewrite was refused because the plan cannot finish — so
+        # the fallback asks first.
+        try:
+            _pl = json.loads(args.validate.read_text())
+        except Exception as _e:
+            print(f"cannot read {args.validate}: {_e}")
+            sys.exit(3)
+        _pr = validate(_pl)
+        for _p in _pr:
+            print(f"- {_p}")
+        sys.exit(3 if _pr else 0)
     if args.dry_tail:
         print(dry_tail(args.goal))
         sys.exit(0)

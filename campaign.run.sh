@@ -204,9 +204,27 @@ PY
       --observed run/explored.json \
       --journal run/executor_log.jsonl 2>&1 | tee -a "$LOG"
   if [ ! -s "$rewritten" ]; then
-    echo "!! re-author produced nothing; keeping plans/$failed_plan" \
-        | tee -a "$LOG"
-    rewritten="plans/$failed_plan"
+    # ...UNLESS THE OLD PLAN IS THE THING THAT WAS REFUSED. Keeping the
+    # last plan is the right fallback for a flaky re-author, and the wrong
+    # one when every rewrite was rejected BECAUSE the plan cannot finish:
+    # leg 19's author cycled Vermilion/Cerulean for five rounds, each
+    # refused with "FRESH_WATER is not on its shelf", and this line handed
+    # the refused plan straight back to the executor to run again
+    # (2026-08-30). A plan the validator will not pass is not a fallback,
+    # it is the problem; say so and let the ladder move the leg.
+    if python planner/author.py --validate "plans/$failed_plan" \
+        >/dev/null 2>&1; then
+      echo "!! re-author produced nothing; keeping plans/$failed_plan" \
+          | tee -a "$LOG"
+      rewritten="plans/$failed_plan"
+    else
+      echo "!! re-author produced nothing AND the plan it would fall back "\
+           "to does not validate — this leg has no runnable plan" \
+          | tee -a "$LOG"
+      python planner/author.py --validate "plans/$failed_plan" 2>&1 \
+          | tee -a "$LOG" || true
+      exit 6
+    fi
   fi
 
   # An EVENT GATE must survive a rewrite. The add/update-never-delete rule
