@@ -26,12 +26,17 @@ sys.path.insert(0, str(ROOT / "planner"))
 src = (ROOT / "planner" / "executor.py").read_text()
 checks = []
 def ck(n, ok, d=""): checks.append((n, bool(ok), d))
+# The sweep's sentences are wrapped across adjacent literals, so a
+# check on the source reads the wrapping, not the words. Join them
+# first and the checks below are about what the model is told.
+def _flat(t): return re.sub(r'"\s*\n\s*f?"', "", t)
 
 # --- the sweep ---
 i = src.find("A BUSH IS NOT SWEPT EITHER")
 ck("the sweep says why it no longer fells", i > 0)
 # the window spans the collection, the press loop and the trace
 blk = src[i:i + 6500]
+flat = _flat(blk)
 ck("...a reachable bush is collected, not swept",
    "_bushes = [" in blk and 'o.get("kind") == "cut_tree"' in blk
    and 'o.get("reachable")' in blk)
@@ -47,7 +52,15 @@ ck("...with the op that clears it, on the model's word",
    'field_move' in blk and '\\"move\\":' in blk
    and '\\"x\\":{_bx}' in blk)
 ck("...and the claim it makes is honest about what was tried",
-   "everything reachable here that PRESSES has " in blk)
+   "everything reachable here that PRESSES has now been tried"
+   in flat)
+# THE ROOM WHOSE ONLY UNTOUCHED THING IS A BUSH is the case this was written
+# for: Vermilion. Bushes leaving `loose` must not put them behind a guard
+# that tests `loose`.
+ck("a bush-only room still sweeps and still speaks",
+   "if loose or (_bushes and knows_cut):" in blk)
+ck("...and claims nothing was pressed when nothing was",
+   "if _pressed:" in blk)
 ck("...saying plainly that the sweep declined to fell it",
    "The sweep did NOT fell " in blk)
 

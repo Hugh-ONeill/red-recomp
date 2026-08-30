@@ -14186,11 +14186,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                            if o.get("kind") == "cut_tree" and o.get("reachable")
                            and o.get("x") is not None]
                 loose = [n for n in loose if kinds.get(n) != "cut_tree"]
-                if loose:
+                # A ROOM WHOSE ONLY UNTOUCHED THING IS A BUSH still has
+                # something to say. Dropping bushes out of `loose` put them
+                # behind a guard that tests `loose`, so the very case this
+                # was written for — Vermilion, where the gym's bush is the
+                # whole of it — would sweep nothing and say nothing, and the
+                # model would lose even the mention it used to get.
+                if loose or (_bushes and knows_cut):
                     self.log("room_sweep", subgoal=sg["id"], region=here_s,
-                             objects=loose[:8])
+                             objects=loose[:8],
+                             standing=[f"{n}@{x},{y}" for n, x, y in _bushes[:4]])
                     asked_back, listed_back = [], []
-                    felled = []
                     for name in loose[:8]:
                         o2 = self._send_safe("interact", name=name)
                         if o2 and o2.get("mode") == "battle":
@@ -14234,12 +14240,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # "from vermillion stopped at rt9 again"). What the
                     # felling opens is not stated — it may open nothing.
                     _pressed = list(loose[:8])
-                    trace.append(
-                        "(swept this area: "
-                        + (f"pressed A on {', '.join(_pressed)}"
-                           if _pressed else "nothing here presses")
-                        + " — everything reachable here that PRESSES has "
-                          "now been tried)")
+                    if _pressed:
+                        trace.append(
+                            f"(swept this area: pressed A on "
+                            f"{', '.join(_pressed)} — everything reachable "
+                            f"here that PRESSES has now been tried)")
                     if _bushes and knows_cut:
                         _bn = ", ".join(f"{n} at ({x},{y})"
                                         for n, x, y in _bushes[:4])

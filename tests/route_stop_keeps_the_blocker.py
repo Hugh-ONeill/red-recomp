@@ -19,6 +19,10 @@ from pathlib import Path
 
 checks = []
 def ck(name, cond): checks.append((name, bool(cond)))
+# The sweep's sentences are wrapped across adjacent literals, so a
+# check on the source reads the wrapping, not the words. Join them
+# first and the checks below are about what the model is told.
+def _flat(t): return re.sub(r'"\s*\n\s*f?"', "", t)
 
 src = Path("planner/executor.py").read_text()
 
@@ -39,12 +43,13 @@ ck("every give-up path uses it (the two originals and the Safari-clock verdict)"
 i = src.find("(swept this area: ")
 ck("the sweep still reports itself", i > 0)
 blk = src[max(0, i - 3600):i + 1400]
+flat = _flat(blk)
 ck("...pressing is reported for what presses",
    "_pressed = list(loose[:8])" in blk
-   and "pressed A on {', '.join(_pressed)}" in blk)
+   and "pressed A on {', '.join(_pressed)}" in flat)
 ck("...and the claim covers only that",
-   "everything reachable here that PRESSES has " in blk
-   and "everything reachable here has now been tried" not in blk)
+   "everything reachable here that PRESSES has now been tried" in flat
+   and "everything reachable here has now been tried" not in flat)
 ck("a standing bush is named rather than claimed done",
    "The sweep did NOT fell " in blk)
 ck("it does not claim a cut opened any particular way",
