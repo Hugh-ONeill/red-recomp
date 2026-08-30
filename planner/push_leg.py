@@ -57,6 +57,7 @@ def main(argv):
     # ladder (which may reword, void, or stop for a person) instead of
     # silently undoing the insert.
     INSERTS = Path("run/outline_inserts")
+    _riders: list = []
     try:
         _ins = INSERTS.read_text().splitlines()
     except OSError:
@@ -73,17 +74,40 @@ def main(argv):
         except ValueError:
             continue
         if after >= _dep_at > frm:
-            sys.exit(f"push_leg: refused — {_text!r} was inserted as what "
-                     f"{_dep.strip()!r} (leg {_dep_at}) needs first; pushing "
-                     f"it to {after} would put it after the leg it unblocks")
+            _riders.append((_dep_at, _dep.strip()))
+    # ...SO THE DEPENDENT TRAVELS WITH IT. Refusing outright threw the
+    # model's answer away and, exiting non-zero under `set -e`, took the
+    # whole chain down with it — the caller was written to "fall through to
+    # the ladder" and never could. Leg 19 is the case: the model said
+    # "'Obtain Fresh Water' moves to after leg 25 — Fresh Water is only
+    # sold at the Celadon Department Store, which requires reaching Celadon
+    # City first", which is exactly right, and the leg it unblocks
+    # ("Retrieve the Gold Teeth from Celadon City") is in Celadon too and
+    # wants the same move. The insert says A comes BEFORE B; it does not
+    # say where B sits. Moving them as a block keeps A before B, which is
+    # the whole of what the insert recorded, and honours the deferral the
+    # model asked for. Nothing new is decided here: both halves are things
+    # the model said.
     after = min(after, n)
-    text = lines.pop(frm - 1)
-    # popping shifted everything above frm down one
-    lines.insert(after - 1, text)
+    _riders.sort()
+    _texts = [lines[frm - 1]] + [t for _, t in _riders]
+    for t in _texts:
+        lines.remove(t)
+    _at = after - len(_texts)          # the removals shifted the target down
+    for k, t in enumerate(_texts):
+        lines.insert(_at + k, t)
     OUT.write_text("\n".join(lines) + "\n")
     with PUSHES.open("a") as f:
-        f.write(f"{frm}\t{after}\t{text}\n")
-    print(f"pushed {text!r} from {frm} to {after}")
+        for t in _texts:
+            f.write(f"{frm}\t{after}\t{t}\n")
+    text = _texts[0]
+    if len(_texts) > 1:
+        print(f"pushed {text!r} from {frm} to {after}, and with it "
+              + ", ".join(repr(t) for t in _texts[1:])
+              + " — each was recorded as needing it first, so they move "
+                "together and stay in that order")
+    else:
+        print(f"pushed {text!r} from {frm} to {after}")
 
 
 if __name__ == "__main__":

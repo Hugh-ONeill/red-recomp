@@ -786,10 +786,17 @@ while :; do
             --journal run/executor_log.jsonl --model "$AUTHOR_MODEL"); then
       # PROGRESS is deliberately NOT advanced: the objective that was next
       # has slid into this position, and that is the one to run now.
-      python planner/push_leg.py "$i" "$at"
-      disposed "moved to after leg $at"
-      archive_plans_of "$leg"
-      continue
+      # ...AND A PUSH THAT DOES NOT HAPPEN IS NOT A DISPOSAL. push_leg
+      # exits non-zero when it will not make a move, and under `set -e`
+      # that did not fall through to the next rung — it killed the chain
+      # outright, mid-ladder, on leg 19 (2026-08-30). Its own comment says
+      # the caller "falls through to the ladder"; this is that fall.
+      if python planner/push_leg.py "$i" "$at"; then
+        disposed "moved to after leg $at"
+        archive_plans_of "$leg"
+        continue
+      fi
+      echo "[later] the push did not happen; the ladder goes on" >&2
     fi
     # the sense question, last, told exactly what was asked before it
     if wording_rung "done,blocker,missing,later"; then continue; fi
