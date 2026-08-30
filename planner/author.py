@@ -617,6 +617,23 @@ def _place_names(dw) -> set:
     return out
 
 
+def walked_shelves() -> dict:
+    """What each counter this run has stood at was selling, and how often it
+    was read. The run's own play, read back — never a table of marts it has
+    not entered."""
+    try:
+        d = json.loads(Path("run/explored.json").read_text() or "{}")
+    except Exception:
+        return {}
+    out = {}
+    for m, items in (d.get("shelves") or {}).items():
+        if items:
+            out[str(m)] = (list(items),
+                           bool(((d.get("shelf_reads") or {}).get(m)
+                                 or {}).get("moved")))
+    return out
+
+
 def fired_flags() -> list:
     """Every event flag this run has watched fire, oldest first — the only
     flag names the harness may volunteer (they are history, not contents)."""
@@ -809,6 +826,49 @@ def validate(plan: dict) -> list:
                 f"giving something away or using it up. Condition on what "
                 f"the act leaves behind instead (an event flag, a map you "
                 f"could not reach before).")
+    # A SHOP RUN THAT ENDS ON SOMETHING THAT COUNTER DOES NOT SELL cannot
+    # come true, and the run has the receipt. Leg 19 was authored ten times
+    # as "go to the mart, buy FRESH_WATER" — CERULEAN_MART read four times
+    # and VERMILION_MART three, the same seven and six items every time, no
+    # water on either — and the tenth was written with both shelves printed
+    # on the page. Same class as the already-fired flag below: not a
+    # judgement about where the water IS, which nothing here knows, but a
+    # plan that this run's own evidence says cannot finish. Handing it back
+    # is how the model finds out.
+    #
+    # A SHELF THAT HAS MOVED IS EXEMPT. Viridian's changes once, after the
+    # parcel; a counter this run has seen come back different is not one we
+    # may call settled.
+    _sh = walked_shelves()
+    if _sh:
+        _mapped = None
+        for _s2 in (subs or []):
+            if not isinstance(_s2, dict):
+                continue
+            _dw2 = _s2.get("done_when") or {}
+            _m2 = _dw2.get("map") if isinstance(_dw2, dict) else None
+            if _m2 and str(_m2) in _sh:
+                _mapped = str(_m2)
+            _hi = _dw2.get("has_item") if isinstance(_dw2, dict) else None
+            if not (_mapped and isinstance(_hi, dict)):
+                continue
+            _items, _moved = _sh[_mapped]
+            if _moved:
+                continue
+            for _want in _hi:
+                if str(_want).upper() in {str(x).upper() for x in _items}:
+                    continue
+                probs.append(
+                    f"subgoal[{(subs or []).index(_s2)}] ({_s2.get('id')}) "
+                    f"ends on holding {_want}, and the step(s) before it "
+                    f"take the party to {_mapped}, whose counter THIS RUN "
+                    f"HAS READ: it sells "
+                    + ", ".join(str(x) for x in _items[:12])
+                    + f". {_want} is not on it, so this plan cannot finish "
+                      f"where it is going. Nothing here says where {_want} "
+                      f"IS — only that it is not there.")
+                break
+
     # A FINAL FLAG THAT HAS ALREADY FIRED can witness nothing: the inserted
     # "Defeat the Team Rocket Admin" leg ended on EVENT_GOT_TM34 — Brock's
     # TM, fired hours before — so the plan completed in seconds twice and
