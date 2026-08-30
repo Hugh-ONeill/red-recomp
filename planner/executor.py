@@ -1306,6 +1306,14 @@ class Executor:
         self._dead_why: dict = {}    # op signature -> last failure detail
         self._cut_bushes: dict = {}  # map -> ["x,y", ...] bushes cut before
         self._shelves: dict = {}     # mart map -> [items it sells], as seen
+        # ...AND HOW MANY TIMES THAT SHELF HAS BEEN READ, and whether it has
+        # ever come back different. "SHOPS ... AND WHAT THEY WERE SELLING"
+        # is past tense about a list, which invites "maybe there are new
+        # items now" — and the run walked seven legs back to CERULEAN_MART
+        # on exactly that thought (user, 2026-08-30). Whether a shelf
+        # restocks is not ours to rule on; how many times THIS run has
+        # looked at it, and whether it moved, is the run's own evidence.
+        self._shelf_reads: dict = {}   # mart map -> {"n": int, "moved": bool}
         # which of those are VENDING MACHINES rather than a counter:
         # the stock is kept the same way, the sentence is not
         self._shelf_machine: set = set()
@@ -1501,7 +1509,16 @@ class Executor:
         mid = str(region).split("|")[0]
         if not mid or mid == "None":
             return
+        # SELF-HEALING: a memory file written before this field existed
+        # reloads without it, and the reload happens after __init__.
+        if getattr(self, "_shelf_reads", None) is None:
+            self._shelf_reads = {}
+        _h = self._shelf_reads.setdefault(mid, {"n": 0, "moved": False})
+        _h["n"] += 1
+        if mid in self._shelves and self._shelves[mid] != rows:
+            _h["moved"] = True
         if self._shelves.get(mid) == rows and mid in self._shelf_machine:
+            self._save_memory()
             return
         self._shelves[mid] = rows
         self._shelf_machine.add(mid)
@@ -3004,6 +3021,7 @@ class Executor:
             self.boulder_start = data.get("boulder_start") or {}
             self._cut_bushes = data.get("cut_bushes") or {}
             self._shelves = data.get("shelves") or {}
+            self._shelf_reads = data.get("shelf_reads") or {}
             self._shelf_machine = set(data.get("shelf_machine") or [])
             self._lists_reopened = bool(data.get("lists_reopened"))
             # MEMORY THAT OUTLIVES THE ATTEMPT. The outcome ledger and the
@@ -3452,6 +3470,7 @@ class Executor:
                  "boulder_start": getattr(self, "boulder_start", {}),
                  "cut_bushes": getattr(self, "_cut_bushes", {}),
                  "shelves": getattr(self, "_shelves", {}),
+                 "shelf_reads": getattr(self, "_shelf_reads", {}),
                  "shelf_machine": sorted(getattr(self, "_shelf_machine",
                                                  set())),
                  "lists_reopened": bool(getattr(
@@ -7706,7 +7725,7 @@ class Executor:
         txt = self.exploration_text(obs, self._target_key(sg), sg) \
             + self._fired_text(obs, sg)
         self.log("escalate_context", subgoal=sg["id"],
-                 target=self._target_key(sg), memory=txt[:6000])
+                 target=self._target_key(sg), memory=txt[:24000])
         return txt
 
     def training_text(self, obs, target: str = "") -> str:
@@ -8538,8 +8557,29 @@ class Executor:
                     parts.append(f"{len(_far)} on parts you have never stood "
                                  f"on ({', '.join(_far[:4])})")
                 return f"{_m} has {_t} doorway(s): " + "; ".join(parts)
+            # ...AND THE CUT WAS THE LIE HERE TOO. Three rows, sorted by
+            # distance, and no word that there were more: from Vermilion
+            # every house on the map outranks ROCK_TUNNEL_1F, whose untaken
+            # ladder is nine legs away, so the run read a page that named
+            # three doors in the city it was standing in and ping-ponged
+            # Cerulean/Vermilion hunting a way on (user, 2026-08-30: "its
+            # pingponging again ... ignoring the way through lavender").
+            # The sibling list below already learned this: name every
+            # floor, the near ones in full and the rest in a short form,
+            # and count only a very long tail.
+            _full = "; ".join(_floor_row(*r) for r in _rows[:3])
+            _rest = _rows[3:30]
+            _more = len(_rows) - 3 - len(_rest)
+            _tail = ""
+            if _rest:
+                _tail = ("; also " + ", ".join(
+                    f"{_m} ({len(_o) + len(_f)} of {_t} never taken, "
+                    + (f"{_n} leg(s))" if _n < 99 else "no walked route)")
+                    for _n, _m, _t, _o, _f in _rest))
+            if _more > 0:
+                _tail += f"; and {_more} more floor(s) not named"
             floor_away = ("\nFLOORS YOU HAVE WALKED THAT ARE NOT FINISHED: "
-                          + "; ".join(_floor_row(*r) for r in _rows[:3])
+                          + _full + _tail
                           + ". A door never taken on ground you have stood "
                             "on is reached by going back there; how to reach "
                             "a part never stood on is not known.")
@@ -9467,6 +9507,26 @@ class Executor:
             if _shops:
                 _shops.sort()
                 _mach = getattr(self, "_shelf_machine", None) or set()
+                _reads = getattr(self, "_shelf_reads", None) or {}
+
+                def _seen_note(_sm):
+                    # HOW OFTEN THIS RUN HAS LOOKED, AND WHETHER IT MOVED.
+                    # "what they WERE selling" is past tense about a list
+                    # and reads as an open question, so the run walked
+                    # seven legs back to CERULEAN_MART on "maybe there are
+                    # new items" (user, 2026-08-30). Whether a shelf ever
+                    # restocks is not the harness's to rule on; how many
+                    # times this run has read this one, and whether it came
+                    # back different, is the run's own evidence.
+                    _r = _reads.get(_sm) or {}
+                    _n = int(_r.get("n") or 0)
+                    if _n < 2:
+                        return ""
+                    if _r.get("moved"):
+                        return (f" (read {_n}x, and it has come back "
+                                f"DIFFERENT at least once)")
+                    return (f" (read {_n}x, the same list every time)")
+
                 _rs_line = (
                     "SHOPS YOU HAVE WALKED INTO AND WHAT THEY WERE SELLING: "
                     + "; ".join(
@@ -9475,7 +9535,7 @@ class Executor:
                            "not bought at)" if _sm in _mach else "")
                         + (f", {_h} walked leg(s) away" if _h < 99
                            else ", no walked route from here")
-                        + ": " + ", ".join(_it[:10])
+                        + ": " + ", ".join(_it[:10]) + _seen_note(_sm)
                         for _h, _sm, _it in _shops[:8])
                     + ". A counter takes {\"op\":\"buy\"}; a machine is "
                       "pressed and a row picked. Shops you have never "
@@ -12069,9 +12129,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if _sh:
                     _cm = ((obs or {}).get("map") or {}).get("id")
                     if _cm and _alone:
-                        self._shelves[_cm] = [x.strip() for x in
-                                              _sh.group(1).split(",")
-                                              if x.strip()]
+                        _rows5 = [x.strip() for x in
+                                  _sh.group(1).split(",") if x.strip()]
+                        if getattr(self, "_shelf_reads", None) is None:
+                            self._shelf_reads = {}
+                        _h5 = self._shelf_reads.setdefault(
+                            _cm, {"n": 0, "moved": False})
+                        _h5["n"] += 1
+                        if _cm in self._shelves \
+                                and self._shelves[_cm] != _rows5:
+                            _h5["moved"] = True
+                        self._shelves[_cm] = _rows5
                         self._save_memory()
                 if "shelf, which holds" in det and _alone and self._cur_target:
                     self.note_dead_end(self._cur_target, self._where(obs),
@@ -12671,8 +12739,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # in failure feedback, the too-weak note shadowed by an elif,
             # LAST_MAP unresolved), and each took a whole run to find because
             # the prompt was never recorded anywhere.
+            # THE CAP CUT THE PAGE OFF EXACTLY WHERE THE INTERESTING PART
+            # BEGINS: 6000 characters landed mid-word in "FLOORS YOU HAVE
+            # WALKED THAT ARE NOT FINI", which is the section a stuck leg
+            # is read from. This record exists BECAUSE the prompt was never
+            # written down anywhere; a cap that hides its tail defeats it.
             self.log("escalate_context", subgoal=sg["id"],
-                     target=self._target_key(sg), memory=memory[:6000])
+                     target=self._target_key(sg), memory=memory[:24000])
             # ...and the ECHO the model reads beside it. The context log was
             # written before plan_echo exists, so the one part of the prompt
             # that carries the model's own beliefs forward — the part that

@@ -20,11 +20,11 @@ def ck(name, cond): checks.append((name, bool(cond)))
 src = Path("planner/executor.py").read_text()
 i = src.find("SHOPS YOU HAVE WALKED INTO AND WHAT THEY WERE SELLING")
 ck("the page recalls every walked shop", i > 0)
-blk = src[max(0, i - 1800):i + 2200]
+blk = src[max(0, i - 1800):i + 3600]
 
 ck("...on the general page, beside the PC-storage line",
-   "_rs_line = self._respawn_line(obs)" in src[max(0, i - 2400):i]
-   and "_boxed = [m for m in ((obs or {}).get(\"pc_mons\")" in src[i:i + 4200])
+   "_rs_line = self._respawn_line(obs)" in src[max(0, i - 3200):i]
+   and "_boxed = [m for m in ((obs or {}).get(\"pc_mons\")" in src[i:i + 5600])
 ck("ordered by walked legs, and it says how far",
    "_shops.sort()" in blk and "walked leg(s) away" in blk)
 ck("a shop with no walked route says so rather than being dropped",
