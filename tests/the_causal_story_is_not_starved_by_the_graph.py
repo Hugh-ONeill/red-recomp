@@ -77,6 +77,24 @@ ck("...and never cuts a section in half",
        for b in gone.split("\n\n") if b.strip()
        and not b.startswith("  ")), gone[-200:])
 
+# --- the biggest section makes room, not the last one written ---
+# Dropping from the end sacrifices whatever happens to be written last,
+# however small: the shelf record is ten lines and it sat at the tail.
+BIG = "HUGE SECTION\n" + "\n".join(f"  filler line {i}" for i in range(400))
+SMALL = "TINY BUT DECIDING SECTION\n  CERULEAN_MART: POKE_BALL, POTION"
+kept = A._hard(BIG + "\n\n" + SMALL, 1200)
+ck("a small trailing section survives a huge one",
+   "CERULEAN_MART" in kept and "filler line 300" not in kept, kept[:120])
+ck("...and the drop is named", "HUGE SECTION" in kept.split("DID NOT FIT")[1])
+
+# --- vocabulary is not evidence and is never dropped ---
+VOCAB = ("AREA CODES you may use with the \"area\" predicate\n  "
+         + "X" * (len(BIG) + 500))
+kept = A._hard(VOCAB + "\n\n" + BIG + "\n\n" + SMALL, 3400)
+ck("the area vocabulary is never the thing dropped",
+   "AREA CODES you may use" in kept, kept[:100])
+ck("...even when it is the largest block", len(VOCAB) > len(BIG))
+
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:
     print(("ok  " if ok else "FAIL"), n)

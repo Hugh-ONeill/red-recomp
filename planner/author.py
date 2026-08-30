@@ -1834,6 +1834,45 @@ def observed_text(path: Path) -> str:
         out += ("\n\nWAYS THAT TURNED THE RUN BACK (a plan that walks into "
                 "one again without first meeting what lifts it is a plan "
                 "that has already failed):\n" + "\n".join(rows[:8]))
+    # WHAT THE COUNTERS THE RUN HAS WALKED INTO ACTUALLY SELL. This lived
+    # only in the journal, whose window is the last 60 events — so four
+    # "FRESH_WATER is not on CERULEANMART_CLERK's shelf" failures aged out
+    # of it during one long leg and the very next plan was "go to Vermilion,
+    # enter the mart, buy Fresh Water", at a counter whose seven items the
+    # run had read four times (2026-08-30). A shelf is not a transient
+    # event like a walk or a faint; it is a standing fact the run walked in
+    # and read, exactly like the doors in the graph above it, and it
+    # belongs with them where nothing ages out.
+    #
+    # This is NOT the shop-stock table the comment near the vocabulary
+    # refuses. That table was world knowledge we do not have the right to
+    # hand over — which mart sells what, including the ones the run has
+    # never entered. This is the run's own play read back to it, the whole
+    # purpose of this function, and it says nothing at all about a counter
+    # the party has not stood at.
+    _sh = d.get("shelves") or {}
+    if _sh:
+        _reads = d.get("shelf_reads") or {}
+        _rows = []
+        for _m in sorted(_sh):
+            _items = _sh[_m] or []
+            if not _items:
+                continue
+            _n = int((_reads.get(_m) or {}).get("n") or 0)
+            _rows.append(
+                f"  {_m}: " + ", ".join(_items[:12])
+                + (f" (read {_n}x, "
+                   + ("and it has come back DIFFERENT at least once)"
+                      if (_reads.get(_m) or {}).get("moved")
+                      else "the same list every time)")
+                   if _n > 1 else ""))
+        if _rows:
+            out += ("\n\nWHAT THE SHOPS THIS RUN HAS WALKED INTO WERE "
+                    "SELLING, read off their own counters. A plan that "
+                    "sends the party to one of these to buy something that "
+                    "is not on its list has already failed. Counters the "
+                    "run has never stood at are not listed and nothing is "
+                    "claimed about them:\n" + "\n".join(_rows[:10]))
     # Nearness = the maps the run has spent the most time in, which is
     # where it is and where it keeps returning. Mechanical, not a judgment
     # about what matters.
@@ -1874,15 +1913,39 @@ def _hard(text: str, budget: int) -> str:
     worse than none, and an unmentioned absence is the hiding this project
     exists to stop.
     """
+    # ...AND THE ONE TO DROP IS THE BIGGEST, NOT THE LAST. Dropping from
+    # the end sacrifices whatever happens to be written last, however small
+    # and however decisive: the shelf record — ten lines saying what the
+    # counters this run walked into actually sell — sits at the tail of the
+    # walked graph and was the first thing to go, to make room for a block
+    # ten times its size. One big section makes room for many small ones,
+    # and the survivors keep the order they were written in.
+    # VOCABULARY IS NOT EVIDENCE AND IS NEVER DROPPED. AREA CODES is the
+    # list of map ids the `area` predicate accepts — 2359 characters, and
+    # the second-largest block here, so dropping by size reached for it
+    # first. Losing evidence costs the plan a fact; losing the vocabulary
+    # costs it the ability to SPELL one, which is the exact failure the
+    # review's own ordering comment describes ("a review reached for a heal
+    # and invented `party_hp`"). The rest of the vocabulary already lives
+    # past this budget for that reason; this block just happens to be
+    # assembled with the walked graph.
+    _KEEP = ("AREA CODES",)
     blocks = re.split(r"\n\n(?=[A-Z]{4,})", text)
-    kept, dropped, n = [], [], 0
-    for b in blocks:
-        if not kept or n + len(b) + 2 <= budget:
-            kept.append(b)
-            n += len(b) + 2
-        else:
+    _drop, n = set(), sum(len(b) + 2 for b in blocks)
+    for _j in sorted(range(len(blocks)), key=lambda k: -len(blocks[k])):
+        if blocks[_j].startswith(_KEEP):
+            continue
+        if n <= budget or len(_drop) >= len(blocks) - 1:
+            break
+        _drop.add(_j)
+        n -= len(blocks[_j]) + 2
+    kept, dropped = [], []
+    for _j, b in enumerate(blocks):
+        if _j in _drop:
             _h = (b.splitlines() or [""])[0]
             dropped.append(_h.split(" (")[0].split(",")[0].strip()[:52])
+        else:
+            kept.append(b)
     out = "\n\n".join(kept)
     if dropped:
         out += ("\n\n[EVIDENCE DID NOT FIT: " + str(len(dropped))

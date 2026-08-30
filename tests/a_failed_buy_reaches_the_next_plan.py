@@ -73,6 +73,31 @@ _dead = [q for q in re.findall(r'"([^"]{6,70})" (?:in|not in) t\b', _blk)
 ck("every phrase this classifier matches is one something emits",
    not _dead, _dead)
 
+# ...AND IT MUST NOT AGE OUT. The journal window is the last 60 events, so
+# four failed FRESH_WATER buys rolled out of it during one long leg and the
+# next plan was "go to Vermilion, enter the mart, buy Fresh Water" — at a
+# counter whose seven items the run had read four times. A shelf is a
+# standing fact the run walked in and read, not a transient event, so it is
+# rendered with the walked graph where nothing ages out.
+import json as _json, tempfile as _tf
+_d = Path(_tf.mkdtemp()) / "explored.json"
+_d.write_text(_json.dumps({
+    "explored": {"CERULEAN_CITY|20,0": {}},
+    "shelves": {"CERULEAN_MART": ["POKE_BALL", "POTION"]},
+    "shelf_reads": {"CERULEAN_MART": {"n": 4, "moved": False}}}))
+_ot = A.observed_text(_d) if (A := __import__("author")) else ""
+ck("the walked shelves ride the walked graph",
+   "WHAT THE SHOPS THIS RUN HAS WALKED INTO WERE SELLING" in _ot, _ot[-300:])
+ck("...naming the counter and its items",
+   "CERULEAN_MART: POKE_BALL, POTION" in _ot)
+ck("...and how many times it was read", "read 4x" in _ot
+   and "the same list every time" in _ot)
+ck("...saying plainly that it claims nothing about the rest",
+   "never stood at are not listed" in _ot)
+_d.write_text(_json.dumps({"explored": {"X|0,0": {}}}))
+ck("a run that has entered no shop says nothing at all",
+   "WHAT THE SHOPS" not in A.observed_text(_d))
+
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:
     print(("ok  " if ok else "FAIL"), n)
