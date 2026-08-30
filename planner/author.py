@@ -5622,12 +5622,32 @@ def walked_ground_text(goals, observed=None) -> str:
                         maps.append(mid)
         if not maps:
             continue
+        # WHERE ITS WAYS OUT HAVE ACTUALLY LED. Visit counts and tiles seen
+        # say a map was WALKED IN; they cannot tell walking in from walking
+        # THROUGH, and "Clear Rock Tunnel" was crossed off on "the player is
+        # currently on Route 9, which is the exit path after successfully
+        # traversing Rock Tunnel" — Route 9 is the side it went IN by, and
+        # the run has never stood in Lavender (2026-08-30). The doors it has
+        # come and gone by are its own record and say which sides it has
+        # ever been out of. Nothing here says whether that counts as done.
+        _exp = d.get("explored") or {}
         bits = []
         for mid in maps[:8]:
             v, s = visits.get(mid, 0), seen.get(mid, 0)
             tot = dims.get(mid)
+            _dests = []
+            for _reg, _ways in _exp.items():
+                if str(_reg).split("|")[0] != mid:
+                    continue
+                for _w in (_ways or {}).values():
+                    _to = str((_w or {}).get("to") or "").split("|")[0]
+                    if _to and _to != mid and _to not in _dests:
+                        _dests.append(_to)
             bits.append(f"{mid} " + ("never stood in" if not v else f"stood in {v}x")
-                        + (f", {s}/{tot[0] * tot[1]} tiles seen" if tot else f", {s} tiles seen"))
+                        + (f", {s}/{tot[0] * tot[1]} tiles seen" if tot else f", {s} tiles seen")
+                        + (", and every way out of it you have ever taken "
+                           "led to " + ", ".join(sorted(_dests)[:4])
+                           if _dests else ""))
         if len(maps) > 8:
             bits.append(f"and {len(maps) - 8} more")
         lines.append(f"  {n}. {text}: " + "; ".join(bits))
