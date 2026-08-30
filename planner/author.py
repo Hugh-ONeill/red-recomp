@@ -726,10 +726,34 @@ def outline_so_far(cap: int = 12) -> str:
     out = ""
     if n:
         show = legs[:n][-cap:]
+        # ...EXCEPT THE ONES NOBODY COULD CONFIRM. A leg whose second plan
+        # also ends with check-done saying NOT DONE is counted and walked
+        # past — a deliberate escape, and the chain writes each one to
+        # run/leg_unconfirmed so that "known-bad in the world" is a list
+        # and not a memory. Nothing ever read that list. So "Clear Rock
+        # Tunnel" went into this sentence as plainly finished, the model
+        # planned around a tunnel it believed it had come out the far side
+        # of, and spent the next hour hunting the Poke Flute in Vermilion
+        # and Cerulean (user, 2026-08-30: "its still trying the same things
+        # over and over instead of going through the rock tunnel"). The
+        # escape may walk past a leg; it may not tell the model the leg is
+        # done. Marked, not hidden: whether it is worth going back for is
+        # the model's, and the reason it was counted is that the chain
+        # could not tell either way.
+        try:
+            _unc = {l.strip() for l in
+                    Path("run/leg_unconfirmed").read_text().splitlines()
+                    if l.strip()}
+        except OSError:
+            _unc = set()
+        _mark = [t + (" (COUNTED BUT NEVER CONFIRMED: its plans ran and "
+                      "the deed could not be seen afterwards — treat it as "
+                      "open if what you are doing needs it)"
+                      if t in _unc else "") for t in show]
         out += ("\n\nTHE OBJECTIVES YOU HAVE ALREADY FINISHED, in the order "
                 "you finished them: "
                 + ("... " if n > cap else "")
-                + "; ".join(show) + ".")
+                + "; ".join(_mark) + ".")
     if n < len(legs):
         out += ("\n\nWHAT YOU PLANNED TO DO AFTER THIS ONE: "
                 + "; ".join(legs[n + 1:n + 1 + 4]) + ".")
@@ -913,6 +937,21 @@ def validate(plan: dict) -> list:
         if not isinstance(_dw3, dict) or "not_area" not in _dw3:
             continue
         _na = _dw3["not_area"]
+        # A REGION NAME, NEVER AN OBJECT. Shown the pairing as a JSON
+        # object, the author wrote {"not_area": {"map": "ROUTE_10",
+        # "not_area": "ROUTE_10|0,4"}} — the whole suggestion nested as the
+        # VALUE (2026-08-30). Nothing downstream can read that, and the
+        # message it came from is ours, so say what the value is.
+        _bad_shape = [x for x in (_na if isinstance(_na, (list, tuple))
+                                  else [_na]) if not isinstance(x, str)]
+        if _bad_shape:
+            probs.append(
+                f"subgoal[{_i3}] ({_s3.get('id')}) gives not_area a "
+                f"{type(_bad_shape[0]).__name__}, but its value is a "
+                f"REGION NAME and nothing else — the text \"MAP|x,y\", or "
+                f"a list of them. The map goes BESIDE it in the same "
+                f"done_when, not inside it.")
+            continue
         _nas = [str(x) for x in (_na if isinstance(_na, (list, tuple))
                                  else [_na]) if x]
         if not ({"map", "area"} & set(_dw3)):
@@ -922,9 +961,12 @@ def validate(plan: dict) -> list:
                 f"{', '.join(_nas) or 'one region'} — it holds where you "
                 f"are standing right now. not_area says WHICH PART of a "
                 f"map, so it only means anything beside the map it is "
-                f"carving up: {{\"map\": \"THAT_MAP\", \"not_area\": "
-                f"\"THAT_MAP|x,y\"}} reads 'on that map, in a part other "
-                f"than the one I know'.")
+                f"carving up. THE WHOLE done_when should read "
+                f"\"done_when\": {{\"map\": \"THAT_MAP\", "
+                f"\"not_area\": \"THAT_MAP|x,y\"}} — two keys side by "
+                f"side, which says 'on that map, in a part other than the "
+                f"one I know'. not_area's own value is only ever the "
+                f"region text.")
             continue
         _walked = visited_regions()
         _unknown = [n for n in _nas if _walked and n not in _walked]

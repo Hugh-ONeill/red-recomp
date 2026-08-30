@@ -41,6 +41,20 @@ try:
     ck("...and showing the pairing that means something",
        p and '{"map": "THAT_MAP", "not_area": "THAT_MAP|x,y"}' in p[0]
    and "in a part other than the one I know" in p[0], p)
+    # SHOWN A JSON OBJECT, THE AUTHOR NESTED IT. The very next plan wrote
+    # {"not_area": {"map": "ROUTE_10", "not_area": "ROUTE_10|0,4"}} — the
+    # whole suggestion as the VALUE. The message that invited it is ours.
+    ck("...as a whole done_when, not as something to put inside not_area",
+       p and 'THE WHOLE done_when should read' in p[0]
+       and "only ever the region text" in p[0], p)
+    n = v({"not_area": {"map": "ROUTE_10", "not_area": "ROUTE_10|0,4"}})
+    ck("a not_area that is not a region name is refused", bool(n), n)
+    ck("...saying what its value is, and where the map goes",
+       n and "REGION NAME and nothing else" in n[0]
+       and "BESIDE it in the same done_when" in n[0], n)
+    ck("a list of region names is still fine",
+       not v({"map": "ROUTE_10",
+              "not_area": ["ROUTE_10|0,4"]}))
 
     q = v({"map": "ROUTE_10", "not_area": "ROUTE_10|0,0"})
     ck("excluding a region never stood in is refused", bool(q), q)
