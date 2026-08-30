@@ -34,8 +34,11 @@ ck("...still three inside that window — the rewrite is withheld, the question 
    and '-lt 3 ] || return 1' not in blk)
 ck("a missing file does not break the rung",
    "2>/dev/null) || _recent=0" in blk)
+# The cap itself, not the line it is written on: the last-word rung later
+# added an exemption to the same test ("&& [ \"${2:-}\" != \"last-word\" ]"),
+# which is its own test's business, not this one's.
 ck("the per-leg cap is untouched — a single leg still gets two asks",
-   'if [ "${_asked:-0}" -ge 2 ]; then' in sh and "asked twice already" in sh)
+   '[ "${_asked:-0}" -ge 2 ]' in sh and "asked twice already" in sh)
 
 ck("the script still parses",
    subprocess.run(["bash", "-n", "fresh_discovery.sh"]).returncode == 0)

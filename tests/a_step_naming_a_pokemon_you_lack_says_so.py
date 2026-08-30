@@ -34,10 +34,18 @@ ck("...offering skip or another way, never a hunt",
 ck("in the party: nothing said", ex._absent_species_note({"party": [{"species": "GLOOM"}]}, SG) == "")
 ck("in a box: nothing said",
    ex._absent_species_note({"party": [], "pc_mons": [{"species": "GLOOM"}]}, SG) == "")
+# THE ONE THE CONDITION ASKS FOR is the point of the step, not a wrong
+# assumption about the party: has_species GLOOM is met by coming to have
+# a GLOOM, so saying "you do not have one" there is noise.
 SG2 = dict(SG, done_when={"has_species": "GLOOM"})
 n2 = ex._absent_species_note({"party": [{"species": "RATICATE"}]}, SG2)
-ck("a condition that names it too is said to be unmeetable as written",
-   "Its own condition names it too" in n2, n2)
+ck("the Pokemon the condition asks for is not said to be missing", n2 == "", n2)
+# ...but silence covers only that one.
+SG3 = dict(SG, goal_text="Teach the move CUT to Gloom using HM01 from the bag",
+           done_when={"has_species": "VILEPLUME"})
+n3 = ex._absent_species_note({"party": [{"species": "RATICATE"}]}, SG3)
+ck("another Pokemon the step assumes is still said",
+   "GLOOM" in n3 and "VILEPLUME" not in n3.split("DO NOT HAVE:")[1][:40], n3)
 ck("a step naming no species says nothing",
    ex._absent_species_note({"party": []}, {"id": "go_north", "goal_text": "Walk north to Route 4"}) == "")
 src = (ROOT / "planner" / "executor.py").read_text()

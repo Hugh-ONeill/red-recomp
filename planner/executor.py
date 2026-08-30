@@ -7520,8 +7520,9 @@ class Executor:
         # things to BECOME, and the words catch/obtain/get/find/buy say
         # the same.
         _dwk = json.dumps(sg.get("done_when") or {})
-        if any(k in _dwk for k in ("party_type", "has_species", "party_size",
-                                   "dex_owned", "party_min_level")):
+        _becoming = any(k in _dwk for k in ("party_type", "party_size",
+                                            "dex_owned", "party_min_level"))
+        if _becoming:
             return ""
         if any(w in text for w in ("CATCH", "OBTAIN", "GET ", "FIND", "BUY",
                                    "ACQUIRE", "RECEIVE")):
@@ -7536,6 +7537,18 @@ class Executor:
         have |= {str(m.get("species") or "").upper()
                  for m in (o.get("pc_mons") or [])}
         gone = sorted(n for n in named if n not in have)
+        # THE ONE THE CONDITION ASKS FOR IS THE POINT OF THE STEP. A
+        # has_species naming a Pokemon you lack is a step to COME TO HAVE
+        # it, so it is silent about that one — but only about that one.
+        # "Teach CUT to GLOOM", ending on has_species VILEPLUME, still
+        # names a GLOOM this world has never held, and that is worth
+        # saying (the whole point of the note: run 15 opened every PC in
+        # Vermilion hunting a Gloom from a dead world).
+        _hs = (sg.get("done_when") or {}).get("has_species")
+        _asked = {str(x).upper() for x in
+                  (_hs if isinstance(_hs, (list, tuple)) else [_hs])
+                  if x}
+        gone = [n for n in gone if n not in _asked]
         if not gone:
             return ""
         _dw = json.dumps(sg.get("done_when") or {})

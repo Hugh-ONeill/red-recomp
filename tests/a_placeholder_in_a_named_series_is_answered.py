@@ -33,7 +33,13 @@ ck("...and the refusal still stands on its own terms",
 q = " ".join(probs_for("EVENT_TOWER_GHOSTS_GONE"))
 ck("a made-up name in no series gets no suggestion at all",
    "does define are" not in q and "is not an event this game defines" in q, q[:200])
-ck("a real flag is not refused", not probs_for(sorted(A.ENGINE_FLAGS)[0]))
+# A REAL FLAG THAT HAS NOT FIRED. The first name alphabetically is not
+# safe to use here: whether it has fired is a fact about the live run
+# (EVENT_1ST_LOCK_OPENED had, by leg 18 of run 15), and an already-fired
+# flag is refused by the very next rule, which is not what this checks.
+_lit = sorted(set(A.fired_flags()))
+_unfired = [f for f in sorted(A.ENGINE_FLAGS) if f not in set(_lit)]
+ck("a real flag is not refused", not probs_for(_unfired[0]), _unfired[0])
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:
     print(("ok  " if ok else "FAIL"), n)
