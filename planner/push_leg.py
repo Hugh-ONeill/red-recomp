@@ -45,6 +45,37 @@ def main(argv):
     # wrong name, and the chain would re-run the same leg immediately.
     if after <= frm:
         sys.exit(f"push_leg: {after} is not after {frm}")
+    # A PREREQUISITE MAY NOT BE PUSHED PAST WHAT IT UNBLOCKS. The blocker
+    # rung inserted "Clear Rock Tunnel" before "Reach Lavender Town"
+    # because Route 12 is shut by the Snorlax; authoring the tunnel leg
+    # then failed, the failure pushed it two places on — past Lavender —
+    # and the run went straight back to the Vermilion/Route 12 loop the
+    # insert existed to break (2026-08-29, user: "its not clearing rock
+    # tunnel, its just doing the same verm to rt12 pingponging"). The
+    # inserts ledger says what each insert was FOR; a push that would
+    # cross that leg is refused, and the caller falls through to the
+    # ladder (which may reword, void, or stop for a person) instead of
+    # silently undoing the insert.
+    INSERTS = Path("run/outline_inserts")
+    try:
+        _ins = INSERTS.read_text().splitlines()
+    except OSError:
+        _ins = []
+    _text = lines[frm - 1]
+    for _row in _ins:
+        if not _row.startswith("LEG=") or "|" not in _row:
+            continue
+        _dep, _pre = _row[4:].split("|", 1)
+        if _pre.strip() != _text.strip():
+            continue
+        try:
+            _dep_at = lines.index(_dep.strip()) + 1
+        except ValueError:
+            continue
+        if after >= _dep_at > frm:
+            sys.exit(f"push_leg: refused — {_text!r} was inserted as what "
+                     f"{_dep.strip()!r} (leg {_dep_at}) needs first; pushing "
+                     f"it to {after} would put it after the leg it unblocks")
     after = min(after, n)
     text = lines.pop(frm - 1)
     # popping shifted everything above frm down one
