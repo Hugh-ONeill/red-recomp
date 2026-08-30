@@ -7,8 +7,8 @@ second time after the WHAT-STOPPED-IT fix had already made the reason visible.
 Seeing the reason does not remove the toll: every trip still costs a round.
 
 Replaying a walked route is what `go` IS, and that route was walked with this
-bush down. Cutting it back down is replay, not a decision — the room sweep
-already fells bushes unasked. Only a bush the refusal itself names, only with
+bush down. Cutting it back down is replay, not a decision: the walk this
+replays was walked with the bush down. Only a bush the refusal itself names, only with
 CUT in the party, and only once per route."""
 import sys, re
 from pathlib import Path
@@ -19,7 +19,9 @@ def ck(name, cond): checks.append((name, bool(cond)))
 src = Path("planner/executor.py").read_text()
 i = src.find("A BUSH THAT GREW BACK IS NOT A CONTRADICTION")
 ck("the regrowth retry exists", i > 0)
-blk = src[i:i + 2400]
+# the window grew when the re-cut was scoped to the half of the
+# refusal that BLAMES a bush (a_bush_is_cut_when_it_is_in_the_way)
+blk = src[i:i + 3400]
 
 ck("...taken from the refusal's OWN words, with coordinates",
    "CUT_TREE" in blk and "a bush CUT clears" in blk

@@ -6926,11 +6926,21 @@ class Executor:
                 # decision — the room sweep already fells bushes unasked.
                 # Only a bush the refusal itself names, only with CUT in the
                 # party, and only once per route.
+                # ...AND ONLY A BUSH THE REPORT BLAMES. The refusal names
+                # bushes in three lists, and the third is headed "Also near
+                # that edge, though not what stopped you" — the shim saying
+                # in words that this one blocks nothing. A plain search over
+                # the whole text takes the first bush in any of them, so the
+                # re-cut could walk off to fell the one the shim had just
+                # ruled out. Cut what stopped the walk; the rest is the
+                # model's to want.
                 _cut_at = None
                 if _replans < 1:
+                    _blame = str(_last_det or "").split(
+                        "Also near that edge, though not what stopped you")[0]
                     _cb = _re.search(
                         r"CUT_TREE \(a bush CUT clears\) at \((\d+),(\d+)\)",
-                        str(_last_det or ""))
+                        _blame)
                     if _cb and any(
                             "CUT" in [str(mv.get("id")
                                           if isinstance(mv, dict) else mv)
@@ -14156,28 +14166,33 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     "CUT" in [str(mv.get("id") if isinstance(mv, dict) else mv)
                               for mv in (mon.get("moves") or [])]
                     for mon in (cur.get("party") or []))
-                if knows_cut:
-                    loose += [o.get("name") for o in
-                              ((cur.get("map") or {}).get("objects") or [])
-                              if o.get("kind") == "cut_tree"
-                              and o.get("reachable")
-                              and o.get("name") not in loose]
+                # ...BUT A BUSH IS NOT SWEPT EITHER. Felling one is a walk
+                # across the map and a change to the world, and the sweep
+                # did it unasked: crossing SOUTH into Vermilion sent the
+                # party from the seam at (19,0) all the way down to the
+                # gym's bush and cut it, and that bush bars nothing (user,
+                # 2026-08-30: "when crossing we dont need to use cut unless
+                # its actually barring the path"). Pressing A on one does
+                # nothing at all and marked it spent, which is how Cerulean's
+                # east bush stayed standing. So the sweep neither presses nor
+                # fells: it SAYS the bush is there, that it is reachable, and
+                # that the party carries the move that clears it. WHICH bush
+                # is worth a walk, and whether the ground behind it is wanted,
+                # is the model's to judge — the same rule the room sweep
+                # follows for everything else it cannot answer for you.
+                _bushes = [(o.get("name"), o.get("x"), o.get("y"))
+                           for o in ((cur.get("map") or {}).get("objects")
+                                     or [])
+                           if o.get("kind") == "cut_tree" and o.get("reachable")
+                           and o.get("x") is not None]
+                loose = [n for n in loose if kinds.get(n) != "cut_tree"]
                 if loose:
                     self.log("room_sweep", subgoal=sg["id"], region=here_s,
                              objects=loose[:8])
                     asked_back, listed_back = [], []
                     felled = []
                     for name in loose[:8]:
-                        if kinds.get(name) == "cut_tree" and knows_cut:
-                            x, y = coords.get(name, (None, None))
-                            o2 = self._send_safe("field_move", move="CUT",
-                                                 x=x, y=y)
-                            self.log("sweep_cut", subgoal=sg["id"],
-                                     at=f"{x},{y}")
-                            if ((o2 or {}).get("result") or {}).get("ok"):
-                                felled.append(f"{name} at ({x},{y})")
-                        else:
-                            o2 = self._send_safe("interact", name=name)
+                        o2 = self._send_safe("interact", name=name)
                         if o2 and o2.get("mode") == "battle":
                             o2 = self.handle_battle(sg, o2)
                             o2 = self.settle()
@@ -14218,20 +14233,28 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # got through on the go after that (user, 2026-08-26:
                     # "from vermillion stopped at rt9 again"). What the
                     # felling opens is not stated — it may open nothing.
-                    _pressed = [n for n in loose[:8]
-                                if not any(f.startswith(n + " at ")
-                                           for f in felled)]
+                    _pressed = list(loose[:8])
                     trace.append(
                         "(swept this area: "
-                        + ("; ".join(
-                            ([f"pressed A on {', '.join(_pressed)}"]
-                             if _pressed else [])
-                            + ([f"CUT DOWN {', '.join(felled)} — that "
-                                f"ground is walkable now, and a walk that "
-                                f"stopped against it may get further if "
-                                f"you send it again"]
-                               if felled else [])))
-                        + " — everything reachable here has now been tried)")
+                        + (f"pressed A on {', '.join(_pressed)}"
+                           if _pressed else "nothing here presses")
+                        + " — everything reachable here that PRESSES has "
+                          "now been tried)")
+                    if _bushes and knows_cut:
+                        _bn = ", ".join(f"{n} at ({x},{y})"
+                                        for n, x, y in _bushes[:4])
+                        _bx, _by = _bushes[0][1], _bushes[0][2]
+                        _one = len(_bushes[:4]) == 1
+                        trace.append(
+                            f"({_bn} {'stands' if _one else 'stand'} here "
+                            f"and can be walked to, and a party Pokemon "
+                            f"knows CUT. The sweep did NOT fell "
+                            f"{'it' if _one else 'them'}: a bush is only in "
+                            f"the way if it is in the way, and the walk over "
+                            f"to one that is not costs what any other walk "
+                            f"costs. To clear one: {{\"op\":\"field_move\","
+                            f"\"move\":\"CUT\",\"x\":{_bx},"
+                            f"\"y\":{_by}}})")
                     # ...AND A LIST NOBODY PICKED FROM IS STILL OPEN.
                     # The sweep presses blind and can no more choose a row
                     # than it can answer a question: the roof's machines

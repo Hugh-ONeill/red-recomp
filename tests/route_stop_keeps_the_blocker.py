@@ -8,9 +8,12 @@ mid-clause at "...and standing at its edge". The model read a wall, tried
 FLY (which it cannot use), and re-issued the same go (user: "from
 vermillion stopped at rt9 again").
 
-Second half: the sweep that follows sends field_move CUT and reported it as
-"pressed A on CUT_TREE — everything reachable here has now been tried",
-which is the opposite of what happened."""
+Second half: the sweep that follows claimed "pressed A on CUT_TREE —
+everything reachable here has now been tried" over a bush that presses
+nothing. The sweep no longer touches bushes at all (2026-08-30, and see
+a_bush_is_cut_when_it_is_in_the_way), so what is left to hold here is the
+CLAIM: a sweep that presses cannot say everything here has been tried while
+a bush it declined to fell is standing in the room."""
 import sys, re
 from pathlib import Path
 
@@ -32,23 +35,21 @@ ck("every give-up path uses it (the two originals and the Safari-clock verdict)"
    and src.count("str(_wdet)[:self.WHY_BUDGET]") == 1
    and src.count("{_det[:self.WHY_BUDGET]}") == 1)
 
-# --- a felled bush is reported as felled ---
-i = src.find("CUT DOWN {', '.join(felled)}")
-ck("the sweep says a bush was CUT DOWN", i > 0)
-blk = src[max(0, i - 3600):i + 700]
-ck("...only when the op actually reported ok",
-   '((o2 or {}).get("result") or {}).get("ok")' in blk
-   and "felled.append(" in blk)
-ck("...and pressing is still reported for everything else",
-   "_pressed = [n for n in loose[:8]" in blk
+# --- the sweep's claim is scoped to what it actually did ---
+i = src.find("(swept this area: ")
+ck("the sweep still reports itself", i > 0)
+blk = src[max(0, i - 3600):i + 1400]
+ck("...pressing is reported for what presses",
+   "_pressed = list(loose[:8])" in blk
    and "pressed A on {', '.join(_pressed)}" in blk)
-ck("it says the ground changed, so a stopped walk may now get further",
-   "walkable now" in blk and "send it again" in blk)
-ck("it does not claim the cut opened any particular way",
+ck("...and the claim covers only that",
+   "everything reachable here that PRESSES has " in blk
+   and "everything reachable here has now been tried" not in blk)
+ck("a standing bush is named rather than claimed done",
+   "The sweep did NOT fell " in blk)
+ck("it does not claim a cut opened any particular way",
    not re.search(r"(?i)(the road to|you can now reach [A-Z_]+\||the way "
                  r"(east|west|north|south) is now|this opens the)", blk))
-ck("a floor with nothing felled reads exactly as before",
-   "if felled else []" in blk)
 
 import ast
 try:
