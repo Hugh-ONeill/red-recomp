@@ -3982,7 +3982,13 @@ local function bfs_dir_pass(G, tx, ty, wblock, gate)
     end
   end
   for _, b in ipairs(bushes_blocking(G, tx, ty, seen)) do
-    if #fence < 6 then fence[#fence + 1] = b end
+    -- ONE BUSH IS ONE BUSH. The pocket scan and bushes_blocking both
+    -- reach the cell that seals a nook, so ROUTE_9|0,8's refusal read
+    -- "CUT_TREE at (5,8), CUT_TREE at (5,8)" and the blocker ledger kept
+    -- it that way -- two obstacles where the map has one (2026-08-30).
+    local _dup = false
+    for _, _f in ipairs(fence) do if _f == b then _dup = true end end
+    if #fence < 6 and not _dup then fence[#fence + 1] = b end
   end
   if #fence > 0 then
     -- WHAT SITS AT THE EDGE IS NOT NECESSARILY WHAT STOPS YOU. This was
@@ -5535,7 +5541,13 @@ function OPS.cross(G, c)
     -- with "no walkable path", and the walker's re-cut (which reads
     -- CUT_TREE ... (x,y) off this very text) never fired (2026-08-25).
     for _, b in ipairs(bushes_blocking(G, ex or 0, ey or 0, seen_cells or {})) do
-      if #fence < 6 then fence[#fence + 1] = b end
+      -- ONE BUSH IS ONE BUSH. The pocket scan and bushes_blocking both
+    -- reach the cell that seals a nook, so ROUTE_9|0,8's refusal read
+    -- "CUT_TREE at (5,8), CUT_TREE at (5,8)" and the blocker ledger kept
+    -- it that way -- two obstacles where the map has one (2026-08-30).
+    local _dup = false
+    for _, _f in ipairs(fence) do if _f == b then _dup = true end end
+    if #fence < 6 and not _dup then fence[#fence + 1] = b end
     end
     if #fence > 0 then
       said = said .. (" The ground you can reach from here is only %d "

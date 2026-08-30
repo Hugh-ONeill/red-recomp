@@ -1745,7 +1745,12 @@ class Executor:
         elif op == "cross" and "FAILED" in note and (
                 "standing at its edge:" in note
                 or "Right where the walk stopped:" in note):
-            for tag in ("standing at its edge:", "Right where the walk stopped:"):
+            # THE PRECISE CLAUSE FIRST. "Right where the walk stopped" is
+            # the shim naming what the walk actually died against;
+            # "standing at its edge" is the whole fence of the pocket it
+            # ended in. Reading the vaguer one first wrote the wider list
+            # into the ledger as though it were the cause.
+            for tag in ("Right where the walk stopped:", "standing at its edge:"):
                 if tag in note:
                     clause = note.split(tag, 1)[1].strip().split(".")[0][:160]
                     self._note_blocker(here, key, "seam",
