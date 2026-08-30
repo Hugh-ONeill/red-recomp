@@ -2111,8 +2111,21 @@ def journal_text(path: Path, limit: int = 60) -> str:
         for t in (r.get("trace") or []):
             if "cannot afford" in t:
                 events.append(f"  MONEY   {t.split('FAILED — ')[-1][:90]}")
-            elif "is not sold here" in t:
-                events.append(f"  SHOP    {t.split('FAILED — ')[-1][:90]}")
+            # THE PHRASE MOVED AND THIS DID NOT. The shim has said
+            # "X is not on CLERK's shelf, which holds: ..." since it began
+            # naming the actual stock; "is not sold here" is a wording it
+            # no longer emits anywhere, so this arm has matched NOTHING and
+            # the SHOP evidence line has never once reached an author. Leg
+            # 19 was rewritten four times as "buy FRESH_WATER at Cerulean
+            # Mart" while the journal held four failed buys naming that
+            # counter's seven items, none of them water (user, 2026-08-30:
+            # "pingponging ... trying to find fresh water at the mart").
+            # The whole shelf is carried, not 90 characters of it: WHICH
+            # items the counter holds is the fact that stops the rewrite.
+            elif "is not on " in t and "shelf, which holds" in t:
+                shop = f"  SHOP    {t.split('FAILED — ')[-1][:220]}"
+                if shop not in events:
+                    events.append(shop)
             # A WALL the run kept hitting is exactly what a rewrite must
             # know. "cross(east) FAILED — the east seam of ROUTE_4 (to
             # CERULEAN_CITY) cannot be crossed" lived only in transient
