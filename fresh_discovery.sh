@@ -704,11 +704,31 @@ while :; do
             --start "$(python planner/state_text.py)" \
             --observed run/explored.json \
             --journal run/executor_log.jsonl --model "$AUTHOR_MODEL"); then
-      echo "=== leg $i stuck behind leg $blocker: pulling it forward ==="
-      python planner/pull_leg.py pull "$i" "$blocker"
-      disposed "leg $blocker was pulled ahead of it"
-      echo "$i<-$blocker" >> run/outline_reorders
-      continue
+      # ...AND THE GUARD ABOVE IS ON THE WRONG LEG. It asks whether the
+      # STUCK leg was pushed, but the loop it describes is made by pulling
+      # back a leg that was pushed: its own example is HM02 pushed 29->38
+      # and the FLY leg — never pushed itself — naming it and pulling it
+      # to 29. That happened again today, one rung apart: "Obtain Fresh
+      # Water" was pushed 20->26 with the model's reason "Fresh Water is
+      # only sold at the Celadon Department Store, which requires reaching
+      # Celadon City first", and forty minutes later the Lavender leg
+      # named it and pulled it to 21, back in front of Reach Celadon City,
+      # rebuilding the deadlock the push had just resolved. A deferral
+      # that still HOLDS is not undone by another rung; the model may push
+      # it again from where it now sits, or reword it, or void it.
+      _btext=$(sed -n "${blocker}p" plans/outline.txt)
+      _bpushed=$(pushes_in_force "$_btext" "$blocker")
+      if [ "${_bpushed:-0}" -gt 0 ]; then
+        echo "    (not pulling leg $blocker forward: it was deliberately" \
+             "moved later and that push still holds — pulling it back is" \
+             "the loop that costs the run: $_btext)" >&2
+      else
+        echo "=== leg $i stuck behind leg $blocker: pulling it forward ==="
+        python planner/pull_leg.py pull "$i" "$blocker"
+        disposed "leg $blocker was pulled ahead of it"
+        echo "$i<-$blocker" >> run/outline_reorders
+        continue
+      fi
     fi
     # NOTHING ELSE WORKED: IS THE PLAN MISSING A STEP? A leg can be
     # unreachable because a deed nobody wrote down has to happen first —
