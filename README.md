@@ -9,9 +9,10 @@ decides where to go, what to do and what its own goals are. The harness
 drives the game, reports what is on screen, and refuses to decide anything.
 
 This repo is the harness and the planner. It drives
-[`gen1recomp`](https://github.com/) — a LÖVE reimplementation of Red that
-must be checked out separately at `~/Developer/gen1recomp`; `run.sh` launches
-it with `harness/shim.lua` as its driver.
+[pokemon-gen1-recomp-project](https://github.com/bryanthaboi/pokemon-gen1-recomp-project)
+— a LÖVE reimplementation of Red, by someone else — which must be checked out
+separately at `~/Developer/gen1recomp`. `run.sh` launches it with
+`harness/shim.lua` as its driver. No ROM and no game assets live here.
 
 ## The rule the whole thing is built on
 
