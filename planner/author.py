@@ -1881,9 +1881,50 @@ def observed_text(path: Path) -> str:
     for r, n in (d.get("visits") or {}).items():
         m = r.split("|")[0]
         vis[m] = vis.get(m, 0) + n
+    # ...AND WHY, WHERE THE RUN'S OWN RECORD ANSWERS IT. The preamble
+    # below says WHY IS NOT RECORDED, and for most of these that is true.
+    # It was NOT true of the one that mattered: the run pressed the
+    # ROUTE12_SNORLAX while aiming at LAVENDER_TOWN and wrote down what it
+    # said ("A sleeping POKeMON blocks the way!", outcomes, 2026-09-02) —
+    # then the road appeared here with a bare count, and the sentence sat
+    # in WHAT PEOPLE HAVE SAID, which the budget trimmer drops by distance
+    # from the party. So the model re-derived "I am blocked by Snorlax"
+    # from its own prose every round instead of reading it.
+    #
+    # Only a thing pressed ON THIS MAP while aiming at THAT place. That
+    # scoping is what keeps it evidence and not chatter: Pallet's four
+    # recorded sentences are signs and a fisherman, none of them pressed
+    # on the way to Route 21, so nothing attaches to that road.
+    def _road_words(m: str, nb: str) -> str:
+        mark = 'it said: "'
+        best = ("", "")
+        for key, rec in (d.get("outcomes") or {}).items():
+            tgt, _, region = str(key).partition("|")
+            if region.split("|")[0] != m or nb not in tgt:
+                continue
+            for thing, r in (rec or {}).items():
+                # A SIGNPOST IS NOT A GATEKEEPER. Longest-text-wins first
+                # picked TEXT_ROUTE5_UNDERGROUND_PATH_SIGN for the Saffron
+                # road, which reads as if the sign were the reason the road
+                # has never been taken. Signs are read, not met; they never
+                # shut anything.
+                if str(thing).startswith("TEXT_"):
+                    continue
+                last = str((r or {}).get("last") or "")
+                i = last.find(mark)
+                if i < 0:
+                    continue
+                said = last[i + len(mark):].split('"')[0].strip()
+                if said and len(said) > len(best[1]):
+                    best = (str(thing), said[:160])
+        if not best[1]:
+            return ""
+        return (f" — while aiming at {nb} you pressed {best[0]} on {m}, "
+                f"and it said: \"{best[1]}\"")
+
     blocked = sorted(
         f"  {m} --{dirn}--> {nb}  (stood in {m} {vis[m]}x, never once "
-        f"reached {nb})"
+        f"reached {nb})" + _road_words(m, nb)
         for m, edges in MAP_EDGES.items()
         for dirn, nb in edges.items()
         if vis.get(m, 0) >= 8 and not vis.get(nb))
