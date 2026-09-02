@@ -14,6 +14,14 @@ This repo is the harness and the planner. It drives
 separately at `~/Developer/gen1recomp`. `run.sh` launches it with
 `harness/shim.lua` as its driver. No ROM and no game assets live here.
 
+## Status
+
+Reached the Hall of Fame on 2026-08-28, on a model-authored outline, with a
+few hand tweaks along the way. Not a hands-off single run.
+
+Paused since 2026-08-30 pending replacement hardware. The 3090 that ran the
+model is being RMA'd, so nothing here is under active development.
+
 ## The rule the whole thing is built on
 
 > **Stop lying, stop hiding, stop refusing — and never point.**
