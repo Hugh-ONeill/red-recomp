@@ -6200,6 +6200,87 @@ class Executor:
                                                set()) | {key0})
         return None
 
+    def _go_would_have(self, macro, plan_said):
+        """A journey the model NAMED, that `go` walks in ONE round.
+
+        THE ROUND IS THE BUDGET AND A BORDER IS NOT A JOURNEY. Twenty-eight
+        of forty rounds on the Lavender leg were a single bare `cross`: the
+        model wrote a whole trip in its own words ("travel to Cerulean City
+        to systematically re-examine every NPC"), emitted the FIRST hop, and
+        the round ended — then re-derived the same trip one border along and
+        oscillated across it (ROUTE_11 <-> ROUTE_12, VERMILION <-> ROUTE_6,
+        four crossings of the same pair; user 2026-09-02: "its mostly just
+        getting stuck at borders"). It never arrived, so the NPC sweep it
+        promised every round never happened.
+
+        `go` walks a whole walked route in one round and the harness knew to
+        say so — but only inside the truncation note, which fires when a
+        macro is CUT, twice in four hundred records. The sentence existed
+        and never reached the rounds that needed it: the model was not
+        writing long macros to be cut, it was writing one hop at a time.
+
+        NOT POINTING. Only a place the MODEL named in its own plan, only
+        when the WALKED graph already reaches it from where the party now
+        stands, and only when it is more than one hop away (one hop is what
+        it just did; saying `go` there would be pedantry). Naming a place it
+        did not name, or a route it has not walked, would be leading it to
+        water. This says one thing: an op you already have does what you
+        just said you were doing.
+        """
+        import re
+        if not plan_said:
+            return ""
+        steps = [st for st in (macro or []) if isinstance(st, dict)]
+        # It already knows; nothing to say.
+        if any(st.get("op") == "go" for st in steps):
+            return ""
+        # Only when the round SPENT itself on a border.
+        if not any(st.get("op") in ("cross", "use_warp") for st in steps):
+            return ""
+        here = self._where(self.settle())
+        if not here:
+            return ""
+        here_map = here.split("|")[0]
+        # The map vocabulary is the walked graph's own: a place the run has
+        # never been cannot be a `go` target and must not be suggested.
+        maps: dict[str, list[str]] = {}
+        for region in (self.explored or {}):
+            maps.setdefault(str(region).split("|")[0], []).append(region)
+        said = str(plan_said).lower()
+        best = None
+        # Longest name first so "route 12" is not eaten by "route 1".
+        for mid in sorted(maps, key=len, reverse=True):
+            if mid == here_map:
+                continue
+            pretty = mid.replace("_", " ").lower()
+            # \b alone lets "route 1" match inside "route 12"; the digits
+            # of a route id are part of its name.
+            if not re.search(r"\b" + re.escape(pretty) + r"(?![a-z0-9])",
+                             said):
+                continue
+            hops = None
+            for dest in maps[mid]:
+                try:
+                    r = self._route(here, dest)
+                except Exception:
+                    r = None
+                if r and (hops is None or len(r) < hops):
+                    hops = len(r)
+            # None = the walked graph does not reach it; 1 = the hop it
+            # just took. Neither is worth a sentence.
+            if hops and hops > 1 and (best is None or hops > best[1]):
+                best = (mid, hops)
+        if not best:
+            return ""
+        mid, hops = best
+        return (f"(You said {mid.replace('_', ' ').title()}, and the ground "
+                f"you have walked reaches it from here in {hops} legs. This "
+                f"round spent itself on ONE of them. "
+                f"{{\"op\":\"go\",\"to\":\"{mid}\"}} walks the whole "
+                f"way in ONE round, over walked ground only, and leaves the "
+                f"round's other ops for what you meant to do when you got "
+                f"there.)")
+
     def _route_to_frontier(self, obs, sg, patient: bool = False):
         """Walk back to the NEAREST region that still has exits never taken.
 
@@ -13343,6 +13424,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 trace = list(_decl_lines) + list(trace)
             if _trunc_note:
                 trace = list(trace) + [_trunc_note]
+            else:
+                # ...and when NOTHING was cut, because the model wrote one
+                # hop rather than a macro to cut. That is the case the
+                # truncation note could never reach (_go_would_have).
+                _go_note = ""
+                try:
+                    _go_note = self._go_would_have(macro, self._plan_said)
+                except Exception:
+                    _go_note = ""
+                if _go_note:
+                    trace = list(trace) + [_go_note]
             if ok and redo:
                 # "somewhere else that also satisfies it": a couple of tiles
                 # is the same place. A real relocation crosses the map (the
