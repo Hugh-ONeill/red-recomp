@@ -10886,6 +10886,46 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                      why="seam proven uncrossable")
         self._save_memory()
 
+    def _note_cut(self, pre_obs, step) -> None:
+        """Remember a bush this run has already cut, so a regrown one is
+        not offered as a fresh way on.
+
+        A CUT BUSH COMES BACK ON RELOAD in this recomp, faithfully. The
+        ledger has always known what to do about that — a bush in this
+        record is ranked "recut" instead of "cuttable" and drops out of
+        explore's first line — but the record was never written, so the
+        demotion has never once engaged.
+
+        It failed twice, differently. First the test demanded "hacked
+        away" in the note while the success branch wrote ": ok (changes)"
+        (fixed 2026-08-22). Then it kept failing, because an aimed field
+        move is served by an EARLIER handler in _run_traced that appends
+        its own trace and `continue`s — so the record at the bottom of the
+        loop was unreachable for exactly the op it was written for.
+
+        Measured when the user finally said it out loud on 2026-09-02
+        ("its literally only just cutting the same trees over and over
+        thinking its doing something novel"): 196 successful cuts across
+        seven bushes, every one of them reported "hacked away", and
+        cut_bushes still {}. One bush in Cerulean had been cut 34 times
+        and was still being offered as item 1, "a way on".
+
+        One writer for both dispatch sites, because the two of them
+        disagreeing is the whole story here.
+        """
+        if str((step or {}).get("move") or "").upper() != "CUT":
+            return
+        if (step or {}).get("x") is None:
+            return
+        mid = ((pre_obs or {}).get("map") or {}).get("id")
+        if not mid:
+            return
+        xy = f"{step.get('x')},{step.get('y')}"
+        seen = self._cut_bushes.setdefault(mid, [])
+        if xy not in seen:
+            seen.append(xy)
+            self._save_memory()
+
     def _run_traced(self, sg, macro, ignore_done=False):
         """Run a proposed macro step-by-step, returning (done, trace, clean).
         `trace` is plain-English per-op outcomes for feedback (incl. 'ran but
@@ -11024,6 +11064,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                  f"x={step.get('x')},y={step.get('y')}): ok"
                                  + (f" — {_d0}" if _d0 else ""))
                     self._record_outcome(_pre, op, step, f"field_move: {_d0}")
+                    # THIS PATH RETURNS BEFORE THE RECORD AT THE BOTTOM OF
+                    # THE LOOP EVER RUNS, and an aimed CUT always comes
+                    # here — so the regrown-bush demotion was reading an
+                    # empty ledger for the whole life of the project. See
+                    # _note_cut.
+                    self._note_cut(_pre, step)
                     continue
                 if "no reachable tile adjacent" in _d0:
                     _here = self._where(_pre)
@@ -12469,15 +12515,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # demotion built on it never engaged (found 2026-08-22 while
             # the run cut Fuchsia's bush for the ninth time). A successful
             # CUT is a cut bush: the op returns ok on nothing else.
-            if (op == "field_move" and str(step.get("move")).upper() == "CUT"
-                    and r.get("ok")):
-                _cm = ((pre_obs or {}).get("map") or {}).get("id")
-                if _cm and step.get("x") is not None:
-                    self._cut_bushes.setdefault(_cm, [])
-                    _xy = f"{step.get('x')},{step.get('y')}"
-                    if _xy not in self._cut_bushes[_cm]:
-                        self._cut_bushes[_cm].append(_xy)
-                        self._save_memory()
+            if op == "field_move" and r.get("ok"):
+                self._note_cut(pre_obs, step)
             self.status(last=note, obs=obs, doing=f"{op} {json.dumps(step)}")
             # distill an op if it ran OK *or* changed the state — cross via the
             # Oak escort reports ok=False ("cross attempted") yet the map
