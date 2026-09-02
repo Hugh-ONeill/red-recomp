@@ -242,9 +242,22 @@ PY
   # restart at 1 in every campaign invocation, so a resumed campaign whose
   # input already carried .v1 wrote its rewrite over that very file — the
   # in-place clobber this naming scheme exists to prevent.
+  # ...AND PAST THE HIGHEST, NOT INTO THE FIRST GAP. find_plan.py hands a
+  # leg its HIGHEST-numbered plan, while this took the first free number
+  # from 1 — two rules that agree only while the sequence is dense. Restore
+  # one archived plan, or lose one, and every rewrite after it lands in the
+  # hole and is never read again: on 2026-09-02 a v9 was put back by hand,
+  # the model's next three rewrites were written as v1, v2, v3, and the leg
+  # kept resolving to v9. The model was authoring into a bin.
   base="${failed_plan%.json}"; base="${base%%.v[0-9]*}"
-  v=1
-  while [ -e "plans/${base}.v${v}.json" ]; do v=$((v+1)); done
+  v=0
+  for _p in "plans/${base}".v[0-9]*.json; do
+    [ -e "$_p" ] || continue
+    _n=${_p##*.v}; _n=${_n%.json}
+    case $_n in (*[!0-9]*) continue;; esac
+    [ "$_n" -gt "$v" ] && v=$_n
+  done
+  v=$((v+1))
   rewritten="plans/${base}.v${v}.json"
   # A FLAKY RE-AUTHOR MUST NOT KILL THE CAMPAIGN. Under `set -euo
   # pipefail` a non-zero exit here — one ollama socket timeout is enough —
