@@ -5775,17 +5775,86 @@ def _map_dims() -> dict:
     return _MAP_DIMS
 
 
+_MAP_WARPS = None
+
+
+def _map_warps() -> dict:
+    """Map id -> the maps its own warps lead INTO, from the engine's
+    generated map table; empty when the engine is not beside this checkout.
+
+    DIRECTION MATTERS HERE. A building's way out is `destMap = "LAST_MAP"`,
+    which gen 1 resolves at runtime, so a building does not name its town.
+    The TOWN names every door in it (LAVENDER_TOWN warps to MR_FUJIS_HOUSE,
+    POKEMON_TOWER_1F, the mart, the Name Rater...). So this reads "what is
+    inside here", which is the relation outline ORDER needs: a leg that
+    happens in a room of a place cannot be ordered before arriving at it.
+    """
+    global _MAP_WARPS
+    if _MAP_WARPS is not None:
+        return _MAP_WARPS
+    _MAP_WARPS = {}
+    import os
+    cands = [Path(os.environ.get("RED_ENGINE_DIR") or "")
+             / "data/generated/maps.lua",
+             Path(__file__).resolve().parents[2]
+             / "gen1recomp/data/generated/maps.lua"]
+    for c in cands:
+        try:
+            txt = c.read_text()
+        except OSError:
+            continue
+        for m in re.finditer(r"^  ([A-Z0-9_]+) = \{(.*?)^  \},", txt,
+                             re.S | re.M):
+            dests = set(re.findall(r'destMap = "([A-Z0-9_]+)"', m.group(2)))
+            _MAP_WARPS[m.group(1)] = dests - {"LAST_MAP"}
+        break
+    return _MAP_WARPS
+
+
+def rooms_of(places, ids=None) -> set:
+    """Every map you can only get into THROUGH one of `places`.
+
+    Follows the warps outward and STOPS at any map the printed road map
+    knows: an outdoor map is a place in its own right, not a room of this
+    one, and without that stop a route would swallow the cave that crosses
+    it and come out on the far side.
+    """
+    warps = _map_warps()
+    places = set(places)
+    inside: set = set()
+    stack = list(places)
+    while stack:
+        for dest in warps.get(stack.pop(), ()):
+            if dest in inside or dest in places or dest in (MAP_EDGES or {}):
+                continue
+            inside.add(dest)
+            stack.append(dest)
+    return inside
+
+
 def maps_named(goal: str, map_ids) -> list:
     """The maps an objective's words name: every id whose first two
     parts (at least) all appear in the objective — so "Safari Zone" takes
     the whole SAFARI_ZONE_* family and "Cinnabar Island" takes the island
     and not its gym."""
     words = set(re.sub(r"[^A-Z0-9]+", " ", goal.upper()).split())
+
+    def _said(part: str) -> bool:
+        # A POSSESSIVE IN THE MAP ID IS AN APOSTROPHE IN THE SENTENCE.
+        # The ids carry the s (MR_FUJIS_HOUSE, DIGLETTS_CAVE, BILLS_HOUSE,
+        # OAKS_LAB) and the objective writes it with punctuation that is
+        # stripped to a space, so "Mr. Fuji" gives MR FUJI and "Diglett's
+        # Cave" gives DIGLETT S CAVE — and neither ever matched its own
+        # map. "Retrieve the Pokemon Flute from Mr. Fuji" named no place
+        # at all, so nothing knew that leg happens in Lavender Town
+        # (2026-09-02).
+        return part in words or (part.endswith("S") and part[:-1] in words)
+
     out = []
     for mid in sorted(set(map_ids)):
         parts = mid.split("_")
         k = min(2, len(parts))
-        if parts[:k] and all(p in words for p in parts[:k]):
+        if parts[:k] and all(_said(p) for p in parts[:k]):
             out.append(mid)
     return out
 

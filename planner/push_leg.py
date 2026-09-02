@@ -88,6 +88,41 @@ def main(argv):
     # the whole of what the insert recorded, and honours the deferral the
     # model asked for. Nothing new is decided here: both halves are things
     # the model said.
+    # ...AND SO DOES A LEG THAT HAPPENS INSIDE THE PLACE THIS ONE REACHES.
+    # 2026-09-02: "Reach Lavender Town" was pushed 22 -> 26 while "Cleanse
+    # the Pokemon Tower" and "Retrieve the Pokemon Flute from Mr. Fuji"
+    # stayed at 22 and 23 — both of which happen INSIDE Lavender Town, and
+    # the Flute is the very item the push's own stated reason named as the
+    # prerequisite for reaching it. So the run was set to spend its
+    # attempts authoring a walk into a town it had never once entered, and
+    # the model noticed before the harness did: the tower plan it wrote
+    # opened with go_to_lavender_town.
+    #
+    # The inserts ledger above could not catch this. Nothing had been
+    # inserted, and the dependency is a PLACE, not an item or a flag —
+    # which is also why the prerequisite guard did not fire.
+    #
+    # Same answer as the inserts case, for the same reason: the deferral is
+    # the model's and is kept, and what cannot happen before it travels
+    # with it. Nothing new is decided here — the outline already said these
+    # legs happen in that place, and the engine's own warp table says the
+    # place has those rooms.
+    try:
+        import author as _a
+        _ids = set(_a._map_dims()) | set(_a._map_warps())
+        _places = set(_a.maps_named(_text, _ids))
+        _here = (_places | _a.rooms_of(_places)) if _places else set()
+        if _here:
+            _have = {t for _, t in _riders} | {_text}
+            for _k in range(frm, min(after, n)):
+                _t2 = lines[_k]
+                if _t2 in _have:
+                    continue
+                if set(_a.maps_named(_t2, _ids)) & _here:
+                    _riders.append((_k + 1, _t2))
+                    _have.add(_t2)
+    except Exception:
+        pass          # ordering help, never a reason the push cannot happen
     after = min(after, n)
     _riders.sort()
     _texts = [lines[frm - 1]] + [t for _, t in _riders]
