@@ -746,10 +746,42 @@ def outline_so_far(cap: int = 12) -> str:
                     if l.strip()}
         except OSError:
             _unc = set()
-        _mark = [t + (" (COUNTED BUT NEVER CONFIRMED: its plans ran and "
-                      "the deed could not be seen afterwards — treat it as "
-                      "open if what you are doing needs it)"
-                      if t in _unc else "") for t in show]
+        # ...AND A LEG YOU STRUCK OUT IS NOT AN ACHIEVEMENT EITHER. A VOID
+        # leaves the leg sitting in the outline and steps past it, so it
+        # reaches this sentence in the same words as a leg that was walked
+        # — and on 2026-09-02 the model read its own struck-out "Reach
+        # Celadon City via the Underground Path" back as finished, then
+        # voided the live "Reach Celadon City" for being redundant with
+        # it. That cancelled both ways into the city, with the run having
+        # never once stood in Celadon and the Fresh Water it needs sold
+        # only there. The reason it gave when it struck the first one out
+        # was in run/outline_void the whole time, unread by this line. Its
+        # own words go back to it, so a leg it dismissed cannot return as
+        # evidence of the thing it dismissed.
+        try:
+            _void = {}
+            for _l in Path("run/outline_void").read_text().splitlines():
+                _t, _, _why = _l.partition("\t")
+                if _t.strip():
+                    _void[_t.strip()] = _why.strip()
+        except OSError:
+            _void = {}
+
+        def _tag(t: str) -> str:
+            # struck out beats unconfirmed: one is "we could not tell",
+            # the other is "you said it was never a thing to do".
+            if t in _void:
+                return (t + " (STRUCK OUT BY YOU, NOT DONE — nothing was "
+                        "achieved by it"
+                        + (f"; your reason: {_void[t]}" if _void[t] else "")
+                        + ")")
+            if t in _unc:
+                return (t + " (COUNTED BUT NEVER CONFIRMED: its plans ran "
+                        "and the deed could not be seen afterwards — treat "
+                        "it as open if what you are doing needs it)")
+            return t
+
+        _mark = [_tag(t) for t in show]
         out += ("\n\nTHE OBJECTIVES YOU HAVE ALREADY FINISHED, in the order "
                 "you finished them: "
                 + ("... " if n > cap else "")
