@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import time
 import urllib.request
@@ -24,6 +25,15 @@ from bridge import Bridge, RUN
 
 OLLAMA = "http://127.0.0.1:11434/api/chat"
 MODEL = "gemma4:26b-a4b-it-q4_K_M"
+
+# This driver used to send no num_ctx at all, which does NOT mean "the
+# model's context length". Ollama picks its default from AVAILABLE VRAM
+# (`ollama serve --help`: "default: 4k/32k/256k based on VRAM"), so the
+# window silently changed with whatever card was in the slot — and on a
+# box under 24GiB that is 4k, of which the prompt gets HALF. Same constant
+# and same env override as the campaign path in brock_probe, so the two
+# cannot drift and a spike is comparable to the run it is probing.
+NUM_CTX = int(os.environ.get("RED_NUM_CTX") or 24576)
 
 SYSTEM = """You are playing Pokemon Red. Each turn you receive the current
 game observation as JSON and must respond with EXACTLY ONE action as JSON:
@@ -49,7 +59,8 @@ only the JSON object, no other text."""
 def ollama_chat(messages, model):
     body = json.dumps({"model": model, "messages": messages, "stream": False,
                        "think": False, "keep_alive": "30m",
-                       "options": {"temperature": 0.3}}).encode()
+                       "options": {"temperature": 0.3,
+                                   "num_ctx": NUM_CTX}}).encode()
     req = urllib.request.Request(OLLAMA, body,
                                  {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=300) as r:

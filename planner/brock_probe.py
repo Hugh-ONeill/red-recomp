@@ -15,6 +15,7 @@ Usage: brock_probe.py [--model NAME] [--max-calls N]
 from __future__ import annotations
 import argparse
 import json
+import os
 import re
 import socket
 import time
@@ -90,7 +91,22 @@ rather than repeating it. Output only the JSON object."""
 # the predicate vocabulary, the map-id list and the training guidance, while
 # the journal and audit checks at the tail always survived. 16384 leaves 8192
 # usable and still loads 100% on the 3090 (20GB); 32768 spills to CPU.
-NUM_CTX = 24576
+#
+# MEASURED AGAIN 2026-09-02: 24576 IS NO LONGER ENOUGH. prompt_guard's own
+# lines report the review prompt at 12364 / 12607 / 12626 tokens against the
+# 12288 usable cap — four TRUNCATED and four 'close to the cliff' in the last
+# eight, the exact-signature detector below fired in 8 run logs, and raw
+# prompt_eval_count reaches 14260. PROMPT-1 budgeted the three growing blocks
+# and bought real headroom, but evidence_and_vocabulary alone is now 9624-9878
+# and the atlas keeps growing with every map, so the cliff came back. The next
+# step is 32768 (16384 usable) — which is exactly the value the line above
+# measured as SPILLING TO CPU on the 3090's 24GB. That is a VRAM ceiling, not
+# a tuning choice, and no amount of budgeting moves it.
+#
+# So it reads the environment now. On a card with the memory for it, raise
+# RED_NUM_CTX instead of editing this line — a run then records which window
+# it actually had, rather than leaving it to whatever the file said that week.
+NUM_CTX = int(os.environ.get("RED_NUM_CTX") or 24576)
 
 
 def chat(msgs, model, retries=2):
