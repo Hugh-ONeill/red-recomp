@@ -1624,6 +1624,25 @@ class Executor:
                 continue
             named = _re.findall(r"([A-Z][A-Z0-9_]{3,})", what)
             named = [n for n in named if n not in ("CUT",)]
+            # ONLY A THING THAT CAN WALK OFF IS DISPROVED BY BEING GONE.
+            # The names come out of the fence text by shape, so WATER and
+            # SURF are scooped up out of "WATER at (0,24) — a walk will not
+            # cross water; nobody in the party knows SURF". Neither is ever
+            # an entry in map.objects — terrain is not a person — so the
+            # test "none of them is on the map any more" was TRUE the next
+            # time the party stood there, every time. ROUTE_6|0,3 north
+            # (turned back 9x), ROUTE_11|9,0 east, Pallet south and
+            # Viridian north were all swept that way, so roads that still
+            # do not open reported no blocker at all and the never-crossed
+            # list said WHY IS NOT RECORDED about ways whose refusal was
+            # on file (2026-09-02). A name the run has never once seen as
+            # an object is not evidence of anything by its absence.
+            _objs: set = set()
+            for _v in (getattr(self, "sightings", None) or {}).values():
+                _objs.update(_v or ())
+            for _v in (getattr(self, "touched", None) or {}).values():
+                _objs.update(_v or ())
+            named = [n for n in named if n in _objs]
             if named and not any(n in names for n in named):
                 b["cleared"] = True
                 b["cleared_how"] = "what fenced it is no longer on this map"
