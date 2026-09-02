@@ -47,6 +47,14 @@ if pgrep -x love >/dev/null \
   echo "a run is still live — stop it first" >&2; exit 1
 fi
 
+# Say what this chain runs with, once, at the top of its log. A bare
+# relaunch silently reverts RED_MODEL to gemma (it did, 2026-08-22) and
+# RED_NUM_CTX to 24576 (the 3090's VRAM ceiling, not a choice; 2026-09-02),
+# and a run that does not record its window cannot be compared with one
+# that had a different one. The window is read from the one place that
+# defines it, never restated here, so the two cannot drift.
+echo "[chain] model=$MODEL author=$AUTHOR_MODEL num_ctx=$(PYTHONPATH=planner python3 -c 'import brock_probe; print(brock_probe.NUM_CTX)')"
+
 PROGRESS=run/outline_leg
 done_legs=$(cat "$PROGRESS" 2>/dev/null || echo 0)
 
