@@ -4,7 +4,8 @@ A local LLM plays Pokémon Red, through a harness whose entire job is to
 **tell it the truth and then get out of the way**.
 
 The model is [Gemma](https://ollama.com/library/gemma) running on Ollama on
-one RTX 3090 — no frontier model, no API, nothing over the network. It
+one local GPU (an RTX 3090 until 2026-09-02, a Radeon AI PRO R9700 since) — no
+frontier model, no API, nothing over the network. It
 decides where to go, what to do and what its own goals are. The harness
 drives the game, reports what is on screen, and refuses to decide anything.
 
@@ -19,8 +20,10 @@ separately at `~/Developer/gen1recomp`. `run.sh` launches it with
 Reached the Hall of Fame on 2026-08-28, on a model-authored outline, with a
 few hand tweaks along the way. Not a hands-off single run.
 
-Paused since 2026-08-30 pending replacement hardware. The 3090 that ran the
-model is being RMA'd, so nothing here is under active development.
+Paused from 2026-08-30 to 2026-09-02 while the 3090 that ran the model was
+replaced. Back on a Radeon AI PRO R9700 (32 GB), which holds the 31B model
+at a 32k window with room to spare; the author's review prompt had outgrown
+the 24k the old card could fit.
 
 ## The rule the whole thing is built on
 
