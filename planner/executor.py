@@ -6569,13 +6569,36 @@ class Executor:
         here = self._where(self.settle())
         if not here:
             return ""
+        # NOT ON THE ROUND THAT REACHED NEW GROUND. The party took the
+        # tunnel's untaken ladder into a B1F region it had never stood on,
+        # and this note met it there with "You said Route 10 ... go
+        # ROUTE_10 walks the whole way in ONE round" — the prose had named
+        # Route 10 as HISTORY ("my previous attempts to exit via Route 10").
+        # The next round was that go, back out (2026-09-03, user: "it got to
+        # a new region but then went back"). A first visit is the round
+        # doing its job; a one-round trip back is not a saving to offer.
+        _v = getattr(self, "visits", None)      # no ledger at all: not judged
+        if _v is not None and int(_v.get(here, 0) or 0) <= 1:
+            return ""
         here_map = here.split("|")[0]
         # The map vocabulary is the walked graph's own: a place the run has
         # never been cannot be a `go` target and must not be suggested.
         maps: dict[str, list[str]] = {}
         for region in (self.explored or {}):
             maps.setdefault(str(region).split("|")[0], []).append(region)
-        said = str(plan_said).lower()
+        # ...AND A PLACE NAMED AS WHERE YOU HAVE BEEN IS NOT A JOURNEY.
+        # Only sentences that say where the model is GOING count: an intent
+        # word present, no history word beside it. "I will return to Route
+        # 10" is a journey; "my previous attempts via Route 10" is not.
+        _intent = _re.compile(r"\b(i will|i'll|i need to|then|go to|head|"
+                              r"travel|return|proceed|walk|cross|reach|"
+                              r"back to|make my way|move to)\b")
+        _history = _re.compile(r"\b(previous|previously|already|before|"
+                               r"earlier|was|were|had|used to|last time)\b")
+        said = " ".join(
+            sent for sent in _re.split(r"(?<=[.!?;])\s+", str(plan_said))
+            if _intent.search(sent.lower()) and not _history.search(sent.lower())
+        ).lower()
         best = None
         # Longest name first so "route 12" is not eaten by "route 1".
         for mid in sorted(maps, key=len, reverse=True):
