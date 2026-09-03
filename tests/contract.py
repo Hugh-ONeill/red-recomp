@@ -67,9 +67,16 @@ LIVE_SAVE = LOVE / LIVE_IDENT / "saves/red/slot1.lua"
 # can prove a name is right, and cannot prove a name is wrong from silence.
 
 class Field:
-    def __init__(self, path, reader, required=True, note=None):
+    def __init__(self, path, reader, required=True, note=None, unless=None):
         self.path, self.reader = path, reader
         self.required, self.note = required, note
+        # unless(obs) -> True marks a sample in which this field is
+        # legitimately absent: the GHOST fight hides the foe's species and
+        # types on purpose (shim: "hide what the screen hides"), and the
+        # live save this test copies stood in the Pokemon Tower, so the
+        # battle half sampled exactly that fight (2026-09-03). A conditional
+        # carve-out keeps the field REQUIRED in every ordinary fight.
+        self.unless = unless
 
 
 OVERWORLD = [
@@ -164,7 +171,9 @@ BATTLE = [
           note="nil until something uses DISABLE -- cannot be sampled"),
     Field("battle.foe.hp", "catch threshold; KO test; damage journal"),
     Field("battle.foe.species", "catch want-match; damage journal"),
-    Field("battle.foe.types", "score_move effectiveness; catch want-match"),
+    Field("battle.foe.types", "score_move effectiveness; catch want-match",
+          unless=lambda o: bool((o.get("battle") or {}).get("ghost")),
+          note="nil in a GHOST fight -- the screen hides the species and types"),
     Field("battle.foe.level", "battle_start log line"),
     Field("bag", "battle_items rule; the catch branch's ball count"),
     Field("party[].hp", "switch rules (never switch to a fainted slot)"),
@@ -248,7 +257,8 @@ def check(obs, fields, label):
         why = (f"SPELLING MISMATCH -- shim emits {near[0]!r}" if near
                else "MISSING")
         line = f"{f.path:38s} {why}"
-        if f.required:
+        _excused = bool(f.unless and f.unless(obs))
+        if f.required and not _excused:
             print(f"  FAIL    {line}")
             print(f"          read by: {f.reader}")
             if sibs and not near:

@@ -8779,6 +8779,71 @@ class Executor:
             return True
         return not (words & set(_GIVEN_WORDS))
 
+    def _bag_pressure_line(self, obs) -> str:
+        """The bag at 18 or more of its 20 KINDS, and how a slot is freed.
+
+        A SLOT IS A KIND, NOT A COUNT. The old line offered USING, SELLING,
+        TOSSING and STORING as four ways to "free the slot", and the run
+        tossed one POKE_BALL of twelve (freeing nothing) and, routinely,
+        its TMs — the one-of-a-kind items, which ARE the quick frees, and
+        the ones a toss loses for good (2026-09-03, user: "i honestly hate
+        that its solution is routinely 'lets throw away usable TMs'"). Now
+        the line says which kinds are held ONE of and which are stacks,
+        puts the reversible way first with the nearest PC named, and says
+        what a toss of a TM costs. The choice stays the model's.
+        """
+        bag = (obs or {}).get("bag") or {}
+        nkinds = len(bag)
+        if nkinds < 18:
+            return ""
+        state = ("FULL — every gift and pickup now FAILS: the 'got it!' text "
+                 "plays and NOTHING arrives" if nkinds >= 20 else
+                 "NEARLY FULL — a gift needing a fresh slot is about to fail "
+                 "silently")
+        singles = sorted(k for k, v in bag.items() if int(v or 0) == 1)
+        stacks = sorted((k, int(v or 0)) for k, v in bag.items() if int(v or 0) > 1)
+        tms = [k for k in singles if k.startswith(("TM_", "HM_"))]
+        # the nearest PC the run has walked into, by walked legs
+        here = self._where(obs)
+        best = None
+        for r in set(list(self.visits or {}) + list(self.explored or {})):
+            if not str(r).split("|")[0].endswith("POKECENTER"):
+                continue
+            try:
+                path = self._route(here, r) if here and r != here else ([] if r == here else None)
+            except Exception:
+                path = None
+            if path is not None and (best is None or len(path) < best[1]):
+                best = (str(r).split("|")[0], len(path))
+        pc = (f" — the nearest you have walked into is {best[0]}, "
+              f"{best[1]} leg(s) away" if best else "")
+        return (
+            f"\nYOUR BAG holds {nkinds} of 20 KINDS: {state}. A slot is a "
+            f"KIND, not a count: tossing, selling, using or storing ONE of a "
+            f"stack frees nothing — the slot frees only when the LAST of that "
+            f"kind goes."
+            + (f" Kinds you hold ONE of (one action frees the slot): "
+               + ", ".join(singles) + "." if singles else "")
+            + (f" Stacks (the whole count must go): "
+               + ", ".join(f"{k} x{v}" for k, v in stacks) + "." if stacks else "")
+            + " WAYS TO FREE A SLOT, the reversible one first: STORING at a "
+              "Pokemon Center's PC keeps the thing and frees the slot "
+              "({\"op\":\"store_item\",\"item\":...}; "
+              "{\"op\":\"retrieve_item\",...} brings it back; obs.pc_items is "
+              "what the PC holds" + pc + "). USING spends one and keeps its "
+              "value — a TM teaches its move to a party member that can learn "
+              "it ({\"op\":\"use_item\",\"item\":\"TM_...\",\"slot\":N,"
+              "\"forget\":\"MOVE\"} when four moves are known), a RARE_CANDY "
+              "raises a level, an evolution STONE evolves a party Pokemon it "
+              "suits, HP_UP and kin boost a stat, heals heal. SELLING at a mart "
+              "clerk raises money ({\"op\":\"sell\",\"item\":...}; a NUGGET "
+              "exists to be sold). TOSSING destroys the thing for good "
+              "({\"op\":\"toss\",\"item\":...})"
+            + (f" — a TM tossed is a move the party will never get from it, and "
+               f"you hold one each of {', '.join(tms)}" if tms else "")
+            + ". Whoever tried to hand you a thing will hand it again once "
+              "there is room.")
+
     def _gift_note(self, item: str) -> str:
         """Who handed this item over, and what they said as they did — the
         run's own record, riding the bag line where the item already sits.
@@ -13391,36 +13456,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # A FULL BAG fails every gift silently: the captain's HM01
             # played its "got it!" text into a 20-of-20 bag and vanished.
             # The game normally says "no room" on screen; say it here.
-            nkinds = len((start or {}).get("bag") or {})
-            if nkinds >= 18:
-                state = ("FULL — every gift and pickup now FAILS: the "
-                         "'got it!' text plays and NOTHING arrives"
-                         if nkinds >= 20 else
-                         "NEARLY FULL — a gift needing a fresh slot is "
-                         "about to fail silently")
-                memory += (
-                    f"\nYOUR BAG holds {nkinds} of 20 kinds: {state}. "
-                    "Free slots on YOUR judgment — USING a consumable "
-                    "spends it and keeps its value: a TM teaches its "
-                    "move ({\"op\":\"use_item\",\"item\":\"TM_...\","
-                    "\"slot\":N,\"forget\":\"MOVE\"} when four moves are "
-                    "known), a RARE_CANDY raises a level, an evolution "
-                    "STONE (MOON_STONE and kin) EVOLVES a party Pokemon "
-                    "it suits ({\"op\":\"use_item\",\"item\":\"...\","
-                    "\"slot\":N}) — and what a species can learn changes "
-                    "when it evolves — HP_UP and its "
-                    "kin permanently boost a stat, heals heal. SELLING "
-                    "at a mart clerk raises money AND frees the slot "
-                    "({\"op\":\"sell\",\"item\":...} — a NUGGET exists "
-                    "to be sold). TOSSING dumps dead weight "
-                    "({\"op\":\"toss\",\"item\":...}). STORING at any "
-                    "Pokemon Center's PC frees the slot and destroys "
-                    "nothing, so it is the only reversible one "
-                    "({\"op\":\"store_item\",\"item\":...}, and "
-                    "{\"op\":\"retrieve_item\",...} brings it back; "
-                    "obs.pc_items is what the PC already holds). "
-                    "Whoever tried to hand you a thing will hand it "
-                    "again once there is room.")
+            memory += self._bag_pressure_line(start)
             # A TM IS ONLY MENTIONED WHEN THE BAG IS FULL, which is the
             # one moment it is least likely to be the right move: the note
             # above lists using one as a way to FREE A SLOT, so TMs sit

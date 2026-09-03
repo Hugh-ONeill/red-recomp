@@ -6320,7 +6320,10 @@ function OPS.sell(G, c)
   end
   return true, ("sold %s x%d — money now %d%s"):format(
     c.item, have0 - have, (G.save and G.save.money) or 0,
-    have == 0 and ", slot freed" or "")
+    have == 0 and ", slot freed"
+      or (" — NO slot freed: a slot is a KIND, and the " .. have .. " "
+          .. c.item .. " still hold it; the slot frees only when the LAST "
+          .. "one goes"))
 end
 
 -- Use a bag item in the field (START -> ITEM -> item -> USE -> party
@@ -7587,8 +7590,16 @@ function OPS.toss(G, c)
   ui_back_out(G)
   local left = bag_count(G, c.item)
   if left < have then
+    -- A SLOT IS A KIND, NOT A COUNT. "tossed 1 POKE_BALL, 11 left" read
+    -- as bag space made, and the run tossed one ball of twelve to make
+    -- room (2026-09-03, user: "throwing out one item of twenty doesnt
+    -- lighten the bag, only throwing out something with 1 left of its
+    -- kind will free bag space"). Say it on the op that did it.
     return true, "tossed " .. (have - left) .. " " .. c.item
-      .. (left > 0 and (", " .. left .. " left") or ", slot freed")
+      .. (left > 0 and (", " .. left .. " left — NO slot freed: a slot is a "
+            .. "KIND, and the " .. left .. " " .. c.item .. " still hold "
+            .. "it; the slot frees only when the LAST one goes")
+          or ", slot freed")
   end
   return false, "toss did not go through"
 end
@@ -7797,8 +7808,12 @@ local function pc_move(G, c, row, giving)
   ui_back_out(G)
   local after = bag_count(G, c.item)
   if giving and after < before then
-    return true, ("stored %d %s via PC (%d left in the bag)")
-      :format(before - after, c.item, after)
+    return true, ("stored %d %s via PC (%d left in the bag%s)")
+      :format(before - after, c.item, after,
+              after > 0 and (" — NO slot freed: a slot is a KIND, and the "
+                             .. after .. " " .. c.item .. " still hold it; "
+                             .. "the slot frees only when the LAST one goes")
+              or "; slot freed")
   end
   if not giving and after > before then
     return true, ("withdrew %d %s from the PC")
