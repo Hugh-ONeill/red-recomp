@@ -2674,10 +2674,20 @@ class Executor:
                 said = last[i + len(mark):].split('"')[0].strip()
                 if said and len(said) > len(best[1]):
                     best = (str(thing), said[:160])
+        # ...AND WHAT THE MASK AND THE GRAPH SAY ABOUT THAT SIDE (see
+        # author.road_side_words): never on screen, how far short the
+        # looked-at ground ends, no crossing from any walked part.
+        side = ""
+        try:
+            import author as _a
+            side = _a.road_side_words(m, nb, self.explored or {},
+                                      self.visits or {})
+        except Exception:
+            side = ""
         if not best[1]:
-            return ""
+            return side
         return (f" — while aiming at {nb} you pressed {best[0]} on {m}, and "
-                f"it said: \"{best[1]}\"")
+                f"it said: \"{best[1]}\"") + side
 
     @staticmethod
     def _holding_town_map(obs) -> bool:

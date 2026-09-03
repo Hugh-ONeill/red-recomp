@@ -1949,10 +1949,16 @@ def observed_text(path: Path) -> str:
                 said = last[i + len(mark):].split('"')[0].strip()
                 if said and len(said) > len(best[1]):
                     best = (str(thing), said[:160])
+        side = ""
+        try:
+            side = road_side_words(m, nb, d.get("explored") or {},
+                                   d.get("visits") or {})
+        except Exception:
+            side = ""
         if not best[1]:
-            return ""
+            return side
         return (f" — while aiming at {nb} you pressed {best[0]} on {m}, "
-                f"and it said: \"{best[1]}\"")
+                f"and it said: \"{best[1]}\"") + side
 
     blocked = sorted(
         f"  {m} --{dirn}--> {nb}  (stood in {m} {vis[m]}x, never once "
@@ -1966,9 +1972,9 @@ def observed_text(path: Path) -> str:
                 "to take and has not taken. WHY is not recorded and is not "
                 "always the same: someone may want something, something may "
                 "be asleep on it, or the road may leave from a part of that "
-                "map the run has never stood in — Route 10's south end is "
-                "past Rock Tunnel, so standing at its north end forever "
-                "would earn it a line here. What is true of every one of "
+                "map the run has never stood in — a map can be split, and "
+                "where the run's own record says that side has never been "
+                "on screen, the line says so. What is true of every one of "
                 "them is that a route using it HAS NOT WORKED YET, so a "
                 "plan built on one needs something to change first — "
                 "reaching that road from somewhere else, or doing the deed "
@@ -5815,6 +5821,97 @@ def _map_dims() -> dict:
                 _MAP_DIMS[m.group(1)] = (int(w.group(1)) * 2, int(h.group(1)) * 2)
         break
     return _MAP_DIMS
+
+
+_SEEN_CELLS_CACHE: dict = {}
+
+
+def seen_cells(m: str, path="run/seen.json") -> set:
+    """The cells of map `m` the footprint has painted SEEN, as (x, y).
+
+    The shim persists its mask as a Lua chunk — `["MAP"] = { "x,y", ... }`
+    — and rewrites it within seconds of a change; parsed per map and
+    cached on the file's mtime so a page with eight roads reads it once.
+    """
+    try:
+        st = Path(path).stat().st_mtime_ns
+    except OSError:
+        return set()
+    key = (str(path), m)
+    hit = _SEEN_CELLS_CACHE.get(key)
+    if hit and hit[0] == st:
+        return hit[1]
+    try:
+        txt = Path(path).read_text()
+    except OSError:
+        return set()
+    mm = re.search(r'\["' + re.escape(m) + r'"\]\s*=\s*\{([^}]*)\}', txt)
+    cells: set = set()
+    if mm:
+        for c in re.findall(r'"(-?\d+),(-?\d+)"', mm.group(1)):
+            cells.add((int(c[0]), int(c[1])))
+    _SEEN_CELLS_CACHE[key] = (st, cells)
+    return cells
+
+
+def road_side_words(m: str, nb: str, explored: dict, visits: dict,
+                    path="run/seen.json") -> str:
+    """What the run's own record says about the SIDE of `m` that the
+    printed map draws a road from, toward `nb`: whether that side has
+    ever been on screen, how far short of it the looked-at ground ends,
+    and whether any crossing from a part of `m` the run has stood on ever
+    used it.
+
+    ROUTE 10 IS SPLIT, AND NOTHING SAID SO IN NUMBERS. The run stood on
+    Route 10's north half forty times cutting four bushes for a way south
+    to Lavender that is not there: the map is 72 rows tall, the ground it
+    had looked at ended at row 32, the south row had never been on
+    screen, and its one walked part had no southward crossing — all in
+    the record, none of it on the road's line. The line said only "stood
+    in ROUTE_10 40x, never once reached LAVENDER_TOWN" and a generic
+    caveat that a map can be split (2026-09-03). This is that caveat made
+    specific from the mask and the walked graph, for every such road; it
+    says where looking stopped, never where to go instead.
+    """
+    dirs = [d for d, t in (MAP_EDGES.get(m) or {}).items() if t == nb]
+    if not dirs:
+        return ""
+    d = str(dirs[0])
+    W, H = _map_dims().get(m, (0, 0))
+    cells = seen_cells(m, path)
+    if not W or not H or not cells:
+        return ""
+    xs = [x for x, _ in cells]
+    ys = [y for _, y in cells]
+    if d == "south":
+        on, gap, unit = any(y == H - 1 for y in ys), (H - 1) - max(ys), "row"
+    elif d == "north":
+        on, gap, unit = any(y == 0 for y in ys), min(ys), "row"
+    elif d == "east":
+        on, gap, unit = any(x == W - 1 for x in xs), (W - 1) - max(xs), "column"
+    elif d == "west":
+        on, gap, unit = any(x == 0 for x in xs), min(xs), "column"
+    else:
+        return ""
+    parts = [r for r, n in (visits or {}).items()
+             if str(r).split("|")[0] == m and n]
+    crossed = any(str(k).split("#")[0] == d
+                  for r in parts for k in ((explored or {}).get(r) or {}))
+    if on and crossed:
+        return ""            # seen and used: nothing the count does not say
+    words = []
+    if not on:
+        words.append(f"that side of {m} has never been on screen — the "
+                     f"ground you have looked at there ends {gap} {unit}(s) "
+                     f"short of it")
+    else:
+        words.append(f"that side of {m} has been on screen")
+    if not crossed:
+        _p = ("the one part" if len(parts) == 1
+              else f"any of the {len(parts)} parts")
+        words.append(f"no crossing of yours has used it from {_p} of {m} "
+                     f"you have stood on")
+    return " — " + ", and ".join(words)
 
 
 _MAP_WARPS = None
