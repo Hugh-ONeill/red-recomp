@@ -4528,6 +4528,27 @@ class Executor:
         self._save_memory()
 
     @staticmethod
+    def _ruled_out_parts(sg) -> set:
+        """The parts of the target map a step's `not_area` rules out.
+
+        {"map": "ROUTE_10", "not_area": "ROUTE_10|0,4"} asks for a part of
+        Route 10 OTHER than the north half. The target key is still
+        "map:ROUTE_10", so every reader that routes to "any walked region of
+        that map" would route straight back into the ruled-out half — and
+        the known-way line did: "THE KNOWN WAY TO ROUTE_10 FROM HERE: take
+        the door at (5,3) ... an untried exit that leads somewhere else is
+        not progress toward this goal", said to a party standing one ladder
+        from the tunnel's unexplored B1F, twice in one attempt (2026-09-03).
+        """
+        dw = (sg or {}).get("done_when") if isinstance(sg, dict) else None
+        if not isinstance(dw, dict):
+            return set()
+        na = dw.get("not_area")
+        if not na:
+            return set()
+        return {str(x) for x in (na if isinstance(na, (list, tuple)) else [na])}
+
+    @staticmethod
     def _target_key(sg) -> str:
         """What this subgoal is actually trying to reach/achieve."""
         dw = sg.get("done_when") or {}
@@ -9277,13 +9298,31 @@ class Executor:
                        f"same floor is not arriving.")
         elif want_map and want_map != (m.get("id") or ""):
             best = None
+            # A PART THE STEP RULES OUT IS NOT THE WAY THERE (see
+            # _ruled_out_parts): a walked route into it is the one route
+            # this step cannot use.
+            _excl = self._ruled_out_parts(sg)
+            _skipped = []
             for region in set(list(self.explored) + list(self.visits)):
                 if region.split("|")[0] != want_map:
+                    continue
+                if region in _excl:
+                    _skipped.append(region)
                     continue
                 path = self._route(here, region)
                 if path and (best is None or len(path) < len(best)):
                     best = path
-            if best:
+            if not best and _skipped:
+                _sk = ", ".join(sorted(_skipped))
+                route_line = (
+                    f"\nTHE ONLY PART(S) OF {want_map} YOU HAVE WALKED — {_sk} — "
+                    f"ARE THE ONES THIS STEP RULES OUT. What is asked is a part "
+                    f"of {want_map} you have never stood on, and no walked route "
+                    f"reaches one; {{\"op\":\"go\",\"to\":\"{want_map}\"}} "
+                    f"would only walk you back into {sorted(_skipped)[0]}. Ground "
+                    f"you have never stood on is reached by ways never taken and "
+                    f"ground never on screen, not by roads you have walked.")
+            elif best:
                 first_key, first_dest = best[0]
                 step = (f"walk {first_key}" if not first_key[0].isdigit()
                         else f"the door at ({first_key})")
