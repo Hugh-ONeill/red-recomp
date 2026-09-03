@@ -4773,7 +4773,7 @@ def confirm_blocker(goal: str, n: int, text: str, gap: int, start: str,
 
 def check_blocker(goal: str, ahead: list, start: str, journal: str,
                   model: str, leg: int = 0, observed=None, refused=(),
-                  held=None):
+                  held=None, plan=None):
     """The model reorders its own outline when play proves it misordered.
 
     The Surge leg walled on a bush only CUT clears while the model's own
@@ -4860,6 +4860,16 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
     # likely, not least: legs N and N+1 are usually about the same stretch
     # of the game. Distance still raises the burden inside confirm_blocker;
     # it is no longer what decides whether to ask at all.
+    # A LEG THAT HAPPENS WHERE YOU CANNOT STAND DOES NOT GET YOU THERE.
+    # Same shape as the item circle inside confirm_blocker, drawn in map
+    # ids instead of things; see pull_into_unreached.
+    _where = pull_into_unreached(text, plan, observed) if plan else None
+    if _where:
+        print(f"[blocker] refused: leg {n} happens in {_where}, the very "
+              f"place this leg's own plan could not reach — a leg that "
+              f"needs the same ground is not what unblocks it",
+              file=sys.stderr)
+        return None
     if not confirm_blocker(goal, n, text, gap, start, journal, model,
                            held=held):
         return None
@@ -5864,6 +5874,75 @@ def rooms_of(places, ids=None) -> set:
     return inside
 
 
+def plan_places_unreached(plan_path, observed) -> set:
+    """The maps a plan aims its steps at that the run has NEVER stood in.
+
+    Read off the plan's own done_when clauses ({"map": X}, {"area": "X|..."})
+    and the walked record's visit counts — the two things a stuck leg leaves
+    behind. Nothing here says where X is or how to get there; it says only
+    that this plan meant to stand in X and the run never has.
+    """
+    try:
+        d = json.loads(Path(plan_path).read_text())
+    except (OSError, ValueError, TypeError):
+        return set()
+    aims: set = set()
+    for sg in (d.get("subgoals") or []) if isinstance(d, dict) else []:
+        dw = (sg or {}).get("done_when") if isinstance(sg, dict) else None
+        if not isinstance(dw, dict):
+            continue
+        if isinstance(dw.get("map"), str):
+            aims.add(dw["map"].strip().upper())
+        if isinstance(dw.get("area"), str):
+            aims.add(dw["area"].split("|")[0].strip().upper())
+    if not aims:
+        return set()
+    try:
+        o = json.loads(Path(observed).read_text() or "{}") if observed else {}
+    except (OSError, ValueError, TypeError):
+        o = {}
+    stood = {str(r).split("|")[0].upper()
+             for r, n in (o.get("visits") or {}).items() if int(n or 0) > 0}
+    return {m for m in aims if m not in stood}
+
+
+def pull_into_unreached(text: str, plan_path, observed) -> str | None:
+    """The place a candidate pull happens in, when it is one the stuck
+    leg's own plan could not reach — or None.
+
+    THE CIRCULAR PULL, BY PLACE. confirm_blocker catches "leg N provides the
+    very thing the stuck leg is for" when the thing is an ITEM. It cannot
+    catch the same circle drawn in ground: "Obtain Fresh Water" failed seven
+    times on go_to_celadon_city, the model named "Retrieve the Ethereal Bike
+    from the Department Store" as what it needs first, and the pull put in
+    front of it a leg whose first step is go_to_celadon_city (2026-09-02,
+    leg 23 pulled from 28). A leg that happens in the ground you cannot
+    stand on is not what gets you onto it. The harness knows no geography
+    here: the plan said where it was going, the record says it never got
+    there, and the outline names where the other leg happens — in the
+    engine's own map ids.
+    """
+    unreached = plan_places_unreached(plan_path, observed)
+    if not unreached:
+        return None
+    try:
+        ids = set(_map_dims()) | set(_map_warps())
+    except Exception:
+        return None
+    named = set(maps_named(text, ids))
+    if not named:
+        return None
+    # The place AS NAMED, or a room inside an unreached place. Not the
+    # named place's own rooms: "the Gold Teeth from Celadon City" needs
+    # the city, not its mart, so an unreached mart must not condemn it
+    # once the run has stood in the city.
+    hit = sorted(named & unreached)
+    if hit:
+        return hit[0]
+    inside = sorted(named & rooms_of(unreached))   # a room OF the place
+    return inside[0] if inside else None
+
+
 def maps_named(goal: str, map_ids) -> list:
     """The maps an objective's words name: every id whose first two
     parts (at least) all appear in the objective — so "Safari Zone" takes
@@ -6502,6 +6581,10 @@ def main():
                          "come before the stuck --goal; prints the leg "
                          "number and exits 0, or exits 3")
     ap.add_argument("--outline-path", type=Path, default=None)
+    ap.add_argument("--plan", type=Path, default=None,
+                    help="--check-blocker: the stuck leg's own plan, so a "
+                         "pull into a place that plan could not reach is "
+                         "refused")
     ap.add_argument("--leg", type=int, default=None,
                     help="1-based outline position of the stuck leg")
     ap.add_argument("--draws", type=int, default=3,
@@ -6639,7 +6722,7 @@ def main():
             refused = set()
         n = check_blocker(args.goal, ahead, args.start or "", jt,
                           args.model, leg=args.leg, observed=args.observed,
-                          refused=refused)
+                          refused=refused, plan=args.plan)
         if n:
             print(n)
             sys.exit(0)

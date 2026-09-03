@@ -16,6 +16,16 @@ The FLY leg was never pushed, so the guard could not fire on its own example.
 A push still IN FORCE is not undone by another rung. The model may push the
 leg again from where it now sits, reword it, or void it — all of those are
 still open, and all of them are its own.
+
+...ONCE. Refusing every pull-back then stopped the one move that repairs a
+deadlock the push itself made: "Reach Lavender Town" was pushed 22->26 for
+the Flute, and the two legs left in front of it both happen in Celadon,
+which this run can only reach THROUGH Lavender (2026-09-02). The harness
+cannot tell a fix from a trade of places, but it can bound the cost: a pushed
+leg may be pulled back once per chain (run/outline_pullbacks), the pull is
+confirmed like any other, and if the stuck leg fails again in front of it the
+undo rung sends it home and bars it — even when the chain-wide undo budget
+is spent, since the undo is what makes the exception safe.
 """
 import sys, subprocess, tempfile, os
 from pathlib import Path
@@ -27,11 +37,24 @@ sh = (ROOT / "fresh_discovery.sh").read_text()
 ck("the pull asks about the leg it is pulling",
    '_btext=$(sed -n "${blocker}p" plans/outline.txt)' in sh
    and '_bpushed=$(pushes_in_force "$_btext" "$blocker")' in sh)
-ck("...and refuses while that push still holds",
-   'if [ "${_bpushed:-0}" -gt 0 ]; then' in sh
-   and "it was deliberately" in sh and "still holds" in sh)
+ck("...and asks whether it has been pulled back before",
+   '_bback=$(grep -cxF -- "$_btext" run/outline_pullbacks' in sh)
+ck("...refusing only when the push holds AND it has come back once already",
+   'if [ "${_bpushed:-0}" -gt 0 ] && [ "${_bback:-0}" -gt 0 ]; then' in sh
+   and "it was deliberately" in sh and "still holds" in sh
+   and "pulled back once this chain" in sh)
 ck("...naming the leg, so the refusal can be read",
    '$_btext)" >&2' in sh)
+ck("a pushed leg pulled back is written down, so the once is a once",
+   'printf \'%s\\n\' "$_btext" >> run/outline_pullbacks' in sh
+   and "pulling it back ONCE" in sh)
+ck("...and the ledger dies with the chain",
+   "run/outline_pushes run/outline_pullbacks" in sh)
+ck("a pull-back that failed goes home even when the undo budget is spent",
+   'grep -qxF -- "$leg" run/outline_pullbacks' in sh
+   and 'python planner/pull_leg.py undo "$i"' in sh)
+ck("the stuck leg's own plan reaches the blocker rung",
+   '--plan "$plan"' in sh)
 ck("the old guard on the stuck leg is still there",
    'pushed_before=$(pushes_in_force "$leg" "$i")' in sh)
 ck("a pull that undoes nothing still happens",

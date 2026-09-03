@@ -142,7 +142,7 @@ if [ "$done_legs" = 0 ]; then
   rm -f run/outline_skips run/outline_inserts run/outline_rewordings \
         run/outline_void run/outline_wording_asked \
         run/leg_audit_redo run/outline_upkeep_missed \
-        run/outline_pushes \
+        run/outline_pushes run/outline_pullbacks \
         run/outline_pulls run/outline_pulls_failed \
         run/attempt_yield run/attempt_start.json
   # ...AND THE LEG PLANS, WHICH ARE WRITTEN AGAINST A WORLD. The outline
@@ -700,7 +700,14 @@ while :; do
     # spent defending the mistake. Bounded hard at two: an undo hands the
     # same leg back to the same ladder, and the point is to get out of
     # the loop, not to walk round it.
-    if [ "$(cat run/outline_pulls_failed 2>/dev/null | wc -l)" -lt 2 ] \
+    # ...EXCEPT THAT A PULL-BACK ALWAYS GOES HOME. The blocker rung may
+    # pull a pushed leg back once (below); that exception is only safe
+    # because a wrong one is undone here and written to outline_pulls_failed,
+    # after which the rung will not name it again. The chain-wide cap of two
+    # undos was already spent on this run when the exception was written,
+    # which would have left a wrong pull-back sitting for good.
+    if { [ "$(cat run/outline_pulls_failed 2>/dev/null | wc -l)" -lt 2 ] \
+         || grep -qxF -- "$leg" run/outline_pullbacks 2>/dev/null; } \
         && python planner/pull_leg.py undo "$i"; then
       disposed "a pull that put it here was undone"
       archive_plans_of "$leg"
@@ -729,6 +736,7 @@ while :; do
         && [ "$(cat run/outline_reorders 2>/dev/null | wc -l)" -lt 8 ] \
         && blocker=$(python planner/author.py --check-blocker \
             --goal "$goal" --outline-path plans/outline.txt --leg "$i" \
+            --plan "$plan" \
             --start "$(python planner/state_text.py)" \
             --observed run/explored.json \
             --journal run/executor_log.jsonl --model "$AUTHOR_MODEL"); then
@@ -744,14 +752,38 @@ while :; do
       # rebuilding the deadlock the push had just resolved. A deferral
       # that still HOLDS is not undone by another rung; the model may push
       # it again from where it now sits, or reword it, or void it.
+      # ...BUT ONCE IS NOT A LOOP. Refusing every pull-back stopped the
+      # one move that repairs a deadlock the push itself made: "Reach
+      # Lavender Town" was pushed 22->26 for the Flute, and the two legs
+      # left in front of it (the bike, Fresh Water) both happen in Celadon,
+      # which this run can only reach THROUGH Lavender — so each of them
+      # was set to burn its attempts walking at a shut gate, and the rung
+      # that knew better was not allowed to say so (2026-09-02, user:
+      # "LET THE BLOCKER RUNG PULL A PUSHED LEG BACK WHEN THE PULL IS THE
+      # FIX"). The harness cannot tell a fix from a trade of places — that
+      # is game knowledge — but it can bound the cost: a pushed leg may be
+      # pulled back ONCE per chain, the pull is confirmed like any other,
+      # and if the stuck leg fails again in front of it the undo above
+      # sends it home and bars it. Two rungs disagreeing once is a
+      # question; disagreeing for ever is the loop this guard exists for.
       _btext=$(sed -n "${blocker}p" plans/outline.txt)
       _bpushed=$(pushes_in_force "$_btext" "$blocker")
-      if [ "${_bpushed:-0}" -gt 0 ]; then
+      _bback=$(grep -cxF -- "$_btext" run/outline_pullbacks 2>/dev/null || true)
+      if [ "${_bpushed:-0}" -gt 0 ] && [ "${_bback:-0}" -gt 0 ]; then
         echo "    (not pulling leg $blocker forward: it was deliberately" \
-             "moved later and that push still holds — pulling it back is" \
-             "the loop that costs the run: $_btext)" >&2
+             "moved later, that push still holds, and it has already been" \
+             "pulled back once this chain — a second time is the loop" \
+             "that costs the run: $_btext)" >&2
       else
-        echo "=== leg $i stuck behind leg $blocker: pulling it forward ==="
+        if [ "${_bpushed:-0}" -gt 0 ]; then
+          echo "=== leg $i stuck behind leg $blocker, which was pushed" \
+               "later and still holds — pulling it back ONCE: if leg $i" \
+               "fails again in front of it, the pull goes home and is not" \
+               "made again ==="
+          printf '%s\n' "$_btext" >> run/outline_pullbacks
+        else
+          echo "=== leg $i stuck behind leg $blocker: pulling it forward ==="
+        fi
         python planner/pull_leg.py pull "$i" "$blocker"
         disposed "leg $blocker was pulled ahead of it"
         echo "$i<-$blocker" >> run/outline_reorders
