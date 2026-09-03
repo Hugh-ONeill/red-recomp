@@ -2547,6 +2547,33 @@ class Executor:
                 if isinstance(rec, dict) and rec.get("at") == now
                 and (rec.get("n") or 0) >= 2}
 
+    def _road_words(self, m: str, nb: str) -> str:
+        """What this run pressed ON THAT MAP while aiming at THAT place,
+        and what it said. Scoped that way it stays evidence rather than
+        chatter, and a signpost is never offered as what shut a road: it
+        is read, not met. Mirrors author.py's join of the same name.
+        """
+        mark = 'it said: "'
+        best = ("", "")
+        for key, rec in (getattr(self, "_outcomes", None) or {}).items():
+            tgt, _, region = str(key).partition("|")
+            if region.split("|")[0] != m or nb not in tgt:
+                continue
+            for thing, r in (rec or {}).items():
+                if str(thing).startswith("TEXT_"):
+                    continue
+                last = str((r or {}).get("last") or "")
+                i = last.find(mark)
+                if i < 0:
+                    continue
+                said = last[i + len(mark):].split('"')[0].strip()
+                if said and len(said) > len(best[1]):
+                    best = (str(thing), said[:160])
+        if not best[1]:
+            return ""
+        return (f" — while aiming at {nb} you pressed {best[0]} on {m}, and "
+                f"it said: \"{best[1]}\"")
+
     @staticmethod
     def _holding_town_map(obs) -> bool:
         """Is the printed map actually in the bag? It is an item in this
@@ -9557,6 +9584,54 @@ class Executor:
                 route_line += (f"\nTHE TOWN MAP (every road and town it shows, "
                                f"and what each touches — caves, tunnels and "
                                f"buildings are doors, not shown here): {_all}.")
+                # ...AND THE ROADS IT DRAWS THAT YOU HAVE NEVER TAKEN.
+                # THE WALKER WAS THE ONE WHO NEEDED THIS. The author's
+                # brief has carried this block for weeks, and its preamble
+                # names Route 10 as its worked example — a road may leave
+                # from a part of a map the run has never stood in, and
+                # Route 10's south end is past Rock Tunnel. Measured over
+                # sixty escalation pages on 2026-09-02: the walking model
+                # saw it ZERO times. So it entered the tunnel, read that
+                # the chamber was finished, and went back out to walk south
+                # on a Route 10 it had only ever stood on the north half
+                # of — forty-two times, saying so each time ("Since Route
+                # 10 has no eastern edge, the 'eastern exit' of the Rock
+                # Tunnel must be the south exit of Route 10").
+                #
+                # The counts are the run's own. The roads are the Town Map
+                # it is holding. Nothing here says which way to go, or that
+                # the tunnel is the answer; it says a road has been leaned
+                # on and never opened, and lists what the run itself has
+                # already heard at one.
+                _vis_m: dict = {}
+                for _r, _n in (self.visits or {}).items():
+                    _m0 = str(_r).split("|")[0]
+                    _vis_m[_m0] = _vis_m.get(_m0, 0) + int(_n or 0)
+                _never = []
+                for _m0, _edges in MAP_EDGES.items():
+                    if _vis_m.get(_m0, 0) < 8:
+                        continue
+                    for _d0, _nb in sorted(_edges.items()):
+                        if _vis_m.get(_nb):
+                            continue
+                        _row = (f"  {_m0} --{_d0}--> {_nb} (stood in {_m0} "
+                                f"{_vis_m[_m0]}x, never once reached {_nb})")
+                        _row += self._road_words(_m0, _nb)
+                        _never.append(_row)
+                if _never:
+                    route_line += (
+                        "\nROADS THE MAP DRAWS THAT YOU HAVE NEVER "
+                        "CROSSED. Each is a printed connection you have "
+                        "stood beside many times and not taken. WHY is not "
+                        "recorded and is not always the same: someone may "
+                        "want something, something may be asleep on it, or "
+                        "THE ROAD MAY LEAVE FROM A PART OF THAT MAP YOU "
+                        "HAVE NEVER STOOD ON — a map can be split, and "
+                        "standing forever on the half you know would earn "
+                        "it a line here. What is true of every one is that "
+                        "a route using it HAS NOT WORKED YET:\n"
+                        + "\n".join(sorted(_never)[:8]))
+
             # AND NOTHING FURTHER. There used to be a TOWN-MAP ITINERARY
             # here: a BFS over the printed adjacencies, from where the party
             # stands to the target, printed as "ROUTE_5 -> SAFFRON_CITY ->
