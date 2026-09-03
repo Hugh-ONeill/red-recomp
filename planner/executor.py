@@ -3063,6 +3063,7 @@ class Executor:
             self.map_seen = data.get("map_seen", {}) or {}
             self.region_seen = data.get("region_seen", {}) or {}
             self.frontier_here = data.get("frontier_here", {}) or {}
+            self._ghost_said = data.get("ghost_said", "") or ""
             self._dry_walks = data.get("dry_walks", {}) or {}
             self.unreached_at = data.get("unreached_at", {}) or {}
             self._battle_regions = set(data.get("battle_regions") or ())
@@ -3648,6 +3649,7 @@ class Executor:
                  "map_seen": getattr(self, "map_seen", {}),
                  "region_seen": getattr(self, "region_seen", {}),
                  "frontier_here": getattr(self, "frontier_here", {}),
+                 "ghost_said": getattr(self, "_ghost_said", ""),
                  "dry_walks": getattr(self, "_dry_walks", {}),
                  "unreached_at": getattr(self, "unreached_at", {}),
                  "no_cross": {r: sorted(s)
@@ -8779,6 +8781,40 @@ class Executor:
             return True
         return not (words & set(_GIVEN_WORDS))
 
+    def _ghost_words(self, obs) -> str:
+        """What the run's own record says about fighting a GHOST: the
+        screen's refusal when FIGHT was pressed, and anything anyone in
+        this building said about ghosts. Evidence, never what lifts it.
+
+        The Pokemon Tower's ghosts turn every FIGHT into "X is too scared to
+        move!", and the page kept offering the fight: the stairs note read
+        "a wild GHOST was in the way ... say intent:fight and it will be
+        fought instead" AFTER the fight had been pressed and refused, and
+        the model planned "finish this battle by fighting" round after
+        round (2026-09-03, user: "it doesnt seem to get that it cant just
+        fight the ghost"). A refusal the run has seen belongs on every line
+        that names the ghost.
+        """
+        out = []
+        said = str(getattr(self, "_ghost_said", "") or "")
+        if said:
+            out.append(f"it cannot be fought as things stand: when FIGHT was "
+                       f"pressed the screen said \"{said}\"")
+        mid = str(((obs or {}).get("map") or {}).get("id") or "")
+        fam = mid.split("_")[0] + "_" if mid else ""
+        for reg, lines in (getattr(self, "hints", None) or {}).items():
+            if fam and not str(reg).startswith(fam):
+                continue
+            for ln in lines or []:
+                if "GHOST" in str(ln).upper() and "pressed FIGHT" not in str(ln):
+                    who, _, words = str(ln).partition(": ")
+                    out.append(f"someone in this building ({who}) said: "
+                               f"\"{speech_excerpt(words, 160)}\"")
+                    break
+            if len(out) >= 2:
+                break
+        return (" — " + "; ".join(out)) if out else ""
+
     def _bag_pressure_line(self, obs) -> str:
         """The bag at 18 or more of its 20 KINDS, and how a slot is freed.
 
@@ -10618,6 +10654,8 @@ class Executor:
                 line = ("you pressed FIGHT: "
                         + (f'"{said[:120]}"' if said else
                            f"no move list opened ({det[:80]})"))
+                if said:
+                    self._ghost_said = said[:120]
                 self.log("ghost_probe", subgoal=subgoal["id"], said=said[:160],
                          detail=det[:120])
                 for bk, bl in self.blockers.items():
@@ -12960,6 +12998,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if det:
                     chg.append(str(det))
                 note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
+            # THE SCREEN'S OWN REFUSAL OF A FIGHT IS REMEMBERED, from
+            # whichever op met it (an intent:fight walk, the probe).
+            _dtxt = str(r.get("detail") or "")
+            if "too scared to move" in _dtxt and "the screen says: " in _dtxt:
+                self._ghost_said = _dtxt.split("the screen says: ", 1)[1].strip(' "')[:120]
+                self._save_memory()
             if (op == "grind" and "fled" in note and not low_hp_flee
                     and not getattr(self, "_op_intent", None)
                     and choose_battle_policy(sg)[0] == "traversal"):
@@ -12970,25 +13014,37 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                          "\"intent\":\"catch\",\"want\":\"SPECIES or TYPE\"} "
                          "(balls thrown at what you name, the rest fled) — "
                          "or \"intent\":\"train\" to fight them")
+            _gw = ""                    # the ghost words, said ONCE per note
             if (wild_in_way and "fled" in note
                     and before[0] == after[0]):
-                note += (f" — a wild {wild_in_way} was in the way and this "
-                         f"step's battles run the traversal policy, so it "
-                         f"was FLED and the way stayed shut. If that battle "
-                         f"is the thing blocking you, say so on the op — "
-                         f"{{\"op\":\"{op}\",...,\"intent\":\"fight\"}} "
-                         f"— and it will be fought instead")
+                if ghosted or str(wild_in_way).upper() == "GHOST":
+                    # A GHOST IS NOT OFFERED A FIGHT. The screen refuses
+                    # one ("X is too scared to move!"); offering
+                    # intent:fight here sent the run at the stairs ghost
+                    # with FIGHT round after round (2026-09-03).
+                    _gw = self._ghost_words(obs)
+                    note += (" — a GHOST was in the way, it was FLED and "
+                             "the way stayed shut" + _gw)
+                else:
+                    note += (f" — a wild {wild_in_way} was in the way and "
+                             f"this step's battles run the traversal "
+                             f"policy, so it was FLED and the way stayed "
+                             f"shut. If that battle is the thing blocking "
+                             f"you, say so on the op — "
+                             f"{{\"op\":\"{op}\",...,\"intent\":\"fight\"}} "
+                             f"— and it will be fought instead")
             if low_hp_flee and "fled" in note:
                 note += (f" — fled because your lead was {low_hp_flee}: "
                          f"under {int(_hb * 100) if _hb else 20}% a wild "
                          f"fight is fled to keep it alive, so a grind at "
                          f"this HP earns nothing; heal first (a Center, or "
                          f"a POTION) and it fights")
-            if ghosted == "fixed":
-                note += (" — a GHOST appeared on the way there, and you fled "
-                         "from it")
-            elif ghosted:
-                note += " — a wild GHOST appeared, and you fled from it"
+            if ghosted:
+                _w2 = self._ghost_words(obs)
+                _w2 = "" if (_w2 and _w2 == _gw) else _w2
+                note += ((" — a GHOST appeared on the way there, and you fled "
+                          "from it") if ghosted == "fixed" else
+                         " — a GHOST appeared, and you fled from it") + _w2
             if blackout:
                 note += (f" — your party FAINTED mid-op (blackout): you "
                          f"respawned at {blackout}, party healed, position "
