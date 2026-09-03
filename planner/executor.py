@@ -2465,6 +2465,29 @@ class Executor:
                 self._dry_walks.pop(region, None)
             self._save_memory()
             return ok, tr + t2, cl
+        if unseen:
+            # CHOSEN FOR GROUND TO LOOK AT, AND THERE IS NONE HERE. The
+            # stored count said one spot; the live frontier of this part is
+            # empty — the count is kept positive while the MAP still has
+            # unseen ground (the pocket rule of 2026-08-29), and this map's
+            # unseen ground lies in chambers no walk from this part reaches.
+            # With nothing to sweep the sweep never ran, so the dry-walk
+            # count above never moved, and explore walked the party into
+            # Rock Tunnel's entrance chamber six times in one attempt for a
+            # spot that was not there, each round ending as it arrived
+            # (2026-09-03). A walk to look at nothing is a dry walk.
+            if not hasattr(self, "_dry_walks"):
+                self._dry_walks = {}
+            self._dry_walks[region] = int(self._dry_walks.get(region, 0) or 0) + 1
+            _n = self._dry_walks[region]
+            tr.append(
+                f"explore: nothing here is left to look at from where you "
+                f"stand — the {unseen} spot(s) counted for {region} are in "
+                f"a part of this map no walk from here reaches"
+                + (f"; that is {_n} walk(s) here with nothing new coming "
+                   f"into view, so it ranks LAST for explore from now on"
+                   if _n >= 2 else ""))
+            self._save_memory()
         if _map_goal and exits2:            # same rule as at home
             return _there(exits2[0])
         if things2:
