@@ -10050,7 +10050,6 @@ class Executor:
                     + shut_line
                     + hint_line + remote_line + _elsewhere_str
                     + self._bag_line(obs, sg_for_bag)
-                + self._policy_heal_line(obs)
                     + self._policy_heal_line(obs)
                     + self.blockers_text(obs))
         loot_line += remote_line
