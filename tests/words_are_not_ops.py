@@ -77,7 +77,7 @@ ck("SURF named and never mounted is",
 
 src = (ROOT / "planner" / "executor.py").read_text()
 ck("the note joins the round's feedback right after the results",
-   "_deed = self._deed_note(macro, self._plan_said, trace)" in src
+   "_deed = self._deed_note(_macro_full, self._plan_said, trace)" in src
    and src.index("_deed = self._deed_note(") < src.index("if _trunc_note:\n                trace = list(trace) + [_trunc_note]"))
 ck("the echo's verdict carries which named deed was not done",
    "no \" + \" or \".join(" in src and "was done that round)" in src)

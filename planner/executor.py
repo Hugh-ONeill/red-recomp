@@ -6379,6 +6379,65 @@ class Executor:
                 out.append((mv, sent))
         return out
 
+    MAP_CHANGING_OPS = ("cross", "use_warp", "explore", "go")
+
+    def _macro_cut_index(self, macro, here):
+        """Index of the last op to keep, or None to keep them all.
+
+        ONE LEG PER MACRO was written against ops authored for a map the
+        model had never seen — always hallucinated. But the rule as coded
+        cut at ANY map change, and that made "cross east, CUT the bush at
+        (5,8), cross west" a one-op round for ever: the crossing ran, the
+        cut and the second crossing were dropped, and the next round began
+        "I have just used CUT" (2026-09-03, three rounds running, with the
+        deed note and the echo verdict both saying otherwise). Route 9 is
+        ground this run has walked 40 times and (5,8) is a bush off its own
+        ledger. That is recall, not blind authoring — the same distinction
+        that already let a trailing `go` ride along.
+
+        So the cut follows the walked graph: a cross or use_warp whose
+        landing the graph knows (an edge taken from where the party will
+        be standing) is a change onto walked ground, and the ops after it
+        run there; a crossing the graph cannot place, or an explore, ends
+        the macro as before. A wrong guess costs nothing new: an op run on
+        the wrong part fails in its own words.
+        """
+        visits = self.visits or {}
+        explored = self.explored or {}
+        cur = here
+        for i, st in enumerate(macro or []):
+            if not isinstance(st, dict):
+                continue
+            op = str(st.get("op") or "")
+            if op not in self.MAP_CHANGING_OPS:
+                continue
+            if i == len(macro) - 1:
+                return None                       # nothing after it anyway
+            # A TRAILING go RODE ALONG BEFORE THIS RULE AND STILL DOES: it
+            # replays a walked route from wherever it stands, or refuses.
+            _rest_go = all(isinstance(x, dict) and x.get("op") == "go"
+                           for x in macro[i + 1:])
+            if op == "explore":
+                return None if _rest_go else i    # lands who knows where
+            land = None
+            if op == "go":
+                to = str(st.get("to") or "")
+                land = to if to in explored else None
+            elif cur and cur in explored:
+                key = (str(st.get("dir") or "") if op == "cross"
+                       else f"{st.get('x')},{st.get('y')}")
+                land = ((explored.get(cur) or {}).get(key) or {}).get("to")
+            if op == "go" and land is None:
+                # a bare map name: walked, but which part is not settled
+                # until it runs — let the ops after it try (go already rode
+                # along before this; it never lands on unwalked ground)
+                cur = None
+                continue
+            if not land or not visits.get(land):
+                return None if _rest_go else i
+            cur = land
+        return None
+
     def _deed_note(self, macro, plan_said, trace) -> str:
         """The sentence for _deeds_named_not_done, or ''."""
         missed = self._deeds_named_not_done(macro, plan_said, trace)
@@ -13533,29 +13592,22 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             "(or a bare JSON array of ops).")
                 spent += 1
                 continue
-            # ONE LEG PER MACRO, enforced: ops after the first map-changing op
-            # target a map the model has never seen — always hallucinated.
-            cut = next((i for i, s in enumerate(macro)
-                        if s.get("op") in ("cross", "use_warp", "explore",
-                                           "go")),
-                       None)
+            # ONE LEG PER MACRO, enforced against ops written BLIND: after a
+            # map change the walked graph cannot place, the rest targets a
+            # map the model has never seen. A change onto WALKED ground —
+            # a crossing or door the graph knows from where the party will
+            # stand, or a go — is recall, and the ops after it run there
+            # (see _macro_cut_index; the trailing-go allowance of
+            # 2026-08-25 was the first half of this rule).
+            _macro_full = list(macro)
+            try:
+                cut = self._macro_cut_index(macro, self._where(start))
+            except Exception:
+                cut = next((i for i, s in enumerate(macro)
+                            if s.get("op") in self.MAP_CHANGING_OPS), None)
             stripped = 0
             _trunc_note = ""
             if cut is not None:
-                # A `go` RIGHT AFTER THE MAP CHANGE IS RECALL, NOT BLIND
-                # AUTHORING. The cut exists because ops written for a map
-                # never seen are hallucinated; `go` names a walked place
-                # and replays a walked route from wherever it stands, or
-                # refuses. Cutting it made "leave the house, go to the
-                # tower" a one-op round every time, and the next round —
-                # standing in the street — the model flipped to "go back
-                # in and check" (Fuji's house <-> tower 1F, eleven rounds,
-                # 2026-08-25; TODO (b) macro truncation). Trailing `go`
-                # ops ride along; anything else after the change is cut.
-                while (cut + 1 < len(macro)
-                       and isinstance(macro[cut + 1], dict)
-                       and macro[cut + 1].get("op") == "go"):
-                    cut += 1
                 if cut + 1 < len(macro):
                     self.log("escalate_truncated", subgoal=sg["id"], round=rnd,
                              kept=cut + 1, dropped=len(macro) - cut - 1)
@@ -13574,11 +13626,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     _trunc_note = (
                         f"({len(macro) - cut - 1} op(s) after your "
                         f"{macro[cut].get('op')} were NOT run: {_dropped}. "
-                        f"A map-changing op ends the macro — whatever comes "
-                        f"after it would be written blind — except a go, "
-                        f"which only walks ground you have walked and so "
-                        f"runs right after it. If those were more legs of "
-                        f"a journey over ground you have walked, "
+                        f"A map change onto ground you have never walked "
+                        f"ends the macro — whatever comes after it would be "
+                        f"written blind. Ops after a crossing or door onto "
+                        f"ground you HAVE walked do run, as does a go. If "
+                        f"those were more legs of a journey over ground you "
+                        f"have walked, "
                         f"{{\"op\":\"go\",\"to\":\"MAP or AREA\"}} "
                         f"walks the whole route in ONE round.)")
                     macro = macro[:cut + 1]
@@ -13801,7 +13854,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # said before anything else is added — right after the results,
             # where the acted-on option sits (ORDER IS THE BUDGET).
             try:
-                _deed = self._deed_note(macro, self._plan_said, trace)
+                _deed = self._deed_note(_macro_full, self._plan_said, trace)
             except Exception:
                 _deed = ""
             if _deed:
@@ -14997,7 +15050,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # CUT". The verdict now says which named deed was not done.
             try:
                 _missed = self._deeds_named_not_done(
-                    macro, self._plan_said, trace)
+                    _macro_full, self._plan_said, trace)
             except Exception:
                 _missed = []
             if _missed:
