@@ -11221,7 +11221,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                      why="seam proven uncrossable")
         self._save_memory()
 
-    def _cut_aftermath(self, step, obs) -> str:
+    @staticmethod
+    def _walkable_here(obs) -> int | None:
+        """Seen cells of this map a walk from where you stand reaches:
+        seen.n minus seen_unreached.n, both published by the shim."""
+        m = ((obs or {}).get("map") or {})
+        sn = (m.get("seen") or {}).get("n")
+        un = (m.get("seen_unreached") or {}).get("n")
+        if isinstance(sn, int) and isinstance(un, int):
+            return max(sn - un, 0)
+        return None
+
+    def _cut_aftermath(self, step, obs, pre_obs=None) -> str:
         """What a successful CUT leaves behind, said in the round it happens.
 
         The round read "used CUT — GLOOM hacked away with CUT!" and nothing
@@ -11242,12 +11253,28 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         facing = str(((obs or {}).get("player") or {}).get("facing") or "")
         side = {"right": "EAST", "left": "WEST",
                 "up": "NORTH", "down": "SOUTH"}.get(facing, "")
+        # WHAT THE CUT OPENED, COUNTED. Four bushes on Route 10 were cut
+        # on every visit for a way south that was never behind them: the
+        # ground past them was already walkable or not walkable at all,
+        # and nothing on the page said so — the cut line said only which
+        # side lay past the bush (2026-09-03, five visits in two attempts).
+        # The shim publishes the seen cells of this map and how many of
+        # them no walk from here reaches; the difference before and after
+        # the cut is what the cut opened, and zero is the honest answer.
+        _b, _a = self._walkable_here(pre_obs), self._walkable_here(obs)
+        opened = ""
+        if _b is not None and _a is not None:
+            d = _a - _b
+            opened = (f"; it opened {d} cell(s) you could not walk to before"
+                      if d > 0 else
+                      "; it opened NOTHING — every cell you can walk to now, "
+                      "you could walk to before it")
         return (f" — the bush at ({step.get('x')},{step.get('y')}) is down "
                 f"only while you stay on {mid}: a cut bush grows back the "
                 f"moment you leave its map and come back, so what lies past "
                 f"it can be reached only while it is down"
                 + (f"; past it is the {side} side, the way you faced to cut"
-                   if side else "") + ".")
+                   if side else "") + opened + ".")
 
     def _note_cut(self, pre_obs, step) -> None:
         """Remember a bush this run has already cut, so a regrown one is
@@ -11426,7 +11453,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     trace.append(f"field_move(move={step.get('move')},"
                                  f"x={step.get('x')},y={step.get('y')}): ok"
                                  + (f" — {_d0}" if _d0 else "")
-                                 + self._cut_aftermath(step, obs))
+                                 + self._cut_aftermath(step, obs, _pre))
                     self._record_outcome(_pre, op, step, f"field_move: {_d0}")
                     # THIS PATH RETURNS BEFORE THE RECORD AT THE BOTTOM OF
                     # THE LOOP EVER RUNS, and an aimed CUT always comes

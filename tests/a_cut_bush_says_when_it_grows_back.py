@@ -43,6 +43,18 @@ ck("facing up reads as the NORTH side",
    "NORTH side" in e._cut_aftermath({"move": "CUT", "x": 19, "y": 28}, obs2))
 ck("no facing, no side claimed",
    "side" not in e._cut_aftermath({"move": "CUT", "x": 1, "y": 1}, {"map": {"id": "X"}}))
+pre = {"map": {"id": "ROUTE_10", "seen": {"n": 580}, "seen_unreached": {"n": 230}}}
+post_more = {"map": {"id": "ROUTE_10", "seen": {"n": 592}, "seen_unreached": {"n": 230},
+             }, "player": {"facing": "right"}}
+post_same = {"map": {"id": "ROUTE_10", "seen": {"n": 580}, "seen_unreached": {"n": 230}},
+             "player": {"facing": "right"}}
+ck("a cut that opened ground says how much",
+   "it opened 12 cell(s) you could not walk to before"
+   in e._cut_aftermath({"move": "CUT", "x": 9, "y": 18}, post_more, pre))
+ck("a cut that opened nothing says NOTHING, in those words",
+   "it opened NOTHING" in e._cut_aftermath({"move": "CUT", "x": 9, "y": 18}, post_same, pre))
+ck("without the counts, no claim either way",
+   "opened" not in e._cut_aftermath({"move": "CUT", "x": 5, "y": 8}, obs))
 ck("STRENGTH and SURF say nothing here",
    e._cut_aftermath({"move": "STRENGTH", "x": 1, "y": 1}, obs) == ""
    and e._cut_aftermath({"move": "SURF"}, obs) == "")
@@ -56,7 +68,7 @@ ck("the ledger's regrown-bush row states the engine's rule, not a reload",
    and "game reloads" not in recut, recut)
 src = (ROOT / "planner" / "executor.py").read_text()
 ck("the cut's own result line carries it",
-   "+ self._cut_aftermath(step, obs))" in src)
+   "+ self._cut_aftermath(step, obs, _pre))" in src)
 
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, dd in checks:
