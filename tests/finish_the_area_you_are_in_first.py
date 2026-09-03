@@ -36,7 +36,7 @@ src = (ROOT / "planner" / "executor.py").read_text()
 ck("the deed ranks locality above distance, and a room means a DOOR not a seam",
    "_local = 0 if (region.split(\"|\")[0] == here.split(\"|\")[0]" in src
    and 'if str(k)[:1].isdigit() and (e or {}).get("to")}' in src
-   and "r = (_pri, _local, len(path), _way_here," in src)
+   and "r = (_pri, _stale, _local, len(path), _way_here," in src)
 ck("...and the trace says why it went there",
    "a room off the area you are in, its door taken from " in src)
 lsrc = (ROOT / "planner" / "ledger.py").read_text()

@@ -2357,7 +2357,14 @@ class Executor:
             # the same distance — but a way out is what changes the map a
             # map goal asks for, and unseen ground only MIGHT hold one.
             _way_here = 0 if (left or _unr) else 1
-            r = (_pri, _local, len(path), _way_here,
+            # A COUNT THE REGION'S OWN READING CONTRADICTS RANKS BEHIND
+            # fresh ground of its tier, whatever the distance: walking there
+            # to sweep has already been shown to find nothing. Not last —
+            # the mis-named-pocket case keeps it ahead of nothing at all —
+            # and the dry-walk rule still finishes the demotion.
+            _stale = (1 if (unseen and not left and not unpressed and not _unr
+                            and self._dry_from_within(region)) else 0)
+            r = (_pri, _stale, _local, len(path), _way_here,
                  -(len(left) + len(unpressed) + unseen + len(_unr)),
                  region)
             if best is None or r < best[0]:
@@ -2597,6 +2604,20 @@ class Executor:
                 if isinstance(rec, dict) and rec.get("at") == now
                 and (rec.get("n") or 0) >= 2}
 
+    def _dry_from_within(self, region) -> bool:
+        """The region carries a count of unseen spots, and the last time the
+        party stood INSIDE it none of them could be reached from there.
+
+        The count is kept positive while the map has unseen ground (the
+        pocket rule), so a closed pocket keeps advertising spots that lie
+        in another part of its map. Walking there to sweep finds nothing;
+        this is that fact before the walk, from the run's own reading.
+        """
+        _fh = getattr(self, "frontier_here", None) or {}
+        _rs = getattr(self, "region_seen", None) or {}
+        return (region in _fh and int(_fh.get(region) or 0) == 0
+                and int(_rs.get(region, 0) or 0) > 0)
+
     def _unwalked_ground_line(self, here: str) -> str:
         """The most ground you have seen the edge of and never walked,
         wherever in the world it is.
@@ -2646,7 +2667,10 @@ class Executor:
             fk, fd = path[0]
             leg = (f"walk {fk}" if not fk[0].isdigit() else f"door ({fk})")
             out.append(f"{region} ({-_neg} spot(s), {legs} leg(s) away, "
-                       f"first: {leg} to {fd})")
+                       f"first: {leg} to {fd}"
+                       + (" — none of it reachable from where you last "
+                          "stood in it" if self._dry_from_within(region)
+                          else "") + ")")
         return ("\nTHE MOST GROUND YOU HAVE SEEN THE EDGE OF AND NEVER "
                 "WALKED, wherever it is — these are spots where the ground "
                 "you looked at ends, and what lies past them is not known: "
@@ -3038,6 +3062,7 @@ class Executor:
             self.seen_far = data.get("seen_far", {}) or {}
             self.map_seen = data.get("map_seen", {}) or {}
             self.region_seen = data.get("region_seen", {}) or {}
+            self.frontier_here = data.get("frontier_here", {}) or {}
             self._dry_walks = data.get("dry_walks", {}) or {}
             self.unreached_at = data.get("unreached_at", {}) or {}
             self._battle_regions = set(data.get("battle_regions") or ())
@@ -3622,6 +3647,7 @@ class Executor:
                  "seen_far": getattr(self, "seen_far", {}),
                  "map_seen": getattr(self, "map_seen", {}),
                  "region_seen": getattr(self, "region_seen", {}),
+                 "frontier_here": getattr(self, "frontier_here", {}),
                  "dry_walks": getattr(self, "_dry_walks", {}),
                  "unreached_at": getattr(self, "unreached_at", {}),
                  "no_cross": {r: sorted(s)
@@ -3949,6 +3975,18 @@ class Executor:
                 # back above the mountain one door away (2026-08-29).
                 # While the map itself still has unseen ground, a zero
                 # from a pocket keeps the region's last positive count.
+                # ...BUT WHAT WAS SEEN FROM INSIDE IS KEPT TOO. The kept count
+                # lured explore into every closed pocket on the way to the
+                # tunnel — Route 9's two, Route 10's, the Center, B1F's — two
+                # rounds each before the dry-walk rule caught up, for spots
+                # that were never reachable from inside them (2026-09-03).
+                # The raw reading from within a region is a fact about that
+                # region; the kept count stays for the mis-named-pocket case
+                # (Mt Moon 1F|3,2), and explore ranks by both: see
+                # _dry_from_within.
+                if not hasattr(self, "frontier_here"):
+                    self.frontier_here = {}
+                self.frontier_here[here] = int(_sn.get("frontier_n") or 0)
                 if _fn_new == 0 and _fn_old > 0 and _fn_map > 0:
                     _fn_new = _fn_old
                 self.region_seen[here] = _fn_new
