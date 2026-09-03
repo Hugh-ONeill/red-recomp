@@ -50,6 +50,8 @@ WORLD = [
     ("run/last_state.json", "the state text handed to the author"),
     ("run/status.txt", "what the run says it is doing"),
     ("plans/outline.done", "deeds, shown as ALSO ACCOMPLISHED"),
+    ("run/leg_unconfirmed", "legs counted without proof, shown as doubtful"),
+    ("run/outline_pullbacks", "which pushed legs this chain pulled back"),
     ("$SAVE", "the save itself"),
 ]
 

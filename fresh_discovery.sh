@@ -80,6 +80,16 @@ if [ "$done_legs" = 0 ]; then
   # Archived rather than deleted: it is the record of what those runs did.
   [ -f plans/outline.done ] \
     && mv plans/outline.done "plans/outline.done.${ts}.pre-discovery"
+  # THE LEGS COUNTED WITHOUT PROOF ARE A CLAIM ABOUT THIS WORLD TOO.
+  # run/leg_unconfirmed is read by the author's finished-objectives line
+  # (a leg on it is shown "counted but unconfirmed", never plainly done),
+  # and nothing archived it: run 15 started with fifteen lines from three
+  # earlier worlds, five of them naming legs still AHEAD in its own
+  # outline (Silph guards, HM04, Cinnabar, HM03, the Plateau) — so had it
+  # confirmed any of those cleanly, the page would still have called the
+  # deed doubtful (2026-09-03). Archived beside the deed ledger.
+  [ -f run/leg_unconfirmed ] \
+    && mv run/leg_unconfirmed "run/leg_unconfirmed.${ts}.pre-discovery"
   # THE OUTLINE IS BANKED LUCK; THE EDITS TO IT ARE WORLD STATE. Same
   # split as the deed ledger, one level up, and it took nine chains to
   # show. outline.txt is deliberately kept across a fresh chain — an
