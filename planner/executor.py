@@ -2547,6 +2547,61 @@ class Executor:
                 if isinstance(rec, dict) and rec.get("at") == now
                 and (rec.get("n") or 0) >= 2}
 
+    def _unwalked_ground_line(self, here: str) -> str:
+        """The most ground you have seen the edge of and never walked,
+        wherever in the world it is.
+
+        THE FRONTIER WAS ADVERTISED LOCALLY ONLY. The candidate list is
+        built around where the party stands, and the remote list above is
+        built from regions with untried EXITS — so a region whose every
+        door has been taken is skipped, however much unwalked ground lies
+        behind it. ROCK_TUNNEL_B1F is exactly that: both its ladders taken,
+        eleven spots where the ground it has looked at ends, and no line
+        anywhere on the page.
+
+        Measured 2026-09-02 over thirty escalation pages: the tunnel's
+        unexplored ground was named on 0 of 21 pages while the run circled
+        Vermilion and Cerulean, and on 9 of 9 once the party was within a
+        map or two of it. Standing in Cerulean on its 191st visit the whole
+        menu was a bush and houses it had been in three times — so
+        exploring the bike shop WAS the best exploration on offer, and
+        exploring the tunnel was never a choice it declined. It was a
+        choice it was never shown.
+
+        Ranked by SIZE, not by distance, which is the whole point: the
+        nearest-first list above already covers what is close, and the
+        thing this exists to surface is the big unwalked space three maps
+        away. Walked route only, and the first leg is the same recall the
+        remote list already gives. No route is drawn and nothing is
+        recommended; whether a hundred unseen cells are worth six legs is
+        the model's call.
+        """
+        rows = []
+        for region, n in (getattr(self, "region_seen", None) or {}).items():
+            try:
+                n = int(n or 0)
+            except (TypeError, ValueError):
+                continue
+            if n <= 0 or region == here:
+                continue
+            path = self._route(here, region)
+            if not path:
+                continue           # cannot be walked to; the atlas says so
+            rows.append((-n, len(path), str(region), path))
+        if not rows:
+            return ""
+        rows.sort()
+        out = []
+        for _neg, legs, region, path in rows[:4]:
+            fk, fd = path[0]
+            leg = (f"walk {fk}" if not fk[0].isdigit() else f"door ({fk})")
+            out.append(f"{region} ({-_neg} spot(s), {legs} leg(s) away, "
+                       f"first: {leg} to {fd})")
+        return ("\nTHE MOST GROUND YOU HAVE SEEN THE EDGE OF AND NEVER "
+                "WALKED, wherever it is — these are spots where the ground "
+                "you looked at ends, and what lies past them is not known: "
+                + "; ".join(out) + ".")
+
     def _road_words(self, m: str, nb: str) -> str:
         """What this run pressed ON THAT MAP while aiming at THAT place,
         and what it said. Scoped that way it stays evidence rather than
@@ -9665,6 +9720,10 @@ class Executor:
                     "you have NEVER taken: "
                     + "; ".join(t for _r, t in sorted(elsewhere)[:6])
                     + "." + near_hint)
+            # ...AND THE BIG UNWALKED SPACES, WHICH THAT LIST CANNOT REACH:
+            # it is built from untried EXITS, and a floor whose doors have
+            # all been taken has none. See _unwalked_ground_line.
+            _elsewhere_str += self._unwalked_ground_line(here)
             _rs_line = self._respawn_line(obs)
         # WHAT THE SHOPS YOU HAVE WALKED INTO SELL, FROM ANYWHERE. The
         # shelf store is complete and its RECALL was one hop deep: a
