@@ -383,6 +383,32 @@ except OSError:
     _ITEM_IDS = set()
 
 
+def speech_excerpt(said: str, cap: int) -> str:
+    """A long speech cut to `cap` keeps its HEAD AND ITS TAIL, never the
+    head alone.
+
+    Every capture site trimmed with `[:N]`, and the instruction in a long
+    gen 1 speech comes LAST: the Fan Club chairman talks for 500
+    characters about his Rapidash, hands over the BIKE VOUCHER, and only
+    then says "Exchange that for a BICYCLE!" — the one sentence that says
+    what the thing is for. The hints ledger kept "I chair the POKéMON Fan
+    Club! ... My favorite RAPIDASH... It...cute... love" and the round's
+    trace 160 characters of the same, so the run held a voucher for hours
+    with no record anywhere of what the game had said it was (2026-09-03).
+    Bill, the Captain, Mr. Fuji and Oak's aides all speak in the same
+    shape: story first, the useful line at the end. So the tail gets the
+    larger share, the seam is marked, and nothing is invented.
+    """
+    s = (said or "").strip()
+    if len(s) <= cap:
+        return s
+    if cap < 40:
+        return s[:cap]
+    tail_n = max(int(cap * 0.6), 24)
+    head_n = max(cap - tail_n - 5, 8)
+    return s[:head_n].rstrip() + " ... " + s[-tail_n:].lstrip()
+
+
 def _looks_like_item_name(name: str) -> bool:
     n = str(name or "")
     if n.startswith("ITEM_"):
@@ -1302,6 +1328,7 @@ class Executor:
         self._touch_mark: dict = {}
         self.hints: dict = {}
         self.hints_at: dict = {}     # region -> {line: flags fired when heard}
+        self._item_from: dict = {}   # item -> {who, at, said}: who handed it over
         self._offered: dict = {}     # map -> {species: wild encounters}
         self._dead_why: dict = {}    # op signature -> last failure detail
         self._cut_bushes: dict = {}  # map -> ["x,y", ...] bushes cut before
@@ -1728,7 +1755,7 @@ class Executor:
         rec = book.setdefault(key, {"n": 0, "last": ""})
         rec["n"] = int(rec.get("n") or 0) + 1
         last = note.split(": ", 1)[1] if ": " in note else note
-        rec["last"] = last.strip()[:200]
+        rec["last"] = speech_excerpt(last.strip(), 200)   # head AND tail
         # A WAY THAT SPOKE AND DID NOT OPEN turned you back: the fixed
         # ghost, a guard's line, a sleeping thing's — evidence for the
         # blockers ledger, in the words the game used.
@@ -3129,6 +3156,7 @@ class Executor:
             # Oak for hours after. Lines recorded before this existed have
             # no stamp and are shown undated.
             self.hints_at = data.get("hints_at") or {}
+            self._item_from = data.get("item_from") or {}
             self._offered = data.get("offered") or {}
             self._wild_lv = data.get("wild_lv") or {}
             self._grind_exp = data.get("grind_exp") or {}
@@ -3578,6 +3606,7 @@ class Executor:
                  "blockers_backfilled": bool(getattr(
                      self, "_blockers_backfilled", False)),
                  "hints_at": getattr(self, "hints_at", {}),
+                 "item_from": getattr(self, "_item_from", {}),
                  "offered": getattr(self, "_offered", {}),
                  "wild_lv": getattr(self, "_wild_lv", {}),
                  "grind_exp": getattr(self, "_grind_exp", {}),
@@ -8507,6 +8536,27 @@ class Executor:
             return True
         return not (words & set(_GIVEN_WORDS))
 
+    def _gift_note(self, item: str) -> str:
+        """Who handed this item over, and what they said as they did — the
+        run's own record, riding the bag line where the item already sits.
+
+        Empty for a thing bought or picked up. The chairman's "Exchange
+        that for a BICYCLE!" is the case: recorded against the item, it is
+        on every page for as long as the voucher is; recorded against his
+        room it competed with six other lines for a slot it never got.
+        """
+        rec = (getattr(self, "_item_from", {}) or {}).get(item)
+        if not isinstance(rec, dict) or not rec.get("who"):
+            return ""
+        at = str(rec.get("at") or "").split("|")[0]
+        # 240, not 160: the chairman's instruction sits 125 characters from
+        # the end of his speech, behind a line about his Fearow, and at
+        # 160 the tail began "on't worry" — the head-and-tail rule is only
+        # honest when the tail is long enough to reach the instruction.
+        said = speech_excerpt(str(rec.get("said") or ""), 240)
+        out = f" [handed to you by {rec['who']}" + (f" in {at}" if at else "")
+        return out + (f', who said: "{said}"]' if said else "]")
+
     def exploration_text(self, obs, target: str = "", sg: dict | None = None) -> str:
         """Untried vs already-taken exits from where we stand."""
         # A LEVEL IS NOT A PLACE. Everything below answers "where do I go
@@ -9807,7 +9857,8 @@ class Executor:
         if _bagall:
             _rs_line = (
                 "WHAT YOU ARE CARRYING: "
-                + ", ".join(f"{k} x{v}" for k, v in sorted(_bagall.items()))
+                + ", ".join(f"{k} x{v}{self._gift_note(k)}"
+                            for k, v in sorted(_bagall.items()))
                 + f" ({len(_bagall)} of {self.BAG_SLOTS} kinds). Some are "
                   "used ON a party member and some WHERE YOU STAND; "
                   "{\"op\":\"use_item\",\"item\":X} with no slot uses "
@@ -11949,17 +12000,44 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # stops the very first observation inheriting whatever was
                 # on screen before the run started.
                 heard = said if self._said_ready else ""
+                # THE ROUND THE BAG GREW IS THE ONE TO KEEP WHOLE. What a
+                # giver says as they hand a thing over is what the thing is
+                # for, and it comes at the END of the speech; see
+                # speech_excerpt. A longer cap there, head-and-tail past it.
+                _b0 = (pre_obs or {}).get("bag") or {}
+                _b1 = (obs or {}).get("bag") or {}
+                _gained = sorted(k for k in _b1 if isinstance(_b0, dict)
+                                 and (_b1.get(k) or 0) > (_b0.get(k) or 0))
+                _kept = speech_excerpt(said, 480 if _gained else 220)
                 if said and "None" not in reg and len(said) > 12:
                     lst = self.hints.setdefault(reg, [])
-                    line = f"{who}: {said[:220]}"
+                    line = f"{who}: {_kept}"
                     # ONE SENTENCE, ONCE, whoever it was filed under: the
                     # Pokedex poster in Fuji's house was read five times
                     # under five op names and, with a cap of 8, pushed the
                     # Super Nerd's "MR.FUJI isn't here. Where'd he go?" —
                     # the one line that explains the gate — out of the
                     # ledger (2026-08-25). Same words = same line.
-                    _same = any(l.partition(": ")[2] == said[:220]
+                    _same = any(l.partition(": ")[2] == _kept
                                 for l in lst)
+                    # WHO HANDED YOU THIS, AND WHAT THEY SAID. Keyed by the
+                    # ITEM, because the room's hints compete for fourteen
+                    # lines across every room the run has heard a word in
+                    # (first sentence of each room before any room's
+                    # second), and the chairman's line was fourth of seven
+                    # in his: it reached 0 pages while the Pikachu fan's
+                    # reached 305. The bag is on every page; the words that
+                    # came with a thing in it ride there. Gifts only — a
+                    # thing a NAMED person or object handed over during an
+                    # interact — never purchases or pickups off the floor.
+                    if (_gained and op == "interact" and step.get("name")
+                            and self._said_ready):
+                        if not hasattr(self, "_item_from"):
+                            self._item_from = {}
+                        for _it in _gained:
+                            self._item_from[_it] = {
+                                "who": str(step.get("name")), "at": reg,
+                                "said": speech_excerpt(said, 300)}
                     if line not in lst and not _same:
                         lst.append(line)
                         del lst[:-16]
@@ -12634,7 +12712,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 pass
             note += self._goods_delta(pre_obs, obs)
             if heard:
-                note += f' — it said: "{heard[:160]}"'
+                _hb0 = (pre_obs or {}).get("bag") or {}
+                _hb1 = (obs or {}).get("bag") or {}
+                _grew = isinstance(_hb0, dict) and any(
+                    (_hb1.get(k) or 0) > (_hb0.get(k) or 0) for k in _hb1)
+                # head AND tail (speech_excerpt); the round a thing arrived
+                # gets the room to say what came with it
+                note += (' — it said: "'
+                         + speech_excerpt(heard, 320 if _grew else 160) + '"')
             trace.append(note)
             self._record_outcome(pre_obs, op, step, note)
             # A BUSH YOU CUT COMES BACK ON RELOAD in this recomp. Remember
