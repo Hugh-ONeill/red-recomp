@@ -6330,6 +6330,75 @@ class Executor:
                                                set()) | {key0})
         return None
 
+    FIELD_MOVE_WORDS = ("CUT", "SURF", "STRENGTH", "FLASH", "FLY")
+
+    def _deeds_named_not_done(self, macro, plan_said, trace) -> list:
+        """Field moves the plan's WORDS named that no op of the round did.
+
+        WORDS ARE NOT OPS. Round 3: "travel east to Route 9 and use CUT to
+        clear the bush blocking the path west", macro [cross east]. Round 4:
+        "I have just used CUT to clear the bush blocking the way west on
+        Route 9. I will now cross west" — and it crossed west, into the city
+        it had just left, while the bush stood untouched. No field_move was
+        ever sent. The echo had stapled "→ new ground" to round 3's plan
+        (the crossing WAS new ground), so its own words read back as a plan
+        that had happened, all of it (2026-09-03, user: "thinking its
+        already cut the tree when it hasnt because its *there*").
+
+        The sibling note (_go_would_have) reads the prose for a PLACE the
+        round did not reach; this reads it for a DEED the round did not do.
+        Only the move names written the way the game writes them — CUT,
+        SURF — so "the path is cut off" says nothing. Returns (move, sent):
+        sent=True when a field_move was among the ops but never ran (the
+        map change ended the macro first), False when none was written.
+        """
+        said = str(plan_said or "")
+        out = []
+        for mv in self.FIELD_MOVE_WORDS:
+            if not _re.search(r"\b" + mv + r"\b", said):
+                continue
+            sent = False
+            for st in (macro or []):
+                if not isinstance(st, dict):
+                    continue
+                op = str(st.get("op") or "")
+                if op == "field_move" and str(st.get("move") or "").upper() == mv:
+                    sent = True
+                if mv == "SURF" and st.get("surf"):
+                    sent = True
+                if mv == "FLY" and op == "fly":
+                    sent = True
+            low = " ".join(str(t) for t in (trace or [])).lower()
+            ran = (f"field_move(move={mv.lower()}" in low
+                   or f"field_move(move={mv}".lower() in low
+                   or (mv == "CUT" and "hacked away" in low)
+                   or (mv == "SURF" and ("surf:true" in low or "surf=true" in low
+                                         or "(swim)" in low))
+                   or (mv == "FLY" and low.startswith("fly(")))
+            if not ran:
+                out.append((mv, sent))
+        return out
+
+    def _deed_note(self, macro, plan_said, trace) -> str:
+        """The sentence for _deeds_named_not_done, or ''."""
+        missed = self._deeds_named_not_done(macro, plan_said, trace)
+        if not missed:
+            return ""
+        mv, sent = missed[0]
+        how = ("the field_move you wrote was never run — a map change ends "
+               "the macro before it" if sent
+               else "no field_move was among your ops")
+        what = {"CUT": "nothing was cut, and every bush that stood before "
+                       "this round still stands",
+                "SURF": "nothing was swum",
+                "STRENGTH": "no boulder moved",
+                "FLASH": "nothing was lit",
+                "FLY": "nobody flew"}.get(mv, "it did not happen")
+        return (f"(Your words named {mv} and no {mv} happened this round: "
+                f"{how} — {what}. A field move happens only when "
+                f"{{\"op\":\"field_move\",\"move\":\"{mv}\",\"x\":..,"
+                f"\"y\":..}} is one of your ops and runs.)")
+
     def _go_would_have(self, macro, plan_said):
         """A journey the model NAMED, that `go` walks in ONE round.
 
@@ -13699,6 +13768,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     _rec["why"] = _why[:240]
             if _decl_lines:
                 trace = list(_decl_lines) + list(trace)
+            # WORDS ARE NOT OPS: a deed the prose named and no op did is
+            # said before anything else is added — right after the results,
+            # where the acted-on option sits (ORDER IS THE BUDGET).
+            try:
+                _deed = self._deed_note(macro, self._plan_said, trace)
+            except Exception:
+                _deed = ""
+            if _deed:
+                trace = list(trace) + [_deed]
             if _trunc_note:
                 trace = list(trace) + [_trunc_note]
             else:
@@ -14884,6 +14962,19 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             _verdict = ("new ground" if _fresh_ground else
                         "something changed" if _moved_world else
                         "NOTHING CHANGED")
+            # ...AND WHAT THE WORDS NAMED THAT DID NOT HAPPEN. "→ new ground"
+            # on "cross east and use CUT" was true of the crossing and read
+            # as true of the cut; the next plan began "I have just used
+            # CUT". The verdict now says which named deed was not done.
+            try:
+                _missed = self._deeds_named_not_done(
+                    macro, self._plan_said, trace)
+            except Exception:
+                _missed = []
+            if _missed:
+                _verdict += " (you wrote " + ", ".join(
+                    m for m, _ in _missed) + "; no " + " or ".join(
+                    m for m, _ in _missed) + " was done that round)"
             # ...AND THE ANSWER THAT KILLED IT, IN THE SAME BREATH. The bare
             # verdict let a refuted premise ride the echo for whole passes:
             # "I've visited Cinnabar Island before, so FLY there" read back
