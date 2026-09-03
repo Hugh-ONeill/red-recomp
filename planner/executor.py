@@ -11140,6 +11140,34 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                      why="seam proven uncrossable")
         self._save_memory()
 
+    def _cut_aftermath(self, step, obs) -> str:
+        """What a successful CUT leaves behind, said in the round it happens.
+
+        The round read "used CUT — GLOOM hacked away with CUT!" and nothing
+        else, and the model, believing the bush blocked the way WEST, crossed
+        west in the same macro — off the map, which regrows the tree — and
+        opened its next plan with "I have already cleared the bush on Route
+        9" (2026-09-03, three times running). Two engine facts belong beside
+        the cut: a cut tree grows back whenever its map is re-entered
+        (OverworldController setMap, "like the original"), and the ground it
+        opened lies on the side the party faced to cut it. Neither says where
+        to go.
+        """
+        if str((step or {}).get("move") or "").upper() != "CUT":
+            return ""
+        if (step or {}).get("x") is None:
+            return ""
+        mid = ((obs or {}).get("map") or {}).get("id") or "this map"
+        facing = str(((obs or {}).get("player") or {}).get("facing") or "")
+        side = {"right": "EAST", "left": "WEST",
+                "up": "NORTH", "down": "SOUTH"}.get(facing, "")
+        return (f" — the bush at ({step.get('x')},{step.get('y')}) is down "
+                f"only while you stay on {mid}: a cut bush grows back the "
+                f"moment you leave its map and come back, so what lies past "
+                f"it can be reached only while it is down"
+                + (f"; past it is the {side} side, the way you faced to cut"
+                   if side else "") + ".")
+
     def _note_cut(self, pre_obs, step) -> None:
         """Remember a bush this run has already cut, so a regrown one is
         not offered as a fresh way on.
@@ -11316,7 +11344,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     obs = self.settle() or _pre
                     trace.append(f"field_move(move={step.get('move')},"
                                  f"x={step.get('x')},y={step.get('y')}): ok"
-                                 + (f" — {_d0}" if _d0 else ""))
+                                 + (f" — {_d0}" if _d0 else "")
+                                 + self._cut_aftermath(step, obs))
                     self._record_outcome(_pre, op, step, f"field_move: {_d0}")
                     # THIS PATH RETURNS BEFORE THE RECORD AT THE BOTTOM OF
                     # THE LOOP EVER RUNS, and an aimed CUT always comes

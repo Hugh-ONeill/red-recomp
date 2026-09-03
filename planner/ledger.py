@@ -1627,9 +1627,14 @@ _STATUS_WORDS = {
                     "— people here say different things once the world moves",
     "inert": "pressed {n}x; nothing changed",
     "cuttable": "a bush — CUT clears it, and a party Pokemon knows CUT",
-    "recut": "a bush you have CUT before, grown back (every bush regrows "
-             "when the game reloads) — cutting it reopens the SAME way it "
-             "opened before, not new ground",
+    # "when the game reloads" read as a process restart, and the run cut a
+    # bush, crossed off its map, and wrote "I have already cleared the bush"
+    # for rounds after (2026-09-03). The engine's rule, OverworldController
+    # setMap: a cut tree grows back whenever its MAP is re-entered.
+    "recut": "a bush you have CUT before, grown back (a cut bush grows back "
+             "the moment you leave its map and come back, so cut it and go "
+             "THROUGH in the same visit) — cutting it reopens the SAME way "
+             "it opened before, not new ground",
     "bush": "a bush — CUT clears it; nobody in the party knows CUT yet",
     # the braces are doubled because this table is .format()ed for {n}
     "pushable": "a BOULDER — it is pushed, not pressed, and a party Pokemon "
