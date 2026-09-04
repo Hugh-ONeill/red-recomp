@@ -1142,8 +1142,9 @@ def validate(plan: dict) -> list:
     # series hint of its own (see _unreached_step_words).
     _way = _unreached_step_words(plan)
     if _way:
-        probs = [p + _way if ("is not an event this game defines" in p
-                              and "Did you mean" not in p) else p
+        probs = [p + _way if (("is not an event this game defines" in p
+                               and "Did you mean" not in p)
+                              or "has ALREADY stood in" in p) else p
                  for p in probs]
     return probs
 
