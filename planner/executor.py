@@ -6648,6 +6648,35 @@ class Executor:
         n = self._seen_cell_count(str(region).split("|")[0])
         return f"{n} cells ever on screen, " if n else ""
 
+    def _words_vs_condition(self, goal_text, done) -> str:
+        """THE CONDITION IS THE STEP. The rewrite wrote the step "Use the
+        elevator to leave the Rocket Hideout B4F" over the condition
+        {"map":"ROCKET_HIDEOUT_ELEVATOR"}. Standing on B2F beside a lift
+        door listed as never taken, the run took the stairs down to hunt
+        "the elevator at (24,15)" on B4F, three rounds running (2026-09-04,
+        user: "the damn goal text messes it up by telling it that the
+        elevator is on b4f so its not going in the lift doors that its
+        right next to"). Both halves are the plan's own words; when the
+        words name a floor the condition does not, say which half counts.
+        Nothing here says where any door leads."""
+        if not isinstance(done, dict):
+            return ""
+        target = done.get("map")
+        if not isinstance(target, str) and isinstance(done.get("area"), str):
+            target = done["area"].split("|")[0]
+        if not isinstance(target, str) or not target.strip():
+            return ""
+        T = target.strip().upper()
+        toks = _re.findall(r"\b(B?\d{1,2}F|ROOF(?:TOP)?)\b", str(goal_text or "").upper())
+        stray = sorted({t for t in toks if not T.endswith("_" + t)})
+        if not stray:
+            return ""
+        return (f"\nTHE CONDITION IS THE STEP: {json.dumps(done)} holds "
+                f"wherever you stand in {T}, whichever floor's door you take "
+                f"into it. The floor named in this step's words "
+                f"({', '.join(stray)}) is the plan-writer's guess at where, "
+                f"not part of the condition.")
+
     # WORDS ARE NOT A LIFTS ENTRY. Eight rounds in a row the plan said "a
     # Ghost blocks the path to the 7th floor on the 6th floor and I need the
     # Silph Scope", and every one of those rounds the row for that door read
@@ -14148,6 +14177,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self.log("escalate_echo", subgoal=sg["id"], round=rnd,
                          echo=plan_echo[:2000])
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
+                    f"{self._words_vs_condition(goal, done)}"
                     f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
                     f"{atlas or 'nothing yet'}\n"
