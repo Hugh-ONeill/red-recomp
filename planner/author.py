@@ -4977,6 +4977,32 @@ def _levels_not_reached(goal: str, start: str) -> str | None:
     return f"level {want} for every party member, and one of them is L{low}"
 
 
+def _premise_item_not_held(why: str, start: str) -> str | None:
+    """An item a rung's REASON claims the run holds, that the bag does not.
+
+    "[missing] 'Rescue Mr. Fuji from the Pokemon Tower': The player has
+    obtained the Silph Scope and reached the top of the tower" — inserted
+    on a premise the bag disproved (no SILPH_SCOPE), so the new leg walked
+    into the same ghost (2026-09-04). The deed may still be right; the
+    premise is a claim the record refutes, and a claim the record refutes
+    is put back to the model as such — the fourth member of the family
+    begun by _never_stood_in, applied to the WHY instead of the sentence.
+    Only claims of HOLDING are read (obtained/has/have/got/holds/acquired/
+    received/carrying); "needs the Silph Scope" is not a claim of having it.
+    """
+    w = str(why or "")
+    have = re.sub(r"[^A-Z]+", "", (start or "").upper())
+    for it in sorted(ENGINE_ITEMS, key=len, reverse=True):
+        pretty = it.replace("_", " ")
+        pat = (r"\b(obtained|has|have|got|gotten|holds|holding|acquired|received|"
+               r"carrying|carries|possesses|owns|own)\b[^.;]{0,40}?\b"
+               + re.escape(pretty) + r"\b")
+        if re.search(pat, w, re.I):
+            if re.sub(r"[^A-Z]+", "", it.upper()) not in have:
+                return it
+    return None
+
+
 def _item_not_held(goal: str, start: str) -> str | None:
     """An item this objective names by name that is not in the bag.
 
@@ -5516,6 +5542,16 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
             print(f"[missing] turned down {ins!r}: already on your own "
                   f"list — {_why}", file=sys.stderr)
             turned_down.append((ins, "already on your own list"))
+            continue
+        _ph_item = _premise_item_not_held(_why, start)
+        if _ph_item:
+            print(f"[missing] turned down {ins!r}: its reason says you hold "
+                  f"{_ph_item}, and the bag holds none — {_why}",
+                  file=sys.stderr)
+            turned_down.append((ins, f"your reason said you have {_ph_item}; "
+                                     f"the bag holds no {_ph_item} — say the "
+                                     f"deed again without that, or the deed "
+                                     f"that gets it"))
             continue
         if check_already_done(ins, start, model, observed=observed):
             print(f"[missing] turned down {ins!r}: judged already done — "
