@@ -740,12 +740,6 @@ def outline_so_far(cap: int = 12) -> str:
         # done. Marked, not hidden: whether it is worth going back for is
         # the model's, and the reason it was counted is that the chain
         # could not tell either way.
-        try:
-            _unc = {l.strip() for l in
-                    Path("run/leg_unconfirmed").read_text().splitlines()
-                    if l.strip()}
-        except OSError:
-            _unc = set()
         # ...AND A LEG YOU STRUCK OUT IS NOT AN ACHIEVEMENT EITHER. A VOID
         # leaves the leg sitting in the outline and steps past it, so it
         # reaches this sentence in the same words as a leg that was walked
@@ -758,30 +752,9 @@ def outline_so_far(cap: int = 12) -> str:
         # was in run/outline_void the whole time, unread by this line. Its
         # own words go back to it, so a leg it dismissed cannot return as
         # evidence of the thing it dismissed.
-        try:
-            _void = {}
-            for _l in Path("run/outline_void").read_text().splitlines():
-                _t, _, _why = _l.partition("\t")
-                if _t.strip():
-                    _void[_t.strip()] = _why.strip()
-        except OSError:
-            _void = {}
-
-        def _tag(t: str) -> str:
-            # struck out beats unconfirmed: one is "we could not tell",
-            # the other is "you said it was never a thing to do".
-            if t in _void:
-                return (t + " (STRUCK OUT BY YOU, NOT DONE — nothing was "
-                        "achieved by it"
-                        + (f"; your reason: {_void[t]}" if _void[t] else "")
-                        + ")")
-            if t in _unc:
-                return (t + " (COUNTED BUT NEVER CONFIRMED: its plans ran "
-                        "and the deed could not be seen afterwards — treat "
-                        "it as open if what you are doing needs it)")
-            return t
-
-        _mark = [_tag(t) for t in show]
+        # the marks themselves live in _leg_marks, shared with every rung's
+        # numbered list — the rungs went without them until 2026-09-04
+        _mark = [t + _leg_marks(t) for t in show]
         out += ("\n\nTHE OBJECTIVES YOU HAVE ALREADY FINISHED, in the order "
                 "you finished them: "
                 + ("... " if n > cap else "")
@@ -5684,16 +5657,61 @@ _ASKED_WORDS = {
 }
 
 
+def _leg_marks(t: str) -> str:
+    """The mark an outline line carries wherever a rung reads it: STRUCK
+    OUT (the model voided it, with its own reason) or COUNTED BUT NEVER
+    CONFIRMED (the chain walked past it unable to tell). Empty for a leg
+    that was walked and seen done.
+
+    outline_so_far() has put these marks on the plan-author's sentence
+    since 2026-09-02 — and the rungs never got them. The missing and
+    wording rungs read "OBJECTIVES YOU HAVE ALREADY FINISHED: ... 26.
+    Obtain the Silph Scope and reach the top of the Pokemon Tower; 27.
+    Obtain the Silph Scope from Celadon City" — both VOID — and answered
+    "the player has the Silph Scope (Objective 27)" three times over, and
+    "the wording stands: the player has already obtained the Silph Scope
+    (Objective 27)", with no SILPH_SCOPE in the bag (2026-09-04). The bag
+    check (4aa9b69) turned the proposals down, but the premise came from
+    this list: the harness said finished about a leg the model itself had
+    struck out. Struck out beats unconfirmed: one is "we could not tell",
+    the other is "you said it was never a thing to do"."""
+    try:
+        void = {}
+        for _l in Path("run/outline_void").read_text().splitlines():
+            _t, _, _why = _l.partition("\t")
+            if _t.strip():
+                void[_t.strip()] = _why.strip()
+    except OSError:
+        void = {}
+    try:
+        unc = {l.strip() for l in
+               Path("run/leg_unconfirmed").read_text().splitlines()
+               if l.strip()}
+    except OSError:
+        unc = set()
+    t = str(t or "").strip()
+    if t in void:
+        return (" (STRUCK OUT BY YOU, NOT DONE — nothing was achieved by it"
+                + (f"; your reason: {void[t]}" if void[t] else "") + ")")
+    if t in unc:
+        return (" (COUNTED BUT NEVER CONFIRMED: its plans ran and the deed "
+                "could not be seen afterwards — treat it as open if what "
+                "you are doing needs it)")
+    return ""
+
+
 def _leg_line(n, t) -> str:
     """One outline line as the rungs see it. A line naming a thing this
     game does not have says so on the line itself: "Retrieve the HM08 from
     the Victory Road warden" steered a blocker pull, a missing-rung
     answer and a later-rung move ("Victory Road is blocked by the need for
     HM08") in one afternoon, 2026-08-28, and none of those rungs had been
-    told the item does not exist."""
+    told the item does not exist. A line the model struck out, or the
+    chain counted without confirming, says that too (_leg_marks)."""
     ph = _phantom_item(t)
-    return f"  {n}. {t}" + (f"  [names a thing this game does not have: {ph}]"
-                            if ph else "")
+    return (f"  {n}. {t}" + _leg_marks(t)
+            + (f"  [names a thing this game does not have: {ph}]"
+               if ph else ""))
 
 
 def _asked_text(asked) -> str:
