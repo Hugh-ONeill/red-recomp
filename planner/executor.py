@@ -791,6 +791,37 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
                     n = 1
                 if not bag or bag.get(item, 0) < n:
                     return False
+        elif key in ("lacks_item", "bag_kinds_below"):
+            # A DEED THAT EMPTIES A SLOT HAD NO WITNESS. has_item is "at
+            # least N", so "Clear space in the bag" was written as
+            # {"has_item":{"POTION":3}} — meant as "down to three", true
+            # with four in the bag, and the plan completed before its first
+            # step ran (2026-09-04). These say the other direction: a kind
+            # GONE, or FEWER kinds than N. Both need a READABLE bag: an
+            # observation taken with a menu up carries no bag, and an
+            # empty read must not pass for an empty bag (the same round's
+            # status line read "BAG 0/20 {}" with twenty kinds held).
+            bag = obs.get("bag")
+            if not isinstance(bag, dict) or obs.get("mode", "overworld") != "overworld":
+                return False
+            if key == "bag_kinds_below":
+                try:
+                    if not len(bag) < int(want):
+                        return False
+                except (TypeError, ValueError):
+                    return False
+            else:
+                if isinstance(want, str):
+                    items = [want]
+                elif isinstance(want, dict):
+                    items = list(want.keys())
+                elif isinstance(want, (list, tuple, set)):
+                    items = [str(i) for i in want]
+                else:
+                    items = []
+                for item in items:
+                    if int(bag.get(item, 0) or 0) > 0:
+                        return False
         elif key == "player_at":
             # {"x":N,"y":N,"radius":R} — where you are standing is
             # player-visible, and a map id alone cannot distinguish
@@ -13633,7 +13664,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         # changed) but never again a full budget.
         prior_fails = self._prior_subgoal_fails.get(sg["id"], 0)
         dw_kind = pred_keys(sg.get("done_when") or {})
-        is_gate = bool(dw_kind & {"flag", "badge", "has_item"})
+        is_gate = bool(dw_kind & {"flag", "badge", "has_item", "lacks_item",
+                                  "bag_kinds_below"})
         # The discount exists for doomed MARCHES. A gate is where the
         # searching actually happens and already earns a deeper budget —
         # discounting it strangled defeat_lt_surge to ONE round for a

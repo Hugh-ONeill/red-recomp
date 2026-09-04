@@ -127,6 +127,12 @@ PREDICATES = {
                   "(e.g. {\"lead_level\":12})",
     "has_item": "bag holds at least N of each listed item (e.g. "
                 "{\"has_item\":{\"POTION\":4}})",
+    "lacks_item": "the bag holds NONE of each listed item (e.g. "
+                  "{\"lacks_item\":[\"REPEL\"]}) — the witness for a thing "
+                  "SOLD, TOSSED, USED UP or STORED; has_item cannot say it",
+    "bag_kinds_below": "the bag holds FEWER than N kinds of item (e.g. "
+                       "{\"bag_kinds_below\":20}) — the witness for a bag "
+                       "slot FREED, whichever kind went",
     "player_at": "standing within radius R of a tile, e.g. "
                  "{\"player_at\":{\"x\":27,\"y\":3,\"radius\":4}}. Combine it "
                  "with map when a map predicate alone cannot say WHERE",
@@ -1456,11 +1462,117 @@ def _check_pred_shapes(dw: dict, tag: str, sid, probs: list):
             if not isinstance(v["slot"], int) or isinstance(v["slot"], bool):
                 probs.append(f"{tag} ({sid}) knows_move slot must be a "
                              f"whole number")
+        elif k == "bag_kinds_below":
+            if not isinstance(v, int) or isinstance(v, bool) or v < 1:
+                probs.append(f"{tag} ({sid}) bag_kinds_below needs a whole "
+                             f"number of kinds, e.g. 20")
+        elif k == "lacks_item":
+            if not isinstance(v, (str, list, dict)) or not v:
+                probs.append(f"{tag} ({sid}) lacks_item needs an item name "
+                             f"or a list of them")
         elif k == "area" and isinstance(v, str) and "|" in v:
             mp = v.split("|", 1)[0]
             if ROUTE_MAPS and mp not in ROUTE_MAPS:
                 probs.append(f"{tag} ({sid}) area '{v}' names map '{mp}', "
                              f"which is not in the route list")
+
+
+def _obs_now(path="run/obs.json") -> dict:
+    try:
+        return json.loads(Path(path).read_text() or "{}")
+    except (OSError, ValueError, TypeError):
+        return {}
+
+
+def witness_holds_now(dw, obs) -> "bool | None":
+    """Whether a done_when is ALREADY true on the current observation, when
+    the harness can read it off: True/False, or None when it cannot (an
+    unknown key, a bag hidden behind a menu, no map on screen). Bookkeeping
+    only — it evaluates the plan's own words against the run's own state."""
+    if not isinstance(dw, dict) or not dw or not isinstance(obs, dict):
+        return None
+    if "any_of" in dw:
+        vals = [witness_holds_now(b, obs) for b in (dw.get("any_of") or [])
+                if isinstance(b, dict)]
+        if any(v is True for v in vals):
+            return True
+        return None if (not vals or any(v is None for v in vals)) else False
+    bag = obs.get("bag")
+    # readable only in the overworld: with a box up the observation may
+    # carry an empty or missing bag (the status line once read "BAG 0/20 {}"
+    # at map=None with twenty kinds held)
+    bag_ok = isinstance(bag, dict) and obs.get("mode", "overworld") == "overworld"
+    flags = set(obs.get("flags") or [])
+    badges = set(obs.get("badges") or [])
+    out = []
+    for k, v in dw.items():
+        if k == "has_item":
+            if not bag_ok:
+                return None
+            want = (v if isinstance(v, dict) else {v: 1} if isinstance(v, str)
+                    else {str(i): 1 for i in (v or [])})
+            try:
+                out.append(all(int(bag.get(i, 0) or 0) >= int(n or 1)
+                               for i, n in want.items()))
+            except (TypeError, ValueError):
+                return None
+        elif k == "lacks_item":
+            if not bag_ok:
+                return None
+            items = (list(v.keys()) if isinstance(v, dict) else [v]
+                     if isinstance(v, str) else list(v or []))
+            out.append(all(int(bag.get(i, 0) or 0) <= 0 for i in items))
+        elif k == "bag_kinds_below":
+            if not bag_ok:
+                return None
+            try:
+                out.append(len(bag) < int(v))
+            except (TypeError, ValueError):
+                return None
+        elif k == "flag":
+            if not flags:
+                return None
+            out.append(str(v) in flags)
+        elif k == "badge":
+            if not badges:
+                return None
+            out.append(str(v) in badges)
+        elif k == "map":
+            mid = ((obs.get("map") or {}) or {}).get("id")
+            if obs.get("mode") != "overworld" or not mid:
+                return None
+            out.append(str(mid) == str(v))
+        else:
+            return None
+    return all(out) if out else None
+
+
+def witness_already_true_problems(plan: dict, obs: dict | None = None) -> list:
+    """A PLAN WHOSE OBJECTIVE IS TRUE BEFORE IT STARTS DOES NOTHING. The
+    bag leg's plan ended on {"has_item":{"POTION":3}} — meant as "sold one,
+    three left", true with four in the bag — so the executor's objective-
+    met-early rule finished the plan at step one and check-done found the
+    bag still full (2026-09-04). The chain caught it afterwards, at the cost
+    of the whole attempt. Caught here instead, as a validation problem the
+    author fixes in the same round. Silent when the witness cannot be read
+    off the current observation."""
+    subs = (plan or {}).get("subgoals") or []
+    if not subs:
+        return []
+    obs = _obs_now() if obs is None else obs
+    if not obs:
+        return []
+    last = subs[-1] or {}
+    dw = last.get("done_when")
+    if witness_holds_now(dw, obs) is True:
+        return [f"the OBJECTIVE ({last.get('id')}) done_when "
+                f"{json.dumps(dw)} ALREADY HOLDS where the run stands — a "
+                f"plan whose objective is true before it starts completes "
+                f"without doing the deed. Write a condition that only the "
+                f"deed makes true: a thing GONE (lacks_item), FEWER kinds in "
+                f"the bag (bag_kinds_below), a flag that fires, a place not "
+                f"yet stood in"]
+    return []
 
 
 def author(goal: str, model: str, rounds: int = 5,
@@ -1488,7 +1600,7 @@ def author(goal: str, model: str, rounds: int = 5,
         except json.JSONDecodeError as e:
             fb = f"invalid JSON: {e}"; continue
         normalize_items(plan)
-        probs = validate(plan)
+        probs = validate(plan) or witness_already_true_problems(plan)
         if not probs:
             # tag each subgoal so escalation/distillation runs it macro-less
             for s in plan["subgoals"]:
@@ -3091,7 +3203,7 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
         except json.JSONDecodeError:
             continue
         normalize_items(revised)
-        probs = validate(revised)
+        probs = validate(revised) or witness_already_true_problems(revised)
         if probs:
             print(f"[review] round {rnd} produced an invalid plan, keeping "
                   f"the previous one: {probs[0]}")
