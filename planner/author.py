@@ -6236,7 +6236,7 @@ def refund_insert_for(voided: str, inserts_path="run/outline_inserts") -> list:
     return freed
 
 
-def void_refused_why(goal: str, observed, plans_dir="plans") -> str:
+def void_refused_why(goal: str, observed, plans_dir="plans", why: str = "") -> str:
     """Why a VOID of this leg cannot be accepted, or ''.
 
     VOID is the model's verdict that a sentence describes nothing that is
@@ -6252,15 +6252,35 @@ def void_refused_why(goal: str, observed, plans_dir="plans") -> str:
     reword, done under another name) stay the model's.
     """
     pth = plan_path_for(goal, plans_dir)
-    if not pth:
-        return ""
-    unreached = sorted(plan_places_unreached(pth, observed))
-    if not unreached:
-        return ""
-    return (f"the plan you wrote for this leg aims at {', '.join(unreached)} — "
-            f"ground you have never stood in; nothing in your record says what "
-            f"is or is not there, so the leg cannot be struck out on that. "
-            f"The wording stands until that ground has been looked at.")
+    unreached = sorted(plan_places_unreached(pth, observed)) if pth else []
+    if unreached:
+        return (f"the plan you wrote for this leg aims at {', '.join(unreached)} — "
+                f"ground you have never stood in; nothing in your record says what "
+                f"is or is not there, so the leg cannot be struck out on that. "
+                f"The wording stands until that ground has been looked at.")
+    # ...AND A REASON THAT RESTS ON GROUND NEVER STOOD IN IS NO REASON. The
+    # third VOID of a Scope leg in one day (2026-09-04, ~16:40) came with a
+    # plan that aimed only at walked ground (Celadon, its Mansion), so the
+    # rule above was silent — and the reason was "it is obtained from the
+    # President of Silph Co. in Saffron City": a building the run has never
+    # stood in, whose one door its own record shows held by a Rocket. What
+    # is in a place never entered is not in the record either way; a leg
+    # cannot be struck out on it.
+    if why:
+        try:
+            o = json.loads(Path(observed).read_text() or "{}") if observed else {}
+            ids = set(_map_dims()) | set(_map_warps())
+        except Exception:
+            return ""
+        stood = {str(r).split("|")[0].upper()
+                 for r, n in (o.get("visits") or {}).items() if int(n or 0) > 0}
+        named = sorted(m for m in maps_named(why, ids) if m not in stood)
+        if named:
+            return (f"your reason rests on {named[0]} — ground you have never "
+                    f"stood in; nothing in your record says what is or is not "
+                    f"there, so the leg cannot be struck out on it. The wording "
+                    f"stands until that ground has been looked at.")
+    return ""
 
 
 def pull_into_unreached(text: str, plan_path, observed) -> str | None:
@@ -6634,7 +6654,7 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
     if (not new or new.lower() in ("none", "null")) and ans.get("void"):
         _no = ""
         try:
-            _no = void_refused_why(goal, observed)
+            _no = void_refused_why(goal, observed, why=why)
         except Exception:
             _no = ""
         if _no:

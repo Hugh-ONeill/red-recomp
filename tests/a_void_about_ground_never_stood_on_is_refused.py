@@ -60,8 +60,8 @@ with tempfile.TemporaryDirectory() as d:
 
 src = (ROOT / "planner" / "author.py").read_text()
 ck("the wording rung asks before it accepts a VOID",
-   '_no = void_refused_why(goal, observed)' in src
-   and src.index('_no = void_refused_why(goal, observed)') < src.index('WORDING_SAYS_VOID[0] = True'))
+   '_no = void_refused_why(goal, observed, why=why)' in src
+   and src.index('_no = void_refused_why(goal, observed, why=why)') < src.index('WORDING_SAYS_VOID[0] = True'))
 ck("...and says why, with the model's own reason kept", '[wording] VOID refused ({why}): {_no}' in src)
 
 # --- a void undoes the insert that produced the leg ---
