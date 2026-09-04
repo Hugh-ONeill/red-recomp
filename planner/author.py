@@ -6003,6 +6003,55 @@ def plan_places_unreached(plan_path, observed) -> set:
     return {m for m in aims if m not in stood}
 
 
+def plan_path_for(goal: str, plans_dir="plans") -> "Path | None":
+    """The highest-versioned plan written for this objective — the same
+    rule as find_plan.py (a plan belongs to an objective, not a slot)."""
+    want = re.sub(r"\s*\(a doubt you recorded when outlining:.*$", "",
+                  str(goal or "").strip())
+    best, bestv = None, -1
+    for pth in sorted(Path(plans_dir).glob("leg_*.json")):
+        try:
+            d = json.loads(pth.read_text())
+        except (OSError, ValueError):
+            continue
+        if not isinstance(d, dict) or not d.get("subgoals"):
+            continue
+        if str(d.get("goal") or "").strip() != want:
+            continue
+        m = re.search(r"\.v(\d+)\.json$", pth.name)
+        v = int(m.group(1)) if m else 0
+        if v > bestv:
+            best, bestv = pth, v
+    return best
+
+
+def void_refused_why(goal: str, observed, plans_dir="plans") -> str:
+    """Why a VOID of this leg cannot be accepted, or ''.
+
+    VOID is the model's verdict that a sentence describes nothing that is
+    there — the phantom HM08, the Pokemon to retrieve from a mart. It was
+    given twice in one day about the Silph Scope, in opposite directions
+    ("from the president of Silph Co. in Saffron", then "from Mr. Fuji in
+    Lavender Town, not from Celadon City"), each time striking a leg whose
+    own fresh plan aimed at GAME_CORNER and ROCKET_HIDEOUT — maps the run
+    had never stood in (2026-09-04). Nothing in the record can say what is
+    NOT in a place never entered. Same rule as the done-judge's
+    _never_stood_in: refusing a claim the ledger cannot support is not
+    judgment, it is not lying to yourself. The other answers (stands,
+    reword, done under another name) stay the model's.
+    """
+    pth = plan_path_for(goal, plans_dir)
+    if not pth:
+        return ""
+    unreached = sorted(plan_places_unreached(pth, observed))
+    if not unreached:
+        return ""
+    return (f"the plan you wrote for this leg aims at {', '.join(unreached)} — "
+            f"ground you have never stood in; nothing in your record says what "
+            f"is or is not there, so the leg cannot be struck out on that. "
+            f"The wording stands until that ground has been looked at.")
+
+
 def pull_into_unreached(text: str, plan_path, observed) -> str | None:
     """The place a candidate pull happens in, when it is one the stuck
     leg's own plan could not reach — or None.
@@ -6256,6 +6305,14 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
     new = str(ans.get("reword") or "").strip()
     why = str(ans.get("why") or "")[:160]
     if (not new or new.lower() in ("none", "null")) and ans.get("void"):
+        _no = ""
+        try:
+            _no = void_refused_why(goal, observed)
+        except Exception:
+            _no = ""
+        if _no:
+            print(f"[wording] VOID refused ({why}): {_no}", file=sys.stderr)
+            return ""
         print(f"[wording] VOID, by the model's own account: {why}",
               file=sys.stderr)
         WORDING_SAYS_VOID[0] = True
