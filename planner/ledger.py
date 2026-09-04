@@ -627,9 +627,12 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                           "other room is entered is NOT RECORDED. Some are "
                           "entered by their own door from OUTSIDE the "
                           "building; some are only entered from ANOTHER "
-                          "FLOOR, by stairs that land inside them or by a "
-                          "hole that drops you in. Which of those this is, "
-                          "this ledger does not know.")
+                          "FLOOR, by stairs that land inside them, by a "
+                          "hole that drops you in, or by a WARP PAD whose "
+                          "twin stands inside them — a pad is one of the "
+                          "things this page names when it is on screen. "
+                          "Which of those this is, this ledger does not "
+                          "know.")
     except (TypeError, ValueError):
         _pass = ""
     LAST_PASS_NOTE = _pass
