@@ -1794,6 +1794,27 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                 "count has risen the game is finished.")
     if "None" in str(here):
         _said = str(obs.get("recent_text") or obs.get("last_text") or "").strip()
+        # THE ROWS ON SCREEN ARE ON THE PAGE. At the Celadon roof machine
+        # the game window showed FRESH WATER / SODA POP / LEMONADE and
+        # this line said only "a box is up, saying: 'Hi there! May I help
+        # you?' ... tap b to close it" — and the run closed it, standing
+        # on the one thing its next step was for (2026-09-04, user: "the
+        # vending machine page is literally just a display of fresh water,
+        # lemonade, soda pop"). The rows, numbered as they read, and the op
+        # that picks one; which row, if any, is not said.
+        _ui = obs.get("ui") or {}
+        _rows = [str(r) for r in (_ui.get("rows") or []) if str(r).strip()]
+        if _rows:
+            _title = str(_ui.get("title") or "").strip()
+            return ("THE SCREEN IS NOT THE OVERWORLD RIGHT NOW — a LIST is up"
+                    + (f" ({_title})" if _title else "")
+                    + (f', under a box saying: "{_said[-120:]}"' if _said else "")
+                    + ". Its rows, as they read on screen: "
+                    + ", ".join(_rows)
+                    + ". {\"op\":\"menu\",\"index\":N} picks row N; "
+                      "{\"op\":\"tap\",\"btn\":\"b\"} closes it without "
+                      "picking. Where you stand and what is untried cannot "
+                      "be read until it closes; which row, if any, is yours.")
         return ("THE SCREEN IS NOT THE OVERWORLD RIGHT NOW"
                 + (f' — a box is up, saying: "{_said[-160:]}"' if _said else
                    " — a box, menu or transition is up")

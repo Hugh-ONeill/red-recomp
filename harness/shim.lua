@@ -2912,6 +2912,23 @@ local function observe(G, seq, result)
       end
       if #_ids > 0 then o.ui.stack = _ids end
     end
+    -- THE ROWS ON SCREEN ARE ON SCREEN. A counter's or a vending
+    -- machine's list is printed in the game window, and the observation
+    -- carried only the box over it ("Hi there! May I help you?") because
+    -- scalars() drops `items`. The run stood at the Celadon roof machine
+    -- with FRESH WATER on the first row, was told "a box is up ... tap b
+    -- to close it", and closed it (2026-09-04). Numbered as they read;
+    -- which row, if any, is not said.
+    if top.items and top.items[1] then
+      local _rows = {}
+      for i, r in ipairs(top.items) do
+        if i > 12 then break end
+        _rows[#_rows + 1] = ("%d=%s"):format(
+          i, tostring(r.label or r.value or "?"))
+      end
+      o.ui.rows = _rows
+      if top.title then o.ui.title = tostring(top.title) end
+    end
     -- IS THIS A QUESTION OR A MENU? scalars() copies only scalar fields, so
     -- a menu's `items` table never reaches the observation -- and the
     -- executor's "a cursor and no items means yes/no" test was therefore
