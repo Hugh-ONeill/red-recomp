@@ -10301,8 +10301,28 @@ function OPS.sweep(G, c)
         if x == W - 1 then edge.east = true end
       end
     end
+    -- AN EDGE IS NEWS ONCE. `until:door` counts a map's edge as a way out
+    -- (a seam never taken is door-class), and this fired every time one
+    -- more cell of an edge already on screen came into view: in Celadon
+    -- five sweeps asked for a door and stopped on "this map's edge to the
+    -- east/west", a side the run had seen the round before, a round each
+    -- (2026-09-04). A side is reported the FIRST time any cell of it is on
+    -- screen; extending along a known edge is not a sighting.
+    local edge_before = {}
+    for k, v in pairs(before or {}) do
+      if v == true then
+        local bx, by = k:match("^(-?%d+),(-?%d+)$")
+        bx, by = tonumber(bx), tonumber(by)
+        if bx and by then
+          if by == 0 then edge_before.north = true end
+          if by == H - 1 then edge_before.south = true end
+          if bx == 0 then edge_before.west = true end
+          if bx == W - 1 then edge_before.east = true end
+        end
+      end
+    end
     for d in pairs((ow.map.def and ow.map.def.connections) or {}) do
-      if edge[d] then
+      if edge[d] and not edge_before[d] then
         out[#out + 1] = { kind = "way", text = "this map's edge to the " .. d }
       end
     end
