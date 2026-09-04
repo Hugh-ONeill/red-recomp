@@ -17,6 +17,7 @@ model.
 Usage:
   leg_delta.py snap  run/leg_start.json          # before the leg runs
   leg_delta.py diff  run/leg_start.json          # after it fails
+  leg_delta.py moved run/attempt_yield "<leg>"   # exit 0 if its last campaign gained
 """
 from __future__ import annotations
 
@@ -78,6 +79,33 @@ def main() -> int:
     if mode == "snap":
         path.write_text(json.dumps(_state()))
         return 0
+    if mode == "moved":
+        # A LEG THAT IS STILL MOVING IS NOT STUCK. Exit 0 when the LAST real
+        # campaign of the named leg (argv[3]) recorded a gain in this ledger —
+        # levels, events, badges, items, new ground — else 1. Every ladder
+        # rung stood on "every party member is at least level 35" with Gloom
+        # and Dugtrio at 34, the campaign before it having raised them from
+        # 27 and 20, and the chain stopped (2026-09-04). Mechanical: whether
+        # the gain is worth another campaign is the chain's rule, not this.
+        leg = sys.argv[3] if len(sys.argv) > 3 else ""
+        try:
+            rows = [l.split("\t") for l in path.read_text().splitlines() if l.strip()]
+        except OSError:
+            return 1
+        last = None
+        for r in rows:
+            if len(r) >= 4 and r[0] == leg and not r[3].startswith("DISPOSED"):
+                try:
+                    if int(r[2]) <= 0:
+                        continue
+                except ValueError:
+                    continue
+                last = r[3]
+        if not last:
+            return 1
+        marks = ("levels gained", "events that fired", "badges earned",
+                 "items gained", "entered for the first time")
+        return 0 if any(m in last for m in marks) else 1
     try:
         before = json.loads(path.read_text())
     except Exception:

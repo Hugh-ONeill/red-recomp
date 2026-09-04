@@ -144,6 +144,7 @@ if [ "$done_legs" = 0 ]; then
         run/leg_audit_redo run/outline_upkeep_missed \
         run/outline_pushes run/outline_pullbacks \
         run/outline_pulls run/outline_pulls_failed \
+        run/outline_replays \
         run/attempt_yield run/attempt_start.json
   # ...AND THE LEG PLANS, WHICH ARE WRITTEN AGAINST A WORLD. The outline
   # is banked luck — an expensive list of objectives, kept on purpose —
@@ -901,6 +902,22 @@ while :; do
     # THE LAST WORD BEFORE STOPPING. Everything else has been spent; a
     # leg that cannot be done from here is what VOID exists to answer,
     # and the rung is the only thing that can say so.
+    # A LEG THAT IS STILL MOVING IS NOT STUCK. Every rung stood on "every
+    # party member is at least level 35" with Gloom and Dugtrio at 34 —
+    # the campaign just spent had raised them from 27 and 20 — and the
+    # chain stopped, one level from done (2026-09-04). When the last
+    # campaign's own yield shows gains (levels, events, items, new
+    # ground), the leg is run again, up to three replays per leg; the
+    # progress index is NOT advanced, so nothing is counted as done.
+    _rep=$(grep -cxF -- "$leg" run/outline_replays 2>/dev/null) || true
+    if [ "${_rep:-0}" -lt 3 ] \
+        && python planner/leg_delta.py moved run/attempt_yield "$leg"; then
+      echo "=== leg $i/${#LEGS[@]} not achieved, but its last campaign" \
+           "MOVED the world — running it again (replay $((_rep + 1))/3):" \
+           "$leg ===" >&2
+      printf '%s\n' "$leg" >> run/outline_replays
+      continue
+    fi
     if wording_rung "" last-word; then continue; fi
     echo "=== chain stopped at leg $i/${#LEGS[@]}: $leg ===" >&2
     exit 1
