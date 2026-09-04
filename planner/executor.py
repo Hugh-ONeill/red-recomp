@@ -6532,6 +6532,44 @@ class Executor:
             cur = land
         return None
 
+    def _shelf_note(self, plan_said, obs) -> str:
+        """An item the plan's WORDS named, at a counter the run has read that
+        has never listed it — said on the round that arrived there.
+
+        Standing at the Route 7 gate, told "Gee, I'm thirsty", the model
+        wrote "I need FRESH WATER. I will travel back to the nearest mart
+        (Cerulean Mart) to purchase it" and spent a 17-leg go on a shelf the
+        same page had, at 15% depth, as "read 12x, the same list every time"
+        (2026-09-04, user: "it just went from rt7 gate's thirsty guard to
+        ceru's mart looking for fresh water and ignoring celadon"). The
+        author's shelf rule (ab31be1) refuses a PLAN that ends on such a buy;
+        nothing said it to the walker in its own word. Sibling of
+        words-are-not-ops: the prose names the item, the record has the
+        shelf, and the two are put side by side where the party stands.
+        """
+        said = str(plan_said or "")
+        mid = str(((obs or {}).get("map") or {}).get("id") or "")
+        rows = (getattr(self, "_shelves", None) or {}).get(mid)
+        if not rows or not said:
+            return ""
+        words = _re.sub(r"[^A-Z0-9_ ]+", " ", said.upper()).split()
+        named = set()
+        for n in (1, 2, 3):
+            for i in range(len(words) - n + 1):
+                cand = "_".join(words[i:i + n])
+                if cand in _ITEM_IDS:
+                    named.add(cand)
+        missing = sorted(x for x in named if x not in set(rows))
+        if not missing:
+            return ""
+        reads = ((getattr(self, "_shelf_reads", None) or {}).get(mid) or {})
+        n = int(reads.get("n") or 0)
+        return (f"(You said {', '.join(missing)}, and the counter here has "
+                + (f"never listed it in {n} reading(s)" if n else "never listed it")
+                + f" — it sells {', '.join(rows)}, the same list every time. "
+                f"Nothing here says where it IS sold; only that it is not "
+                f"sold here.)")
+
     def _deed_note(self, macro, plan_said, trace) -> str:
         """The sentence for _deeds_named_not_done, or ''."""
         missed = self._deeds_named_not_done(macro, plan_said, trace)
@@ -14110,6 +14148,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _deed = ""
             if _deed:
                 trace = list(trace) + [_deed]
+            try:
+                _shelf = self._shelf_note(self._plan_said, self.settle() or obs)
+            except Exception:
+                _shelf = ""
+            if _shelf:
+                trace = list(trace) + [_shelf]
             if _trunc_note:
                 trace = list(trace) + [_trunc_note]
             else:
