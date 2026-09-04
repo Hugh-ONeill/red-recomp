@@ -6429,6 +6429,116 @@ class Executor:
                                                set()) | {key0})
         return None
 
+    def _shelf_hops(self, sm: str, obs) -> int | None:
+        """Walked legs from where the party stands to the nearest region of
+        map `sm` the run has stood in; None when no walked route."""
+        _hop = None
+        for _sr in (self.explored or {}):
+            if _sr.split("|")[0] != sm:
+                continue
+            _sp = self._route(self._where(obs), _sr)
+            if _sp is not None and (_hop is None or len(_sp) < _hop):
+                _hop = len(_sp)
+        return _hop
+
+    def _goal_on_a_shelf_words(self, sg, obs) -> str:
+        """WHAT THIS STEP IS FOR, WHERE THE RUN HAS ALREADY SEEN IT ON SALE.
+
+        The step was "Buy Fresh Water" (has_item FRESH_WATER); the shops
+        line, further down the same page, opened with "CELADON_MART_ROOF
+        (VENDING MACHINES, pressed and picked from, not bought at), 2
+        walked leg(s) away: FRESH_WATER, SODA_POP, LEMONADE" — and the run
+        rode the lift to 3F to search the TV Game Shop (2026-09-04, user:
+        "so it literally has the information that fresh water comes from
+        the vending machines on the roof"). Two facts the harness held on
+        one page and never put side by side: the step's own item, and the
+        shelf the run itself read it on. Said once, at the top, with the
+        walk and the op — both mechanics. Nothing here says it is the only
+        place, or that the item is worth buying."""
+        dw = (sg or {}).get("done_when") if isinstance(sg, dict) else None
+        want = dw.get("has_item") if isinstance(dw, dict) else None
+        if not isinstance(want, dict) or not want:
+            return ""
+        bag = (obs or {}).get("bag") or {}
+        shelves = getattr(self, "_shelves", None) or {}
+        mach = getattr(self, "_shelf_machine", None) or set()
+        reads = getattr(self, "_shelf_reads", None) or {}
+        parts = []
+        for item, n in want.items():
+            try:
+                need = int(n or 1)
+            except (TypeError, ValueError):
+                need = 1
+            if (bag.get(item) or 0) >= need:
+                continue
+            where = [sm for sm, rows in shelves.items() if item in (rows or [])]
+            if not where:
+                continue
+            bits = []
+            for sm in sorted(where):
+                hop = self._shelf_hops(sm, obs)
+                far = (f"{hop} walked leg(s) away" if hop is not None
+                       else "no walked route from here")
+                how = ("vending machines — press one, then "
+                       "{\"op\":\"menu\",\"index\":N} picks the row"
+                       if sm in mach else
+                       "a counter — {\"op\":\"buy\",\"item\":\"" + item
+                       + "\",\"count\":1}")
+                rn = int((reads.get(sm) or {}).get("n") or 0)
+                bits.append(
+                    f"{sm} ({how}; read {rn}x), {far}"
+                    + (f" — {{\"op\":\"go\",\"to\":\"{sm}\"}} walks there over "
+                       f"ground you have walked" if hop is not None else ""))
+            parts.append(f"{item}: " + "; ".join(bits))
+        if not parts:
+            return ""
+        return ("WHAT THIS STEP IS FOR HAS BEEN SEEN ON SALE, in your own "
+                "record of the shelves you have read — "
+                + " | ".join(parts)
+                + ". Nothing here says it is the only place, or that it is "
+                  "worth the money.\n")
+
+    _FLOOR_SUFFIX = r"_(?:B?\d+F|ROOF|ELEVATOR)$"
+
+    def _building_directory_words(self, obs) -> str:
+        """A SIGN ABOUT THE WHOLE BUILDING RIDES EVERY FLOOR OF IT.
+
+        The run read the Celadon department store's directory on 1F —
+        "... 5F: DRUG STORE ROOFTOP SQUARE: VENDING MACHINES" — and the
+        hint sat under CELADON_MART_1F|1,1, shown only while it stood
+        there. On 5F, in the lift, on 3F, the page carried the lift panel
+        ("1F, 2F, 3F, 4F, 5F") and nothing about a roof; the run wrote "1F,
+        2F, 3F, 5F checked, 4F is the only floor left" and rode the lift
+        (2026-09-04). Its own reading, repeated where it applies; which
+        floor to go to is not said."""
+        mid = str(((obs or {}).get("map") or {}).get("id") or "")
+        mm = _re.match(r"^(.*?)" + self._FLOOR_SUFFIX, mid)
+        if not mm:
+            return ""
+        bld = mm.group(1)
+        hints = getattr(self, "hints", None) or {}
+        here = self._where(obs)
+        own = set(hints.get(here) or [])
+        out = []
+        for area, lines in hints.items():
+            am = str(area).split("|")[0]
+            if am != bld and not _re.match(
+                    r"^" + _re.escape(bld) + self._FLOOR_SUFFIX, am):
+                continue
+            for h in lines or []:
+                h = str(h)
+                if h in own or any(h == x for _, x in out):
+                    continue
+                if len(_re.findall(r"\b(?:B?\d+F|ROOF\w*(?:\s+SQUARE)?):",
+                                   h)) >= 2:
+                    out.append((am, h))
+        if not out:
+            return ""
+        return ("THIS BUILDING'S OWN DIRECTORY, as you read it "
+                + "; ".join(f"on {am}: {h}" for am, h in out[:2])
+                + ". A directory lists the floors the BUILDING has; a lift's "
+                  "panel lists the floors the LIFT serves.\n")
+
     # WORDS ARE NOT A LIFTS ENTRY. Eight rounds in a row the plan said "a
     # Ghost blocks the path to the 7th floor on the 6th floor and I need the
     # Silph Scope", and every one of those rounds the row for that door read
@@ -10364,8 +10474,10 @@ class Executor:
                     "SHOPS YOU HAVE WALKED INTO AND WHAT THEY WERE SELLING: "
                     + "; ".join(
                         f"{_sm}"
-                        + (" (VENDING MACHINES, pressed and picked from, "
-                           "not bought at)" if _sm in _mach else "")
+                        + (" (VENDING MACHINES — no clerk: press one, then "
+                           "{\"op\":\"menu\",\"index\":N} picks the row; "
+                           "a sweep presses and chooses nothing)"
+                           if _sm in _mach else "")
                         + (f", {_h} walked leg(s) away" if _h < 99
                            else ", no walked route from here")
                         + ": " + ", ".join(_it[:10]) + _seen_note(_sm)
@@ -10422,6 +10534,14 @@ class Executor:
                             f"(box {m.get('box')}, #{m.get('index')})"
                             for m in _boxed[:8])
                 + ".\n") + _rs_line
+        # WHAT THIS STEP IS FOR, WHERE THE RUN HAS SEEN IT ON SALE; and the
+        # building's own directory. Both are the run's record; see the
+        # methods. Prepended last so they read first in this section.
+        try:
+            _rs_line = (self._building_directory_words(obs)
+                        + self._goal_on_a_shelf_words(sg, obs) + _rs_line)
+        except Exception as _e:      # a page must never die of this
+            self.log("shelf_goal_error", err=str(_e)[:120])
         # THE SAFARI CLOCK, while it is running: steps left and balls left
         # are both on screen in the game and neither was ever said.
         _sf = (obs or {}).get("safari") or {}

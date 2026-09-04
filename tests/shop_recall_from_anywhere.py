@@ -30,7 +30,7 @@ ck("ordered by walked legs, and it says how far",
 ck("a shop with no walked route says so rather than being dropped",
    "no walked route from here" in blk)
 ck("a machine is distinguished from a counter",
-   "VENDING MACHINES, pressed and picked from" in blk
+   "VENDING MACHINES — no clerk: press one" in blk
    and '_shelf_machine' in blk)
 ck("it says which op each kind takes",
    '{\\"op\\":\\"buy\\"}' in blk and "a row picked" in blk)
