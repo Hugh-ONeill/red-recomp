@@ -6369,9 +6369,16 @@ def held_doors_into(named: set, o: dict) -> "str | None":
             dest = str(dest or "").upper()
             if dest not in named:
                 continue
+            # a door is HELD only when a NAMED person stands on it — a bush
+            # or a boulder in the way wrote "(None is standing there)", and
+            # that is not somebody to move (2026-09-04, fifteen Erika plans
+            # refused over the Celadon Gym's bush)
             notes = [str(sx) for reg, lst in shut.items()
                      if str(reg).split("|")[0] == m
-                     for sx in (lst or []) if str(sx).startswith(str(key) + " ")]
+                     for sx in (lst or [])
+                     if str(sx).startswith(str(key) + " ")
+                     and re.search(r"\(([A-Z][A-Z0-9_]+) is standing there\)", str(sx))
+                     and not re.search(r"\(NONE is standing there\)", str(sx).upper())]
             if notes:
                 held.append(f"{m} door {notes[0]} -> {dest}")
             else:

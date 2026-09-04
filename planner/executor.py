@@ -4205,7 +4205,15 @@ class Executor:
         # anyone its far side. "(4,11)->CERULEAN_CAVE_1F" is the ROM talking,
         # and it is pointing — the one thing the rule forbids. Report the
         # doorway; let walking through it be how the far side is learned.
-        shut = sorted(f"{k} ({who} is standing there)"
+        # ...AND "None is standing there" IS NOT A PERSON. The Celadon Gym's
+        # door is shut by a bush, not a body, and the note read "(None is
+        # standing there)" — which the plan author's held-door rule then
+        # counted as a posted guard and refused every Erika plan for
+        # fifteen rounds (2026-09-04). Say what the record knows: blocked,
+        # and by nobody.
+        shut = sorted((f"{k} ({who} is standing there)" if who
+                       else f"{k} (the way onto it is blocked; nobody is "
+                            f"standing there)")
                       for k, _dest, who in self._unopened_doors(obs))
         if shut:
             if self.shut_doors.get(here) != shut:

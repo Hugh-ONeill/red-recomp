@@ -25,9 +25,9 @@ checks = []
 def ck(n, ok, d=""): checks.append((n, bool(ok), d))
 
 REC = {"visits": {"SAFFRON_CITY|12,0": 10, "CELADON_CITY|2,1": 30, "GAME_CORNER|8,5": 3},
-       "door_dests": {"SAFFRON_CITY": {"18,21": "SILPH_CO_1F", "34,3": "SAFFRON_GYM", "26,3": "FIGHTING_DOJO", "9,29": "SAFFRON_POKECENTER"},
+       "door_dests": {"CELADON_CITY": {"12,27": "CELADON_GYM"}, "SAFFRON_CITY": {"18,21": "SILPH_CO_1F", "34,3": "SAFFRON_GYM", "26,3": "FIGHTING_DOJO", "9,29": "SAFFRON_POKECENTER"},
                       "GAME_CORNER": {"17,4": "ROCKET_HIDEOUT_B1F"}},
-       "shut_doors": {"SAFFRON_CITY|12,0": ["18,21 (SAFFRONCITY_ROCKET8 is standing there)",
+       "shut_doors": {"CELADON_CITY|2,1": ["12,27 (None is standing there)"], "SAFFRON_CITY|12,0": ["18,21 (SAFFRONCITY_ROCKET8 is standing there)",
                                             "34,3 (SAFFRONCITY_ROCKET3 is standing there)"]}}
 with tempfile.TemporaryDirectory() as d:
     obs = Path(d) / "explored.json"; obs.write_text(json.dumps(REC))
@@ -36,6 +36,8 @@ with tempfile.TemporaryDirectory() as d:
        got is not None and "SILPH_CO_1F" in got and "SAFFRONCITY_ROCKET8 is standing there" in got, got)
     got = A.pull_into_held("Defeat Sabrina at the Saffron Gym", obs)
     ck("...the Gym likewise", got is not None and "SAFFRON_GYM" in got and "ROCKET3" in got, got)
+    got = A.pull_into_held("Defeat Erika at the Celadon Gym", obs)
+    ck("a door blocked by nobody is not held: the Gym pull is the model's call", got is None, got)
     got = A.pull_into_held("Clear the Rocket Hideout", obs)
     ck("a building never stood in whose door nobody holds is left to the model", got is None, got)
     got = A.pull_into_held("Defeat the Karate Master in the Fighting Dojo", obs)

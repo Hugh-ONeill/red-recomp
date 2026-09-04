@@ -22,9 +22,9 @@ checks = []
 def ck(n, ok, d=""): checks.append((n, bool(ok), d))
 
 REC = {"visits": {"SAFFRON_CITY|12,0": 10, "CELADON_CITY|2,1": 30, "ROCKET_HIDEOUT_B4F|17,1": 5},
-       "door_dests": {"SAFFRON_CITY": {"18,21": "SILPH_CO_1F", "34,3": "SAFFRON_GYM", "26,3": "FIGHTING_DOJO"},
+       "door_dests": {"CELADON_CITY": {"12,27": "CELADON_GYM"}, "SAFFRON_CITY": {"18,21": "SILPH_CO_1F", "34,3": "SAFFRON_GYM", "26,3": "FIGHTING_DOJO"},
                       "GAME_CORNER": {"17,4": "ROCKET_HIDEOUT_B1F"}},
-       "shut_doors": {"SAFFRON_CITY|12,0": ["18,21 (SAFFRONCITY_ROCKET8 is standing there)",
+       "shut_doors": {"CELADON_CITY|2,1": ["12,27 (None is standing there)"], "SAFFRON_CITY|12,0": ["18,21 (SAFFRONCITY_ROCKET8 is standing there)",
                                             "34,3 (SAFFRONCITY_ROCKET3 is standing there)"]}}
 SILPH = {"subgoals": [
     {"id": "exit_rocket_hideout", "done_when": {"map": "ROCKET_HIDEOUT_ELEVATOR"}},
@@ -45,6 +45,8 @@ with tempfile.TemporaryDirectory() as d:
     ck("a step into the held building AFTER a deed is the model's call", A.held_step_problems(after_deed, obs) == [])
     gym = {"subgoals": [{"id": "gym", "done_when": {"area": "SAFFRON_GYM|0,0"}}]}
     ck("an area predicate is read the same way", A.held_step_problems(gym, obs) != [])
+    gym = {"subgoals": [{"id": "gym", "done_when": {"map": "CELADON_GYM"}}]}
+    ck("a door blocked by nobody — a bush's '(None is standing there)' — is not a held door", A.held_step_problems(gym, obs) == [], A.held_step_problems(gym, obs))
     dojo = {"subgoals": [{"id": "dojo", "done_when": {"map": "FIGHTING_DOJO"}}]}
     ck("a building whose door nobody holds passes", A.held_step_problems(dojo, obs) == [])
     hideout = {"subgoals": [{"id": "h", "done_when": {"map": "ROCKET_HIDEOUT_B1F"}}]}
