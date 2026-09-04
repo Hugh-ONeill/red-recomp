@@ -1739,6 +1739,37 @@ def no_edge_words(m: dict) -> str:
     return "no edges; the doors are the only ways out"
 
 
+def printed_roads_words(map_id: str, seen_sides, unseen_sides, edges: dict) -> str:
+    """What the TOWN MAP in the bag draws for the map you stand on, side by
+    side, each marked seen or never on screen.
+
+    THE FOOTPRINT WAS STRICTER THAN THE GAME. A seam is listed only once a
+    cell of its side has been on screen — right, for ground — but the
+    printed map in the bag names a map's roads whether or not you have
+    looked that way, and the page said nothing of them for the map you
+    stood on. On Route 7 the head read "no edge of this map has been on
+    screen yet (north, west, east never looked at)"; the model went for the
+    gate east, was told the guard was thirsty, and formed "Celadon is past
+    the thirsty guard" — with Celadon one seam WEST, drawn on the map it
+    held, never mentioned (2026-09-04, user: "its already been on the other
+    side via the underground path"). The layout of a held map is the
+    holder's to read; which roads are open stays what walking finds.
+    """
+    roads = (edges or {}).get(str(map_id)) or {}
+    if not roads:
+        return ""
+    seen = {str(x) for x in (seen_sides or [])}
+    unseen = {str(x) for x in (unseen_sides or [])}
+    parts = []
+    for d, nb in sorted(roads.items()):
+        tag = ("seen" if d in seen else
+               "that side never on screen" if d in unseen else "")
+        parts.append(f"{d} -> {nb}" + (f" ({tag})" if tag else ""))
+    return (" The printed map you hold draws this map's roads: "
+            + ", ".join(parts)
+            + ". The map draws the LAYOUT, not which roads are open.")
+
+
 def render(cands: list[Candidate], ex, obs: dict, target: str = "",
            limit: int = 24) -> str:
     """The ledger as the model reads it: numbered, local, ranked, bounded.
@@ -1792,6 +1823,18 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                     if _unseen_sides else " and nowhere else"))
     if been:
         head += f"; you have been in this exact area {been}x"
+    # ...AND WHAT THE PRINTED MAP DRAWS FOR THIS MAP, while it is held.
+    # (the executor runs as __main__, so its module is found through the
+    # executor object, never by the name "executor" — the first cut looked
+    # it up by name and the line never rendered)
+    try:
+        import sys as _sys
+        _E = _sys.modules.get(type(ex).__module__)
+        if _E is not None and ex._holding_town_map(obs):
+            head += printed_roads_words(m.get("id"), sides, _unseen_sides,
+                                        getattr(_E, "MAP_EDGES", {}) or {})
+    except Exception:
+        pass
     # UNSEEN GROUND IS SAID IN THE HEAD LINE, not only at the foot of the
     # page (executor coverage_text): the first-listed thing is taken 54%
     # of the time, and a page that opened "FULLY WORKED" over a floor with
