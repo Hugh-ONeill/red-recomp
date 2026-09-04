@@ -5834,8 +5834,17 @@ class Executor:
             for _hop, _m, _wl, _per in rows[:12]:
                 _lv = (f"L{_wl['lo']}" if _wl["lo"] == _wl["hi"]
                        else f"L{_wl['lo']}-L{_wl['hi']}")
+                # ...AND WHO LIVES THERE. The row said levels and exp and
+                # never species, so a catch or type gate read "ROUTE_11
+                # L9-L17 in 217 battle(s)" with fifty Drowzee behind the
+                # number (2026-09-04, user: "drowzee was also right there").
+                # The run's own tally; what a species is stays the read.
+                _sp = sorted(((getattr(self, "_offered", {}) or {}).get(_m)
+                              or {}).items(), key=lambda kv: -int(kv[1] or 0))
+                _who = ", ".join(str(k) for k, _ in _sp[:3])
                 _bits.append(
                     f"{_m} {_lv} in {_wl['n']} battle(s)"
+                    + (f" ({_who})" if _who else "")
                     + (f", {_per} exp per grind over "
                        f"{int(((self._grind_exp or {}).get(_m) or {})['n'])} "
                        f"grind(s)" if _per is not None else "")
