@@ -6025,6 +6025,34 @@ def plan_path_for(goal: str, plans_dir="plans") -> "Path | None":
     return best
 
 
+def refund_insert_for(voided: str, inserts_path="run/outline_inserts") -> list:
+    """Drop the insert rows whose inserted leg is `voided`; return the legs
+    that get their missing-rung ask back.
+
+    The missing rung is ONE ask per objective, counted from run/outline_inserts
+    ("LEG=<dependent>|<inserted>"). The Flute leg spent its ask on "Obtain the
+    Silph Scope from Celadon City"; the wording rung then VOIDed that leg, and
+    the row stayed — so the Flute leg had bought nothing and could never ask
+    again (2026-09-04). A void undoes the insert; the ledger should say so.
+    """
+    pth = Path(inserts_path)
+    try:
+        rows = pth.read_text().splitlines()
+    except OSError:
+        return []
+    keep, freed = [], []
+    for row in rows:
+        if row.startswith("LEG=") and "|" in row:
+            dep, _, ins = row[4:].partition("|")
+            if _norm_obj(ins.strip()) == _norm_obj(str(voided).strip()):
+                freed.append(dep.strip())
+                continue
+        keep.append(row)
+    if freed:
+        pth.write_text("".join(r + "\n" for r in keep))
+    return freed
+
+
 def void_refused_why(goal: str, observed, plans_dir="plans") -> str:
     """Why a VOID of this leg cannot be accepted, or ''.
 
@@ -6320,6 +6348,13 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
             with open("run/outline_void", "a") as fh:
                 fh.write(f"{goal}\t{why}\n")
         except OSError:
+            pass
+        try:
+            for _dep in refund_insert_for(goal):
+                print(f"[wording] the insert that produced this leg is undone "
+                      f"with it: {_dep!r} may ask the missing rung again",
+                      file=sys.stderr)
+        except Exception:
             pass
         return ""
     if not new or new.lower() in ("none", "null"):

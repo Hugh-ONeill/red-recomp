@@ -64,6 +64,18 @@ ck("the wording rung asks before it accepts a VOID",
    and src.index('_no = void_refused_why(goal, observed)') < src.index('WORDING_SAYS_VOID[0] = True'))
 ck("...and says why, with the model's own reason kept", '[wording] VOID refused ({why}): {_no}' in src)
 
+# --- a void undoes the insert that produced the leg ---
+with tempfile.TemporaryDirectory() as d2:
+    ins = Path(d2) / "outline_inserts"
+    ins.write_text("LEG=Cleanse the Pokemon Tower|Speak with Mr. Fuji\n"
+                   "LEG=Retrieve the Pokemon Flute from Mr. Fuji|Obtain the Silph Scope from Celadon City\n")
+    freed = A.refund_insert_for("Obtain the Silph Scope from Celadon City", ins)
+    ck("voiding an inserted leg refunds the ask to the leg it was inserted for",
+       freed == ["Retrieve the Pokemon Flute from Mr. Fuji"], freed)
+    ck("...and the other rows stand", ins.read_text() == "LEG=Cleanse the Pokemon Tower|Speak with Mr. Fuji\n")
+    ck("voiding a leg nobody inserted refunds nothing", A.refund_insert_for("Reach Fuchsia City", ins) == [])
+src2 = (ROOT / "planner" / "author.py").read_text()
+ck("the wording rung refunds on the VOID it accepts", "for _dep in refund_insert_for(goal):" in src2)
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, dd in checks:
     print(("ok  " if ok else "FAIL"), n)
