@@ -13507,10 +13507,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         spent, rnd, chat_fails = 0, 0, 0
         redo_from = self._pos(self.settle()) if redo else None
         pardon = False        # one free revisit after a blackout (recovery)
+        _fresh_bonus = 0      # rounds the cap moves out for new ground (see below)
         visits: dict = {}     # round-end maps: re-entering one = circling
         _visit_marks: dict = {}   # ...and the world mark on the FIRST visit,
                                   # so a shuttle can be told it bought nothing
-        while spent < rounds and rnd < rounds * 3:
+        while spent < rounds and rnd < rounds * 3 + _fresh_bonus:
             if getattr(self, "finished", False):
                 self.log("escalate_finished", subgoal=sg.get("id"))
                 return True, []
@@ -15134,6 +15135,28 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # bought nothing. Still a count, not a command.
                 _mk_here = str(getattr(self, "_mark_now", None))
                 _first_mk = _visit_marks.setdefault(sig1[0], _mk_here)
+                # THE ROUND THAT FINDS NEW GROUND IS NOT THE LAST. Round 12
+                # of 12 (rounds*3, the hard cap) took the untried 5F stairs
+                # onto CELADON_MART_ROOF — the first time this run stood
+                # there, the machines holding the step's own item a few
+                # cells away — and the cap ended the step on that round.
+                # The plan backtracked to "exit the store" and the run
+                # walked down past them (2026-09-04). A round that lands
+                # the party on ground it has never stood on, when the cap
+                # would otherwise end the step, moves the cap out by one;
+                # twice per step at most. A count, not a command: what to
+                # do with the round is the model's.
+                if (visits[sig1[0]] == 1 and _fresh_bonus < 2
+                        and rnd >= rounds * 3 + _fresh_bonus
+                        and (getattr(self, "visits", {}) or {})
+                        .get(here_now, 0) <= 1):
+                    _fresh_bonus += 1
+                    self.log("round_for_new_ground", subgoal=sg["id"],
+                             round=rnd, at=here_now)
+                    trace.append(
+                        f"(this round put you on ground you had never stood "
+                        f"on — {here_now}; this step gets one more round "
+                        f"for it)")
                 if visits[sig1[0]] >= 2:
                     spent += 1   # back on a map already visited: circling
                     mover = next((s for s in reversed(clean)
