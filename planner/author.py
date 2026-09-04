@@ -4855,6 +4855,15 @@ def check_blocker(goal: str, ahead: list, start: str, journal: str,
               f"needs the same ground is not what unblocks it",
               file=sys.stderr)
         return None
+    # ...AND A LEG BEHIND A DOOR SOMEBODY IS STANDING ON. See pull_into_held.
+    _held = pull_into_held(text, observed) if observed else None
+    if _held:
+        print(f"[blocker] refused: leg {n} happens in a building you have "
+              f"never stood in, and the last time you stood by its door "
+              f"somebody was standing on it — {_held}. A leg behind a held "
+              f"door is not what moves them: name what does, or another "
+              f"blocker", file=sys.stderr)
+        return None
     if not confirm_blocker(goal, n, text, gap, start, journal, model,
                            held=held):
         return None
@@ -6175,6 +6184,59 @@ def pull_into_unreached(text: str, plan_path, observed) -> str | None:
         return hit[0]
     inside = sorted(named & rooms_of(unreached))   # a room OF the place
     return inside[0] if inside else None
+
+
+def pull_into_held(text: str, observed) -> str | None:
+    """A pull into a building the run has never stood in, every known door
+    of which had somebody standing on it the last time the run stood beside
+    it — said in the run's own record — or None.
+
+    THE PULL BEHIND A HELD DOOR. The Rescue leg was judged stuck behind
+    "Defeat the Silph Co. guards to reach the President" ("the Silph Scope
+    is obtained from the President of Silph" — the model's fact, wrong),
+    and the pull went through: pull_into_unreached guards only the circle
+    drawn by the stuck leg's OWN plan, and that plan aimed at the tower.
+    Yet the record held both halves: door_dests says SAFFRON_CITY 18,21 is
+    the door into SILPH_CO_1F, and shut_doors says the last time the run
+    stood there "SAFFRONCITY_ROCKET8 is standing there" — it had walked up,
+    been told so, spoken to him ("Get out of the way!"), and left
+    (2026-09-04). A leg that happens behind a door somebody is standing
+    on is not what moves them. Refuses only what the record shows: a
+    place with any door not so held, or never seen, is left to the model.
+    """
+    try:
+        o = json.loads(Path(observed).read_text() or "{}") if observed else {}
+    except (OSError, ValueError, TypeError):
+        return None
+    try:
+        ids = set(_map_dims()) | set(_map_warps())
+    except Exception:
+        return None
+    stood = {str(r).split("|")[0].upper()
+             for r, n in (o.get("visits") or {}).items() if int(n or 0) > 0}
+    named = {m for m in maps_named(text, ids) if m not in stood}
+    if not named:
+        return None
+    dd = o.get("door_dests") or {}
+    shut = o.get("shut_doors") or {}
+    held, open_door = [], False
+    for m, doors in dd.items():
+        if not isinstance(doors, dict):
+            continue
+        for key, dest in doors.items():
+            dest = str(dest or "").upper()
+            if dest not in named:
+                continue
+            notes = [str(sx) for reg, lst in shut.items()
+                     if str(reg).split("|")[0] == m
+                     for sx in (lst or []) if str(sx).startswith(str(key) + " ")]
+            if notes:
+                held.append(f"{m} door {notes[0]} -> {dest}")
+            else:
+                open_door = True
+    if held and not open_door:
+        return "; ".join(held[:2])
+    return None
 
 
 def maps_named(goal: str, map_ids) -> list:
