@@ -1766,6 +1766,45 @@ def _looks_like_item_name(name: str) -> bool:
     return any("_".join(parts[i:]) in _ITEM_IDS for i in range(1, len(parts)))
 
 
+def wild_met_text(d: dict, cap_maps: int = 12, cap_species: int = 6) -> str:
+    """WHAT THE WILD GROUND THE RUN HAS FOUGHT ON OFFERED, by map. The
+    executor has tallied every wild encounter by species and map since
+    08-24 (the `offered` ledger: ROUTE_24 ODDISH 202, KAKUNA 172, PIDGEY
+    165, WEEDLE 158, ABRA 117; ROUTE_11 SPEAROW 89, EKANS 78, DROWZEE 50)
+    and said it on the page while grinding — and never to the plan author.
+    So "the party holds a PSYCHIC or GROUND type" was planned as a walk
+    into a cave named for a Ground type, a level-16 Diglett, while the run
+    had fought fifty Drowzee on Route 11 and a hundred Abra on Route 24
+    (2026-09-04, user: "drowzee was also right there"). The run's own
+    fights, read back, with the level band it met there; what a species
+    IS, and whether it serves a goal, stays the model's."""
+    off = d.get("offered") or {}
+    if not isinstance(off, dict) or not off:
+        return ""
+    wl = d.get("wild_lv") or {}
+    rows = []
+    for m, book in off.items():
+        if not isinstance(book, dict) or not book:
+            continue
+        tot = sum(int(n or 0) for n in book.values())
+        if tot <= 0:
+            continue
+        top = sorted(book.items(), key=lambda kv: (-int(kv[1] or 0), kv[0]))[:cap_species]
+        lv = wl.get(m) or {}
+        band = (f", levels {lv.get('lo')}-{lv.get('hi')}"
+                if isinstance(lv, dict) and lv.get("lo") is not None else "")
+        rows.append((tot, f"  {m} ({tot} wild fight(s){band}): "
+                          + ", ".join(f"{sp} x{n}" for sp, n in top)))
+    if not rows:
+        return ""
+    rows.sort(key=lambda r: -r[0])
+    return ("\n\nWILD POKEMON THIS RUN HAS FOUGHT, by map — what the grass, "
+            "caves and water it has stood on actually offered, counted from "
+            "its own battles. Ground it has not fought on is not listed and "
+            "nothing is claimed about it:\n"
+            + "\n".join(r for _, r in rows[:cap_maps]))
+
+
 def observed_text(path: Path) -> str:
     """What earlier runs actually WALKED, as evidence for the audit.
 
@@ -2311,6 +2350,7 @@ def observed_text(path: Path) -> str:
                     "is not on its list has already failed. Counters the "
                     "run has never stood at are not listed and nothing is "
                     "claimed about them:\n" + "\n".join(_rows[:10]))
+    out += wild_met_text(d)
     # Nearness = the maps the run has spent the most time in, which is
     # where it is and where it keeps returning. Mechanical, not a judgment
     # about what matters.
