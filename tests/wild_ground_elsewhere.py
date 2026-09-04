@@ -39,6 +39,8 @@ class S:
 
 
 S._wild_elsewhere_note = E.Executor._wild_elsewhere_note
+S._wild_elsewhere_fought_note = E.Executor._wild_elsewhere_fought_note
+S._wild_never_fought_note = E.Executor._wild_never_fought_note
 note = S()._wild_elsewhere_note("ROUTE_22", {"map": {"id": "ROUTE_22"}})
 
 ck("names another map's wild levels", "POKEMON_MANSION_B1F L34-L39" in note)

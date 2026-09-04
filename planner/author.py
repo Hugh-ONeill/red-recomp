@@ -1779,8 +1779,8 @@ def wild_met_text(d: dict, cap_maps: int = 12, cap_species: int = 6) -> str:
     fights, read back, with the level band it met there; what a species
     IS, and whether it serves a goal, stays the model's."""
     off = d.get("offered") or {}
-    if not isinstance(off, dict) or not off:
-        return ""
+    if not isinstance(off, dict):
+        off = {}
     wl = d.get("wild_lv") or {}
     rows = []
     for m, book in off.items():
@@ -1795,14 +1795,28 @@ def wild_met_text(d: dict, cap_maps: int = 12, cap_species: int = 6) -> str:
                 if isinstance(lv, dict) and lv.get("lo") is not None else "")
         rows.append((tot, f"  {m} ({tot} wild fight(s){band}): "
                           + ", ".join(f"{sp} x{n}" for sp, n in top)))
+    ws = d.get("wild_seen") or {}
+    never = []
+    for m, c in (ws.items() if isinstance(ws, dict) else []):
+        if m in off or not isinstance(c, dict):
+            continue
+        g, cv = int(c.get("grass") or 0), int(c.get("cave") or 0)
+        if g <= 0 and cv <= 0:
+            continue
+        never.append((g + cv, f"{m} ({g} grass cell(s)" + (f", {cv} cave-floor cell(s)" if cv else "") + " seen)"))
+    never.sort(key=lambda r: -r[0])
+    tail = ("\n\nWALKED GROUND WITH WILD GRASS OR CAVE FLOOR THE RUN HAS NEVER "
+            "FOUGHT ON — who lives there, and at what level, is not known; one "
+            "grind there is how that is learned: "
+            + "; ".join(r for _, r in never[:10])) if never else ""
     if not rows:
-        return ""
+        return tail
     rows.sort(key=lambda r: -r[0])
     return ("\n\nWILD POKEMON THIS RUN HAS FOUGHT, by map — what the grass, "
             "caves and water it has stood on actually offered, counted from "
             "its own battles. Ground it has not fought on is not listed and "
             "nothing is claimed about it:\n"
-            + "\n".join(r for _, r in rows[:cap_maps]))
+            + "\n".join(r for _, r in rows[:cap_maps]) + tail)
 
 
 def observed_text(path: Path) -> str:

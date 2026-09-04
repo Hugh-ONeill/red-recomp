@@ -938,6 +938,34 @@ local function seen_filter(G, o)
     end
   end
   m.seen = { n = mask.n or 0, frontier_n = #front, frontier_map_n = fmap }
+  -- WILD GROUND IN THE FOOTPRINT, COUNTED. Grass tiles are drawn on the
+  -- screen and a cave floor is a cave floor; the run's ledger of wild
+  -- ground only ever held maps it had FOUGHT on, so a grind step saw
+  -- levels and species for those and nothing at all for grass it had
+  -- walked past without a battle (2026-09-04, user: "there are other
+  -- spots that would be better for grinding but it hasnt grinded in those
+  -- spots yet so it doesnt have the evidence"). Count what has been on
+  -- screen: grass cells outdoors, walkable floor in a CAVERN. Who lives
+  -- there, and at what level, is still learned only by fighting.
+  do
+    local g, cv = 0, 0
+    local _lm = ow and ow.map
+    local _ts = _lm and _lm.def and _lm.def.tileset
+    if _lm and _lm.isGrassCell then
+      for k, v in pairs(mask) do
+        if v == true then
+          local x, y = k:match("^(-?%d+),(-?%d+)$")
+          x, y = tonumber(x), tonumber(y)
+          if x then
+            if _lm:isGrassCell(x, y) then g = g + 1 end
+            if _ts == "CAVERN" and _lm.isWalkableCell
+               and _lm:isWalkableCell(x, y) then cv = cv + 1 end
+          end
+        end
+      end
+    end
+    m.wild_seen = { grass = g, cave = cv }
+  end
   m.frontier = fl
   last_frontier = fl
   if #front_water > 0 then

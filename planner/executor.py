@@ -1253,6 +1253,7 @@ class Executor:
         self._reversals = 0
         self._dead_visits = 0
         self._wild_lv: dict = {}   # map -> {lo, hi, n} of wild levels FOUGHT
+        self._wild_seen: dict = {}  # map -> {grass, cave} cells ever on screen
         self._grind_exp: dict = {}  # map -> {exp, n} actually earned grinding
         # THE OUTCOME LEDGER (EXPLORE_DESIGN §3, §6b): per "target|area",
         # per exit key or object name, how many times THIS subgoal did it
@@ -3295,6 +3296,7 @@ class Executor:
             self._item_from = data.get("item_from") or {}
             self._offered = data.get("offered") or {}
             self._wild_lv = data.get("wild_lv") or {}
+            self._wild_seen = data.get("wild_seen") or {}
             self._grind_exp = data.get("grind_exp") or {}
             self.boulder_start = data.get("boulder_start") or {}
             self._cut_bushes = data.get("cut_bushes") or {}
@@ -3747,6 +3749,7 @@ class Executor:
                  "item_from": getattr(self, "_item_from", {}),
                  "offered": getattr(self, "_offered", {}),
                  "wild_lv": getattr(self, "_wild_lv", {}),
+                 "wild_seen": getattr(self, "_wild_seen", {}),
                  "grind_exp": getattr(self, "_grind_exp", {}),
                  "boulder_start": getattr(self, "boulder_start", {}),
                  "cut_bushes": getattr(self, "_cut_bushes", {}),
@@ -4072,6 +4075,16 @@ class Executor:
                 self.map_seen[_mid] = max(
                     (n for r, n in self.region_seen.items()
                      if r.split("|")[0] == _mid), default=0)
+                # ...AND HOW MUCH WILD GROUND THIS FLOOR HAS SHOWN. Kept per
+                # map, largest count seen; read by _wild_never_fought_note.
+                _ws = (_m.get("wild_seen") or {})
+                if isinstance(_ws, dict) and (_ws.get("grass") or _ws.get("cave")):
+                    if not hasattr(self, "_wild_seen"):
+                        self._wild_seen = {}
+                    _old = self._wild_seen.get(_mid) or {}
+                    self._wild_seen[_mid] = {
+                        "grass": max(int(_old.get("grass") or 0), int(_ws.get("grass") or 0)),
+                        "cave": max(int(_old.get("cave") or 0), int(_ws.get("cave") or 0))}
             # the destinations ride along, unprinted (see door_dests above);
             # the claim rule forbids SAYING them, not knowing which two
             # tiles are one door
@@ -5793,6 +5806,56 @@ class Executor:
         return None
 
     def _wild_elsewhere_note(self, here_map, obs) -> str:
+        """The fought rows, then the walked ground never fought on."""
+        return (self._wild_elsewhere_fought_note(here_map, obs)
+                + self._wild_never_fought_note(here_map, obs))
+
+    def _wild_never_fought_note(self, here_map, obs) -> str:
+        """WALKED GROUND WITH WILD GRASS OR CAVE FLOOR NEVER FOUGHT ON. The
+        elsewhere rows are built from the run's battles, so a floor walked
+        through without a fight had no row however good its grass; the
+        footprint has seen the grass. Nothing here says who lives there or
+        at what level — one grind is how that is learned. Ordered by walked
+        distance; which is worth the walk is the model's read."""
+        try:
+            ws = getattr(self, "_wild_seen", None) or {}
+            wl = getattr(self, "_wild_lv", None) or {}
+            rows = []
+            for _m, _c in ws.items():
+                if _m == here_map or not isinstance(_c, dict):
+                    continue
+                if int((wl.get(_m) or {}).get("n") or 0) > 0:
+                    continue
+                g, cv = int(_c.get("grass") or 0), int(_c.get("cave") or 0)
+                if g <= 0 and cv <= 0:
+                    continue
+                _hop = None
+                for _r in (self.explored or {}):
+                    if _r.split("|")[0] != _m:
+                        continue
+                    _p = self._route(self._where(obs), _r) if obs else None
+                    if _p is not None and (_hop is None or len(_p) < _hop):
+                        _hop = len(_p)
+                what = (f"{g} grass cell(s) seen" if g else "") + \
+                       (", " if g and cv else "") + \
+                       (f"{cv} cave-floor cell(s) seen" if cv else "")
+                rows.append((_hop if _hop is not None else 99, _m, what))
+            if not rows:
+                return ""
+            rows.sort()
+            return (". WALKED GROUND WITH WILD GRASS OR CAVE FLOOR YOU HAVE "
+                    "NEVER FOUGHT ON: "
+                    + "; ".join(f"{_m} ({what}"
+                                + (f", {_hop} walked leg(s) away" if _hop < 99
+                                   else "") + ")"
+                                for _hop, _m, what in rows[:8])
+                    + (f"; and {len(rows) - 8} more" if len(rows) > 8 else "")
+                    + " — who lives there, and at what level, is not known: "
+                      "one grind there is how that is learned")
+        except Exception:
+            return ""
+
+    def _wild_elsewhere_fought_note(self, here_map, obs) -> str:
         """What the wild ground on OTHER maps has paid, for comparison.
 
         Every note about fighting described the map underfoot and nothing
