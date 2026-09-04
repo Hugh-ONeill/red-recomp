@@ -15843,8 +15843,35 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             self._checkpoint(sg)
         return won
 
+    def _already_holds(self, sg) -> bool:
+        """Does this step's condition hold from where the party stands,
+        before anything is spent on it?
+
+        A step before the resume point was honoured when its condition
+        held; a step reached in the ordinary flow went straight to the
+        model and was checked only after its first round's ops. So
+        "clear_tower_ghost" — done_when the tower rival's flag, fired hours
+        earlier on 2F — cost a round of inference and a page that said
+        DONE_WHEN {flag: EVENT_BEAT_POKEMON_TOWER_RIVAL} was still to do,
+        and the model wrote "I need to reach the top floor ... to defeat
+        the Rival" (2026-09-04, user: "but the rival is already beaten").
+        A condition that already holds is a step already done.
+        """
+        dw = (sg or {}).get("done_when")
+        if not isinstance(dw, dict) or not dw:
+            return False
+        try:
+            return bool(pred_holds(dw, self.settle()))
+        except Exception:
+            return False
+
     def _attempt_inner(self, sg) -> bool:
         """Replay the macro; escalate if that fails."""
+        if self._already_holds(sg):
+            print(f"== subgoal: {sg['id']} (already holds from where the "
+                  f"party stands — honored)")
+            self.log("subgoal_prior_done", subgoal=sg["id"], when="entry")
+            return True
         try:
             ok = self.run_subgoal(sg) if sg.get("macro") else False
         except TimeoutError as e:
