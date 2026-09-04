@@ -6396,20 +6396,69 @@ def pull_into_held(text: str, observed) -> str | None:
     return held_doors_into(named, o)
 
 
-def held_doors_into(named: set, o: dict) -> "str | None":
+def _flags_now(path="run/obs.json") -> "int | None":
+    """How many event flags the game has set right now, off the latest
+    observation; None when it cannot be read."""
+    try:
+        o = json.loads(Path(path).read_text() or "{}")
+    except (OSError, ValueError, TypeError):
+        return None
+    fl = o.get("flags")
+    return len(fl) if isinstance(fl, list) else None
+
+
+def _flags_at_last_visit(o: dict, map_id: str) -> "int | None":
+    """The most recent event-flag count recorded while the run stood in a
+    region of `map_id` (touch_mark keeps [badges, flags, items] at each
+    press); None when nothing there was ever pressed."""
+    best = None
+    for reg, marks in (o.get("touch_mark") or {}).items():
+        if str(reg).split("|")[0] != map_id or not isinstance(marks, dict):
+            continue
+        for v in marks.values():
+            for key in ("at", "then"):
+                arr = (v or {}).get(key) if isinstance(v, dict) else None
+                if isinstance(arr, list) and len(arr) > 1:
+                    try:
+                        n = int(arr[1])
+                    except (TypeError, ValueError):
+                        continue
+                    best = n if best is None else max(best, n)
+    return best
+
+
+def held_doors_into(named: set, o: dict, now_flags: "int | None" = None) -> "str | None":
     """The run's own record of the doors into `named`: one sentence when
     EVERY known door had somebody standing on it the last time the run
     stood beside it (door_dests says where doors lead, shut_doors who stood
-    on them), None when any door is unheld or none is known."""
+    on them), None when any door is unheld or none is known.
+
+    ...AND A RECORD GOES STALE WHEN THE WORLD MOVES. Fuji was rescued, the
+    script that hides the Silph Co doorstep Rocket fired, and the Silph Co
+    leg was authored before the run had looked at that door again — so
+    the record still said "SAFFRONCITY_ROCKET8 is standing there" and this
+    rule refused fifteen plans in a row for a guard who was already gone
+    (2026-09-04). Who stands on a door is known only as of the last look;
+    when event flags have fired since the run last stood in that map, the
+    note is a memory, not evidence, and the door is left to the model."""
     dd = o.get("door_dests") or {}
     shut = o.get("shut_doors") or {}
+    if now_flags is None:
+        now_flags = _flags_now()
     held, open_door = [], False
     for m, doors in dd.items():
         if not isinstance(doors, dict):
             continue
+        stale = False
+        if now_flags is not None:
+            _then = _flags_at_last_visit(o, m)
+            stale = _then is not None and now_flags > _then
         for key, dest in doors.items():
             dest = str(dest or "").upper()
             if dest not in named:
+                continue
+            if stale:
+                open_door = True      # the last look is out of date: not held
                 continue
             # a door is HELD only when a NAMED person stands on it — a bush
             # or a boulder in the way wrote "(None is standing there)", and

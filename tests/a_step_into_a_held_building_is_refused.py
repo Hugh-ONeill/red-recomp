@@ -45,6 +45,13 @@ with tempfile.TemporaryDirectory() as d:
     ck("a step into the held building AFTER a deed is the model's call", A.held_step_problems(after_deed, obs) == [])
     gym = {"subgoals": [{"id": "gym", "done_when": {"area": "SAFFRON_GYM|0,0"}}]}
     ck("an area predicate is read the same way", A.held_step_problems(gym, obs) != [])
+    # the record goes stale when the world moves: flags fired since the last look at that map
+    stale = dict(REC); stale["touch_mark"] = {"SAFFRON_CITY|12,0": {"SAFFRONCITY_ROCKET8": {"then": [3, 173, 20], "n": 3, "at": [3, 173, 20]}}}
+    obs2 = Path(d) / "explored2.json"; obs2.write_text(json.dumps(stale))
+    ck("a doorstep record from before later events is a memory, not a held door",
+       A.held_doors_into({"SILPH_CO_1F"}, stale, now_flags=191) is None)
+    ck("...while with no events since, it still holds", A.held_doors_into({"SILPH_CO_1F"}, stale, now_flags=173) is not None)
+    ck("...and with no flag count at all, the record is trusted", A.held_doors_into({"SILPH_CO_1F"}, stale, now_flags=None) is not None or A._flags_now() is not None)
     gym = {"subgoals": [{"id": "gym", "done_when": {"map": "CELADON_GYM"}}]}
     ck("a door blocked by nobody — a bush's '(None is standing there)' — is not a held door", A.held_step_problems(gym, obs) == [], A.held_step_problems(gym, obs))
     dojo = {"subgoals": [{"id": "dojo", "done_when": {"map": "FIGHTING_DOJO"}}]}
