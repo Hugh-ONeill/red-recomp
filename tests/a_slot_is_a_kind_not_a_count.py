@@ -39,6 +39,8 @@ bag = {"POKE_BALL": 11, "POTION": 4, "TM_DIG": 1, "TM_WATER_GUN": 1, "HM_CUT": 1
        "DOME_FOSSIL": 1, "S_S_TICKET": 1, "TOWN_MAP": 1, "MAX_ETHER": 1,
        "TM_TELEPORT": 1, "TM_THUNDERBOLT": 1, "TM_THUNDER_WAVE": 1, "TM_MEGA_PUNCH": 1}
 line = e._bag_pressure_line({"bag": bag})
+ck("the near-full warning is about gift ITEMS, not gifts", "a gift ITEM needing a fresh KIND slot" in line)
+ck("...and says a gift POKEMON is not a bag matter", "A gift POKEMON is not a bag matter" in line and "joins the party" in line)
 ck("at 18 kinds the line speaks", line.startswith("\nYOUR BAG holds 18 of 20 KINDS"), line[:80])
 ck("it leads with the rule", "A slot is a KIND, not a count" in line
    and "the slot frees only when the LAST of that kind goes" in line)

@@ -9153,10 +9153,15 @@ class Executor:
         nkinds = len(bag)
         if nkinds < 18:
             return ""
-        state = ("FULL — every gift and pickup now FAILS: the 'got it!' text "
-                 "plays and NOTHING arrives" if nkinds >= 20 else
-                 "NEARLY FULL — a gift needing a fresh slot is about to fail "
-                 "silently")
+        # ITEMS. The word "gift" alone was read as any gift: in the Fighting
+        # Dojo, offered HITMONLEE with the bag at 19 of 20, the run wrote
+        # "receiving a Pokemon would likely fail or cause issues" and
+        # declined (2026-09-04, user: "theres never a downside to accepting
+        # a gift pokemon"). A Pokemon never touches the bag.
+        state = ("FULL — every gift ITEM and pickup now FAILS: the 'got it!' "
+                 "text plays and NOTHING arrives" if nkinds >= 20 else
+                 "NEARLY FULL — a gift ITEM needing a fresh KIND slot is about "
+                 "to fail silently")
         singles = sorted(k for k, v in bag.items() if int(v or 0) == 1)
         stacks = sorted((k, int(v or 0)) for k, v in bag.items() if int(v or 0) > 1)
         tms = [k for k in singles if k.startswith(("TM_", "HM_"))]
@@ -9198,8 +9203,10 @@ class Executor:
               "({\"op\":\"toss\",\"item\":...})"
             + (f" — a TM tossed is a move the party will never get from it, and "
                f"you hold one each of {', '.join(tms)}" if tms else "")
-            + ". Whoever tried to hand you a thing will hand it again once "
-              "there is room.")
+            + ". Whoever tried to hand you an ITEM will hand it again once "
+              "there is room. A gift POKEMON is not a bag matter at all: it "
+              "joins the party, or goes to the PC box when the party is full "
+              "— the bag has nothing to do with whether one can be received.")
 
     def _gift_note(self, item: str) -> str:
         """Who handed this item over, and what they said as they did — the
