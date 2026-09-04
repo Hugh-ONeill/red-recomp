@@ -2134,6 +2134,12 @@ def observed_text(path: Path) -> str:
                 row += f" — YOU SAID {json.dumps(b['lifts'])} lifts it"
             else:
                 row += " — nothing named yet as what lifts it"
+                _nm = b.get("named") or {}
+                if _nm:
+                    _top = sorted(_nm.items(), key=lambda kv: (-kv[1], kv[0]))[:2]
+                    row += (" (the run's own plans named "
+                            + ", ".join(f"{k} {n}x" for k, n in _top)
+                            + " as what it needs — its word, unverified)")
             rows.append(row)
         out += ("\n\nWAYS THAT TURNED THE RUN BACK (a plan that walks into "
                 "one again without first meeting what lifts it is a plan "

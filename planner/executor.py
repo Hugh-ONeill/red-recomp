@@ -1717,6 +1717,7 @@ class Executor:
                             if holds else "not yet"))
             else:
                 line += (" — nothing named yet as what lifts it")
+                line += self._named_needs_words(b)
             lines.append(line)
         more = len(rows) - min(len(rows), cap)
         return ("\nWAYS THAT HAVE ALREADY TURNED YOU BACK — not places to go: "
@@ -6427,6 +6428,110 @@ class Executor:
                 self._pad_recrossed = (getattr(self, "_pad_recrossed",
                                                set()) | {key0})
         return None
+
+    # WORDS ARE NOT A LIFTS ENTRY. Eight rounds in a row the plan said "a
+    # Ghost blocks the path to the 7th floor on the 6th floor and I need the
+    # Silph Scope", and every one of those rounds the row for that door read
+    # "nothing named yet as what lifts it", because the reply never carried a
+    # "blockers" key — and the plan-writer at the ladder then read the same
+    # "nothing named" (2026-09-04). So the need a plan's WORDS name for a way
+    # that turned the run back is tallied on that way's row, as the model's
+    # own word read back: how many times it said so, and the entry it never
+    # wrote. Nothing here says whether the word is right or where the thing
+    # is. Only a sentence that (a) has a need-word, (b) names a thing the
+    # engine calls an item and the bag does not hold, and (c) once the
+    # item's own words are blanked, still names the way's cue (a GHOST, a
+    # tree/bush for a CUT_TREE fence, water for a WATER fence) — so "I need
+    # FRESH WATER for the guards" does not land on a water fence.
+    NEED_WORDS = r"\b(?:need\w*|requir\w*|without|must|obtain\w*|lack\w*)\b"
+    BLOCK_CUES = (("GHOST", ("ghost",)),
+                  ("CUT_TREE", ("tree", "bush", "cut")),
+                  ("WATER", ("water", "surf", "sea", "swim")),
+                  ("SNORLAX", ("snorlax", "sleeping")),
+                  ("BOULDER", ("boulder", "strength")))
+    _ITEM_WORDS = None
+
+    @classmethod
+    def _item_word_patterns(cls):
+        """(ITEM, regex) for every item the engine names, written the way
+        prose writes it — "Silph Scope", "SILPH_SCOPE", "Poke Flute",
+        "Pokéflute", "S.S. Ticket" — longest name first so COIN_CASE is
+        found before COIN. Floor buttons and unnamed slots are not things
+        anyone needs."""
+        if cls._ITEM_WORDS is None:
+            try:
+                names = [ln.strip() for ln in
+                         Path(__file__).with_name("engine_items.txt")
+                         .read_text().splitlines() if ln.strip()]
+            except OSError:
+                names = []
+            out = []
+            for nm in sorted(set(names), key=lambda n: (-len(n), n)):
+                if nm.startswith("FLOOR_") or nm.startswith("ITEM_"):
+                    continue
+                parts = [_re.escape(w.lower()).replace("poke", "pok[eé]")
+                         for w in nm.split("_")]
+                out.append((nm, _re.compile(
+                    r"\b" + r"[ _\-.]{0,2}".join(parts) + r"s?\b", _re.I)))
+            cls._ITEM_WORDS = out
+        return cls._ITEM_WORDS
+
+    def _tally_named_needs(self, plan_said, obs) -> list:
+        """Tally, on each live un-lifted blocker the plan's WORDS concern,
+        the item those words say it needs. Returns the (blocker key, ITEM)
+        pairs counted this round — one per pair per round."""
+        said = str(plan_said or "")
+        bl = getattr(self, "blockers", None) or {}
+        live = [(bk, b) for bk, b in bl.items()
+                if isinstance(b, dict) and not b.get("cleared")
+                and not b.get("lifts")]
+        if not said or not live:
+            return []
+        bag = (obs or {}).get("bag") or {}
+        out = []
+        for sent in _re.split(r"(?<=[.!?;])\s+", said):
+            if not _re.search(self.NEED_WORDS, sent, _re.I):
+                continue
+            found, rest = [], sent
+            for nm, pat in self._item_word_patterns():
+                if pat.search(rest):
+                    if nm not in bag:
+                        found.append(nm)
+                    rest = pat.sub(" ", rest)
+            if not found:
+                continue
+            low = rest.lower()
+            for bk, b in live:
+                what = str(b.get("what") or "").upper()
+                cues = [c for tag, cs in self.BLOCK_CUES if tag in what
+                        for c in cs]
+                if not any(_re.search(r"\b" + c + r"(?:s|es)?\b", low)
+                           for c in cues):
+                    continue
+                named = b.setdefault("named", {})
+                for nm in found:
+                    if (bk, nm) in out:
+                        continue
+                    named[nm] = int(named.get(nm) or 0) + 1
+                    out.append((bk, nm))
+                for k in sorted(named, key=lambda k: (named[k], k))[:-4]:
+                    del named[k]
+        return out
+
+    @staticmethod
+    def _named_needs_words(b) -> str:
+        """The tally as a row's tail: what the plans named, how often, and
+        the entry that would make it count. Empty when nothing was named."""
+        named = (b or {}).get("named") or {}
+        if not named:
+            return ""
+        top = sorted(named.items(), key=lambda kv: (-kv[1], kv[0]))[:2]
+        said = ", ".join(f"{k} {n}x" for k, n in top)
+        return (f"; your own plans have named {said} as what this needs — "
+                "WORDS ARE NOT AN ENTRY: this row, and the plan-writer who "
+                "reads it later, see only what is written as "
+                f"\"blockers\":[{{\"where\":\"{b.get('where')}\","
+                f"\"lifts\":{{\"has_item\":{{\"{top[0][0]}\":1}}}}}}]")
 
     FIELD_MOVE_WORDS = ("CUT", "SURF", "STRENGTH", "FLASH", "FLY")
 
@@ -13865,6 +13970,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _ph = self._plan_hist.setdefault(self._cur_target or "?", [])
                 _ph.append([rnd, self._where(start), plan_said])
                 del _ph[:-8]
+                _nn = self._tally_named_needs(plan_said, obs)
+                if _nn:
+                    self.log("need_named_not_written", subgoal=sg["id"],
+                             round=rnd, named=[f"{bk}:{nm}" for bk, nm in _nn])
                 self._save_memory()
             # {"op":"skip"} — THE MODEL DECLARES THIS STEP MOOT. Until now
             # a subgoal was done only when its predicate held, so a step
