@@ -142,6 +142,8 @@ class Candidate:
                 return f"warp pad ({self.key}){_tw}"
             if _l == "hole":
                 return f"hole ({self.key}){_tw}"
+            if _l == "lift":
+                return f"lift door ({self.key}){_tw}"
             if _l == "stairs":
                 return f"stairs/ladder ({self.key}){_tw}"
             if _l == "threshold":        # an older shim's word for a door

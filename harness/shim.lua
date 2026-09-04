@@ -2348,6 +2348,17 @@ local function observe(G, seq, result)
         if _look ~= "landing" then
           local dest = w.destMap
           if dest == "LAST_MAP" and lastOut then dest = lastOut end
+          -- A LIFT DOOR LOOKS LIKE ONE. The tile drawn on a warp into an
+          -- *_ELEVATOR map is the lift-door graphic, distinct on screen
+          -- from a stair or a doorway; the page said "door (24,19) ->
+          -- UNKNOWN" for the Hideout B2F lift while the run's step was
+          -- "use the elevator", and it took the stairs beside it to hunt
+          -- an elevator on another floor (2026-09-04). The look is what a
+          -- player sees; where the lift goes stays unknown until ridden.
+          if _look == "door" and type(dest) == "string"
+             and dest:match("_ELEVATOR$") then
+            _look = "lift"
+          end
           _n = _n + 1
           o.map.warps[_n] = { x = w.x, y = w.y, dest = dest,
                               look = _look,
