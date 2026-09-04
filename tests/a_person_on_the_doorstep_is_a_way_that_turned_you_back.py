@@ -53,6 +53,9 @@ NOTE8 = NOTE.replace("SAFFRONCITY_ROCKET3 at (34,4)", "SAFFRONCITY_ROCKET8 at (1
 e2._record_outcome({}, "use_warp", {"x": 18, "y": 21}, NOTE8)
 b8 = e2.blockers.get(f"{HERE}|18,21")
 ck("a poster not yet spoken to says so, with no words", b8 and "not yet spoken to" in b8["what"] and "said:" not in b8["what"], b8)
+e6 = fresh(); e6.touched = {}
+e6._record_outcome({}, "use_warp", {"x": 34, "y": 3}, NOTE)
+ck("words on record mean spoken to, whatever the touched ledger says", "spoken to, and did not move" in e6.blockers[f"{HERE}|34,3"]["what"], e6.blockers)
 
 e3 = fresh()
 WANDER = ("use_warp(x=7,y=5): FAILED — couldn't reach the warp tile — somebody is standing by it: "

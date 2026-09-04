@@ -1818,8 +1818,12 @@ class Executor:
                     if str(h).startswith(nm + ": "):
                         said = str(h)[len(nm) + 2:].strip()[:120]
                         break
-                spoken = nm in ((getattr(self, "touched", {}) or {})
-                                .get(here) or [])
+                # WORDS ON RECORD ARE PROOF OF SPEAKING. The first live row
+                # read 'said: "I'm a security guard. Suspicious kids I
+                # don't allow in!" — not yet spoken to' (2026-09-04): the
+                # touched ledger had not caught up, the hints had.
+                spoken = bool(said) or nm in (
+                    (getattr(self, "touched", {}) or {}).get(here) or [])
                 what = (f"{nm} stands on its doorstep at "
                         f"({m.group(2)},{m.group(3)})"
                         + (f' and said: "{said}"' if said else "")
