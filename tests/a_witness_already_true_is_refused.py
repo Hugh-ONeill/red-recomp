@@ -53,7 +53,21 @@ bad_plan = {"goal": "g", "subgoals": [{"id": "a", "goal_text": "x", "done_when":
                                       {"id": "b", "goal_text": "y", "done_when": {"lacks_item": 7}}]}
 v2 = A.validate(bad_plan)
 ck("...and rejects bad shapes", any("bag_kinds_below" in p for p in v2) and any("lacks_item" in p for p in v2), v2)
+tower = {"subgoals": [
+    {"id": "enter_pokemon_tower", "done_when": {"map": "POKEMON_TOWER_1F"}},
+    {"id": "reach_tower_top", "done_when": {"map": "POKEMON_TOWER_7F"}},
+    {"id": "rescue_mr_fuji", "done_when": {"has_item": {"SILPH_SCOPE": 1}}}]}
+OBS2 = dict(OBS); OBS2["bag"] = {"SILPH_SCOPE": 1}
+w = A._unreached_step_words(tower, stood={"POKEMON_TOWER_1F", "LAVENDER_TOWN"}, stood_regions=set())
+ck("the plan's own never-stood step is named as a way out", "(reach_tower_top) ends on POKEMON_TOWER_7F" in w and "a leg may end there" in w, w)
+ck("...only the plan's own places, nothing invented", "6F" not in w and "EVENT_" not in w)
+ck("...and nothing when every earlier step is on walked ground",
+   A._unreached_step_words(tower, stood={"POKEMON_TOWER_1F", "POKEMON_TOWER_7F"}, stood_regions=set()) == "")
+ck("...nor for a one-step plan", A._unreached_step_words({"subgoals": [tower["subgoals"][-1]]}, stood=set(), stood_regions=set()) == "")
 src = (ROOT / "planner" / "author.py").read_text()
+ck("the already-true refusal carries it", 'yet stood in." + _unreached_step_words(plan)]' in src)
+ck("...and so does the unknown-flag refusal, when no series hint applies",
+   'probs = [p + _way if ("is not an event this game defines" in p' in src and 'and "Did you mean" not in p) else p' in src)
 ck("the author asks it in the same round as validation", "probs = (validate(plan) or witness_already_true_problems(plan)" in src)
 ck("...and so does the review", "probs = (validate(revised) or witness_already_true_problems(revised)" in src)
 bad = [c for c in checks if not c[1]]

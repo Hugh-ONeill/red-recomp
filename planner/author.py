@@ -1138,6 +1138,13 @@ def validate(plan: dict) -> list:
                     f"reached, so that step already witnesses this "
                     f"objective. DELETE this last subgoal and let the plan "
                     f"end there; a plan does not need a final step.")
+    # THE PLAN'S OWN WAY OUT rides an unknown-flag refusal that has no
+    # series hint of its own (see _unreached_step_words).
+    _way = _unreached_step_words(plan)
+    if _way:
+        probs = [p + _way if ("is not an event this game defines" in p
+                              and "Did you mean" not in p) else p
+                 for p in probs]
     return probs
 
 
@@ -1547,6 +1554,40 @@ def witness_holds_now(dw, obs) -> "bool | None":
     return all(out) if out else None
 
 
+def _unreached_step_words(plan: dict, stood: set | None = None,
+                          stood_regions: set | None = None) -> str:
+    """THE PLAN'S OWN WAY OUT OF A REFUSED WITNESS. The Rescue leg was
+    refused ten rounds running: its last step said has_item SILPH_SCOPE
+    (already held), then invented event names, then LAVENDER_TOWN (stood
+    in) — while every one of those plans carried "reach_tower_top {map:
+    POKEMON_TOWER_7F}", ground the run has never stood in, which the deed
+    rule accepts as a last step and the refusal's own words invite ("or a
+    place the run has never reached") (2026-09-04). Say it in the plan's
+    own words: which earlier step already ends on never-stood ground.
+    Nothing here names a place the plan did not."""
+    subs = (plan or {}).get("subgoals") or []
+    if len(subs) < 2:
+        return ""
+    vm = visited_maps() if stood is None else set(stood)
+    vr = visited_regions() if stood_regions is None else set(stood_regions)
+    if not vm and stood is None:
+        return ""
+    for sg in subs[:-1]:
+        if not isinstance(sg, dict):
+            continue
+        dw = sg.get("done_when")
+        pl = _place_names(dw)
+        ex = _place_names(dw, exact=True)
+        new_map = bool(pl) and not (pl <= vm)
+        new_region = bool(ex) and ex != pl and not (ex <= vr)
+        if new_map or new_region:
+            where = sorted(pl)[0] if pl else sorted(ex)[0]
+            return (f" Your own step ({sg.get('id')}) ends on {where}, ground "
+                    f"you have never stood in — a leg may end there: make it "
+                    f"the last step, or end on what the deed leaves behind.")
+    return ""
+
+
 def witness_already_true_problems(plan: dict, obs: dict | None = None) -> list:
     """A PLAN WHOSE OBJECTIVE IS TRUE BEFORE IT STARTS DOES NOTHING. The
     bag leg's plan ended on {"has_item":{"POTION":3}} — meant as "sold one,
@@ -1571,7 +1612,7 @@ def witness_already_true_problems(plan: dict, obs: dict | None = None) -> list:
                 f"without doing the deed. Write a condition that only the "
                 f"deed makes true: a thing GONE (lacks_item), FEWER kinds in "
                 f"the bag (bag_kinds_below), a flag that fires, a place not "
-                f"yet stood in"]
+                f"yet stood in." + _unreached_step_words(plan)]
     return []
 
 
