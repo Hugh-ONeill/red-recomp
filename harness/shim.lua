@@ -3883,11 +3883,12 @@ local function bfs_dir_pass(G, tx, ty, wblock, gate)
   local ow = G.overworld
   local p = ow.player
   local key = function(x, y) return x .. "," .. y end
-  local gate_unseen = 0
+  local gate_unseen, gate_frozen = 0, 0
   local function gated(x, y)
     if not gate then return false end
     local g = gate(x, y, key(x, y))
     if g == "unseen" then gate_unseen = gate_unseen + 1 end
+    if g == "frozen" then gate_frozen = gate_frozen + 1 end
     return g ~= nil
   end
   local seen = { [key(p.cellX, p.cellY)] = true }
@@ -3966,7 +3967,25 @@ local function bfs_dir_pass(G, tx, ty, wblock, gate)
   -- refusal, played the POKE FLUTE from wherever it had stopped, and was
   -- told "Now, that's a catchy tune!" — the game's words for "not next to
   -- it". Say which cell is the standing-next-to one.
-  if best == 1 and bx and by then
+  -- A WALL AT LAST VIEW IS SAID TO BE ONE. The Game Corner's hidden
+  -- staircase at (17,4) was a wall when the room was last on screen; the
+  -- poster's switch opened it, and use_warp(17,4) from across the room
+  -- was told "nothing can stand ON 17,4" — the words for a tile that is
+  -- never standable, about a tile the observation was listing as a
+  -- reachable door (2026-09-04). The freeze is right (the run has to SEE
+  -- a change to know it); the reason given was false. Say what the rule
+  -- is and what lifts it: looking.
+  local tgt_frozen = gate and gate(tx, ty, key(tx, ty)) == "frozen"
+  if tgt_frozen then
+    said = said .. ((" — %d,%d was a WALL the last time it was on screen and "
+      .. "has not been on screen since; ground that was a wall is not "
+      .. "routed into until it is SEEN again, whatever it is now. ")
+      :format(tx, ty))
+      .. ((best == 1 and bx and by)
+          and (("From (%d,%d), beside it, it is on screen: walk there and "
+                .. "try again"):format(bx, by))
+          or "Walk toward it until it is on screen, then try again")
+  elseif best == 1 and bx and by then
     said = said .. (", which is RIGHT BESIDE it — nothing can stand ON "
       .. "%d,%d, so (%d,%d) is as close as anyone gets. Walk to (%d,%d) "
       .. "and act from there"):format(tx, ty, bx, by, bx, by)
@@ -4027,6 +4046,11 @@ local function bfs_dir_pass(G, tx, ty, wblock, gate)
       .. "ONLY: it stopped where your footprint ends, not at a proven "
       .. "wall — ground you have never looked at may join up. explore "
       .. "walks toward it"
+  end
+  if gate and gate_frozen > 0 and not tgt_frozen then
+    said = said .. (". %d cell(s) that were WALLS the last time they were on "
+      .. "screen were not routed into — if one has opened since, seeing it "
+      .. "again is what lifts that"):format(gate_frozen)
   end
   return nil, said
 end
@@ -4197,11 +4221,12 @@ local function bfs_to_edge(G, dir, skip, surf, blind)
   local key = function(x, y) return x .. "," .. y end
   local wblock = warp_block(G, -1, -1)   -- edge walks never end on a warp
   local gate = (not (blind or BLIND_ROUTING)) and route_gate(G) or nil
-  local gate_unseen = 0
+  local gate_unseen, gate_frozen = 0, 0
   local function gated(x, y)
     if not gate then return false end
     local g = gate(x, y, key(x, y))
     if g == "unseen" then gate_unseen = gate_unseen + 1 end
+    if g == "frozen" then gate_frozen = gate_frozen + 1 end
     return g ~= nil
   end
   local seen = { [key(p.cellX, p.cellY)] = true }
@@ -4542,6 +4567,11 @@ local function bfs_to_edge(G, dir, skip, surf, blind)
         and (". THIS SEARCH RAN OVER GROUND THAT HAS BEEN ON SCREEN ONLY —"
              .. " it stopped where your footprint ends, not at a proven "
              .. "wall; ground you have never looked at may hold the way")
+        or "")
+    .. ((gate and gate_frozen > 0)
+        and (". " .. gate_frozen .. " cell(s) that were WALLS the last time "
+             .. "they were on screen were not routed into — if one has "
+             .. "opened since, seeing it again is what lifts that")
         or ""), bestx, besty, seen, nseen, gate_unseen
 end
 
