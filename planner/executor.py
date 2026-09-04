@@ -6580,6 +6580,43 @@ class Executor:
                 + ". A directory lists the floors the BUILDING has; a lift's "
                   "panel lists the floors the LIFT serves.\n")
 
+    _SEEN_COUNT_CACHE: dict = {}
+
+    def _seen_cell_count(self, map_id: str) -> int:
+        """How many cells of `map_id` the footprint has ever painted SEEN,
+        read from the shim's run/seen.json (a Lua chunk, `["MAP"] = {
+        "x,y", ... }`), cached on the file's mtime. 0 when unknown."""
+        path = getattr(self, "_seen_path", None) or "run/seen.json"
+        try:
+            st = Path(path).stat().st_mtime_ns
+        except OSError:
+            return 0
+        key = (str(path), str(map_id))
+        hit = self._SEEN_COUNT_CACHE.get(key)
+        if hit and hit[0] == st:
+            return hit[1]
+        try:
+            txt = Path(path).read_text()
+        except OSError:
+            return 0
+        mm = _re.search(r'\["' + _re.escape(str(map_id)) + r'"\]\s*=\s*\{([^}]*)\}', txt)
+        n = len(_re.findall(r'"-?\d+,-?\d+"', mm.group(1))) if mm else 0
+        self._SEEN_COUNT_CACHE[key] = (st, n)
+        return n
+
+    def _seen_cells_words(self, region: str) -> str:
+        """A FLOOR BARELY LOOKED AT SAYS SO. The unseen-ground list counted
+        SPOTS — openings where the seen ground ends — and "ROCKET_HIDEOUT_
+        B2F|19,7 (3 spot(s), 2 leg(s))" read as a floor nearly finished:
+        "I have already explored most of B3F and B2F" (2026-09-04, user:
+        "wrong theres lots of unseen ground on bf2"). Three openings can
+        lead onto most of a floor; the run had looked at 195 cells of B2F
+        against 629 of B3F. The run's own count of what it has seen rides
+        the row. It says how much has been looked at, never how big the
+        floor is."""
+        n = self._seen_cell_count(str(region).split("|")[0])
+        return f"{n} cells ever on screen, " if n else ""
+
     # WORDS ARE NOT A LIFTS ENTRY. Eight rounds in a row the plan said "a
     # Ghost blocks the path to the 7th floor on the 6th floor and I need the
     # Silph Scope", and every one of those rounds the row for that door read
@@ -9534,16 +9571,19 @@ class Executor:
             _shown = _urows[:30]
             floor_away += (
                 "\nFLOORS YOU HAVE WALKED WITH GROUND NEVER ON SCREEN "
-                "(spots where the ground you looked at ends, and walked "
-                "legs from here): "
+                "(spots where the ground you looked at ends, how many cells "
+                "of that floor have ever been on screen, and walked legs "
+                "from here): "
                 + "; ".join(
-                    f"{_m} ({-_n} spot(s), "
+                    f"{_m} ({-_n} spot(s), " + self._seen_cells_words(_m)
                     + (f"{_d} leg(s))" if _d < 99
                        else "no walked route from here)")
                     for _d, _n, _m in _shown)
                 + (f"; and {len(_urows) - len(_shown)} more floor(s)"
                    if len(_urows) > len(_shown) else "")
-                + ". What is past those spots is not known.")
+                + ". What is past those spots is not known — one spot can "
+                  "open onto most of a floor; the cell count says how much "
+                  "you have looked at, not how big the floor is.")
         # ...AND A FLOOR WHOSE DOORS ARE ALL TAKEN CAN STILL HAVE A WAY
         # DOWN IN IT. The rows above are built from doorways only, so a
         # floor with no untried door never appears — POKEMON_MANSION_3F,
