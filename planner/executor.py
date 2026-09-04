@@ -11210,7 +11210,16 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 Executor._last_decls = [d for d in (obj.get("blockers") or [])
                                         if isinstance(d, dict)] \
                     if isinstance(obj.get("blockers"), list) else []
-                return ops, plan[:400]
+                # ITS OWN WORDS, WHOLE. This cut the plan at 400 characters,
+                # and that string is what the echo quotes back "in your own
+                # words", what the status line shows, and what the notes
+                # read for places and deeds — so 8% of plans (16 of 197 in
+                # one journal window) came back with the end missing, and
+                # the end is where the next action lives ("...then plan a
+                # route to obtain " — 2026-09-04, user: "is the thinking
+                # getting cut off?"). 900 covers what it writes; past that
+                # the head AND the tail are kept.
+                return ops, speech_excerpt(plan, 900)
             # a single op object, e.g. {"op":"cross","dir":"north"}
             if isinstance(obj, dict) and obj.get("op") and "ops" not in obj:
                 return [obj], ""

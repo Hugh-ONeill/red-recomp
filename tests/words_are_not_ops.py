@@ -75,6 +75,11 @@ ck("SURF named and never mounted is",
    e._deeds_named_not_done([{"op": "walk_to", "x": 1, "y": 1}], "I will SURF west",
                            ["walk_to(1,1): ok"]) == [("SURF", False)])
 
+# the plan text the notes read is the model's whole sentence, not its first 400 characters
+long_plan = "I will go north. " * 40 + "Finally I will use CUT on the bush at (5,8) and cross east."
+ops, kept = E.Executor._parse_macro('{"plan": "' + long_plan + '", "ops": [{"op":"cross","dir":"east"}]}')
+ck("a long plan keeps its ending", kept.endswith("cross east.") and "CUT" in kept, kept[-80:])
+ck("...and its beginning", kept.startswith("I will go north."))
 src = (ROOT / "planner" / "executor.py").read_text()
 ck("the note joins the round's feedback right after the results",
    "_deed = self._deed_note(_macro_full, self._plan_said, trace)" in src
