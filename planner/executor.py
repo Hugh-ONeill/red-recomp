@@ -1783,12 +1783,49 @@ class Executor:
         # warp tile (interrupted (battle or script))" with the line
         # attached, which is a refusal in every sense, and nothing recorded
         # it as one.
-        elif (op == "use_warp" and "FAILED" in note
+        elif (op in ("use_warp", "cross") and "FAILED" in note
               and "interrupted (battle or script)" in note
               and "it said:" in note):
+            # ...a SEAM too: a gate's guard speaks while you walk its floor
+            # toward the far door, and that refusal was recorded for a
+            # door only (the Route 7 gate's thirsty guard turned the run
+            # back 100+ times and had no row, 2026-09-04).
             said = note.split("it said: ", 1)[1].strip()[:160]
-            self._note_blocker(here, key, "door",
+            self._note_blocker(here, key,
+                               "door" if op == "use_warp" else "seam",
                                f"a script turned you back — {said}")
+        elif (op == "use_warp" and "FAILED" in note
+              and "somebody is standing by it: " in note
+              and "(who wanders)" not in note):
+            # A PERSON ON THE DOORSTEP IS A WAY THAT TURNED YOU BACK. Four
+            # Saffron doors — the Gym, Silph Co, Copycat's, the Pidgey
+            # house — each have a Rocket posted one tile below the door.
+            # use_warp said "somebody is standing by it ... interact with
+            # them to hear why", the run did ("Get out of the way!"), and
+            # nothing wrote the door down: the page went on listing all
+            # four as plain untried ways, and the run circled them for a
+            # whole step (2026-09-04, user: "its just going all around saf
+            # mostly fruitlessly"). A poster who does not move once spoken
+            # to is a blocker in the words they used; who wanders is not
+            # (they move, and the same door often opens on a later try).
+            m = _re.search(r"somebody is standing by it: ([A-Z0-9_]+) at "
+                           r"\((-?\d+),(-?\d+)\)", note)
+            if m:
+                nm = m.group(1)
+                said = ""
+                for h in reversed((getattr(self, "hints", {}) or {})
+                                  .get(here) or []):
+                    if str(h).startswith(nm + ": "):
+                        said = str(h)[len(nm) + 2:].strip()[:120]
+                        break
+                spoken = nm in ((getattr(self, "touched", {}) or {})
+                                .get(here) or [])
+                what = (f"{nm} stands on its doorstep at "
+                        f"({m.group(2)},{m.group(3)})"
+                        + (f' and said: "{said}"' if said else "")
+                        + (" — spoken to, and did not move" if spoken
+                           else " — not yet spoken to"))
+                self._note_blocker(here, key, "door", what)
         elif op == "cross" and "FAILED" in note and (
                 "standing at its edge:" in note
                 or "Right where the walk stopped:" in note):
