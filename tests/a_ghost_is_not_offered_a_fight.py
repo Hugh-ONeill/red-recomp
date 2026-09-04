@@ -58,6 +58,19 @@ ck("the refusal is remembered from whichever op met it",
 ck("...and persisted", '"ghost_said": getattr(self, "_ghost_said", "")' in src
    and 'self._ghost_said = data.get("ghost_said", "") or ""' in src)
 
+# --- the refusal reaches the blockers ledger the author reads ---
+e3 = object.__new__(E.Executor)
+e3._ghost_said = "GYARADOS is too scared to move!"
+e3.blockers = {"POKEMON_TOWER_6F|10,2|9,16": {"what": "a GHOST appeared on the way there — \"Be gone... Intruders...\""},
+               "ROUTE_12|0,61|north": {"what": "A sleeping POKeMON blocks the way!"}}
+n = e3._stamp_ghost_refusal()
+ck("the refusal is stamped onto every ghost blocker, once",
+   n == 1 and 'you pressed FIGHT: "GYARADOS is too scared to move!"' in e3.blockers["POKEMON_TOWER_6F|10,2|9,16"]["what"]
+   and e3._stamp_ghost_refusal() == 0)
+ck("...and never onto a blocker that names no ghost", "FIGHT" not in e3.blockers["ROUTE_12|0,61|north"]["what"])
+src = (ROOT / "planner" / "executor.py").read_text()
+ck("stamped where the refusal is seen and on load",
+   src.count("self._stamp_ghost_refusal()") >= 2)
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, dd in checks:
     print(("ok  " if ok else "FAIL"), n)

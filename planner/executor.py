@@ -3208,6 +3208,10 @@ class Executor:
             self._ghost_probed = any(
                 "you pressed FIGHT" in (b.get("what") or "")
                 for b in self.blockers.values() if isinstance(b, dict))
+            try:
+                self._stamp_ghost_refusal()      # old worlds heal on load
+            except Exception:
+                pass
             # WHEN each line was heard: the count of event flags fired at
             # the time. A sentence re-served without its date reads as a
             # standing instruction — "Say hi to PROF.OAK for me!" was said
@@ -8853,6 +8857,33 @@ class Executor:
                 break
         return (" — " + "; ".join(out)) if out else ""
 
+    def _stamp_ghost_refusal(self) -> int:
+        """Write the screen's refusal of a FIGHT onto every blocker that
+        names a GHOST and does not carry it yet. Returns how many.
+
+        The blockers ledger is what the AUTHOR reads (author.py takes
+        d["blockers"]), and the tower's stairs blocker read only "a GHOST
+        appeared on the way there — 'Be gone... Intruders...'" while the
+        refusal lived in ghost_said alone — so a rewrite could still say
+        "defeat the ghost" (2026-09-04). The probe wrote this line when it
+        fired; the refusal now reaches the ledger from wherever it was seen,
+        and on load, so old worlds heal.
+        """
+        said = str(getattr(self, "_ghost_said", "") or "")
+        if not said:
+            return 0
+        n = 0
+        for bk, bl in (getattr(self, "blockers", None) or {}).items():
+            if not isinstance(bl, dict):
+                continue
+            what = str(bl.get("what") or "")
+            if "GHOST" in what and "you pressed FIGHT" not in what:
+                bl["what"] = what + f' — you pressed FIGHT: "{said[:120]}"'
+                n += 1
+        if n:
+            self._ghost_probed = True
+        return n
+
     def _bag_pressure_line(self, obs) -> str:
         """The bag at 18 or more of its 20 KINDS, and how a slot is freed.
 
@@ -13041,6 +13072,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             _dtxt = str(r.get("detail") or "")
             if "too scared to move" in _dtxt and "the screen says: " in _dtxt:
                 self._ghost_said = _dtxt.split("the screen says: ", 1)[1].strip(' "')[:120]
+                self._stamp_ghost_refusal()
                 self._save_memory()
             if (op == "grind" and "fled" in note and not low_hp_flee
                     and not getattr(self, "_op_intent", None)
