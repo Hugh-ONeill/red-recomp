@@ -54,8 +54,8 @@ bad_plan = {"goal": "g", "subgoals": [{"id": "a", "goal_text": "x", "done_when":
 v2 = A.validate(bad_plan)
 ck("...and rejects bad shapes", any("bag_kinds_below" in p for p in v2) and any("lacks_item" in p for p in v2), v2)
 src = (ROOT / "planner" / "author.py").read_text()
-ck("the author asks it in the same round as validation", "probs = validate(plan) or witness_already_true_problems(plan)" in src)
-ck("...and so does the review", "probs = validate(revised) or witness_already_true_problems(revised)" in src)
+ck("the author asks it in the same round as validation", "probs = (validate(plan) or witness_already_true_problems(plan)" in src)
+ck("...and so does the review", "probs = (validate(revised) or witness_already_true_problems(revised)" in src)
 bad = [c for c in checks if not c[1]]
 for n, ok, d in checks:
     print(("ok   " if ok else "FAIL ") + n + ("" if ok else f"\n      {str(d)[:300]}"))

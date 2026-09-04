@@ -1600,7 +1600,8 @@ def author(goal: str, model: str, rounds: int = 5,
         except json.JSONDecodeError as e:
             fb = f"invalid JSON: {e}"; continue
         normalize_items(plan)
-        probs = validate(plan) or witness_already_true_problems(plan)
+        probs = (validate(plan) or witness_already_true_problems(plan)
+                 or held_step_problems(plan))
         if not probs:
             # tag each subgoal so escalation/distillation runs it macro-less
             for s in plan["subgoals"]:
@@ -3159,7 +3160,7 @@ def author_best_of(goal: str, model: str, draws: int = 3,
     # the leg completed without buying a drink. Drop invalid drafts here;
     # if every one is invalid, say so and hand back the least-bad, which is
     # what happened before this check existed.
-    good = [p2 for p2 in plans if not validate(p2)]
+    good = [p2 for p2 in plans if not (validate(p2) or held_step_problems(p2))]
     if good and len(good) < len(plans):
         print(f"[draws] {len(plans) - len(good)} draft(s) dropped as invalid")
     return pick_plan(goal, good or plans, model, start=start)
@@ -3203,7 +3204,8 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
         except json.JSONDecodeError:
             continue
         normalize_items(revised)
-        probs = validate(revised) or witness_already_true_problems(revised)
+        probs = (validate(revised) or witness_already_true_problems(revised)
+                 or held_step_problems(revised))
         if probs:
             print(f"[review] round {rnd} produced an invalid plan, keeping "
                   f"the previous one: {probs[0]}")
@@ -6329,6 +6331,14 @@ def pull_into_held(text: str, observed) -> str | None:
     named = {m for m in maps_named(text, ids) if m not in stood}
     if not named:
         return None
+    return held_doors_into(named, o)
+
+
+def held_doors_into(named: set, o: dict) -> "str | None":
+    """The run's own record of the doors into `named`: one sentence when
+    EVERY known door had somebody standing on it the last time the run
+    stood beside it (door_dests says where doors lead, shut_doors who stood
+    on them), None when any door is unheld or none is known."""
     dd = o.get("door_dests") or {}
     shut = o.get("shut_doors") or {}
     held, open_door = [], False
@@ -6349,6 +6359,61 @@ def pull_into_held(text: str, observed) -> str | None:
     if held and not open_door:
         return "; ".join(held[:2])
     return None
+
+
+_DEED_KEYS = {"flag", "badge", "has_item", "lacks_item", "bag_kinds_below",
+              "party_type", "has_species", "party_size", "knows_move",
+              "dex_owned"}
+
+
+def held_step_problems(plan: dict, observed="run/explored.json") -> list:
+    """A STEP INTO A HELD BUILDING, WITH NO DEED BEFORE IT, IS REFUSED.
+
+    The Scope leg's rewrite — "Obtain the Silph Scope from Celadon City",
+    written standing on Hideout B4F with the LIFT_KEY — was: use the lift
+    to leave, walk to Saffron, enter SILPH_CO_1F, reach 11F, take the Scope
+    from the President. Three rounds later the run stood at the Silph Co
+    door with SAFFRONCITY_ROCKET8 on the doorstep, as its own record
+    already said (shut_doors), having walked out of the one building that
+    holds the Scope (2026-09-04). Same record, same refusal as a pull
+    (pull_into_held), applied to a plan's steps: a step whose map or area
+    the run has never stood in, every known door of which had somebody
+    standing on it, is a problem — unless an earlier step of the plan does
+    a deed (a flag, an item, a badge, a party change) that could be what
+    moves them. Refuses only what the record shows.
+    """
+    try:
+        o = json.loads(Path(observed).read_text() or "{}") if observed else {}
+    except (OSError, ValueError, TypeError):
+        return []
+    if not o:
+        return []
+    stood = {str(r).split("|")[0].upper()
+             for r, n in (o.get("visits") or {}).items() if int(n or 0) > 0}
+    probs, deed_before = [], False
+    for sg in (plan or {}).get("subgoals") or []:
+        dw = (sg or {}).get("done_when") if isinstance(sg, dict) else None
+        if not isinstance(dw, dict):
+            continue
+        targets = set()
+        if isinstance(dw.get("map"), str):
+            targets.add(dw["map"].strip().upper())
+        if isinstance(dw.get("area"), str):
+            targets.add(dw["area"].split("|")[0].strip().upper())
+        targets -= stood
+        if targets and not deed_before:
+            h = held_doors_into(targets, o)
+            if h:
+                probs.append(
+                    f"step ({sg.get('id')}) stands in {sorted(targets)[0]}, "
+                    f"a building you have never stood in, and the last time "
+                    f"you stood by its door somebody was standing on it — "
+                    f"{h}. A step into a held building needs, before it, the "
+                    f"deed that moves them, or another way in; nothing "
+                    f"earlier in this plan changes the world")
+        if set(dw.keys()) & _DEED_KEYS:
+            deed_before = True
+    return probs
 
 
 def maps_named(goal: str, map_ids) -> list:
