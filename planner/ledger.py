@@ -1035,6 +1035,42 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                 c.note = _join(c.note, str(o.get("why") or ""))
         out.append(c)
 
+    # A SHUTTER THAT ASKED FOR A THING YOU NOW HOLD IS NOT DONE. Silph 9F
+    # read "EVERYTHING YOU CAN REACH HERE IS DONE" with three card-key
+    # shutters marked "pressed", CARD_KEY in the bag, and half the floor
+    # drawn behind them as ground "you cannot walk to"; the run rode the
+    # lift away (2026-09-05, user: "the shutters were not touched so half
+    # the room is unexplored ... its now reachable if it actually interacts
+    # with the shutters now that it has the key card"). The door's own words
+    # are on record ("Darn! It needs a CARD KEY!"), the item they name is
+    # in the engine's list, and the bag is on the page: put them together.
+    # The door goes back to UNWORKED, in words that say why. Which door
+    # leads where stays unsaid.
+    try:
+        _bag = obs.get("bag") if isinstance(obs.get("bag"), dict) else {}
+        _pats = ex._item_word_patterns() if hasattr(ex, "_item_word_patterns") else []
+        _hl = list((getattr(ex, "hints", None) or {}).get(here, ()))
+        for c in out:
+            if c.kind != "shut_door" or c.status == "unreachable":
+                continue
+            said = ""
+            for h in reversed(_hl):
+                if str(h).startswith(str(c.key) + ": "):
+                    said = str(h)[len(str(c.key)) + 2:]
+                    break
+            if not said and c.note and "said: " in str(c.note):
+                said = str(c.note).split("said: ", 1)[1]
+            if not said:
+                continue
+            for nm, pat in _pats:
+                if pat.search(said) and int((_bag or {}).get(nm, 0) or 0) > 0:
+                    c.status = "reopened"
+                    c.now_held = nm
+                    c.said_then = said.strip().strip('"')[:120]
+                    break
+    except Exception:
+        pass
+
     # ---- the edges of the seen ground ---------------------------------
     # Footprint leftover (b): the frontier reached the model only as head
     # TEXT, never as candidates, so the one thing the footprint calls
@@ -1878,6 +1914,13 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                     + " does reach it" if _from else
                     "; no part of this map you have stood in reaches it — "
                     "the way onto it is not known"))
+        _shut_here = [c for c in (cands or [])
+                      if getattr(c, "kind", "") == "shut_door"
+                      and getattr(c, "status", "") != "unreachable"]
+        if _shut_here:
+            head += (f"; {len(_shut_here)} CLOSED DOOR(s) stand on this floor ("
+                     + ", ".join(str(c.key) for c in _shut_here[:3])
+                     + ") — ground past a shut door is reached by opening it")
     _fr = m.get("frontier") or []
     if _fr:
         _fn = int(((m.get("seen") or {}).get("frontier_n")) or len(_fr))
@@ -2565,8 +2608,17 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
             words = ("a HOLE in the floor: stepping on it DROPS you to the "
                      "floor below and there is no climbing back up it, so "
                      "it is a way DOWN and never a way back — " + words)
-        if c.kind == "shut_door" and c.status in ("untouched", "touched",
-                                                  "inert", "worth_a_word"):
+        if c.kind == "shut_door" and getattr(c, "now_held", None):
+            _tw = [t for t in (getattr(c, "twins", None) or []) if t]
+            words = ("a CLOSED DOOR, drawn shut across the way"
+                     + (f" — ONE shutter, {len(_tw) + 1} tiles wide, also "
+                        f"at {', '.join(str(t) for t in _tw)}" if _tw else "")
+                     + f" — pressed {c.n}x when you held no {c.now_held} "
+                     + (f'(it said: "{c.said_then}") ' if getattr(c, "said_then", "") else "")
+                     + f"— you hold {c.now_held} NOW: the same press is a "
+                       f"different press")
+        elif c.kind == "shut_door" and c.status in ("untouched", "touched",
+                                                    "inert", "worth_a_word"):
             # A SHUTTER IS ONE DOOR AND IT IS WIDE. The shim now mints it
             # once at its first tile and carries the rest, the same
             # convention an ordinary two-tile doorway has used since

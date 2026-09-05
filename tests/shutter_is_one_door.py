@@ -41,7 +41,7 @@ ck("an object's twins reach the candidate",
    "c.twins = [f\"{t.get('x')},{t.get('y')}\"" in led)
 j = led.find("ONE shutter, ")
 ck("the shut-door line says how wide it is", j > 0)
-sblk = led[max(0, j - 900):j + 500]
+sblk = led[max(0, j - 900):j + 1400]   # the key-in-hand branch now sits above the plain one
 ck("...only when it actually has twins",
    'if _tw else ""' in sblk)
 ck("a one-cell shut door reads exactly as before",
