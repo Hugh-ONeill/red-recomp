@@ -5696,7 +5696,16 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
     except (OSError, ValueError):
         cur = {}
     done = sorted(cur.get("flags") or [])
-    listed = {_norm_obj(t) for _, t in ahead} | {_norm_obj(t) for _, t in behind}
+    # A LEG ALREADY WALKED PAST CANNOT SATISFY A NEED NOW. The same rule as
+    # insert_guard's (7f0f7c6), and this copy had to learn it too: "Clear
+    # space in the bag" sat at leg 27, counted without ever being confirmed
+    # and walked past, so with the bag full again in the Safari Zone this
+    # rung turned the step down six times as "already on your own list"
+    # while the blocker rung was naming the full bag as the reason the leg
+    # was stuck (2026-09-05). Some needs recur — a slot, money, a heal —
+    # and a line behind the run is history, not a plan. Only what is still
+    # AHEAD counts as already listed.
+    listed = {_norm_obj(t) for _, t in ahead}
     base = (f"THE OBJECTIVE YOU ARE STUCK ON: {goal}" + _wording_lineage(goal)
             + f"\n\nWHERE THE RUN STANDS: {start}"
             + attempt_yield_text(goal)[0] + new_ground_text(goal)

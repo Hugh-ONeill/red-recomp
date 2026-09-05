@@ -43,6 +43,14 @@ rc, out = guard("Teach SURF to a party member", LINES[3], done=3)
 ck("a genuinely new step is allowed", rc == 0, out)
 rc, out = guard("Clear space in the bag", LINES[3], done=0)
 ck("with no progress recorded, nothing is treated as behind", rc == 3, out)
+# the author's missing rung holds a second copy of the same rule
+asrc = (ROOT / "planner" / "author.py").read_text()
+ck("the missing rung counts only what is still ahead as already listed",
+   "listed = {_norm_obj(t) for _, t in ahead}\n" in asrc
+   and "listed = {_norm_obj(t) for _, t in ahead} | {_norm_obj(t) for _, t in behind}" not in asrc)
+ck("...and says why, where the next reader will find it",
+   "A LEG ALREADY WALKED PAST CANNOT SATISFY A NEED NOW" in asrc)
+
 src = (ROOT / "planner" / "insert_guard.py").read_text()
 ck("the boundary is the run's own progress index", 'Path("run/outline_leg").read_text()' in src and "ahead = lines[max(0, _done):]" in src)
 bad = [c for c in checks if not c[1]]
