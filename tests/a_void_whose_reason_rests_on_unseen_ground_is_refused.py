@@ -43,6 +43,28 @@ with tempfile.TemporaryDirectory() as d:
        A.void_refused_why(GOAL, observed, d / "plans", why="There is no such item in this game.") == "")
     got3 = A.void_refused_why(GOAL, d / "none.json", d / "plans", why=why)
     ck("with no walked record at all, the plan-ground rule speaks first, as before", "aims at" in got3, got3)
+# ...but a reason that names events the game itself recorded is not a guess
+import os as _os
+with tempfile.TemporaryDirectory() as d2:
+    d2 = Path(d2); (d2 / "plans").mkdir(); (d2 / "run").mkdir()
+    (d2 / "plans" / "leg_27_x.json").write_text(json.dumps(
+        {"goal": GOAL, "subgoals": [{"id": "s", "done_when": {"map": "ROUTE_17"}}]}))
+    (d2 / "explored.json").write_text(json.dumps({"visits": {"CELADON_CITY|2,1": 3}}))
+    (d2 / "run/obs.json").write_text(json.dumps(
+        {"flags": ["EVENT_BEAT_ROUTE12_SNORLAX", "EVENT_BEAT_ROUTE16_SNORLAX"]}))
+    _cwd = _os.getcwd()
+    try:
+        _os.chdir(d2)
+        _fired = ("The run has already triggered EVENT_BEAT_ROUTE16_SNORLAX and "
+                  "EVENT_BEAT_ROUTE12_SNORLAX, meaning both Snorlax have been woken.")
+        ck("a reason naming flags that actually fired is not refused",
+           A.void_refused_why(GOAL, d2 / "explored.json", d2 / "plans", why=_fired) == "")
+        ck("...while a flag that never fired is still no evidence",
+           A.void_refused_why(GOAL, d2 / "explored.json", d2 / "plans",
+                              why="EVENT_BEAT_BLAINE means it is done.") != "")
+    finally:
+        _os.chdir(_cwd)
+
 src = (ROOT / "planner" / "author.py").read_text()
 ck("the wording rung hands the model's reason to the guard", "_no = void_refused_why(goal, observed, why=why)" in src)
 bad = [c for c in checks if not c[1]]

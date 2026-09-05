@@ -6347,6 +6347,24 @@ def void_refused_why(goal: str, observed, plans_dir="plans", why: str = "") -> s
     judgment, it is not lying to yourself. The other answers (stands,
     reword, done under another name) stay the model's.
     """
+    # ...UNLESS THE REASON RESTS ON THE RECORD. "Wake Snorlax to clear the
+    # path" was struck out with "the run has already triggered
+    # EVENT_BEAT_ROUTE16_SNORLAX and EVENT_BEAT_ROUTE12_SNORLAX" — both
+    # true, both in the save — and this rule refused it because the leg's
+    # plan happened to aim at ROUTE_17, ground never stood in (2026-09-05).
+    # The rule exists to stop a leg being struck out on a GUESS about a
+    # place nobody has entered; a reason that names events the game itself
+    # recorded is the opposite of a guess. Flags only: an event either
+    # fired or it did not.
+    if why:
+        try:
+            _o = json.loads(Path("run/obs.json").read_text() or "{}")
+            _fired = set(_o.get("flags") or [])
+        except (OSError, ValueError, TypeError):
+            _fired = set()
+        if _fired and [f for f in re.findall(r"\bEVENT_[A-Z0-9_]+\b", why)
+                       if f in _fired]:
+            return ""
     pth = plan_path_for(goal, plans_dir)
     unreached = sorted(plan_places_unreached(pth, observed)) if pth else []
     if unreached:
