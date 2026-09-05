@@ -3500,6 +3500,37 @@ end
 -- fill -- what you can walk and walk back from, bounded by seams and
 -- one-way drops. Warp reachability still uses the leaky one: a warp you
 -- can only get to by dropping down IS reachable, it just is not here.
+-- A WARP ENTRY ON PLAIN FLOOR IS NOT A DOOR, AND A WALK CROSSES IT. The
+-- engine fires a warp on arrival only when the cell is a warp TILE
+-- (Warp.onArrive -> Map:isWarpTileCell: the tileset's warpTiles/doorTiles);
+-- anything else is a LANDING, plain floor that some other warp happens to
+-- point at, and stepping on it does nothing at all. warp_look has known
+-- this since the Silph 16,10 case ("A LANDING IS NOT A WAY OUT") — but the
+-- reachability floods and the walker blocked routing through EVERY warp
+-- entry, firing or not. On SILPH_CO_11F the President's alcove is entered
+-- across (5,5), tile 31, an ordinary floor cell with a warp entry on it:
+-- the room sealed, he read "you cannot walk to it from where you stand" on
+-- all 53 pages the run took there, and the leg could never be finished
+-- while a player walks straight in (2026-09-05, user: "from physically
+-- manipulating the player to that location, it is without a doubt 100%
+-- reachable"). A cell that would fire still stops a route — a door is an
+-- endpoint, not a corridor; a landing no longer does.
+local function warp_seals(G, x, y)
+  local ow = G.overworld
+  local map = ow and ow.map
+  if not (map and map.isWarpTileCell) then return true end
+  if map:isWarpTileCell(x, y) then return true end
+  local okw, WarpM = pcall(require, "src.world.Warp")
+  local carpets = G.data and G.data.field and G.data.field.warpCarpets
+  if okw and WarpM and WarpM.extraCheck then
+    for _, dn in ipairs({ "down", "up", "left", "right" }) do
+      local okc, fires = pcall(WarpM.extraCheck, map, carpets, x, y, dn)
+      if okc and fires then return true end
+    end
+  end
+  return false
+end
+
 region_reach = function(G) return warp_reach(G, true) end
 
 -- surf=true floods over WATER as well as ground, which is what the party
@@ -3606,7 +3637,7 @@ function warp_reach(G, no_ledges, surf)
   -- ground mints a new name, which is the point.
   local THROUGH = {}
   for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
-    THROUGH[key(w.x, w.y)] = true
+    if warp_seals(G, w.x, w.y) then THROUGH[key(w.x, w.y)] = true end
   end
   -- A CELL THE GAME SHOVES YOU OFF IS NOT A CELL YOU CAN REACH. While the
   -- party rides, Seafoam's forced cells bump it straight back (see
@@ -3779,7 +3810,7 @@ seen_reach = function(G, sx, sy, surf)
   end
   local THROUGH = {}
   for _, w in ipairs((ow.map.def and ow.map.def.warps) or {}) do
-    THROUGH[key(w.x, w.y)] = true
+    if warp_seals(G, w.x, w.y) then THROUGH[key(w.x, w.y)] = true end
   end
   local start = key(p.cellX, p.cellY)
   THROUGH[start] = nil
@@ -3868,7 +3899,7 @@ local function warp_block(G, tx, ty)
   local md = ow.map and ow.map.def
   local blocked = {}
   for _, w in ipairs((md and md.warps) or {}) do
-    if not (w.x == tx and w.y == ty) then
+    if not (w.x == tx and w.y == ty) and warp_seals(G, w.x, w.y) then
       blocked[w.x .. "," .. w.y] = true
     end
   end
