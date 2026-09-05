@@ -1915,8 +1915,35 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         _near = ", ".join(f"({c.get('x')},{c.get('y')})"
                           for c in (_su.get("near") or [])[:3])
         _from = [f for f in (_su.get("from") or []) if f.get("region")]
+        # A CELL SOMEBODY IS STANDING ON IS NOT GROUND YOU CANNOT GET TO.
+        # In the Safari Zone's Secret House the only such cell was (3,3) —
+        # the FISHING GURU's own tile, the man the leg was for — and this
+        # line reported it exactly as it reports a walled-off corner, so
+        # the plan read "a Fishing Guru who is currently unreachable" and
+        # went looking for another door, while option 1 on the same page
+        # was "press the Fishing Guru here" (2026-09-05). You never walk
+        # onto a person; standing beside them is the whole of reaching
+        # them. Name the ones that are somebody, and say so.
+        _occ = {}
+        for _c in (cands or []):
+            _x, _y = getattr(_c, "x", None), getattr(_c, "y", None)
+            if _x is None or _y is None:
+                continue
+            if getattr(_c, "kind", "") in ("npc", "trainer") \
+                    and getattr(_c, "status", "") != "unreachable":
+                _occ[(int(_x), int(_y))] = str(_c.key)
+        _people = [(f"({c.get('x')},{c.get('y')})", _occ[(c.get('x'), c.get('y'))])
+                   for c in (_su.get("near") or [])
+                   if (c.get('x'), c.get('y')) in _occ]
         head += (f". GROUND YOU HAVE SEEN BUT CANNOT WALK TO FROM HERE: "
                  f"{int(_su['n'])} cell(s), nearest {_near}"
+                 + ("" if not _people else
+                    " — of those, " + ", ".join(f"{xy} is where {nm} STANDS"
+                                                for xy, nm in _people[:3])
+                    + ": you never walk onto a person, and standing beside "
+                      "them is the whole of reaching them, so that cell "
+                      "being unwalkable says nothing about whether you can "
+                      "press them")
                  + ("; ground you have stood on in "
                     + ", ".join(f"{f['region']} (reaches {f.get('n')} of them)"
                                 for f in _from[:2])
