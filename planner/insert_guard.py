@@ -30,15 +30,28 @@ def main():
         sys.exit("usage: insert_guard.py PROPOSED LEG OUTLINE")
     proposed, leg, outline = sys.argv[1], sys.argv[2], Path(sys.argv[3])
     lines = [l.strip() for l in outline.read_text().splitlines() if l.strip()]
+    # A LEG ALREADY WALKED PAST CANNOT SATISFY A NEED NOW. "Clear space in
+    # the bag" was inserted at 27, counted without ever being confirmed, and
+    # walked past; ten legs later the bag was full again in the Safari Zone
+    # and the missing rung asked for it three times, each refused as
+    # "already on your own list" (2026-09-05). Some needs recur — a bag
+    # slot, money, a heal — and a line behind the run is history, not a
+    # plan. Compare against the leg this would precede and everything still
+    # AHEAD of the run; what is done is done.
+    try:
+        _done = int(Path("run/outline_leg").read_text().strip() or 0)
+    except (OSError, ValueError):
+        _done = 0
+    ahead = lines[max(0, _done):]
     p = _norm(proposed)
-    for other in [leg] + lines:
+    for other in [leg] + ahead:
         o = _norm(other)
         if not o:
             continue
         ratio = difflib.SequenceMatcher(None, p, o).ratio()
         if p == o or ratio >= 0.85:
             print(f"insertion refused: '{proposed}' restates '{other}' "
-                  f"(similarity {ratio:.2f})")
+                  f"(similarity {ratio:.2f}), which is still ahead of you")
             sys.exit(3)
     sys.exit(0)
 
