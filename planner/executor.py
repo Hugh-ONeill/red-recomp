@@ -3093,7 +3093,19 @@ class Executor:
         """
         here = self._where(obs)
         prev = getattr(self, "_intra_prev", None)
+        # A WALK MADE ON THE WATER IS REMEMBERED THAT WAY. Door and seam
+        # crossings have carried `surf` since Route 20's east seam was
+        # replayed on foot (2026-08-28); the intra-map walk never did, so
+        # the swim between Route 20's two parts, and the one between
+        # Seafoam B3F's, were stored as plain walks. Replayed on foot they
+        # failed, took a blocked_at stamp, and `go` refused Fuchsia and
+        # the island's far half in the same breath — while the page still
+        # said "go replays a route you have walked" (2026-09-05). Riding
+        # at either end of the walk is the eye-fact; the replay reads it.
+        _surf_now = bool(((obs or {}).get("player") or {}).get("surfing"))
+        _surf_prev = bool(getattr(self, "_intra_prev_surf", False))
         self._intra_prev = here
+        self._intra_prev_surf = _surf_now
         if not prev or prev == here or "None" in prev or "None" in here:
             return
         if prev.split("|")[0] != here.split("|")[0]:
@@ -3109,8 +3121,12 @@ class Executor:
         rec["n"] = int(rec.get("n") or 0) + 1
         rec["to"] = here
         rec["intra"] = True
+        rec.pop("blocked_at", None)      # it landed; the block is gone
+        if _surf_now or _surf_prev:
+            rec["surf"] = True
         if rec["n"] == 1:
-            self.log("intra_walk", frm=prev, to=here)
+            self.log("intra_walk", frm=prev, to=here,
+                     surf=bool(rec.get("surf")))
             self._save_memory()
 
     MEMORY = RUN / "explored.json"
@@ -3153,6 +3169,26 @@ class Executor:
             self._ghost_said = data.get("ghost_said", "") or ""
             self._dry_walks = data.get("dry_walks", {}) or {}
             self.unreached_at = data.get("unreached_at", {}) or {}
+            # A BLOCK STAMPED BY A FOOT-ONLY REPLAY IS NOT A FACT ABOUT THE
+            # WORLD. Until 2026-09-05 an intra-map walk was replayed on
+            # foot however it was made, so the swims between Route 20's two
+            # parts and between Seafoam B3F's carry blocked_at stamps earned
+            # by a rule that no longer exists — and a stamp keeps the hop
+            # out of every route until the world mark moves. Lift them
+            # once; the replay now rides, and a walk that truly cannot
+            # land re-earns its stamp the first time it is tried.
+            if not data.get("walks_reopened"):
+                _nw = 0
+                for _es in (self.explored or {}).values():
+                    for _k, _e in (_es or {}).items():
+                        if (str(_k).startswith("walk:")
+                                and isinstance(_e, dict)
+                                and _e.pop("blocked_at", None) is not None):
+                            _nw += 1
+                if _nw:
+                    print(f"[memory] {_nw} walked-across leg(s) reopened "
+                          f"for the ride rule")
+            self._walks_reopened = True
             self._battle_regions = set(data.get("battle_regions") or ())
             # Money-dependent proofs do not survive a restart. "Fully
             # worked" recorded in a shop with an empty wallet is a fact
@@ -3773,6 +3809,8 @@ class Executor:
                                                  set())),
                  "lists_reopened": bool(getattr(
                      self, "_lists_reopened", False)),
+                 "walks_reopened": bool(getattr(
+                     self, "_walks_reopened", False)),
                  "outcomes": getattr(self, "_outcomes", {}),
                  "plan_hist": getattr(self, "_plan_hist", {}),
                  "blackouts": self._blackouts,
@@ -7895,12 +7933,70 @@ class Executor:
                 # keep what the walk SAID: its refusal is the rich one —
                 # the reachable-ground count and who or what stands at the
                 # edge of it, a CUT_TREE included
-                _wres = self._send_safe("walk_to", x=_ax, y=_ay)
+                _wrec = (self.explored.get(self._where(_now)) or {}) \
+                    .get(str(key))
+                # A WALK MADE ON THE WATER IS RE-WALKED ON THE WATER. The
+                # door hop below has ridden a swim it failed to reach on
+                # foot since 2026-08-28; this hop never did. Seafoam's
+                # B3F|1,0 -> B3F|21,6, the one swim on the walked route to
+                # the island's far half and its untaken door, was replayed
+                # on foot, failed, took a blocked_at stamp, and every route
+                # through it went dark: `go` refused, explore's picker
+                # could no longer reach the far half at all and walked the
+                # party to Route 18 instead, and the page kept saying "go
+                # replays a route you have walked" (2026-09-05, user: "it
+                # just needs to follow the route its already walked 90% of
+                # the way out of seafoam"). An edge the ledger remembers
+                # as ridden is ridden first; one it does not is walked,
+                # then ridden once if the walk fell short on a floor with
+                # water and someone in the party knows SURF. Re-opening a
+                # way this run opened itself is mechanics; WHERE to go was
+                # the model's when it asked for the route.
+                _ride_first = ((bool((_wrec or {}).get("surf"))
+                                or bool(getattr(self, "_go_surf", False)))
+                               and self._knows_move(_now, "SURF"))
+                _wkw = {"x": _ax, "y": _ay}
+                if _ride_first:
+                    _wkw["surf"] = True
+                _wres = self._send_safe("walk_to", **_wkw)
                 _wdet = ((_wres or {}).get("result") or {}).get("detail") or ""
                 o = self.settle() or _now
                 while o and o.get("mode") == "battle":
                     o = self.handle_battle(sg, o)
                     o = self.settle()
+                _rode_walk = _ride_first
+                if (not self._same_area(self._where(o), nxt)
+                        and not _ride_first
+                        and self._knows_move(o or {}, "SURF")
+                        and ((o or {}).get("map") or {}).get("water")):
+                    _rode_walk = True
+                    self.log("route_hop_surfed", subgoal=sg.get("id"),
+                             key=str(key), frm=self._where(o))
+                    _wres2 = self._send_safe("walk_to", x=_ax, y=_ay,
+                                             surf=True)
+                    _wdet2 = ((_wres2 or {}).get("result")
+                              or {}).get("detail") or ""
+                    o = self.settle() or o
+                    while o and o.get("mode") == "battle":
+                        o = self.handle_battle(sg, o)
+                        o = self.settle()
+                    # KEEP BOTH VERDICTS: the foot walk's is the one that
+                    # names the water; the ride's is the one that says why
+                    # the water did not carry us either.
+                    if _wdet2:
+                        _wdet = (f"on foot: {_wdet}; riding: {_wdet2}"
+                                 if _wdet else _wdet2)
+                if self._same_area(self._where(o), nxt):
+                    # IT LANDED: the block is gone, and HOW it landed is
+                    # remembered so the next replay rides straight away.
+                    if _wrec is not None:
+                        _chg = _wrec.pop("blocked_at", None) is not None
+                        if _rode_walk and not _wrec.get("surf"):
+                            _wrec["surf"] = True
+                            _chg = True
+                        if _chg:
+                            self._save_memory()
+                    continue
                 if self._where(o) != nxt:
                     # ...AND A WALK THAT DID NOT ARRIVE MUST STOP BEING
                     # THE SHORTEST ROUTE — the lift's own rule, never
@@ -7911,8 +8007,6 @@ class Executor:
                     # ("walked 9 leg(s)... did not arrive", 2026-08-22).
                     # Blocked for the world as it stands; a road again the
                     # moment anything changes.
-                    _wrec = (self.explored.get(self._where(_now)) or {}) \
-                        .get(str(key))
                     if _wrec is not None:
                         _wrec["blocked_at"] = self._world_mark(o)
                         self.log("walk_edge_blocked",

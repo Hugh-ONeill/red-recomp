@@ -51,7 +51,7 @@ src = (ROOT / "planner/executor.py").read_text()
 i = src.index("_edge = (self.explored.get(self._where(pre)) or {}).get(str(key)) or {}")
 blk = src[i:i + 200]
 ck("a replayed hop rides the water when the edge says it was ridden", 'bool(_edge.get("surf")) or _surfed_retry' in blk)
-j = src.index('self.log("route_hop_surfed"')
+j = src.index("_surfed_retry = True")   # the seam retry; the walk hop logs the same line earlier
 rb = src[j - 700:j + 200]
 ck("...or once more when the seam cannot be walked to and someone knows SURF",
    '"cannot be walked to" in _det' in rb and 'self._knows_move(o or {}, "SURF")' in rb and "_surfed_retry = True" in rb)
