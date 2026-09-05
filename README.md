@@ -116,7 +116,7 @@ off and moves them.
 for t in tests/*.py; do python3 "$t"; done
 ```
 
-250 of them, and they are named as sentences, because each one is a claim
+256 of them, and they are named as sentences, because each one is a claim
 about what the harness owes the model:
 
 ```
@@ -144,6 +144,23 @@ a model-authored outline.
 
 The interesting number is not the badge count. It is that when the run gets
 stuck, the fix is almost never in the model.
+
+## Is it getting better?
+
+```
+planner/arc.py --diff        # the last two runs, side by side
+planner/arc.py --phases      # each run split into quarters by leg
+```
+
+Every fix here is checked twice: an offline test written the day it was
+found, and watching the live run at the spot it was stuck. Both are blind
+to the arc of a run, so a change that helps at leg 12 and hurts at leg 42
+stays invisible until some later run reaches leg 42. `arc.py` reads the
+archived journals — no model, no game — and puts the runs beside each
+other. It prints its denominators and where each run did its walking,
+because a routing rate is also a statement about whether the run spent its
+time in towns or in a cave split by water. A number that moved is a
+question, not a verdict.
 
 ## Design notes
 
