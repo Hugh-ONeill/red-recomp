@@ -8201,10 +8201,28 @@ class Executor:
                 # to `continue` the way the CUT and door-ride retries do:
                 # the next pass crosses with surf (see _sf above), once,
                 # and the journal says so.
+                # A WALK THAT STARTED AND STOPPED SHORT IS THE SAME FAILURE.
+                # The two verdicts below are the shim's BFS refusing BEFORE
+                # a step is taken; there is a third, from the walk that ran
+                # ("couldn't reach east edge gap (99,5), stuck at (46,6) —
+                # 54 cell(s) of walking still to do"), and it was matched by
+                # nothing. Route 20's east seam — which this run crosses by
+                # RIDING, its two halves joined by nothing else — fails
+                # exactly that way, so `go FUCHSIA_CITY` from the Seafoam
+                # door stopped dead at the water while the door hop three
+                # lines up would have ridden it, and the model walked the
+                # crossing by hand two rounds later (2026-09-05, the same
+                # morning the walk hop got its ride). The door gate keys on
+                # "couldn't reach" and this one did not: one wording apart.
+                # WATER ON THE FLOOR IS WHAT MAKES RIDING A CANDIDATE — a
+                # ledge or a wall is not answered by SURF, and that verdict
+                # names those too. Same guard the door hop carries.
                 if (self._where(o) != nxt and not _is_door_key(key)
                         and not _sf and not _surfed_retry
                         and ("cannot be walked to" in _det
-                             or "cannot be reached over the ground" in _det)
+                             or "cannot be reached over the ground" in _det
+                             or ("couldn't reach" in _det
+                                 and ((o or {}).get("map") or {}).get("water")))
                         and self._knows_move(o or {}, "SURF")):
                     _surfed_retry = True
                     self.log("route_hop_surfed", subgoal=sg.get("id"),
