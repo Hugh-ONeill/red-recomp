@@ -6946,6 +6946,50 @@ class Executor:
                   "in the bag. The same look gives the same answer — what "
                   "makes a shut way open is a deed, not a return.")
 
+    _UNREACHABLE_WORDS = _re.compile(
+        r"\b(?:un-?reachable|cannot (?:be )?reach\w*|can'?t reach\w*|"
+        r"not reachable|no walk|unable to reach|blocked from|"
+        r"cannot walk to|can'?t walk to)\b", _re.I)
+
+    def _reachable_disagreement_note(self, plan_said, obs) -> str:
+        """WHAT THE SCREEN SAYS NOW BEATS WHAT YOU REMEMBER. Standing on
+        11F's pad with the President three tiles off and the page listing
+        him REACHABLE for the first time, the plan read "the President is
+        visible but unreachable ... I will use 'go' to return to
+        SILPH_CO_11F|9,0" — the one part of the floor he cannot be reached
+        from — and it left (2026-09-05). The claim came from its own
+        earlier rounds, when it was true; the observation in front of it
+        said otherwise. Same family as words-are-not-ops: when the plan's
+        words call a thing unreachable and THIS observation marks that
+        thing reachable, say so. Nothing about where to stand or what to
+        press."""
+        said = str(plan_said or "")
+        if not said or not self._UNREACHABLE_WORDS.search(said):
+            return ""
+        if (obs or {}).get("mode", "overworld") != "overworld":
+            return ""
+        hits = []
+        for ob in (((obs or {}).get("map") or {}).get("objects") or []):
+            if not ob.get("reachable") or not ob.get("name"):
+                continue
+            tail = str(ob["name"]).rsplit("_", 1)[-1]
+            if len(tail) < 5:
+                continue
+            for sent in _re.split(r"(?<=[.!?;])\s+", said):
+                if not self._UNREACHABLE_WORDS.search(sent):
+                    continue
+                if _re.search(r"\b" + _re.escape(tail) + r"\b", sent, _re.I) \
+                        and ob["name"] not in hits:
+                    hits.append(ob["name"])
+        if not hits:
+            return ""
+        return ("WHAT THE SCREEN SAYS NOW: your plan calls "
+                + ", ".join(hits[:3])
+                + (" unreachable, and from where you stand THIS ROUND a walk "
+                   "reaches " + ("it" if len(hits) == 1 else "them")
+                   + " — that was true when you wrote it and is not true "
+                     "here. Leaving this spot gives it up."))
+
     # WORDS ARE NOT A LIFTS ENTRY. Eight rounds in a row the plan said "a
     # Ghost blocks the path to the 7th floor on the 6th floor and I need the
     # Silph Scope", and every one of those rounds the row for that door read
@@ -14856,7 +14900,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _ret = self._unchanged_return_note(macro, self._plan_said, _obs_now)
             except Exception:
                 _ret = ""
-            for _n in (_held, _spoke, _ret):
+            try:
+                _reach = self._reachable_disagreement_note(self._plan_said, _obs_now)
+            except Exception:
+                _reach = ""
+            for _n in (_held, _spoke, _ret, _reach):
                 if _n:
                     trace = list(trace) + [_n]
             if _trunc_note:
