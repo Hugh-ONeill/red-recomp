@@ -1901,6 +1901,15 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # page (executor coverage_text): the first-listed thing is taken 54%
     # of the time, and a page that opened "FULLY WORKED" over a floor with
     # a door never on screen sent the run back out the way it came.
+    # A SLOPE MOVES THE GROUND UNDER EVERY OP. Said once, at the head, so
+    # sweep and explore read it too — not only a refused northward cross.
+    if m.get("slope"):
+        head += (f". THIS MAP IS A SLOPE: whenever you are not holding a "
+                 f"direction the game moves you one cell {m['slope']}. "
+                 f"Walking the other way still works while you keep "
+                 f"walking; the drift only takes back the ground you stop "
+                 f"on, so exploring here costs more steps uphill than down "
+                 f"and every pause gives some back.")
     _su = m.get("seen_unreached")
     if isinstance(_su, dict) and int(_su.get("n") or 0) > 0:
         _near = ", ".join(f"({c.get('x')},{c.get('y')})"

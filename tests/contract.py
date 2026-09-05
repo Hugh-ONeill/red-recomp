@@ -104,6 +104,8 @@ OVERWORLD = [
     Field("pokedex.seen", "pokedex line in the state text"),
     # ---- the footprint (2026-08-24 landing; leftover (f) closed 08-29) ----
     Field("map.seen.n", "ledger coverage; grind's no-grass-on-seen-ground claim"),
+    Field("map.slope", "ledger head: the map pulls you one cell that way whenever you stop",
+          required=False, note="only on a slope map (Cycling Road)"),
     Field("map.wild_seen.grass", "executor _wild_seen ledger: grass cells in the footprint, for ground never fought on"),
     Field("map.wild_seen.cave", "executor _wild_seen ledger: cave floor in the footprint"),
     Field("map.seen.frontier_n", "ledger head; plan_explore; _explore_step"),

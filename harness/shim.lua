@@ -1455,6 +1455,20 @@ local function observe(G, seq, result)
     end
     -- the floors this car's panel was seen to offer (see lift_floors)
     o.map.lift_floors = lift_floors[tostring(map.id)]
+    -- A SLOPE IS A FACT ABOUT THE WHOLE MAP, NOT ABOUT ONE REFUSED WALK.
+    -- Cycling Road pulls the bike one cell SOUTH on every idle poll
+    -- (field.forcedMovement.slopeMaps), and the run was told so only when
+    -- a NORTHWARD cross was refused — so sweep, explore and every walk
+    -- worked the map with no idea the ground moves under them, and a
+    -- 300-step sweep read as ordinary exploring (2026-09-05, user: "i
+    -- dont think the shim handles exploration on a slope very well").
+    -- Which way it pulls is on the screen the moment you stop pedalling.
+    do
+      local fm = G.data and G.data.field and G.data.field.forcedMovement
+      for _, mm in ipairs((fm and fm.slopeMaps) or {}) do
+        if mm == tostring(map.id) then o.map.slope = "south" end
+      end
+    end
     -- WHERE FLY CAN GO IS A SCREEN, AND IT WAS ONLY EVER SHOWN AFTER A
     -- REFUSAL. The fly picker lists the towns the save records as visited
     -- (src/ui/TownMap.lua buildFlyList: flyOrder, filtered to visited fly
