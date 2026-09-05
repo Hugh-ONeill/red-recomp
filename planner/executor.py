@@ -6771,7 +6771,10 @@ class Executor:
                 f"({', '.join(stray)}) is the plan-writer's guess at where, "
                 f"not part of the condition.")
 
-    _HELD_WORDS = r"\b(?:have|has|hold|holds|holding|got|carry|carrying|possess|possessing|with)\b"
+    # "with" is not a claim to hold: "speak WITH the President to receive the
+    # MASTER BALL" fired the note against a bag with no Master Ball in it,
+    # correctly and pointlessly (2026-09-05). Only verbs of possession.
+    _HELD_WORDS = r"\b(?:have|has|hold|holds|holding|got|carry|carrying|possess|possessing|in my bag)\b"
 
     def _same_kind_held(self, item: str, bag: dict) -> str:
         """A held item that shares its LAST word with `item` (CARD_KEY vs

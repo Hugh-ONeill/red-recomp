@@ -27,6 +27,8 @@ ck("a claim to hold the Card Key is put beside a bag without one", "your plan sp
 ck("...and the key it does hold is named a different item", "the KEY you do hold, LIFT_KEY, is a DIFFERENT item" in w, w)
 ck("a claim to hold what it holds says nothing", e._held_claim_note("I have the LIFT_KEY in my bag.", obs) == "")
 ck("a sentence with no holding verb says nothing", e._held_claim_note("The door needs a CARD KEY.", obs) == "")
+ck("'speak with the President to receive the MASTER BALL' is not a claim to hold one",
+   e._held_claim_note("I will speak with the President to receive the MASTER BALL.", obs) == "")
 ck("a rod of another kind is the same shape", "the ROD you do hold, OLD_ROD" in e._held_claim_note("I have the GOOD ROD.", obs))
 ck("a bag behind a menu is unreadable: silent", e._held_claim_note("I have the CARD KEY.", {"mode": "ui", "bag": {}}) == "")
 ck("nothing about where the missing item is", "SILPH" not in w and "5F" not in w, w)
