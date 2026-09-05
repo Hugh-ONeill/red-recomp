@@ -1903,6 +1903,16 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # a door never on screen sent the run back out the way it came.
     # A SLOPE MOVES THE GROUND UNDER EVERY OP. Said once, at the head, so
     # sweep and explore read it too — not only a refused northward cross.
+    # YOU ARE ON THE WATER, AND THAT CHANGES WHAT GROUND MEANS. Said at the
+    # head because every op reads it: while the party is afloat water is
+    # ordinary ground and the land is not, and SURF pressed again is how
+    # you get off rather than a way to move.
+    if (obs.get("player") or {}).get("surfing"):
+        head += (". YOU ARE ON THE WATER right now, riding a party Pokemon: "
+                 "from here WATER is what you can walk on, and you leave it "
+                 "only where the shore lets you off. Pressing SURF again "
+                 "does not move you — that is how you get OFF, and the game "
+                 "refuses it where there is nowhere to land.")
     if m.get("slope"):
         head += (f". THIS MAP IS A SLOPE: whenever you are not holding a "
                  f"direction the game moves you one cell {m['slope']}. "

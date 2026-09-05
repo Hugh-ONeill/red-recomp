@@ -1409,8 +1409,18 @@ local function observe(G, seq, result)
     o.mode = "overworld"
     seen_paint(G)
     local p = G.overworld.player or {}
+    -- WHETHER YOU ARE ON THE WATER IS A FACT ABOUT YOU, and it was the one
+    -- thing about the player this observation never carried: x, y, facing
+    -- and moving, and nothing else. So with the party afloat in the
+    -- Seafoam Islands every page described it as if it stood on land, its
+    -- own plans read "I am not standing on a water tile", and the only way
+    -- it ever learned otherwise was pressing SURF again and being told
+    -- "you are ALREADY on the water" — a refusal doing a fact's job
+    -- (2026-09-05, user: "its on the water now"). The sprite on screen is
+    -- a Pokemon carrying you across the waves; nothing here is hidden.
     o.player = { x = p.cellX, y = p.cellY, facing = p.facing,
-                 moving = p.moving and true or false }
+                 moving = p.moving and true or false,
+                 surfing = p.surfing and true or false }
     if os.getenv("RED_DBG_BUSY") == "1" then
       local function n(t) return type(t) == "table" and #t or -1 end
       local nmov = 0
