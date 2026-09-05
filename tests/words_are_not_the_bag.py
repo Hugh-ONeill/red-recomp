@@ -39,6 +39,9 @@ ck("what the door said is put beside the bag", "something here spoke of CARD_KEY
 ck("...naming the lift key as a different item", "LIFT_KEY in your bag is a DIFFERENT item" in v, v)
 ck("words naming a held item say nothing", e._spoken_item_note(['x: it said: "Here is a POTION for you"'], obs) == "")
 ck("no speech, no note", e._spoken_item_note(["walk_to(1,1): ok"], obs) == "")
+ck("words that HAND you a thing are not a demand: no note",
+   e._spoken_item_note(['x: it said: "We\'ll give you 30 SAFARI BALLs! Good Luck!"'], obs) == "")
+ck("...but a demand still speaks", "CARD_KEY" in e._spoken_item_note(['x: it said: "You need a CARD KEY for this door"'], obs))
 src = (ROOT / "planner" / "executor.py").read_text()
 ck("both notes ride the round's feedback after the shelf note",
    "_held = self._held_claim_note(self._plan_said, _obs_now)" in src and "_spoke = self._spoken_item_note(trace, _obs_now)" in src)

@@ -6830,12 +6830,22 @@ class Executor:
         bag = (obs or {}).get("bag") or {}
         if not isinstance(bag, dict) or (obs or {}).get("mode", "overworld") != "overworld":
             return ""
+        # ONLY WHEN THE WORDS DEMAND IT. The note was written for "Darn! It
+        # needs a CARD KEY!" — a thing asked of you that you do not have.
+        # Any MENTION was enough, so the Safari gate HANDING OVER 30 SAFARI
+        # BALLs (which are not bag items at all; obs.safari.balls counts
+        # them) produced "something here spoke of SAFARI_BALL, which you do
+        # not hold — MASTER_BALL in your bag is a DIFFERENT item", three
+        # times, about a gift (2026-09-05). A demand is the case worth
+        # answering; a gift answers itself.
         named = []
         for t in (trace or []):
             t = str(t)
             if 'it said: "' not in t and "said: " not in t:
                 continue
             said = t.split("said: ", 1)[1]
+            if not _re.search(self.NEED_WORDS, said, _re.I):
+                continue
             for nm, pat in self._item_word_patterns():
                 if pat.search(said) and int(bag.get(nm, 0) or 0) <= 0 and nm not in named:
                     named.append(nm)
