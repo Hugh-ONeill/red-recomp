@@ -6832,6 +6832,34 @@ class Executor:
                            if other else ""))
         return "SAID, AGAINST THE BAG: " + "; ".join(bits) + "."
 
+    @staticmethod
+    def _same_floor_move_words(pre_obs, obs, op, det="") -> str:
+        """A WARP ONTO THE SAME FLOOR IS A MOVE, NOT NOTHING. Silph Co's pads
+        often land elsewhere on the floor you left; the no-change verdict
+        blanks the party's position on purpose (so pacing is not progress),
+        and use_warp(3,11) came back "ran but had NO visible effect (nothing
+        changed) — warped — same map, you are now at 11,9": a denial and its
+        own refutation in one line (2026-09-05, user: "the visible effect
+        was the move, it just didnt have a map change"). Say the move."""
+        if op != "use_warp":
+            return ""
+        m0 = ((pre_obs or {}).get("map") or {}).get("id")
+        m1 = ((obs or {}).get("map") or {}).get("id")
+        if not m0 or m0 != m1:
+            return ""
+        p0 = (pre_obs or {}).get("player") or {}
+        p1 = (obs or {}).get("player") or {}
+        if p1.get("x") is None or p1.get("y") is None:
+            return ""
+        same_map_warp = "same map" in str(det or "")
+        moved = (p0.get("x"), p0.get("y")) != (p1.get("x"), p1.get("y"))
+        if not (same_map_warp or moved):
+            return ""
+        return (f": ok — it moved you on the SAME floor, to ({p1['x']},{p1['y']})"
+                + (f" from ({p0.get('x')},{p0.get('y')})" if moved else "")
+                + f": a pad or door of {m1} that lands elsewhere on {m1}, "
+                  f"not nothing")
+
     # WORDS ARE NOT A LIFTS ENTRY. Eight rounds in a row the plan said "a
     # Ghost blocks the path to the 7th floor on the 6th floor and I need the
     # Silph Scope", and every one of those rounds the row for that door read
@@ -13569,7 +13597,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # ...AND A FOUGHT OR FLED ENCOUNTER IS NOT NOTHING
                     # EITHER: name the count instead of "nothing changed"
                     _nb0 = getattr(self, "_op_battles", 0)
-                    note += (": the world did not change, but it SPOKE"
+                    _mv0 = self._same_floor_move_words(pre_obs, obs, op, det0)
+                    note += (_mv0 if _mv0 else
+                             ": the world did not change, but it SPOKE"
                              if heard else
                              (f": ran; {_nb0} wild encounter(s) met and "
                               f"nothing else changed")
@@ -13583,7 +13613,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # — reached the ledger only as her "That's too bad",
                     # four times, and read as a refusal by her.
                     if det0 and det0 not in ("ok", "done") \
-                            and det0[:60] not in note:
+                            and det0[:60] not in note and not _mv0:
                         note += f" — {det0[:220]}"
                     if op == "interact" and step.get("name"):
                         # remember WHICH state it was useless in; if the
