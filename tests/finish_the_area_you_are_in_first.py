@@ -34,13 +34,19 @@ ck("the room off this area is chosen over an untried seam one leg the other way"
    f"never tried is {HOUSE}" in words, words[:200])
 src = (ROOT / "planner" / "executor.py").read_text()
 ck("the deed ranks locality above distance, and a room means a DOOR not a seam",
-   "_local = 0 if (region.split(\"|\")[0] == here.split(\"|\")[0]" in src
+   "_local = 0 if (_reg_b == _here_b or region in _rooms) else 1" in src
    and 'if str(k)[:1].isdigit() and (e or {}).get("to")}' in src
    and "r = (_pri, _stale, _local, len(path), _way_here," in src)
 ck("...and the trace says why it went there",
    "a room off the area you are in, its door taken from " in src)
 lsrc = (ROOT / "planner" / "ledger.py").read_text()
 ck("the words carry the same order", "r = (_pri, _local, len(path), 0 if (left or _unr) else 1," in lsrc)
+# ...AND THE SAME NOTION OF NEAR. A floor is its own map, so measuring
+# locality by map name made the next floor up as foreign as another town
+# (2026-09-05). Both rankings read _building now; if only one had, the
+# words and the deed would disagree about where "here" ends.
+ck("...and the same notion of what is near",
+   "_building(region) == _building(here)" in lsrc)
 # and a far map still wins when nothing local is left
 ex.region_seen = {AWAY: 5}
 w2 = L.plan_explore(ex, o, L.build(ex, o, target="map:VERMILION_CITY", want_explore=False),

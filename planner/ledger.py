@@ -1200,6 +1200,31 @@ def _refused(c) -> bool:
             or "no walkable path" in n)
 
 
+def _building(region: str) -> str:
+    """The map name with its floor suffix taken off: POKEMON_MANSION_2F and
+    POKEMON_MANSION_B1F are both POKEMON_MANSION.
+
+    A floor is its own map in this game, so "the same place" measured by map
+    name calls the next floor up as foreign as another town — and every
+    multi-floor place in the game is one: the Seafoam Islands, Rock Tunnel,
+    Mt Moon, Victory Road, the Rocket Hideout, Silph Co, the Pokemon Tower,
+    the Mansion, the department store. Working one of them, explore rated
+    the floor above no nearer than a shop across the street (user,
+    2026-09-05: "it really should prefer routing it within the same
+    building if at all sensible").
+
+    A reading of the NAME and nothing else — the floor suffix the game
+    itself writes. It claims nothing about what is on any floor, and two
+    buildings that shared a name would share it on the printed map too.
+
+    Lives here because the executor already imports the ledger; the reverse
+    would be a cycle, and TWO copies of this is the drift this file exists
+    to avoid.
+    """
+    m = str(region or "").split("|")[0]
+    return _re.sub(r"_(?:B\d+F|\d+F|ROOF|ELEVATOR)$", "", m)
+
+
 def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                  target: str | None = None) -> str:
     """What one `explore` step WOULD do from here, in words. Nothing runs.
@@ -1454,7 +1479,11 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                   for k, e in (((getattr(ex, "explored", {}) or {})
                                 .get(here) or {}).items())
                   if str(k)[:1].isdigit() and (e or {}).get("to")}
-        _local = 0 if (region.split("|")[0] == here.split("|")[0]
+        # A BUILDING IS ONE PLACE, HOWEVER MANY FLOORS IT HAS — the deed's
+        # rule (executor _building), restated here only because these two
+        # rankings must not drift; that split is what this file keeps
+        # paying for.
+        _local = 0 if (_building(region) == _building(here)
                        or region in _rooms) else 1
         r = (_pri, _local, len(path), 0 if (left or _unr) else 1,
              -(len(left) + len(things) + unseen + len(_unr)), region)

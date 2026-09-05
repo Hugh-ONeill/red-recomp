@@ -507,6 +507,12 @@ def _is_door_key(k) -> bool:
     return bool(_re.fullmatch(r"\d+,\d+", str(k)))
 
 
+# ONE IMPLEMENTATION, IN THE LEDGER (which this module already imports; the
+# other direction would be a cycle). Both rankings read it, so the words and
+# the deed cannot drift about where "here" ends.
+_building = ledger._building
+
+
 def pred_keys(pred: dict | None) -> set:
     """Every predicate key in play, INCLUDING inside any_of branches.
 
@@ -1863,6 +1869,39 @@ class Executor:
                         + (" — spoken to, and did not move" if spoken
                            else " — not yet spoken to"))
                 self._note_blocker(here, key, "door", what)
+        elif (op == "use_warp" and "FAILED" in note
+              and "it refused to open" in note):
+            # A DOOR THAT SAID IT IS LOCKED IS A DOOR THAT TURNED YOU BACK,
+            # and nothing wrote it down. The shim could not be plainer —
+            # "you reached the door and it refused to open — the game said:
+            # \"The door is locked...\". You stood on the mat; walking
+            # somewhere else and coming back will not change the answer" —
+            # and this recorder had a branch for a person on the doorstep,
+            # one for a script that interrupted the walk, and one for a
+            # door that spoke without opening, but none for the PLAIN
+            # refusal, which is the shape a locked door uses. So Cinnabar's
+            # gym sat in the frontier as an exit never taken: explore chose
+            # it, the game said locked, the ledger was identical
+            # afterwards, and the next round chose it again (2026-09-05,
+            # user: "it somehow went to try the gyms door" ... "this also
+            # brought it back to the gym door"). We told it the answer
+            # would not change and then asked it again ourselves.
+            # THE WORLD MARK GOES ON WITH IT, so the reopening rule still
+            # applies untouched: a locked door IS worth one more press once
+            # the party carries something it was not carrying then, which
+            # is exactly what a key is.
+            _said = ""
+            if "the game said: " in note:
+                _said = note.split("the game said: ", 1)[1].strip()
+                _said = _said.split(". You stood on the mat")[0][:160]
+            self._note_blocker(here, key, "door",
+                               _said or "it refused to open")
+            _e = self.explored.setdefault(here, {}).setdefault(
+                key, {"n": 0, "to": None})
+            _e["shut"] = True
+            _e["shut_at"] = self._world_mark(pre_obs)
+            self.log("door_shut", area=here, key=key, said=_said[:80])
+            self._save_memory()
         elif op == "cross" and "FAILED" in note and (
                 "standing at its edge:" in note
                 or "Right where the walk stopped:" in note):
@@ -2459,8 +2498,19 @@ class Executor:
             _rooms = {(e or {}).get("to")
                       for k, e in (self.explored.get(here) or {}).items()
                       if str(k)[:1].isdigit() and (e or {}).get("to")}
-            _local = 0 if (region.split("|")[0] == here.split("|")[0]
-                           or region in _rooms) else 1
+            # A BUILDING IS ONE PLACE, HOWEVER MANY FLOORS IT HAS. This
+            # counted the same MAP as local, and a floor is its own map:
+            # POKEMON_MANSION_1F, _2F, _3F, _B1F are four names for one
+            # house. So working the Mansion for a way to Blaine, the third
+            # floor was as foreign as a shop across the street, and only
+            # the one floor whose door had been taken from here counted as
+            # near (user, 2026-09-05: "it really should prefer routing it
+            # within the same building if at all sensible"). Floors share
+            # their name up to the floor suffix, which the game itself
+            # writes that way, so this reads the name and nothing else — no
+            # claim about what is on any of them.
+            _here_b, _reg_b = _building(here), _building(region)
+            _local = 0 if (_reg_b == _here_b or region in _rooms) else 1
             # WITHIN A TIER, DISTANCE LEADS; THEN A WAY OUT BEATS GROUND
             # TO LOOK AT. Raw counts made 4 unseen spots in an empty
             # pocket outweigh the one untaken way out of Mt Moon B2F, at
