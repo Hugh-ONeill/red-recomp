@@ -22,6 +22,27 @@ the executor already writes down, then puts the runs side by side.
   planner/arc.py --phases             each run split into quarters by leg
   planner/arc.py --diff               what moved between the last two
   planner/arc.py --kinds              which row kinds each journal contains
+  planner/arc.py --deep A B            also: is it still reasoning from the page?
+
+THE OUTCOME TABLE IS THE CHEAP HALF. Routing either lands or it does not,
+and that is countable from row kinds alone. The question that actually
+keeps a run honest is the other one (user, 2026-09-05: "im talking more
+about explore and general reasoning from what its being told drifting
+between runs"), and it needs the prompt and the reply side by side:
+
+  explore    is a sweep still FINDING anything, or walking to look at
+             ground that turns out to be nothing? Yield is cells that came
+             newly on screen, straight out of the op's own answer.
+  grounding  did the map-changing op it wrote name something the page had
+             just listed? decisions.py answers that for one journal; --deep
+             asks it of several and lines the answers up. `ungrounded` is
+             the model inventing a coordinate instead of reading the list,
+             and it is the number that moves when prose changes.
+  repeat     did the round re-propose an op already tried this escalation?
+
+--deep parses the journals properly rather than scanning them, so it is
+slow: name the two runs you want to compare rather than turning it loose
+on every journal on disk.
 
 TWO TRAPS, BOTH LOAD-BEARING, BOTH REPORTED RATHER THAN HIDDEN:
 
@@ -49,6 +70,8 @@ import sys
 from pathlib import Path
 
 KIND = re.compile(rb'"kind":\s*"([a-z_]+)"')
+NEWCELLS = re.compile(rb"(\d+) cell\(s\) newly on screen")
+TOREG = re.compile(rb'"to":\s*"([A-Z_0-9]+\|[0-9]+,[0-9]+)"')
 STEP = re.compile(rb'"step":\s*"([a-z_]+)"')
 TOMAP = re.compile(rb'"to":\s*"([A-Z_0-9]+)\|')
 
@@ -68,6 +91,13 @@ METRICS = [
     ("fights/rnd",  ["battle_start"],          "escalate_proposal", "round"),
 ]
 
+# the explore half: what the looking actually returned
+EXPLORE = [
+    ("expl/rnd",    ["explore_step"],          "escalate_proposal", "round"),
+    ("drysweep%",   ["sweep_dry"],             "sweep_result",      "sweep"),
+    ("newarea/leg", ["new_region"],            "plan_start",        "leg"),
+]
+
 
 def scan(path: str, keep_lines: bool = False) -> dict:
     """One pass, regex only: an 89 MB journal is not worth json.loads.
@@ -77,6 +107,8 @@ def scan(path: str, keep_lines: bool = False) -> dict:
     costs the run its RAM is not a meter."""
     counts: dict = {}
     maps: dict = {}
+    regions: set = set()
+    cells = [0]
     legs: list = []          # line index of each plan_start, for --phases
     per_line: list = []      # (kind, line_no) for the kinds we bucket
     n = 0
@@ -99,10 +131,101 @@ def scan(path: str, keep_lines: bool = False) -> dict:
                 if t:
                     mp = t.group(1).decode()
                     maps[mp] = maps.get(mp, 0) + 1
+                g = TOREG.search(raw)
+                if g:
+                    reg = g.group(1).decode()
+                    if reg not in regions:
+                        regions.add(reg)
+                        counts["new_region"] = counts.get("new_region", 0) + 1
+            # A SWEEP'S YIELD IS IN ITS OWN ANSWER, and the op says it in
+            # words: "swept 11 step(s), 42 cell(s) newly on screen". A
+            # sweep that returns nothing is the shape of explore walking
+            # somewhere to look at ground that was not there.
+            for c in NEWCELLS.finditer(raw):
+                counts["sweep_result"] = counts.get("sweep_result", 0) + 1
+                v = int(c.group(1))
+                cells[0] += v
+                if v == 0:
+                    counts["sweep_dry"] = counts.get("sweep_dry", 0) + 1
             if keep_lines:
                 per_line.append((k, n))
     return {"path": path, "counts": counts, "maps": maps, "legs": legs,
-            "lines": n + 1, "per_line": per_line}
+            "lines": n + 1, "per_line": per_line, "swept_cells": cells[0]}
+
+
+# the deep half: the prompt and the reply, side by side
+DEEP = [
+    ("grounded%",   ["d_untried", "d_taken", "d_named"], "d_scored", "move"),
+    ("ungrounded%", ["d_invented"],        "d_scored",   "move"),
+    ("nooffer%",    ["d_nothing"],         "d_moves",    "move"),
+    ("repeat%",     ["d_repeat"],          "d_rounds",   "round"),
+]
+
+
+def deep_scan(path: str) -> dict:
+    """Pair each prompt with the reply it produced, and score the pairing.
+
+    The classes are decisions.py's, imported rather than restated so the two
+    cannot drift — that split is the bug this repo keeps paying for. A move
+    is scored only when the page listed SOMETHING to move through: a prompt
+    offering no exit at all is a harness state, and counting it against the
+    model is how you conclude the model is stupid (decisions.py's own words).
+    """
+    import json as _json
+    import decisions as D
+    import repeats as R
+    c: dict = {}
+    mem = None
+    seen: set = set()
+    with open(path, "rb") as fh:
+        for raw in fh:
+            m = KIND.search(raw)
+            if not m:
+                continue
+            k = m.group(1)
+            if k not in (b"escalate_context", b"escalate_proposal",
+                         b"escalate_start"):
+                continue
+            try:
+                row = _json.loads(raw)
+            except ValueError:
+                continue
+            if k == b"escalate_start":
+                seen = set()
+                continue
+            if k == b"escalate_context":
+                mem = row.get("memory") or ""
+                continue
+            macro = row.get("macro")
+            c["d_rounds"] = c.get("d_rounds", 0) + 1
+            # a round that re-proposes an op already tried this escalation
+            first = next((st for st in (macro or [])
+                          if isinstance(st, dict)), None)
+            if first is not None:
+                key = R.canon(first)
+                if key in seen:
+                    c["d_repeat"] = c.get("d_repeat", 0) + 1
+                seen.add(key)
+            if mem is None:
+                continue
+            mv = D.move_of(macro)
+            if mv is None:
+                continue                      # talked, pressed, waited
+            c["d_moves"] = c.get("d_moves", 0) + 1
+            untried, taken = D.ledger_exits(mem)
+            if not untried and not taken:
+                c["d_nothing"] = c.get("d_nothing", 0) + 1
+                continue
+            c["d_scored"] = c.get("d_scored", 0) + 1
+            if mv in untried:
+                c["d_untried"] = c.get("d_untried", 0) + 1
+            elif mv in taken:
+                c["d_taken"] = c.get("d_taken", 0) + 1
+            elif mv in D.keys_in(mem):
+                c["d_named"] = c.get("d_named", 0) + 1
+            else:
+                c["d_invented"] = c.get("d_invented", 0) + 1
+    return c
 
 
 def rate(counts: dict, nums: list, den: str):
@@ -130,6 +253,22 @@ def label(path: str) -> str:
             + os.path.basename(path).replace("executor_log", "")
               .replace(".pre-discovery", "").replace(".jsonl", "")
               .strip(".") or "live")
+
+
+def group(runs: list, metrics: list, title: str, extra=None):
+    print(f"\n{title}")
+    head = f"{'run':<14}"
+    for name, _, _, _ in metrics:
+        head += f"{name:>13}"
+    print(head + ("      swept" if extra == "cells" else ""))
+    for r in runs:
+        row = f"{label(r['path']):<14}"
+        for name, nums, den, _ in metrics:
+            row += f"{fmt(rate(r['counts'], nums, den), name.endswith('%')):>13}"
+        if extra == "cells":
+            n = r["counts"].get("sweep_result", 0)
+            row += f"{(r['swept_cells'] // n if n else 0):>11}"
+        print(row)
 
 
 def table(runs: list, phases: bool):
@@ -204,6 +343,9 @@ def main():
                     help="what moved between the last two runs")
     ap.add_argument("--kinds", action="store_true",
                     help="which row kinds each journal contains")
+    ap.add_argument("--deep", action="store_true",
+                    help="also score prompt-against-reply (slow: name the "
+                         "journals you want)")
     ap.add_argument("--min-legs", type=int, default=3,
                     help="skip journals with fewer legs than this")
     a = ap.parse_args()
@@ -225,8 +367,27 @@ def main():
                   + ", ".join(sorted(r["counts"])))
         return
     table(runs, a.phases)
+    group(runs, EXPLORE, "EXPLORE — is the looking still finding anything?",
+          extra="cells")
+    if a.deep:
+        for r in runs:
+            r["counts"].update(deep_scan(r["path"]))
+        group(runs, DEEP,
+              "GROUNDING — did the op it wrote name what the page listed?")
+        print("\n'ungrounded' is the model writing a coordinate the page "
+              "never named. 'nooffer' is the page listing no exit at all, "
+              "which is ours, not its.")
     if a.diff and len(runs) >= 2:
         diff(runs[-2], runs[-1])
+        if a.deep:
+            for name, nums, den, _ in DEEP:
+                ra = rate(runs[-2]["counts"], nums, den)
+                rb = rate(runs[-1]["counts"], nums, den)
+                if ra is None or rb is None:
+                    print(f"  {name:<12} -- not comparable")
+                    continue
+                print(f"  {name:<12}{fmt(ra, True)} -> {fmt(rb, True)}"
+                      f"        ({ra[1]}/{ra[2]} -> {rb[1]}/{rb[2]})")
 
 
 if __name__ == "__main__":
