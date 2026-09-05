@@ -122,6 +122,46 @@ ex._walk_route(SG, PATH)
 walks = [kw for op, kw in w.calls if op == "walk_to"]
 ck("a floor with no water gets no ride", len(walks) == 1)
 
+# 4b. a wild fight at the mount is fought and the ride asked once more —
+#     both rides v3 tried on Seafoam B3F died exactly this way (2026-09-05)
+class WildWorld(World):
+    """The first mount is interrupted by a wild Pokemon; the second rides."""
+    def __init__(self, *a, **k):
+        super().__init__(*a, **k); self.bitten = False; self.in_battle = False
+    def obs(self):
+        o = super().obs()
+        if self.in_battle: o["mode"] = "battle"
+        return o
+    def send(self, op, **kw):
+        if op == "walk_to" and kw.get("surf") and not self.bitten:
+            self.bitten = True; self.in_battle = True
+            self.calls.append((op, dict(kw)))
+            return {"result": {"ok": False, "detail":
+                    "could not get onto the water: not in overworld (a box "
+                    "was up and would not close: kind=wild)"}}
+        return super().send(op, **kw)
+def rig_wild(w, edge):
+    ex = rig(w, edge)
+    def fight(sg, o):
+        w.in_battle = False
+        return w.obs()
+    ex.handle_battle = fight
+    return ex
+w = WildWorld(); ex = rig_wild(w, {"n": 1, "to": FAR, "intra": True})
+ex._walk_route(SG, PATH)
+rides = [kw for op, kw in w.calls if op == "walk_to" and kw.get("surf")]
+ck("a wild fight at the mount is fought and the ride asked once more",
+   len(rides) == 2 and w.at == FAR)
+ck("...and a Pokemon that surfaced is not a blocked road",
+   "blocked_at" not in ex.explored[HOME][KEY])
+w = WildWorld(); ex = rig_wild(w, {"n": 2, "to": FAR, "intra": True,
+                                   "surf": True})
+ex._walk_route(SG, PATH)
+rides = [kw for op, kw in w.calls if op == "walk_to" and kw.get("surf")]
+ck("the same when the edge was remembered as ridden",
+   len(rides) == 2 and w.at == FAR
+   and "blocked_at" not in ex.explored[HOME][KEY])
+
 # 5. the recorder: riding at either end of the walk marks the edge
 def recorder():
     ex = E.Executor.__new__(E.Executor)

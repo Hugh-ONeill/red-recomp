@@ -7955,15 +7955,46 @@ class Executor:
                 _ride_first = ((bool((_wrec or {}).get("surf"))
                                 or bool(getattr(self, "_go_surf", False)))
                                and self._knows_move(_now, "SURF"))
-                _wkw = {"x": _ax, "y": _ay}
+
+                def _ride(_o0):
+                    """Ride to the anchor. A WILD FIGHT IS NOT A SHUT
+                    ROUTE: both rides v3 tried on Seafoam B3F died at the
+                    mount with "not in overworld (a box was up and would
+                    not close: kind=wild)" and the hop took a blocked_at
+                    stamp for a Pokemon that happened to surface. The door
+                    hop has fought and asked again once since 4771587;
+                    this hop does the same."""
+                    _r = self._send_safe("walk_to", x=_ax, y=_ay, surf=True)
+                    _d = ((_r or {}).get("result") or {}).get("detail") or ""
+                    _oo = self.settle() or _o0
+                    _fought = False
+                    while _oo and _oo.get("mode") == "battle":
+                        _oo = self.handle_battle(sg, _oo)
+                        _oo = self.settle()
+                        _fought = True
+                    if (not self._same_area(self._where(_oo), nxt)
+                            and (_fought or "not in overworld" in _d)):
+                        _r = self._send_safe("walk_to", x=_ax, y=_ay,
+                                             surf=True)
+                        _d2 = ((_r or {}).get("result")
+                               or {}).get("detail") or ""
+                        _oo = self.settle() or _oo
+                        while _oo and _oo.get("mode") == "battle":
+                            _oo = self.handle_battle(sg, _oo)
+                            _oo = self.settle()
+                        if _d2:
+                            _d = f"{_d}; after the fight: {_d2}" if _d else _d2
+                    return _oo, _d
+
                 if _ride_first:
-                    _wkw["surf"] = True
-                _wres = self._send_safe("walk_to", **_wkw)
-                _wdet = ((_wres or {}).get("result") or {}).get("detail") or ""
-                o = self.settle() or _now
-                while o and o.get("mode") == "battle":
-                    o = self.handle_battle(sg, o)
-                    o = self.settle()
+                    o, _wdet = _ride(_now)
+                else:
+                    _wres = self._send_safe("walk_to", x=_ax, y=_ay)
+                    _wdet = ((_wres or {}).get("result") or {}).get("detail") or ""
+                    o = self.settle() or _now
+                    while o and o.get("mode") == "battle":
+                        o = self.handle_battle(sg, o)
+                        o = self.settle()
                 _rode_walk = _ride_first
                 if (not self._same_area(self._where(o), nxt)
                         and not _ride_first
@@ -7972,14 +8003,7 @@ class Executor:
                     _rode_walk = True
                     self.log("route_hop_surfed", subgoal=sg.get("id"),
                              key=str(key), frm=self._where(o))
-                    _wres2 = self._send_safe("walk_to", x=_ax, y=_ay,
-                                             surf=True)
-                    _wdet2 = ((_wres2 or {}).get("result")
-                              or {}).get("detail") or ""
-                    o = self.settle() or o
-                    while o and o.get("mode") == "battle":
-                        o = self.handle_battle(sg, o)
-                        o = self.settle()
+                    o, _wdet2 = _ride(o)
                     # KEEP BOTH VERDICTS: the foot walk's is the one that
                     # names the water; the ride's is the one that says why
                     # the water did not carry us either.
