@@ -15,6 +15,20 @@ This repo is the harness and the planner. It drives
 separately at `~/Developer/gen1recomp`. `run.sh` launches it with
 `harness/shim.lua` as its driver. No ROM and no game assets live here.
 
+## Watching a run
+
+`run/status.txt` is the whole run in one screen — the leg being attempted, the
+step and its machine-checkable condition, the model's reasoning in its own
+words, the op in flight, what the game said back, and where the party is:
+
+![The run's live status line: PLAN, SUBGOAL, GOAL, DONE_WHEN, THINKS, DOING,
+LAST, WHERE, PARTY, MONEY and BAG, refreshed every second](status.png)
+
+`watch -n1 cat run/status.txt`. `THINKS` is the model's plan for the round,
+quoted rather than summarised, and `LAST` is the harness's answer to the
+previous op — the two lines that say whether a stuck run is the model's
+mistake or ours.
+
 ## Status
 
 Reached the Hall of Fame on 2026-08-28, on a model-authored outline, with a
