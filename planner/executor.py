@@ -2486,6 +2486,26 @@ class Executor:
                            "must be undone or something you carry must be "
                            "used to open new ground"], []
         _, region, left, unpressed, path, unseen = best
+        # A LOOP YOU CANNOT SEE IS A LOOP YOU REPEAT. explore walked the
+        # party three and four legs off Route 20 to Route 15, Route 18 and
+        # the Fuchsia mart for their unseen ground; the model read the new
+        # position, wrote "I am on Route 15, I need to go back to Route
+        # 20", and walked itself back — five times in ten minutes, its
+        # judgment right every single time (live, 2026-09-05). Nothing on
+        # the page said the round before had been the same round. The
+        # walked graph records WHERE it went and the journal records it
+        # for us, but the model re-derives the situation from the page
+        # every round and the page had no memory of this at all. Keep the
+        # trips, per step and per starting place; the ledger says them
+        # while the party stands back where it started. It is a record,
+        # not a rule: explore stays offered, and what the pattern means is
+        # the model's to read.
+        _trips = getattr(self, "_explore_trips", None)
+        if _trips is None:
+            _trips = self._explore_trips = {}
+        _leg = _trips.setdefault((self._cur_target or "", here), [])
+        _leg.append(region)
+        del _leg[:-8]
         self.log("explore_step", subgoal=sg.get("id"), step="walk",
                  to=region, legs=len(path), left=len(left),
                  unpressed=len(unpressed), unseen=unseen)

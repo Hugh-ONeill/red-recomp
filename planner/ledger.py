@@ -1913,6 +1913,24 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  "only where the shore lets you off. Pressing SURF again "
                  "does not move you — that is how you get OFF, and the game "
                  "refuses it where there is nowhere to land.")
+    # ...AND SO IS A JOURNEY YOU HAVE ALREADY MADE AND UNMADE. Said at the
+    # head, beside the visit count, because it is the same kind of fact:
+    # what this run has already done from this spot. See the executor's
+    # _explore_trips for the five Route 20 round trips that earned it.
+    _trips = (getattr(ex, "_explore_trips", None) or {}).get(
+        (getattr(ex, "_cur_target", "") or "", here)) or []
+    if len(_trips) >= 2:
+        _uniq = list(dict.fromkeys(_trips))
+        head += (f". EXPLORE HAS WALKED YOU AWAY FROM HERE {len(_trips)} "
+                 f"TIMES THIS STEP — to " + ", ".join(_uniq[:4])
+                 + (", and others" if len(_uniq) > 4 else "")
+                 + " — and you are standing here again, so every one of "
+                   "those journeys ended back where it started. That is "
+                   "the record of what happened, not a reason to stop "
+                   "asking: explore is still offered below. What it means "
+                   "— whether what you keep coming back for is on this map "
+                   "at all, or whether the way on is something other than "
+                   "a place to walk to — is yours to read.")
     if m.get("slope"):
         head += (f". THIS MAP IS A SLOPE: whenever you are not holding a "
                  f"direction the game moves you one cell {m['slope']}. "
