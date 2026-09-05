@@ -5214,8 +5214,18 @@ function OPS.use_warp(G, c)
               or (SEEN[startMap] or {})
   for _, npc in ipairs(ow.npcs or {}) do
     for _, t in ipairs(tiles) do
+      -- ...AND "BY IT" MEANS ON IT OR BESIDE IT. The radius was 2, which
+      -- is a room away: Silph 11F's warp is at (5,5) and the PRESIDENT
+      -- stands at (7,5), two cells off and not in anyone's way — so every
+      -- use_warp(5,5) came back "somebody is standing by it:
+      -- SILPHCO11F_SILPH_PRESIDENT", the executor filed that as a door
+      -- held against the run, and the one man the leg exists to speak to
+      -- became the guard barring the only way to himself (2026-09-05,
+      -- user: "its saying it cant reach him from there, where it very
+      -- much can"). A person blocks a doorway by standing ON it or on the
+      -- tile you step through to reach it; anything further is scenery.
       if math.abs((npc.cellX or -99) - t.x)
-         + math.abs((npc.cellY or -99) - t.y) <= 2
+         + math.abs((npc.cellY or -99) - t.y) <= 1
          and (not _bm
               or _bm[(npc.cellX or -99) .. "," .. (npc.cellY or -99)]) then
         local nm = (npc.def or {}).name
