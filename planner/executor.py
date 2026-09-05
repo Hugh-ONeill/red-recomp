@@ -2208,6 +2208,35 @@ class Executor:
             ok, tr, cl = self._run_traced(sg, _steps, ignore_done=ignore_done)
             return ok, [f"explore (riding to where seen ground ends across "
                         f"the water, then sweeping): {t}" for t in tr], cl
+        # ...THEN THE WALLS THAT MAY HAVE MOVED. A cell frozen shut at
+        # last view is not routed into (the footprint rule) and is not
+        # unseen ground either, so it fell between the two and nothing
+        # ever went to look. The Pokemon Mansion's switches move its walls
+        # for a living: its 2F stairs read unreachable across two such
+        # cells, the refusal said in words "if one has opened since,
+        # seeing it again is what lifts that", and the run had no way to
+        # do that (2026-09-05, user: "its also reading the warp as
+        # unreachable on the 2f when it is reachable"). Walking to the
+        # stand-point beside one puts it on screen; what is there then is
+        # what is there. After the unseen ground and the water, because
+        # both of those are ground nobody has looked at at all.
+        _fs = _m.get("frontier_stale") or []
+        if (_fs and not _params.get("no_sweep")
+                and _params.get("until") != "doors_only"):
+            _s0 = _fs[0]
+            self.log("explore_step", subgoal=sg.get("id"), step="stale",
+                     to=f"{_s0.get('x')},{_s0.get('y')}",
+                     wall=f"{_s0.get('wx')},{_s0.get('wy')}",
+                     frontier_stale=len(_fs))
+            ok, tr, cl = self._run_traced(
+                sg, [{"op": "walk_to", "x": int(_s0.get("x")),
+                      "y": int(_s0.get("y"))}], ignore_done=ignore_done)
+            return ok, [f"explore (walking to ({_s0.get('x')},"
+                        f"{_s0.get('y')}), beside ({_s0.get('wx')},"
+                        f"{_s0.get('wy')}) — a cell that was a WALL the "
+                        f"last time it was on screen; standing there is "
+                        f"how you find out what it is now): {t}"
+                        for t in tr], cl
         cands = ledger.build(self, obs, target,
                              outcomes=self._outcomes_here(obs),
                              want_explore=False)

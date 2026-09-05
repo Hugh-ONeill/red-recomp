@@ -1960,6 +1960,21 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                    "— whether what you keep coming back for is on this map "
                    "at all, or whether the way on is something other than "
                    "a place to walk to — is yours to read.")
+    # ...AND WALLS THAT MAY HAVE MOVED SINCE YOU LOOKED. Said because the
+    # run cannot otherwise act on it: routing will not cross a cell frozen
+    # shut, and a sweep aims at ground never on screen, so a wall that has
+    # opened since falls between the two. See executor _explore_step.
+    _fst = m.get("frontier_stale") or []
+    if _fst:
+        _f0 = _fst[0]
+        head += (f". {len(_fst)} CELL(S) HERE WERE WALLS THE LAST TIME THEY "
+                 f"WERE ON SCREEN and no walk is routed through one, which "
+                 f"is why somewhere may read unreachable that is not: this "
+                 f"map may have changed since. Standing beside one puts it "
+                 f"back on screen and settles it — the nearest place to "
+                 f"stand is ({_f0.get('x')},{_f0.get('y')}), beside "
+                 f"({_f0.get('wx')},{_f0.get('wy')}). Whether any of them "
+                 f"has opened is not known here.")
     if m.get("slope"):
         head += (f". THIS MAP IS A SLOPE: whenever you are not holding a "
                  f"direction the game moves you one cell {m['slope']}. "

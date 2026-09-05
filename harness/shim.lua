@@ -847,8 +847,8 @@ local function seen_filter(G, o)
       m.sides_unseen = unseen_sides
     end
   end
-  local dist, front = {}, {}
-  if seen_reach then dist, front = seen_reach(G) end
+  local dist, front, stale = {}, {}, {}
+  if seen_reach then dist, front, stale = seen_reach(G) end
   -- ...AND THE FRONTIER ACROSS THE WATER, apart, when someone can ride it
   -- and the party is not already on it: the spots where seen ground ends
   -- that only a swim reaches. Reported so explore can ride to one instead
@@ -968,6 +968,17 @@ local function seen_filter(G, o)
   end
   m.frontier = fl
   last_frontier = fl
+  -- ...AND THE WALLS THAT MAY HAVE MOVED, said the same way the frontier
+  -- is: where to STAND to see one, nearest first. See seen_reach.
+  if stale and #stale > 0 then
+    m.seen.frontier_stale_n = #stale
+    local sl = {}
+    for i, f in ipairs(stale) do
+      if i > 12 then break end
+      sl[i] = { x = f.x, y = f.y, d = f.d, wx = f.wx, wy = f.wy }
+    end
+    m.frontier_stale = sl
+  end
   if #front_water > 0 then
     m.seen.frontier_water_n = #front_water
     local fw = {}
@@ -3842,6 +3853,22 @@ seen_reach = function(G, sx, sy, surf)
   local q, head = { { x = p.cellX, y = p.cellY } }, 1
   local front = {}
   local slid = {}
+  -- A WALL THAT MAY HAVE MOVED IS A LEAD NOBODY FOLLOWS. A cell frozen
+  -- shut at last view is deliberately not routed into -- the footprint
+  -- rule: open NOW proves nothing until it has been seen open. But it is
+  -- SEEN ground, so it is not frontier either, and nothing ever went to
+  -- look at it. The Pokemon Mansion is built entirely out of walls that
+  -- switches move, and its 2F stairs at (6,1) read unreachable across two
+  -- such cells while the refusal itself said "if one has opened since,
+  -- seeing it again is what lifts that" (2026-09-05, user: "its also
+  -- reading the warp as unreachable on the 2f when it is reachable, its
+  -- the way up to the 3rd floor").
+  -- What is collected is the cell you can STAND on beside such a wall,
+  -- never a claim that it has opened: standing there puts it on screen,
+  -- and what is there then is what is there. Live collision is NOT
+  -- consulted, because "it is open now" is precisely the thing the run
+  -- has to find out by looking.
+  local stale, stale_at = {}, {}
   while q[head] do
     local cur = q[head]; head = head + 1
     local ck = key(cur.x, cur.y)
@@ -3855,6 +3882,11 @@ seen_reach = function(G, sx, sy, surf)
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y,
                                      surfing = (surf or p.surfing) and true or nil },
                                    { __index = p })
+        if hidden_open(nx, ny, nk) and not stale_at[ck] then
+          stale_at[ck] = true
+          stale[#stale + 1] = { x = cur.x, y = cur.y, d = dist[ck],
+                                wx = nx, wy = ny }
+        end
         if Collision.canMove(ow.map, STATIC, probe, dn)
            and not hidden_open(nx, ny, nk) then
           -- AN ARROW TILE IS NOT SOMEWHERE YOU STAND (footprint leftover
@@ -3910,12 +3942,14 @@ seen_reach = function(G, sx, sy, surf)
       front[#front + 1] = { x = cur.x, y = cur.y, d = dist[ck] }
     end
   end
-  table.sort(front, function(a, b)
+  local function nearest_first(a, b)
     if a.d ~= b.d then return a.d < b.d end
     if a.y ~= b.y then return a.y < b.y end
     return a.x < b.x
-  end)
-  return dist, front
+  end
+  table.sort(front, nearest_first)
+  table.sort(stale, nearest_first)
+  return dist, front, stale
 end
 
 local function warp_block(G, tx, ty)
