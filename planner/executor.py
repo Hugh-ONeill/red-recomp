@@ -2387,7 +2387,24 @@ class Executor:
             # tunnel it had been asked to explore (2026-08-25).
             _sweep_intent = bool(_params.get("until") or _params.get("steps"))
             if _sweep_intent:
-                _pri = 0 if unseen else 1 if left else 2
+                # ...AND A WAY OUT NOBODY CAN REACH IS STILL UNFINISHED
+                # BUSINESS. This tier list counts unseen ground and untaken
+                # exits and drops `_unr` — a doorway on ground you have
+                # stood on that no walk from there reaches — on the floor.
+                # The branch below counts all three. So asking for a sweep
+                # made the harness forget untaken doors exist: a region
+                # whose whole remaining business is such a door ranked
+                # BELOW a region with nothing left at all. Live on Route 20
+                # (2026-09-05, user: "when its doing sweep its being
+                # directed to rt 15 or 18 ... from like, doing sweep in the
+                # ocean"): every round the model wrote {"op":"explore",
+                # "until":"map_change"}, every round the picker walked it
+                # three or four legs to Route 15 or Route 18 for their
+                # unseen ground, and every round the model walked itself
+                # back — five times. Unseen ground still leads, because
+                # that is what `until` asked to look at; a way out never
+                # taken is simply not nothing.
+                _pri = 0 if unseen else 1 if (left or _unr) else 2
             else:
                 # UNSEEN GROUND IS WHERE UNSEEN EXITS LIVE. For a map goal
                 # an area with an untried exit outranked one with only
