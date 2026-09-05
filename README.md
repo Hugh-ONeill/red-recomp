@@ -116,7 +116,7 @@ off and moves them.
 for t in tests/*.py; do python3 "$t"; done
 ```
 
-194 of them, and they are named as sentences, because each one is a claim
+250 of them, and they are named as sentences, because each one is a claim
 about what the harness owes the model:
 
 ```
@@ -134,10 +134,13 @@ told instead.
 
 ## Where it has got to
 
-Run 15 reached three badges — Boulder, Cascade, Thunder — with a Charizard,
-a Pidgeotto, a Gloom, and a Gyarados raised from a ¥500 Magikarp the model
-bought for itself. An earlier run reached the Hall of Fame on a
-model-authored outline.
+Run 15 has five badges — Boulder, Cascade, Thunder, Rainbow, Marsh — with a
+Charizard, a Pidgeot, a Gloom, a Hitmonlee, a Dugtrio, and a Gyarados raised
+from a ¥500 Magikarp the model bought for itself. Along the way it took the
+Rocket Hideout for the Silph Scope, cleared the Pokémon Tower and got the Poké
+Flute from Mr. Fuji, worked its way up Silph Co. with the Card Key for the
+Master Ball, and woke both Snorlax. An earlier run reached the Hall of Fame on
+a model-authored outline.
 
 The interesting number is not the badge count. It is that when the run gets
 stuck, the fix is almost never in the model.
