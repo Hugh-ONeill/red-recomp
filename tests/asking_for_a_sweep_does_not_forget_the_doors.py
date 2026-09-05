@@ -26,9 +26,22 @@ direction"). Every round the model wrote {"op":"explore","until":
 Route 15, I need to go back to Route 20" and walked itself back. Its
 judgment was right each time and the harness overrode it each time.
 
-Unseen ground still leads under a sweep intent — that is what `until` asked
-to go and look at. What this pins is that a way out never taken is not
-nothing.
+FIXED IN TWO GOES, AND THE SECOND ONE MATTERS AS MUCH. The first pass kept
+"unseen ground leads" and only rescued `_unr` from the floor, on the
+reasoning that unseen ground is what `until` asked to look at. Within the
+hour that bit, in the same shape: working the Pokemon Mansion for a way to
+Blaine, explore left the building for CINNABAR_MART and its two unseen
+cells over the Mansion's own untaken stairs, and the model walked straight
+back in (user: "sweep brought it out of the mansion and into the mart
+instead of up to the 3rd floor being that the way is open and untaken").
+
+Preferring unseen ground over everything is the OPPOSITE of what this
+branch was added for. It exists so a sweep does not wander off the place it
+was asked to sweep — Rock Tunnel, 2026-08-25, where explore left the tunnel
+for a bush on Route 9. What that case actually needed was for a THINGS-ONLY
+area to rank last, which one tier for all three kinds of unfinished
+business gives you, while _local and distance keep the party in the
+building it is working.
 """
 import sys
 from pathlib import Path
@@ -37,10 +50,10 @@ ROOT = Path(__file__).resolve().parents[1]
 checks = []
 def ck(name, cond): checks.append((name, bool(cond)))
 
-def tier(sweep_intent, *, unseen, left, unr, map_goal=True):
+def tier(sweep_intent, *, unseen, left, unr, map_goal=True, things=0):
     """The picker's _pri, both branches, as _explore_step computes it."""
     if sweep_intent:
-        return 0 if unseen else 1 if (left or unr) else 2
+        return 0 if (unseen or left or unr) else 1
     return (0 if (left or unseen or unr) else 1) if map_goal else 0
 
 # Route 20, as it actually stood: Seafoam 1F one leg away with two doors
@@ -58,19 +71,31 @@ ck("...and that was the bug: it used to tie with nothing",
    (0 if SEAFOAM["unseen"] else 1 if SEAFOAM["left"] else 2)
    == (0 if EMPTY["unseen"] else 1 if EMPTY["left"] else 2))
 
-ck("unseen ground still leads when a sweep was what was asked for",
-   tier(True, **ROUTE18) < tier(True, **SEAFOAM))
-ck("...and on a plain explore the two are one tier, so distance decides",
+ck("ground to look at does not outrank a door never opened",
+   tier(True, **ROUTE18) == tier(True, **SEAFOAM))
+ck("...on a plain explore either, so _local and distance decide both ways",
    tier(False, **ROUTE18) == tier(False, **SEAFOAM))
+
+# the Mansion, an hour later: two unseen cells in a shop across the street
+# against the untaken stairs of the building being worked
+MART = dict(unseen=2, left=0, unr=0)
+STAIRS = dict(unseen=0, left=1, unr=0)
+ck("a shop's two unseen cells do not outrank the stairs you are working",
+   tier(True, **MART) == tier(True, **STAIRS))
+ck("...and an area with nothing but things to press still ranks below both",
+   tier(True, unseen=0, left=0, unr=0) > tier(True, **STAIRS))
 ck("an untaken exit and an unreachable doorway rank together under a sweep",
    tier(True, unseen=0, left=1, unr=0) == tier(True, **SEAFOAM))
 ck("a worked-out area is last either way",
-   tier(True, **EMPTY) == 2 and tier(False, **EMPTY) == 1)
+   tier(True, **EMPTY) == 1 and tier(False, **EMPTY) == 1)
+ck("the two branches now agree for a map goal, which is the point",
+   all(tier(True, **k) == tier(False, **k)
+       for k in (SEAFOAM, ROUTE18, EMPTY, MART, STAIRS)))
 
 src = (ROOT / "planner/executor.py").read_text()
 i = src.index("_sweep_intent = bool(")
-ck("the sweep tier counts unreachable ways out",
-   "_pri = 0 if unseen else 1 if (left or _unr) else 2" in src[i:i + 1600])
+ck("the sweep tier counts all three kinds of unfinished business",
+   "_pri = 0 if (unseen or left or _unr) else 1" in src[i:i + 3000])
 ck("...and the ordinary tier still counts all three",
    "_pri = (0 if (left or unseen or _unr) else 1) if _map_goal else 0" in src)
 

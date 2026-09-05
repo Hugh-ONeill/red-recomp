@@ -2404,7 +2404,25 @@ class Executor:
                 # back — five times. Unseen ground still leads, because
                 # that is what `until` asked to look at; a way out never
                 # taken is simply not nothing.
-                _pri = 0 if unseen else 1 if (left or _unr) else 2
+                # ...AND GROUND TO LOOK AT DOES NOT OUTRANK A DOOR YOU
+                # HAVE NOT OPENED. That was the other half of the same bug
+                # and it bit within the hour: working the Pokemon Mansion
+                # for a way to Blaine, explore left the building for
+                # CINNABAR_MART — two unseen cells and two things never
+                # pressed — over the Mansion's own untaken stairs, and the
+                # model walked straight back in (user, 2026-09-05: "sweep
+                # brought it out of the mansion and into the mart instead
+                # of up to the 3rd floor being that the way is open and
+                # untaken"). Preferring unseen ground over everything is
+                # the OPPOSITE of what this branch was added for: it exists
+                # so a sweep does not wander off the place it was asked to
+                # sweep (Rock Tunnel, 2026-08-25). One tier for all three
+                # kinds of unfinished business, exactly as the map-goal
+                # branch below has it, and then _local and distance decide
+                # — which keeps the party in the building it is working and
+                # still ranks a things-only area last, which is the whole
+                # of what the Rock Tunnel case needed.
+                _pri = 0 if (unseen or left or _unr) else 1
             else:
                 # UNSEEN GROUND IS WHERE UNSEEN EXITS LIVE. For a map goal
                 # an area with an untried exit outranked one with only
