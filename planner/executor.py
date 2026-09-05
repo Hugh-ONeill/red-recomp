@@ -1345,6 +1345,7 @@ class Executor:
         # reached, so nothing about them was recordable (see _spent_exits)
         self._exit_tries: dict = {}
         self._mark_now = None               # world mark as of the last settle
+        self._region_mark: dict = {}       # region -> world mark when the run last stood there
         self._rounds_here: dict = {}        # target|region -> rounds spent
         self._fight_region: str | None = None   # where the last trainer fought
         self.flag_sites: dict = {}          # flag -> area it fired in
@@ -3021,6 +3022,17 @@ class Executor:
         global PRINTED_MAP_HELD
         PRINTED_MAP_HELD = bool(self._holding_town_map(obs))
         self._mark_now = self._world_mark(obs)
+        # ...AND WHERE IT WAS CARRIED. The mark at the last time the run stood
+        # in each region, so a return can be judged against it (see
+        # _unchanged_return_note).
+        try:
+            _hr = self._where(obs)
+            if _hr and "None" not in str(_hr):
+                if not hasattr(self, "_region_mark"):
+                    self._region_mark = {}
+                self._region_mark[_hr] = list(self._mark_now)
+        except Exception:
+            pass
         self._watch_for_a_wipe(obs)
         if (obs or {}).get("mode") == "overworld" and \
                 ((obs or {}).get("map") or {}).get("id"):
@@ -3120,6 +3132,7 @@ class Executor:
             self.explored = data.get("explored", {})
             self.dead_ends = data.get("dead_ends", {})
             self.visits = data.get("visits", {})
+            self._region_mark = data.get("region_mark") or {}
             self.frontier = data.get("frontier", {})
             self.sightings = data.get("sightings", {})
             self._gone = {r: set(v) for r, v in
@@ -3701,6 +3714,7 @@ class Executor:
             payload = json.dumps(
                 {"explored": self.explored, "dead_ends": self.dead_ends,
                  "visits": self.visits, "frontier": self.frontier,
+                 "region_mark": getattr(self, "_region_mark", {}),
                  "sightings": self.sightings, "searched": self.searched,
                  "gone": {r: sorted(v) for r, v in
                           (getattr(self, "_gone", {}) or {}).items()},
@@ -6859,6 +6873,75 @@ class Executor:
                 + (f" from ({p0.get('x')},{p0.get('y')})" if moved else "")
                 + f": a pad or door of {m1} that lands elsewhere on {m1}, "
                   f"not nothing")
+
+    _LOOK_AGAIN = _re.compile(
+        r"\b(?:see if|see whether|check (?:if|whether)|to see|has changed|"
+        r"have changed|situation has changed|now be (?:open|accessible|"
+        r"reachable)|try(?:ing)? again|once more|re-?check|revisit|"
+        r"look again)\b", _re.I)
+
+    def _return_destinations(self, macro, obs) -> set:
+        """The maps a macro sets out for, read off its own ops: go's
+        area/map, the lift's floor (as a map of this building), a door
+        whose far side the run has walked."""
+        out = set()
+        mid = str(((obs or {}).get("map") or {}).get("id") or "")
+        bld = _re.sub(self._FLOOR_SUFFIX, "", mid) if _re.search(self._FLOOR_SUFFIX, mid) else mid
+        dd = (getattr(self, "door_dests", None) or {}).get(mid) or {}
+        for st in (macro or []):
+            if not isinstance(st, dict):
+                continue
+            op = str(st.get("op") or "")
+            if op == "go":
+                to = str(st.get("to") or st.get("area") or st.get("map") or "")
+                if to:
+                    out.add(to.split("|")[0].upper())
+            elif op == "elevator" and st.get("floor") and bld:
+                out.add(f"{bld}_{str(st['floor']).upper()}")
+            elif op == "use_warp" and st.get("x") is not None:
+                dest = dd.get(f"{st.get('x')},{st.get('y')}")
+                if dest:
+                    out.add(str(dest).upper())
+        return out
+
+    def _unchanged_return_note(self, macro, plan_said, obs) -> str:
+        """A RETURN TO LOOK AGAIN, WITH NOTHING CHANGED, IS SAID SO. "I will
+        return to the 11th floor to see if the situation has changed or if
+        I can now access the boardroom" — with the same badges, the same
+        event flags and the same kinds in the bag as the last time it stood
+        there (2026-09-05, user: "unless theyve done something to change
+        something theres no reason to look again"). The blockers ledger has
+        said this for recorded blockers since August; a walled landing is
+        not a blocker row, so nothing said it there. The world mark is the
+        run's own, compared and never interpreted: when the plan's words
+        set out to look again at a map whose last-visit mark equals the
+        mark now, say that nothing about the run has changed since. Where
+        the change would come from is not said."""
+        said = str(plan_said or "")
+        if not said or not self._LOOK_AGAIN.search(said):
+            return ""
+        now = getattr(self, "_mark_now", None)
+        marks = getattr(self, "_region_mark", None) or {}
+        if now is None or not marks:
+            return ""
+        here_map = str(((obs or {}).get("map") or {}).get("id") or "")
+        bits = []
+        for m in sorted(self._return_destinations(macro, obs)):
+            if not m or m == here_map:
+                continue
+            regs = [r for r in marks if str(r).split("|")[0] == m]
+            if not regs:
+                continue
+            if any(list(marks[r] or []) == list(now) for r in regs):
+                n = sum(int((getattr(self, "visits", {}) or {}).get(r, 0) or 0) for r in regs)
+                bits.append(f"{m} (stood there {n}x)")
+        if not bits:
+            return ""
+        return ("NOTHING ABOUT YOU HAS CHANGED since you last stood on "
+                + ", ".join(bits)
+                + ": the same badges, the same event flags, the same kinds "
+                  "in the bag. The same look gives the same answer — what "
+                  "makes a shut way open is a deed, not a return.")
 
     # WORDS ARE NOT A LIFTS ENTRY. Eight rounds in a row the plan said "a
     # Ghost blocks the path to the 7th floor on the 6th floor and I need the
@@ -14766,7 +14849,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _spoke = self._spoken_item_note(trace, _obs_now)
             except Exception:
                 _held, _spoke = "", ""
-            for _n in (_held, _spoke):
+            try:
+                _ret = self._unchanged_return_note(macro, self._plan_said, _obs_now)
+            except Exception:
+                _ret = ""
+            for _n in (_held, _spoke, _ret):
                 if _n:
                     trace = list(trace) + [_n]
             if _trunc_note:
