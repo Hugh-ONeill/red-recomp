@@ -136,6 +136,14 @@ PREDICATES = {
     "player_at": "standing within radius R of a tile, e.g. "
                  "{\"player_at\":{\"x\":27,\"y\":3,\"radius\":4}}. Combine it "
                  "with map when a map predicate alone cannot say WHERE",
+    "new_part": "a part of a named map you have NEVER STOOD ON: "
+        "{\"new_part\":\"ROUTE_20\"}. Write this when the step has to come "
+        "OUT somewhere new on a map you have already been on — a cave with "
+        "two mouths, a route split by water, a tunnel crossed to the far "
+        "side. A plain {\"map\":\"ROUTE_20\"} is already true where you "
+        "start, so it can witness nothing. This is not_area with the list "
+        "written in for you from the parts the ledger says you have stood "
+        "in: you do not have to name them and you cannot miss one",
     "not_area": "a part of a map OTHER THAN a named one, for a map whose far "
         "side has no area code yet because nobody has stood on it: "
         "{\"map\":\"ROUTE_10\",\"not_area\":\"ROUTE_10|0,4\"} means "
@@ -834,8 +842,66 @@ def pred_keys(pred) -> set:
     return out
 
 
+def freeze_new_parts(plan: dict) -> None:
+    """{"new_part": "ROUTE_20"} -> {"map", "not_area": [parts stood in]}.
+
+    THE PINCER THIS EXISTS TO OPEN. "Exit the Seafoam Islands" could not be
+    authored at all — fifteen rounds, three drafts, every one refused
+    (2026-09-05, live). Every plan for it ends on ROUTE_20, and the run has
+    stood on Route 20, so the already-stood-in rule says the condition
+    holds before the plan takes a step. The author saw the real distinction
+    and reached for it, naming its step `exit_to_route_20_west` and trying
+    {"not_area": "ROUTE_20|0,0"} — and the other jaw closed: a region
+    nobody has stood in excludes nothing. Route 20 is split by water, the
+    run knows its east half, and the objective is to come out on the west.
+    The language COULD say that — not_area takes a list, so excluding every
+    part you have stood in is exactly right — but only if the author
+    enumerates them all, from memory, without missing one. That is
+    bookkeeping, and the side that keeps the ledger should do it.
+
+    So: name the map, and the parts you have stood in are filled in here.
+    It points at nothing. It names no coordinate, no direction and no
+    destination — only "somewhere on this map that is not somewhere I have
+    been", which is the run's own history and nothing else. The same
+    pincer, in its Rock Tunnel shape, is the "refusing" example in the
+    README; this is the shape it came back in.
+
+    Called by validate(), so the frozen form is what gets checked and what
+    gets written to the plan file — a reader can see exactly what the step
+    is asking for.
+    """
+    walked = visited_regions()
+
+    def _freeze(dw):
+        if not isinstance(dw, dict):
+            return
+        for alt in (dw.get("any_of") or []):
+            _freeze(alt)
+        if "new_part" not in dw:
+            return
+        mp = str(dw.pop("new_part") or "").strip()
+        if not mp:
+            return
+        dw["map"] = mp
+        known = sorted(r for r in walked if str(r).split("|")[0] == mp)
+        if known:
+            dw["not_area"] = known
+        else:
+            # never stood on it at all: every part of it is a new part, and
+            # an empty exclusion would only be noise
+            dw.pop("not_area", None)
+
+    for s in (plan.get("subgoals") or []):
+        if isinstance(s, dict):
+            _freeze(s.get("done_when"))
+
+
 def validate(plan: dict) -> list:
-    """Return a list of problems (empty = ok)."""
+    """Return a list of problems (empty = ok).
+
+    Normalises `new_part` into its frozen form first, so every rule below
+    reads the condition the run will actually be judged against."""
+    freeze_new_parts(plan)
     probs = []
     subs = plan.get("subgoals")
     if not isinstance(subs, list) or not subs:
