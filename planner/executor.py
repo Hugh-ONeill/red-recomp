@@ -6761,7 +6761,19 @@ class Executor:
         if not isinstance(target, str) or not target.strip():
             return ""
         T = target.strip().upper()
-        toks = _re.findall(r"\b(B?\d{1,2}F|ROOF(?:TOP)?)\b", str(goal_text or "").upper())
+        # ...AND AN AREA IS A GUESS THE SAME WAY A FLOOR IS. "Locate and
+        # enter the Secret House in the north area of the Safari Zone" over
+        # {"map":"SAFARI_ZONE_SECRET_HOUSE"}: the condition holds wherever
+        # that house is entered from, and the run spent its steps on the
+        # north area — 1439 cells of it on screen against 320 of the west
+        # — because its own step text said north (2026-09-05, user: "the
+        # goal text has it located in the north area, which is wrong").
+        # Which area it is in is not said here; only that the words are not
+        # the condition.
+        up = str(goal_text or "").upper()
+        toks = _re.findall(r"\b(B?\d{1,2}F|ROOF(?:TOP)?)\b", up)
+        toks += [d for d in _re.findall(
+            r"\b(NORTH|SOUTH|EAST|WEST|CENTER|CENTRE)\s+AREA\b", up)]
         stray = sorted({t for t in toks if not T.endswith("_" + t)})
         if not stray:
             return ""

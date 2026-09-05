@@ -25,6 +25,13 @@ ck("a floor in the words that the condition does not name is called out", "THE C
 ck("...saying any floor's door into the map counts", "whichever floor's door you take into it" in w, w)
 ck("...and that the floor was the plan-writer's guess", "plan-writer's guess" in w, w)
 ck("...without naming any door or where it leads", "24,19" not in w and "B2F" not in w, w)
+w2 = e._words_vs_condition("Locate and enter the Secret House in the north area of the Safari Zone", {"map": "SAFARI_ZONE_SECRET_HOUSE"})
+ck("an AREA in the words the condition does not name is called out too", "(NORTH)" in w2 and "THE CONDITION IS THE STEP" in w2, w2)
+ck("...and it never says which area it really is", "WEST" not in w2, w2)
+ck("an area the condition itself names is not stray",
+   e._words_vs_condition("Cross the north area", {"map": "SAFARI_ZONE_NORTH"}) == "")
+ck("a bare direction is not an area claim",
+   e._words_vs_condition("Travel to the north exit of Route 5", {"map": "ROUTE_5"}) == "")
 ck("a floor the condition itself names is not stray", e._words_vs_condition("Climb to B4F", {"map": "ROCKET_HIDEOUT_B4F"}) == "")
 ck("a rooftop word against a mart floor is stray", "(ROOFTOP)" in e._words_vs_condition("Buy water on the rooftop", {"map": "CELADON_MART_5F"}))
 ck("an area condition is read by its map", "(B4F)" in e._words_vs_condition("the lift on B4F", {"area": "ROCKET_HIDEOUT_ELEVATOR|0,1"}))
