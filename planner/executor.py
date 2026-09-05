@@ -6757,6 +6757,81 @@ class Executor:
                 f"({', '.join(stray)}) is the plan-writer's guess at where, "
                 f"not part of the condition.")
 
+    _HELD_WORDS = r"\b(?:have|has|hold|holds|holding|got|carry|carrying|possess|possessing|with)\b"
+
+    def _same_kind_held(self, item: str, bag: dict) -> str:
+        """A held item that shares its LAST word with `item` (CARD_KEY vs
+        LIFT_KEY, OLD_ROD vs GOOD_ROD) — the shape the run confuses."""
+        tail = str(item).rsplit("_", 1)[-1]
+        for k in sorted(bag or {}):
+            if k != item and str(k).rsplit("_", 1)[-1] == tail:
+                return str(k)
+        return ""
+
+    def _held_claim_note(self, plan_said, obs) -> str:
+        """A CLAIM TO HOLD A THING THE BAG DOES NOT HOLD. The plan said "I
+        have the CARD KEY (LIFT_KEY) in my bag" three rounds running and
+        pressed Silph Co's shutters with it; the bag held LIFT_KEY and no
+        CARD_KEY, and the doors kept saying "Darn! It needs a CARD KEY!"
+        (2026-09-04, user: "it thinks the liftkey and cardkey are the same
+        sometimes"). The bag is on the page already; this puts the claim
+        and the bag side by side, and names the held item of the same kind
+        as a DIFFERENT item. Nothing here says where the missing one is."""
+        said = str(plan_said or "")
+        bag = (obs or {}).get("bag") or {}
+        if not said or not isinstance(bag, dict) or (obs or {}).get("mode", "overworld") != "overworld":
+            return ""
+        out = []
+        for sent in _re.split(r"(?<=[.!?;])\s+", said):
+            if not _re.search(self._HELD_WORDS, sent, _re.I):
+                continue
+            rest = sent
+            for nm, pat in self._item_word_patterns():
+                if not pat.search(rest):
+                    continue
+                rest = pat.sub(" ", rest)
+                if int(bag.get(nm, 0) or 0) > 0 or nm in out:
+                    continue
+                out.append(nm)
+        if not out:
+            return ""
+        bits = []
+        for nm in out[:3]:
+            other = self._same_kind_held(nm, bag)
+            bits.append(f"your plan speaks of holding {nm}; the bag holds no {nm}"
+                        + (f" — the {nm.rsplit('_', 1)[-1]} you do hold, {other}, "
+                           f"is a DIFFERENT item, not another name for it"
+                           if other else ""))
+        return "WORDS ARE NOT THE BAG: " + "; ".join(bits) + "."
+
+    def _spoken_item_note(self, trace, obs) -> str:
+        """WHAT SOMETHING SAID IT NEEDS, AGAINST THE BAG. "Darn! It needs a
+        CARD KEY!" was relayed verbatim eight times and the run answered
+        with the LIFT_KEY in its bag. When words on the screen name an item
+        the engine knows and the bag does not hold, say so once, and name
+        the held item of the same kind as a different thing."""
+        bag = (obs or {}).get("bag") or {}
+        if not isinstance(bag, dict) or (obs or {}).get("mode", "overworld") != "overworld":
+            return ""
+        named = []
+        for t in (trace or []):
+            t = str(t)
+            if 'it said: "' not in t and "said: " not in t:
+                continue
+            said = t.split("said: ", 1)[1]
+            for nm, pat in self._item_word_patterns():
+                if pat.search(said) and int(bag.get(nm, 0) or 0) <= 0 and nm not in named:
+                    named.append(nm)
+        if not named:
+            return ""
+        bits = []
+        for nm in named[:3]:
+            other = self._same_kind_held(nm, bag)
+            bits.append(f"something here spoke of {nm}, which you do not hold"
+                        + (f" — {other} in your bag is a DIFFERENT item"
+                           if other else ""))
+        return "SAID, AGAINST THE BAG: " + "; ".join(bits) + "."
+
     # WORDS ARE NOT A LIFTS ENTRY. Eight rounds in a row the plan said "a
     # Ghost blocks the path to the 7th floor on the 6th floor and I need the
     # Silph Scope", and every one of those rounds the row for that door read
@@ -14655,6 +14730,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _shelf = ""
             if _shelf:
                 trace = list(trace) + [_shelf]
+            try:
+                _obs_now = self.settle() or obs
+                _held = self._held_claim_note(self._plan_said, _obs_now)
+                _spoke = self._spoken_item_note(trace, _obs_now)
+            except Exception:
+                _held, _spoke = "", ""
+            for _n in (_held, _spoke):
+                if _n:
+                    trace = list(trace) + [_n]
             if _trunc_note:
                 trace = list(trace) + [_trunc_note]
             else:
