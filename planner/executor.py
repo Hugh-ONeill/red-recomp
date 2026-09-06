@@ -12314,11 +12314,14 @@ goes),
 SENT OUT FIRST, in every battle, so this is how you choose who fights and
 who is protected — and a Pokemon that never gets sent out never gains a
 level. obs.party is in slot order),
-{"op":"heal"} (restore the WHOLE party at a Pokemon Center: walks in if
-you are outside one on this map and talks to the NURSE. Free, always. It
-fails plainly if this map has no Center, and then names any way back to
-one you are holding — an ESCAPE_ROPE, a party member that knows DIG or
-TELEPORT — with what each would cost),
+{"op":"heal"} (restore the WHOLE party where the game heals it: a Pokemon
+Center's nurse, the Pokemon League lobby's nurse, or Mom at home in Pallet
+Town. Walks in if you are outside one on this map and its door has been
+on screen, and talks to whoever heals. Free, always. A nurse also makes
+that place where you wake after a blackout; Mom does not. It fails plainly
+if nobody on this map heals, and then names any way back to a Center you
+are holding — an ESCAPE_ROPE, a party member that knows DIG or TELEPORT —
+with what each would cost),
 {"op":"wait"}. Battles are auto-handled.
 {"op":"tap","btn":"b"} (press B once: closes an open menu, counter or
 list you are standing in — the way OUT of a shop counter or a PC screen

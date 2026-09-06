@@ -89,7 +89,7 @@ ck("...only when the game would actually offer it",
 ck("the vocabulary states DIG, TELEPORT and the rope as ways out",
    "DIG AND TELEPORT ARE\nWAYS OUT" in EXEC and "is used up. None of\nthem brings you back" in EXEC)
 ck("...and heal's doc says it names them on failure",
-   "names any way back to\none you are holding" in EXEC)
+   "names any way back to a Center you\nare holding" in EXEC)
 
 # --- the gate itself, in luajit ------------------------------------------
 if shutil.which("luajit"):

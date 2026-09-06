@@ -43,7 +43,7 @@ ck("yield_ground knows when it stands on a door", "local on_warp = is_warp(p.cel
 ck("...and on one only steps where the engine says a step lands",
    "ow.map:inBounds(nx, ny)" in yg and "Collision.canMove(ow.map, ow.entities, p, dir)" in yg
    and "if safe and walk(G, dir, 1) then" in yg)
-ck("...off a door it yields as before", "if on_warp then" in yg)
+ck("...off a door it yields as before, in bounds", "if safe and on_warp then" in yg)
 
 uw = SHIM[SHIM.index("function OPS.use_warp"):SHIM.index("function OPS.use_warp") + 30000]
 ck("a crossing mid-walk is no longer a success",

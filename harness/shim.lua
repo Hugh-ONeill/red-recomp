@@ -5193,10 +5193,13 @@ local function yield_ground(G)
     local d = DIRS[dir]
     if d and not is_warp(p.cellX + d[1], p.cellY + d[2]) then
       local nx, ny = p.cellX + d[1], p.cellY + d[2]
-      local safe = true
-      if on_warp then
-        safe = ow.map and ow.map.inBounds and ow.map:inBounds(nx, ny)
-          and okc and Collision and Collision.canMove
+      -- ...AND NEVER OFF THE MAP. A step past the edge is a CONNECTION
+      -- crossing: from the Indigo Plateau's bottom row, "down" was not a
+      -- warp, so it was taken, and the party was on Route 23 (2026-09-06).
+      local safe = (ow.map and ow.map.inBounds and ow.map:inBounds(nx, ny))
+                   and true or false
+      if safe and on_warp then
+        safe = okc and Collision and Collision.canMove
           and Collision.canMove(ow.map, ow.entities, p, dir) and true or false
       end
       if safe and walk(G, dir, 1) then
@@ -5275,7 +5278,13 @@ function OPS.use_warp(G, c)
     -- one cell off the tile it asked for and walked it straight back, the
     -- door that fired is the door we aimed at, and the edge is knowable.
     local function crossed()
-      if (ow.map and ow.map.id) == startMap then return nil end
+      -- READ THE MAP FRESH: the engine swaps the overworld object on a
+      -- map load, so `ow.map.id` kept saying INDIGO_PLATEAU after the
+      -- party had been carried onto Route 23, the loop went on with the
+      -- old coordinates on the new map, walked to Route 23's own (9,5)
+      -- and pressed through — "warped" (2026-09-06).
+      local _live = G.overworld and G.overworld.map and G.overworld.map.id
+      if _live == startMap then return nil end
       local _note = safari_ended_note(G, _sf0)
       if stepped then return true, "warped" .. _note .. THAW_LAST end
       -- A DOOR YOU DID NOT ASK FOR IS NOT THE ONE YOU ASKED FOR. This
@@ -5361,7 +5370,7 @@ function OPS.use_warp(G, c)
       G.input.state[dir] = true
       for _ = 1, 40 do
         coroutine.yield()
-        if (ow.map and ow.map.id) ~= startMap then
+        if (G.overworld and G.overworld.map and G.overworld.map.id) ~= startMap then
           G.input.state[dir] = false
           return true
         end
@@ -8614,16 +8623,45 @@ end
 -- out of the map table. Walking to a signed building is following a sign.
 -- That is why this needs no walked-door restriction, and it is the same
 -- reasoning that settles enter_shop. c.door stays as an override.
+-- WHO HEALS, BY THE GAME'S OWN TABLES. A Center's nurse anywhere; the
+-- League lobby's nurse (INDIGO_PLATEAU_LOBBY, an object, not a map name);
+-- and Mom at home, whose talk script heals the party once the starter is
+-- had (data/scripts/reds_house.lua, RedsHouse1FMomHealScript) — the user
+-- asked for both (2026-09-06: "we should handle that for indigo plateau
+-- and maybe for pallet to direct you to your mom"). Mom heals but does not
+-- move where a blackout returns you; only a nurse sets that.
+local function is_healer_def(G, mapid, o)
+  if tostring(o.sprite or "") == "SPRITE_NURSE"
+     or tostring(o.name or ""):upper():find("NURSE", 1, true) then
+    return "nurse"
+  end
+  if mapid == "REDS_HOUSE_1F"
+     and (tostring(o.sprite or "") == "SPRITE_MOM"
+          or tostring(o.name or ""):upper():find("MOM", 1, true))
+     and G and G.save and G.save.flags and G.save.flags.EVENT_GOT_STARTER then
+    return "mom"
+  end
+  return nil
+end
+function map_has_healer(G, mapid)
+  local md = mapid and G and G.data and G.data.maps and G.data.maps[mapid]
+  for _, o in ipairs((md and md.objects) or {}) do
+    if is_healer_def(G, mapid, o) then return true end
+  end
+  return false
+end
+
 function OPS.heal(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close: "
       .. _screen_name(G) .. ")"
   end
+  local healer_kind = nil
   local function find_nurse()
+    local _mid = G.overworld and G.overworld.map and G.overworld.map.id
     for _, npc in ipairs((G.overworld.npcs) or {}) do
-      if tostring((npc.def or {}).name or ""):upper():find("NURSE") then
-        return npc
-      end
+      local k = is_healer_def(G, _mid, npc.def or {})
+      if k then healer_kind = k; return npc end
     end
   end
   local function hurt()
@@ -8644,12 +8682,39 @@ function OPS.heal(G, c)
       local ow = G.overworld
       local md = ow and ow.map and G.data and G.data.maps
                   and G.data.maps[ow.map.id]
+      -- A NURSE BEHIND A DOOR IS A CENTER, WHATEVER THE MAP IS CALLED.
+      -- This matched doors by the destination's NAME containing
+      -- POKECENTER, and the Indigo Plateau's nurse lives in
+      -- INDIGO_PLATEAU_LOBBY — so a weak party standing between the
+      -- lobby's two doors was told "no Center door on this map", planned
+      -- DIG to Viridian, and the only healing it then knew was back
+      -- through Victory Road, whose puzzle resets on the way (2026-09-06,
+      -- user: "it needs to get to the plateau first so it can heal there
+      -- ... otherwise itll have to go through victory road all over
+      -- again"). The game's own object table says which maps hold a
+      -- nurse; it is the same table the name check was standing in for.
+      -- ...AND ONLY A DOOR THAT HAS BEEN ON SCREEN, the footprint rule
+      -- every walk keeps: the Plateau's lobby door at (9,5) had never been
+      -- in view from the south edge, and aiming a walk at it was how the
+      -- party ended up backing off onto Route 23.
+      local _seen = SEEN[(ow and ow.map and ow.map.id) or ""] or {}
+      local _unseen_door = false
       for _, w in ipairs((md and md.warps) or {}) do
         if w.x and w.y
-           and tostring(w.destMap or ""):find("POKECENTER") then
-          d = { x = w.x, y = w.y }
-          break
+           and (tostring(w.destMap or ""):find("POKECENTER")
+                or map_has_healer(G, w.destMap)) then
+          if _seen[w.x .. "," .. w.y] then
+            d = { x = w.x, y = w.y }
+            break
+          end
+          _unseen_door = true
         end
+      end
+      if not (d and d.x and d.y) and _unseen_door then
+        return false, "nobody here heals, and the door on this map that "
+          .. "leads to someone who does has never been on screen from where "
+          .. "you have stood — walks are made over ground you have seen; "
+          .. "explore or a sweep brings a doorway into view" .. escape_ways(G)
       end
     end
     if not (d and d.x and d.y) then
@@ -8664,10 +8729,41 @@ function OPS.heal(G, c)
     nurse = find_nurse()
   end
   if not nurse then
-    return false, "went through the door but found no nurse inside"
+    return false, "went through the door but found nobody inside who heals"
   end
-  local ok, why = OPS.interact(G, { x = nurse.cellX, y = nurse.cellY,
-                                    answer = "yes", read_question = true })
+  -- BY NAME, NOT BY CELL. The League lobby is tall: the party lands on the
+  -- door at row 11 and the nurse stands at row 5, out of view, so the
+  -- cell-addressed press found "no reachable tile adjacent to target" over
+  -- ground it had not seen yet, while the same press by NAME walks up and
+  -- talks to her (2026-09-06). A Center is small enough that both worked.
+  -- ...AND LOOK BEFORE YOU PRESS. In a building the run has never seen,
+  -- the ground between the door and the healer is unseen too, so no stand
+  -- beside her is reachable yet under the footprint rule, by cell or by
+  -- name. A player walks in and looks: sweep toward the unseen ground
+  -- until a person comes into view, then press again. Three looks at most.
+  local _nm = (nurse.def or {}).name
+  local ok, why
+  for _look = 1, 3 do
+    ok, why = nil, nil
+    if _nm then
+      ok, why = OPS.interact(G, { name = _nm, answer = "yes",
+                                  read_question = true })
+    end
+    if not ok then
+      ok, why = OPS.interact(G, { x = nurse.cellX, y = nurse.cellY,
+                                  answer = "yes", read_question = true })
+    end
+    if ok then break end
+    local _w = tostring(why or "")
+    if not (_w:find("no reachable tile", 1, true)
+            or _w:find("not visible", 1, true)
+            or _w:find("NEVER BEEN ON SCREEN", 1, true)) then
+      break
+    end
+    if G.stack:top() ~= G.overworld then break end
+    local _sok = OPS.sweep(G, { ["until"] = "person" })
+    if not _sok then break end
+  end
   if not ok then return false, why or "could not reach the nurse" end
   for _ = 1, 60 do                       -- ride the heal ceremony out
     if G.stack:top() == G.overworld then break end
@@ -8676,8 +8772,16 @@ function OPS.heal(G, c)
   ui_back_out(G)
   local after = hurt()
   if after == 0 then
-    return true, (went_in and "went into the Center and healed" or "healed")
-      .. " — the whole party is at full HP"
+    if healer_kind == "mom" then
+      return true, (went_in and "went in and " or "")
+        .. "Mom healed the party — the whole party is at full HP. Where you "
+        .. "wake after a blackout is UNCHANGED: only a Center's nurse moves "
+        .. "that"
+    end
+    return true, (went_in and "went in and the nurse healed the party"
+                  or "the nurse healed the party")
+      .. " — the whole party is at full HP; this is now where you wake "
+      .. "after a blackout"
   end
   return false, ("talked to the nurse but %d Pokemon %s still hurt")
     :format(after, after == 1 and "is" or "are")
