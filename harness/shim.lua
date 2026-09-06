@@ -662,12 +662,19 @@ end
 -- barrier at (6,10) open, and sweep(until=map_change) answered "nothing
 -- more to see from ground you can reach" because its flood would not cross
 -- the opened block (user: "sweep should have swept the rest of the map").
--- The game's rule ties the two: a switch held down is the barrier open, a
--- switch released is the barrier shut. So while the SWITCH is on screen,
--- the barrier block's live passability is written into the snapshot as if
--- seen — both ways. Only cells the run has already SEEN are touched: this
--- lifts the freeze, never the unseen gate. Pure over its arguments, so it
--- is tested without a game.
+-- The game's rule ties the switch to the barrier — but through an EVENT,
+-- not the boulder: the flag is set when a boulder lands, every floor
+-- re-applies its barriers from the flags on entry, and boulders go back to
+-- their starts on every load. On 2F and 3F the way stays open with the
+-- boulder back where it began; 1F's flag is cleared by entering 2F or the
+-- Plateau lobby, and Route 23 clears all four of 2F's and 3F's
+-- (data/scripts/story.lua, flavor/route_23.lua, porting the pokered
+-- scripts; the user watched both behaviours, 2026-09-06). So nothing here
+-- reads the boulder: while the SWITCH is on screen, the barrier BLOCK's
+-- live passability is written into the snapshot as if seen, whichever way
+-- it stands. Only cells the run has already SEEN are touched: this lifts
+-- the freeze, never the unseen gate. Pure over its arguments, so it is
+-- tested without a game.
 local function switch_witness(map, px, py, view, t, wt)
   local dirty = false
   for _, c in ipairs((view and view.boulder_switches) or {}) do

@@ -19,9 +19,14 @@ boulder IS on the screen. That is a witness, and the page was already
 citing it.
 
 So while the switch is in view, the barrier block's live passability is
-written into the snapshot as if seen — held means open, released means shut
-— and every flood, walk and sweep follows. Only cells the run has already
-SEEN are touched: the unseen gate is never lifted by this.
+written into the snapshot as if seen, and every flood, walk and sweep
+follows. It reads the BLOCK, never the boulder: the game keeps the barrier
+in an event flag, re-applies it on every floor entry, and returns the
+boulders to their starts, so on 2F and 3F the way stays open with the
+boulder back where it began, while 1F's flag is cleared by entering 2F or
+the Plateau lobby and Route 23 clears all of 2F's and 3F's (story.lua,
+route_23.lua; the user saw both, 2026-09-06). Only cells the run has
+already SEEN are touched: the unseen gate is never lifted by this.
 """
 from __future__ import annotations
 import re, shutil, subprocess, sys, tempfile
@@ -67,10 +72,12 @@ ck("a switch in view writes its barrier's live state", d, true)
 ck("...the opened cells are open now", wt["6,10"] == true and wt["7,10"] == true, true)
 ck("...a barrier cell that is still solid stays a wall", wt["7,11"], false)
 ck("...and a cell never on screen is not invented", wt["6,11"], nil)
--- the boulder rolled off: the block is solid again
+-- the flag was cleared elsewhere (Route 23) and the floor re-entered: the
+-- block is solid again although nothing about the boulder says so
 open["6,10"], open["7,10"] = false, false
 d = switch_witness(map, 3, 2, view, t, wt)
-ck("released, the barrier is written shut again", d and wt["6,10"] == false and wt["7,10"] == false, true)
+ck("a barrier shut again by a reset is written shut, from the block not the boulder",
+   d and wt["6,10"] == false and wt["7,10"] == false, true)
 -- the switch is off screen: nothing is claimed
 open["6,10"], open["7,10"] = true, true
 d = switch_witness(map, 20, 20, view, t, wt)
