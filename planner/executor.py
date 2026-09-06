@@ -2123,7 +2123,8 @@ class Executor:
                     f"because one leg of it would not land the last time "
                     f"it was tried in this world state: {_src} --{_k}--> "
                     f"{_dst}. Walking the legs yourself is still open, and "
-                    f"whatever stopped that one is what has to change"], []
+                    f"whatever stopped that one is what has to change"
+                    + self._blocked_words(_src, _k, _dst)], []
             # THE CUT RULE'S HONEST TWIN. A hop stopped by a bush is cut
             # and re-walked, because a bush has one outcome; a boulder has
             # a destination, and where it goes is the puzzle. So `go` does
@@ -6145,6 +6146,34 @@ class Executor:
                 _cur = _dst
         return None
 
+    def _blocked_words(self, src, key, dst) -> str:
+        """What the down leg SAID when it refused, from the edge's own
+        record, and how often it had landed before.
+
+        THE STAMP KEPT THE DATE AND THREW THE REASON AWAY. Run 15 stamped
+        315 edges and `go` was refused over and over with "one leg of it
+        would not land the last time it was tried in this world state" —
+        Route 9's three walk edges 48 times between them, the Mansion's
+        B1F door, Seafoam B3F's swim, Route 23 — and the refusal never
+        said what the leg had said. The walk's own result had named it the
+        moment it failed (a ledge at the edge of the ground, a scientist
+        beside the boundary, Lorelei standing on the tile); the stamp
+        stored only when. A road that will not land because someone
+        stands on it and one that will not land because it was walked
+        DOWN a ledge are two different things to do next, and the record
+        knew which. Nothing here is inferred: it is the leg's own words,
+        dated, and the count of times it had worked."""
+        _e = (self.explored.get(src) or {}).get(key) or {}
+        _why = str(_e.get("blocked_why") or "").strip()
+        _n = int(_e.get("n") or 0)
+        out = ""
+        if _n:
+            out += f" (a leg that had landed {_n} time(s) before)"
+        if _why:
+            out += (f". WHAT THAT LEG SAID when it refused: "
+                    f"{_why[:self.WHY_BUDGET]}")
+        return out
+
     def _wild_elsewhere_note(self, here_map, obs) -> str:
         """The fought rows, then the walked ground never fought on."""
         return (self._wild_elsewhere_fought_note(here_map, obs)
@@ -8192,8 +8221,12 @@ class Executor:
                         str(key))
                     if _lrec is not None:
                         _lrec["blocked_at"] = self._world_mark(o)
+                        _lrec["blocked_why"] = (
+                            f"the lift was asked for {_lab} and the party "
+                            f"is on {(o.get('map') or {}).get('id')}")
                         self.log("lift_edge_blocked",
-                                 frm=self._where(_now), via=str(key))
+                                 frm=self._where(_now), via=str(key),
+                                 why=_lrec["blocked_why"])
                         self._save_memory()
                     self._route_why = (
                         f"the leg {str(key)} was a LIFT ride and it did not "
@@ -8321,8 +8354,17 @@ class Executor:
                     # moment anything changes.
                     if _wrec is not None:
                         _wrec["blocked_at"] = self._world_mark(o)
+                        # ...AND WHAT THE WALK SAID, or the stamp is a
+                        # date with no reason: run 15's `go` refused 48
+                        # Route 9 replays as "would not land" and never
+                        # once said the walk had named a ledge (autopsy,
+                        # 2026-09-06). _blocked_words reads this back.
+                        _wrec["blocked_why"] = (
+                            str(_wdet)[:self.WHY_BUDGET] if _wdet else
+                            f"the walk ended at {self._where(o)}, not {nxt}")
                         self.log("walk_edge_blocked",
-                                 frm=self._where(_now), via=str(key))
+                                 frm=self._where(_now), via=str(key),
+                                 why=_wrec["blocked_why"][:200])
                         self._save_memory()
                     self._route_why = (
                         f"the leg {str(key)} is a walk across this map and "
@@ -8657,6 +8699,8 @@ class Executor:
                                      via=key, to=nxt, why=_last_det[:200])
                         else:
                             rec["blocked_at"] = self._world_mark(o)
+                            rec["blocked_why"] = str(_last_det or "")[
+                                :self.WHY_BUDGET]
                             self.log("edge_blocked", frm=frm, via=key,
                                      to=nxt, n=rec.get("n"),
                                      why=_last_det[:200])
@@ -12964,7 +13008,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                 f"{_t2} ({len(_p2)} leg(s)), not replayed "
                                 f"because one leg would not land the last "
                                 f"time it was tried in this world state: "
-                                f"{_s2} --{_k2}--> {_d2}")
+                                f"{_s2} --{_k2}--> {_d2}"
+                                + self._blocked_words(_s2, _k2, _d2))
                         else:
                             trace.append(
                                 f"{op}: no walked way from {_hr} to {_want} "

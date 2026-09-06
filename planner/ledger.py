@@ -1915,6 +1915,28 @@ def printed_roads_words(map_id: str, seen_sides, unseen_sides, edges: dict) -> s
             + ". The map draws the LAYOUT, not which roads are open.")
 
 
+def _down_leg_words(ex, here: str | None, path) -> str:
+    """WHICH leg of a walked route carries the stamp, and what it said.
+    The head above said "a hop on it would not land" and stopped; the
+    executor's `go` refusal names the leg and (since 2026-09-06) quotes
+    the leg's own words (executor _blocked_words). Same facts here."""
+    try:
+        _cur = str(here or "")
+        _mark = getattr(ex, "_mark_now", None)
+        for _k, _dst in (path or []):
+            _e = ((getattr(ex, "explored", {}) or {}).get(_cur) or {}
+                  ).get(_k) or {}
+            if _e.get("blocked_at") == _mark:
+                _w = getattr(ex, "_blocked_words", None)
+                return (f" — the leg that would not land: {_cur} --{_k}--> "
+                        f"{_dst}"
+                        + (_w(_cur, _k, _dst) if callable(_w) else ""))
+            _cur = str(_dst)
+    except Exception:
+        pass
+    return ""
+
+
 def render(cands: list[Candidate], ex, obs: dict, target: str = "",
            limit: int = 24) -> str:
     """The ledger as the model reads it: numbered, local, ranked, bounded.
@@ -2343,7 +2365,8 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                          "was tried in this world state, so it is not being "
                          "replayed for you. Walking it a leg at a time is "
                          "still yours to do, and what stopped that hop is "
-                         "what has to change")
+                         "what has to change"
+                         + _down_leg_words(ex, here, _stale))
             else:
                 head += ("; no walked route from here is known — how you "
                          "got in before is in your own record")

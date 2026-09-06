@@ -4238,6 +4238,61 @@ local function bfs_dir_pass(G, tx, ty, wblock, gate)
       end
     end
   end
+  -- A LEDGE AT THE BOUNDARY IS SAID TO BE ONE. The BFS above rides ledges
+  -- DOWN (ledge_landing) and the engine never lets anyone climb one, so a
+  -- ledge tile at the edge of the ground you can reach has its high side
+  -- beyond you, and whatever lies past it is reached from that side. Run
+  -- 15's three Route 9 walk edges took 48 blocked stamps between them
+  -- (autopsy, 2026-09-06) with the refusal saying only that the leg
+  -- "would not land": the ledge that stopped each replay was on screen,
+  -- and this list named the people and bushes beside the boundary and
+  -- not the ledge. Manual tier — the box explains ledges — and it is
+  -- listed with the rest of what stands at the edge, under the same
+  -- "not a claim that this is the cause".
+  do
+    local _tileset = (ow.map.def and ow.map.def.tileset) or "OVERWORLD"
+    local _ledgeTiles = {}
+    for _, lg in ipairs((G.data and G.data.field
+                         and G.data.field.ledges) or {}) do
+      if (lg.tileset or "OVERWORLD") == _tileset then
+        _ledgeTiles[lg.ledgeTile] = true
+      end
+    end
+    if next(_ledgeTiles) and ow.map.cellTile then
+      local _cells, _named = {}, {}
+      for k in pairs(seen) do
+        local cx, cy = k:match("^(-?%d+),(-?%d+)$")
+        cx, cy = tonumber(cx), tonumber(cy)
+        if cx then
+          for _, d in pairs(DIRS) do
+            local fx, fy = cx + d[1], cy + d[2]
+            local fk = key(fx, fy)
+            if not seen[fk] and not _named[fk] and ow.map.inBounds
+               and ow.map:inBounds(fx, fy)
+               and _ledgeTiles[ow.map:cellTile(fx, fy)] then
+              _named[fk] = true
+              _cells[#_cells + 1] = { x = fx, y = fy }
+            end
+          end
+        end
+      end
+      if #_cells > 0 then
+        table.sort(_cells, function(a, b)
+          if a.y ~= b.y then return a.y < b.y end
+          return a.x < b.x
+        end)
+        local _shown = {}
+        for i = 1, math.min(#_cells, 6) do
+          _shown[#_shown + 1] = ("%d,%d"):format(_cells[i].x, _cells[i].y)
+        end
+        fence[#fence + 1] = ("a LEDGE along %d cell(s) at %s%s — its high "
+          .. "side is beyond you: a ledge is hopped down and never "
+          .. "climbed, so whatever lies past it is reached from the other "
+          .. "side"):format(#_cells, table.concat(_shown, " "),
+                             #_cells > 6 and " and more" or "")
+      end
+    end
+  end
   for _, b in ipairs(bushes_blocking(G, tx, ty, seen)) do
     -- ONE BUSH IS ONE BUSH. The pocket scan and bushes_blocking both
     -- reach the cell that seals a nook, so ROUTE_9|0,8's refusal read
