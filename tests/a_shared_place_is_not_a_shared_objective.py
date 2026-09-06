@@ -77,6 +77,20 @@ ck("the Scope and the Silph ticket line are not a pair (they share a place)",
    not any(n == "silph" for _, _, n in pairs))
 ck("the two flutes still are", any(n == "flute" for _, _, n in pairs))
 
+# getting a thing is not using it
+A.OUTLINE_NOTES.clear()
+kept = A._dedupe_outline(["Obtain the Snorlax Poké Flute",
+                          "Wake up Snorlax with the Poké Flute",
+                          "Retrieve the Poké Flute from Mr. Fuji"])
+ck("waking Snorlax with the flute is not fetching the flute",
+   "Wake up Snorlax with the Poké Flute" in kept)
+# the two fetches share one name ({flute}); that is the twin QUESTION's
+# case, not the dedupe's, so both stand here and the pair is proposed
+ck("...and the two fetches are left for the twin question", len(kept) == 3
+   and any(n == "flute" for _, _, n in A._twin_pairs(kept)))
+ck("'Poké' is scaffolding, not a name",
+   "poke" not in A._objective_key("Receive Poké Balls from Professor Oak"))
+
 src = Path("planner/author.py").read_text()
 ck("the era repeat guard uses the same rule",
    "if k and any(_same_objective(k, s) for s in seen):" in src)

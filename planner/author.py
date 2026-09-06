@@ -4256,6 +4256,11 @@ def _dedupe_outline(legs: list) -> list:
     _ARR = re.compile(r"^\s*(reach|arrive|travel|go|visit|enter|walk|fly|"
                       r"ride|sail|navigate|cross|trek|pass|head|get to|"
                       r"make your way|return)\b", re.I)
+    # GETTING A THING IS NOT USING IT. "Obtain the Snorlax Poke Flute" ate
+    # "Wake up Snorlax with the Poke Flute" on {flute, snorlax} (pass of
+    # 2026-09-06 17:16) — the fetch and the deed it enables, and the deed
+    # is the gate. A fetch only ever twins another fetch. A duplicate leg
+    # costs a round; a lost gate walls the run.
 
     for leg in legs:
         key = _objective_key(leg)
@@ -4274,6 +4279,7 @@ def _dedupe_outline(legs: list) -> list:
                     if _same_objective(k, key)
                     and bool(_UPK.match(leg)) == bool(_UPK.match(t))
                     and bool(_ARR.match(leg)) == bool(_ARR.match(t))
+                    and bool(_ACQUIRE.match(leg)) == bool(_ACQUIRE.match(t))
                     and not (_nums(leg) and _nums(t)
                              and _nums(leg) != _nums(t))), None)
         if hit:
@@ -4818,7 +4824,7 @@ obtained got retrieved acquired found fetched collected delivered brought
 given earn earned receive received rescue rescued catch caught
 talk talked explore explored use used learn learned teach taught buy
 bought purchase purchased complete completed finish finished
-pokemon pokemons badge badges item items thing things
+pokemon pokemons poke badge badges item items thing things
 first second third next new
 city town island area house place way path sail
 party member team level type types move moves hold holds know knows
