@@ -3987,7 +3987,21 @@ end
 -- blind=true on the op, keeps the old full-map search (probes and tooling
 -- only; the model's vocabulary does not carry it).
 local BLIND_ROUTING = (os.getenv("RED_BLIND_ROUTING") == "1")
-local function route_gate(G)
+-- A DOOR YOU OPENED IS YOURS TO WALK THROUGH. `thaw` lifts the frozen
+-- rule and only that: a cell that was a WALL the last time it was on
+-- screen and is open now may be routed into. The executor sets it on the
+-- ops whose destination the MODEL named (walk_to, use_warp, interact) and
+-- never on the walks the harness picks for itself (explore, sweep, go).
+-- The Mansion's 2F switch opens the way to the stairs at (25,14), the run
+-- pressed it, and use_warp(25,14) was then refused as "not routed into
+-- until it is SEEN again" -- the harness overruling the model's own memory
+-- of what its switch did (user, 2026-09-05: "if the model chooses to try
+-- to route to a warp that IS open as the result of flicking the switch but
+-- hasnt yet been seen to, it should route, because thats the model
+-- remembering a fact about when the stairs are open based on switch state,
+-- not the harness telling the model where to go"). A cell that is still a
+-- wall stops the walk as it always did; unseen ground stays unseen.
+local function route_gate(G, thaw)
   local ow = G.overworld
   local p = ow and ow.player
   if not (ow and ow.map and ow.map.id and p and p.cellX) then return nil end
@@ -3998,8 +4012,8 @@ local function route_gate(G)
   -- says WHY a cell may not be routed into ("unseen" | "frozen"), or nil
   return function(nx, ny, nk)
     if not mask[nk] then return "unseen" end
-    if seen_wall_since_view(map, WT, rpx, rpy, nx, ny, nk,
-                            VIEW_L, VIEW_R, VIEW_U, VIEW_D) then
+    if not thaw and seen_wall_since_view(map, WT, rpx, rpy, nx, ny, nk,
+                                         VIEW_L, VIEW_R, VIEW_U, VIEW_D) then
       return "frozen"
     end
     return nil
@@ -4106,8 +4120,10 @@ local function bfs_dir_pass(G, tx, ty, wblock, gate)
   local tgt_frozen = gate and gate(tx, ty, key(tx, ty)) == "frozen"
   if tgt_frozen then
     said = said .. ((" — %d,%d was a WALL the last time it was on screen and "
-      .. "has not been on screen since; ground that was a wall is not "
-      .. "routed into until it is SEEN again, whatever it is now. ")
+      .. "has not been on screen since; a walk the harness picks for itself "
+      .. "does not route into ground that was a wall until it is SEEN again, "
+      .. "whatever it is now (a walk_to or use_warp YOU send goes through it "
+      .. "if it is open now). ")
       :format(tx, ty))
       .. ((best == 1 and bx and by)
           and (("From (%d,%d), beside it, it is on screen: walk there and "
@@ -4177,16 +4193,18 @@ local function bfs_dir_pass(G, tx, ty, wblock, gate)
   end
   if gate and gate_frozen > 0 and not tgt_frozen then
     said = said .. (". %d cell(s) that were WALLS the last time they were on "
-      .. "screen were not routed into — if one has opened since, seeing it "
-      .. "again is what lifts that"):format(gate_frozen)
+      .. "screen were not routed into by this walk — if one has opened since "
+      .. "(a switch you pressed, say), a walk_to or use_warp you send yourself "
+      .. "goes through it, and seeing it again lifts this for every walk")
+      :format(gate_frozen)
   end
   return nil, said
 end
 
-local function bfs_dir(G, tx, ty, blind)
+local function bfs_dir(G, tx, ty, blind, thaw)
   local p = G.overworld.player
   if p.cellX == tx and p.cellY == ty then return nil, "arrived" end
-  local gate = (not (blind or BLIND_ROUTING)) and route_gate(G) or nil
+  local gate = (not (blind or BLIND_ROUTING)) and route_gate(G, thaw) or nil
   local wblock = warp_block(G, tx, ty)
   -- first around every learned script tile (bar the destination itself);
   -- only if that leaves no way at all, straight through
@@ -4698,10 +4716,15 @@ local function bfs_to_edge(G, dir, skip, surf, blind)
         or "")
     .. ((gate and gate_frozen > 0)
         and (". " .. gate_frozen .. " cell(s) that were WALLS the last time "
-             .. "they were on screen were not routed into — if one has "
-             .. "opened since, seeing it again is what lifts that")
+             .. "they were on screen were not routed into by this walk — if "
+             .. "one has opened since (a switch you pressed, say), a walk_to "
+             .. "or use_warp you send yourself goes through it, and seeing it "
+             .. "again lifts this for every walk")
         or ""), bestx, besty, seen, nseen, gate_unseen
 end
+
+-- what the last thawed walk went through, for the op that asked for it
+local THAW_LAST = ""
 
 local OPS = {}
 
@@ -4902,6 +4925,29 @@ function OPS.walk_to(G, c)
   local p = ow.player
   local _sf0 = safari_running(G)
   local blind = (c.blind and true) or BLIND_ROUTING
+  -- THE MODEL NAMED THIS CELL (see route_gate): a wall that has opened
+  -- since it was last seen may be walked through, and is named after.
+  local thaw = c.thaw and true or false
+  THAW_LAST = ""
+  local thawed0, crossed = {}, {}
+  if thaw and not blind then
+    local _wt = WALK[startMap] or {}
+    for k in pairs(SEEN[startMap] or {}) do
+      local sx, sy = k:match("^(-?%d+),(-?%d+)$")
+      sx, sy = tonumber(sx), tonumber(sy)
+      if sx and seen_wall_since_view(ow.map, _wt, p.cellX, p.cellY, sx, sy,
+                                     k, VIEW_L, VIEW_R, VIEW_U, VIEW_D) then
+        thawed0[k] = true
+      end
+    end
+  end
+  local function thaw_note()
+    if #crossed == 0 then return "" end
+    THAW_LAST = (" — the way went through " .. table.concat(crossed, ", ")
+      .. ", which " .. (#crossed == 1 and "was" or "were") .. " a WALL the "
+      .. "last time on screen; open now, and you have now seen it so")
+    return THAW_LAST
+  end
   -- YOU ONLY KNOW GROUND THAT HAS BEEN ON SCREEN, and a walk is made
   -- over known ground. The ledger, sweep and go already hold this line;
   -- aiming a walk at a cell nobody has looked at was the one way left to
@@ -4957,10 +5003,14 @@ function OPS.walk_to(G, c)
     end
     if (ow.map and ow.map.id) ~= startMap then
       return true, "warped to " .. tostring(ow.map and ow.map.id)
-        .. safari_ended_note(G, _sf0)
+        .. safari_ended_note(G, _sf0) .. thaw_note()
     end
-    if p.cellX == c.x and p.cellY == c.y then return true end
-    local dir, why = bfs_dir(G, c.x, c.y, blind)
+    if p.cellX == c.x and p.cellY == c.y then
+      local _tn = thaw_note()
+      if _tn ~= "" then return true, _tn:sub(4) end   -- drop the leading dash
+      return true
+    end
+    local dir, why = bfs_dir(G, c.x, c.y, blind, thaw)
     if not dir then
       -- OPT IN TO SWIMMING. `surf=true` says: if the way on is water, get
       -- on it. The harness does the mechanics (find the water tile beside
@@ -5004,12 +5054,12 @@ function OPS.walk_to(G, c)
             .. tostring(why) .. ")"
         end
         OPS.walk_to(G, { x = bland[1], y = bland[2], max_steps = 200,
-                         blind = c.blind })
+                         blind = c.blind, thaw = c.thaw })
         local ok2, why2 = OPS.field_move(G, { move = "SURF", x = bx, y = by })
         if not ok2 then
           return false, "could not get onto the water: " .. tostring(why2)
         end
-        dir = bfs_dir(G, c.x, c.y, blind)
+        dir = bfs_dir(G, c.x, c.y, blind, thaw)
         if not dir then
           return false, "even on the water there is no path to (" .. c.x
             .. "," .. c.y .. ")"
@@ -5028,6 +5078,13 @@ function OPS.walk_to(G, c)
     if not moved then
       return false, ("blocked at (%d,%d) heading %s"):format(
         p.cellX, p.cellY, dir)
+    end
+    do
+      local _ck = p.cellX .. "," .. p.cellY
+      if thawed0[_ck] then
+        crossed[#crossed + 1] = "(" .. _ck .. ")"
+        thawed0[_ck] = nil
+      end
     end
     if _arrow and DIRS[dir]
        and _x0 + DIRS[dir][1] == c.x and _y0 + DIRS[dir][2] == c.y then
@@ -5137,8 +5194,8 @@ function OPS.use_warp(G, c)
     local function crossed()
       if (ow.map and ow.map.id) == startMap then return nil end
       local _note = safari_ended_note(G, _sf0)
-      if stepped then return true, "warped" .. _note end
-      return true, "crossed mid-walk (door unknown)" .. _note
+      if stepped then return true, "warped" .. _note .. THAW_LAST end
+      return true, "crossed mid-walk (door unknown)" .. _note .. THAW_LAST
     end
     -- Three passes, yielding ground between them: pass 1 is the plain
     -- walk, and each retry backs off a tile first so an NPC pinned by the
@@ -5148,7 +5205,7 @@ function OPS.use_warp(G, c)
       if p.cellX ~= x or p.cellY ~= y then
         local _wok, _wwhy = OPS.walk_to(
           G, { x = x, y = y, max_steps = c.max_steps or 400,
-               blind = c.blind })
+               blind = c.blind, thaw = c.thaw })
         walk_why = _wwhy or walk_why
         local _ok, _why = crossed()
         if _ok then return _ok, _why end
@@ -5202,7 +5259,7 @@ function OPS.use_warp(G, c)
       -- adrift with the frame budget already spent walking
       if p.cellX ~= x or p.cellY ~= y then
         OPS.walk_to(G, { x = x, y = y, max_steps = 12,
-                         blind = c.blind })
+                         blind = c.blind, thaw = c.thaw })
         if (ow.map and ow.map.id) ~= startMap
            and (p.cellX ~= x or p.cellY ~= y) then
           break
@@ -5283,9 +5340,9 @@ function OPS.use_warp(G, c)
       if (ow.map and ow.map.id) == startMap then
         local _pp = (G.overworld and G.overworld.player) or p
         return true, ("warped — same map, you are now at %d,%d")
-          :format(_pp.cellX or -1, _pp.cellY or -1)
+          :format(_pp.cellX or -1, _pp.cellY or -1) .. THAW_LAST
       end
-      return true, "warped" .. safari_ended_note(G, _sf0u)
+      return true, "warped" .. safari_ended_note(G, _sf0u) .. THAW_LAST
     end
     reached_any = reached_any or (w == "no fire")
   end
@@ -9856,7 +9913,7 @@ function OPS.interact(G, c)
       -- eleven escalations with the POKE FLUTE in the bag and no way to
       -- stand where it had to be played.
       OPS.walk_to(G, { x = a[1], y = a[2], max_steps = _approach_budget(
-        p, a[1], a[2]) })
+        p, a[1], a[2]), thaw = c.thaw })
       if G.stack:top() ~= ow then break end       -- a battle or a script
       refresh_target()                             -- they may have moved
       if press_from_adjacent() then return settle_dialog() end

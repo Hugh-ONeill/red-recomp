@@ -1974,7 +1974,10 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  f"back on screen and settles it — the nearest place to "
                  f"stand is ({_f0.get('x')},{_f0.get('y')}), beside "
                  f"({_f0.get('wx')},{_f0.get('wy')}). Whether any of them "
-                 f"has opened is not known here.")
+                 f"has opened is not known here. If you have reason to "
+                 f"think one has — a switch you pressed — a walk_to or "
+                 f"use_warp you send goes through it if it is open now, "
+                 f"and says so; explore's own walks will not.")
     if m.get("slope"):
         head += (f". THIS MAP IS A SLOPE: whenever you are not holding a "
                  f"direction the game moves you one cell {m['slope']}. "

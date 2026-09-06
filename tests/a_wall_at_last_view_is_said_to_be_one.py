@@ -25,14 +25,15 @@ ck("both walkers count the cells the freeze kept them out of",
 ck("a frozen target is asked about directly",
    'local tgt_frozen = gate and gate(tx, ty, key(tx, ty)) == "frozen"' in lua)
 ck("...and is said to be a wall at last view, not a thing nothing can stand on",
-   "was a WALL the last time it was on screen and \"\n      .. \"has not been on screen since; ground that was a wall is not \"\n      .. \"routed into until it is SEEN again, whatever it is now. \"" in lua)
+   "was a WALL the last time it was on screen and \"\n      .. \"has not been on screen since; a walk the harness picks for itself \"\n      .. \"does not route into ground that was a wall until it is SEEN again, \"" in lua)
 ck("...with looking named as what lifts it, from the cell beside it when there is one",
    'From (%d,%d), beside it, it is on screen: walk there and "\n                .. "try again' in lua
    and 'or "Walk toward it until it is on screen, then try again"' in lua)
 ck("the never-standable sentence is now only for a target that is not frozen",
    'elseif best == 1 and bx and by then\n    said = said .. (", which is RIGHT BESIDE it — nothing can stand ON "' in lua)
 ck("frozen cells along the way are counted for the model, at both walkers",
-   lua.count("were not routed into") == 2 and "seeing it \"\n      .. \"again is what lifts that" in lua)
+   lua.count("were not routed into by this walk") == 2
+   and lua.count("lifts this for every walk") == 2)
 ck("the freeze rule itself is unchanged: on-screen tiles live, a wall-at-last-view frozen",
    "if (WT or {})[nk] ~= false then return false end" in lua)
 bad = [n for n, ok in checks if not ok]

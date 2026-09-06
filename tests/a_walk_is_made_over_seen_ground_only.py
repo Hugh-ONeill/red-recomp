@@ -20,11 +20,12 @@ checks = []
 def ck(name, ok): checks.append((name, bool(ok)))
 
 ck("the routing gate exists and applies the freeze",
-   "local function route_gate(G)" in sh
+   "local function route_gate(G, thaw)" in sh
    and "seen_wall_since_view(map, WT, rpx, rpy, nx, ny, nk," in sh
    and 'if not mask[nk] then return "unseen" end' in sh)
 ck("bfs_dir and bfs_to_edge build it, honoring blind and the env escape",
-   sh.count("local gate = (not (blind or BLIND_ROUTING)) and route_gate(G) or nil") == 2
+   sh.count("local gate = (not (blind or BLIND_ROUTING)) and route_gate(G) or nil") == 1
+   and "local gate = (not (blind or BLIND_ROUTING)) and route_gate(G, thaw) or nil" in sh
    and 'local BLIND_ROUTING = (os.getenv("RED_BLIND_ROUTING") == "1")' in sh)
 ck("the walker's BFS gates walk, spinner and ledge steps",
    "probe, dir)\n           and not gated(nx, ny) then" in sh

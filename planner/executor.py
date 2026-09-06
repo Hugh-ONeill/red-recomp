@@ -11949,7 +11949,11 @@ coordinates. Read:
     go), or cross an edge.
 Ops: {"op":"walk_to","x":N,"y":N} (within-map, over ground that has BEEN
 ON SCREEN — you know only what you have seen, and no op searches ground
-you have never looked at for you; explore is how you look. When a building
+you have never looked at for you; explore is how you look. A cell that was
+a WALL the last time you saw it and is open now — a door a switch of yours
+moved — IS walked through by a walk_to, use_warp or interact YOU send, and
+the result names the cell; explore's own walks do not cross one until you
+have seen it open. When a building
 splits the
 map and you have already walked through it, you are taken round through the
 doors you actually used, and told that is what happened), {"op":"cross","dir":"north|
@@ -12422,6 +12426,33 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             self._dead_at[sig] = _mk
         self._dead_ops[sig] = self._dead_ops.get(sig, 0) + 1
         self._dead_why[sig] = str(det or "")[:160]
+
+    def _named(self, op, step):
+        """The op as SENT: a destination the model named may thaw a wall.
+
+        A cell that was a WALL the last time it was on screen is not routed
+        into until it is seen again -- the footprint rule, and right for
+        every walk the harness picks for itself. It was wrong for the walk
+        the MODEL asked for: it pressed the Mansion's 2F switch, sent
+        use_warp(25,14) for the stairs that switch opens, and was told the
+        way "is not routed into until it is SEEN again" -- the harness
+        overruling the model's own memory of what its switch did (user,
+        2026-09-05: "thats the model remembering a fact about when the
+        stairs are open based on switch state, not the harness telling the
+        model where to go"). So the ops whose destination the model named
+        -- walk_to, use_warp, interact -- go out with "thaw":true, and the
+        shim's route gate lets a was-wall-now-open cell be walked into; the
+        result names the cell it went through. explore's own walks (this
+        runner is inside _explore_step while _explore_params is set) are
+        the harness's picks and keep the freeze, as do sweep and go.
+        The flag is added to the COPY that is sent, never to `step`, so the
+        strike key and the trace line the model reads are unchanged.
+        """
+        if (op in ("walk_to", "use_warp", "interact")
+                and getattr(self, "_explore_params", None) is None
+                and "thaw" not in step):
+            return {**step, "thaw": True}
+        return step
 
     def _sig_of(self, obs, op, step):
         """The strike signature, one formula for every caller."""
@@ -13142,7 +13173,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     continue
             for _ in range(12):
                 try:
-                    obs = self.b.send(op, **step)
+                    obs = self.b.send(op, **self._named(op, step))
                 except TimeoutError:
                     obs = self.b.obs()
                     break
@@ -16713,7 +16744,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 for _ in range(12):
                     pre_obs = obs
                     try:
-                        obs = self.b.send(op, **step)
+                        obs = self.b.send(op, **self._named(op, step))
                     except TimeoutError as e:
                         self.log("step_timeout", subgoal=sg["id"], op=op,
                                  err=str(e))
