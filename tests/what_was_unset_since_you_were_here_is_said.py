@@ -101,8 +101,26 @@ ck("...and no word on which of them did it",
    and "Route 23 resets" not in t and "resets" not in t.lower().split("since then")[1][:200])
 ck("a way seen open carries no such note",
    "IT WAS OPEN THE LAST TIME" not in page(ex, True) and "OPEN RIGHT NOW" in page(ex, True))
-ck("a switch off screen claims neither state nor history",
-   all(s not in page(ex, None) for s in ("SHUT right now", "OPEN RIGHT NOW", "IT WAS OPEN THE LAST TIME")))
+t_off = page(ex, None)
+ck("a switch off screen claims no present state",
+   all(s not in t_off for s in ("SHUT right now", "OPEN RIGHT NOW", "IT WAS OPEN THE LAST TIME")))
+# ...but the run's own last look is said as a last look (2026-09-06: the model
+# shoved a boulder onto 2F's (1,16) whose way it had seen open earlier in the
+# visit, because the off-screen line carried no verdict at all)
+ex4 = C.make(); ex4.switch_seen = {"VICTORY_ROAD_3F|3,5": {"open_at": 1, "shut": False}}
+ex4._map_trail = [[1, "VICTORY_ROAD_3F"]]
+t4 = page(ex4, None)
+ck("...off screen, the last look is said as a last look",
+   "this switch is off screen now; the last time it was on screen its way was OPEN, on this visit" in t4
+   and "what it is now is not known from here" in t4)
+ex5 = C.make(); ex5.switch_seen = {"VICTORY_ROAD_3F|3,5": {"open_at": 1, "shut": False}}
+ex5._map_trail = [[1, "VICTORY_ROAD_3F"], [2, "VICTORY_ROAD_2F"], [3, "VICTORY_ROAD_3F"]]
+ck("...with the maps entered since when there are any",
+   "its way was OPEN, and you have entered VICTORY_ROAD_2F since" in page(ex5, None))
+ex6 = C.make(); ex6.switch_seen = {"VICTORY_ROAD_3F|3,5": {"open_at": None, "shut": True}}; ex6._map_trail = []
+ck("...and a way last seen shut is said shut", "its way was SHUT — what it is now" in page(ex6, None))
+ex7 = C.make(); ex7.switch_seen = {}; ex7._map_trail = []
+ck("never seen, nothing is claimed", "off screen now" not in page(ex7, None))
 ex2 = C.make(); ex2.switch_seen = {}; ex2._map_trail = list(b._map_trail)
 ck("shut with no record of it ever open says nothing about the past",
    "IT WAS OPEN THE LAST TIME" not in page(ex2, False) and "SHUT right now" in page(ex2, False))

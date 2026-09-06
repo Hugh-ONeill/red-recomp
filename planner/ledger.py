@@ -2445,6 +2445,33 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                                  if _uniq else "no other map")
                               + ". Which of those did it is not recorded here; "
                                 "your own path is")
+            # ...AND OFF SCREEN, WHAT WAS LAST SEEN. With the switch out of
+            # view the line named it and its way with no verdict, and the
+            # model filled the blank with "needs pressing": it shoved a
+            # boulder onto 2F's (1,16) whose way it had itself seen open
+            # earlier in the visit (2026-09-06, user: "it didnt need to do
+            # the first one though, the button was already pressed"). The
+            # run's own record has the last look; say it as a last look.
+            if c.get("open_now") is None:
+                _rec = ((getattr(ex, "switch_seen", None) or {})
+                        .get(f"{m.get('id')}|{c.get('x')},{c.get('y')}") or {})
+                if _rec.get("open_at") is not None or _rec.get("shut"):
+                    _tr = list(getattr(ex, "_map_trail", None) or [])
+                    _oa = _rec.get("open_at")
+                    _left = ([e[1] for e in _tr
+                              if isinstance(e, (list, tuple)) and len(e) == 2
+                              and _oa is not None and int(e[0]) > int(_oa)]
+                             if not _rec.get("shut") else [])
+                    _left = [x for x in _left if x != str(m.get("id") or "")]
+                    _op += (" — this switch is off screen now; the last time "
+                            "it was on screen its way was "
+                            + ("SHUT" if _rec.get("shut") else "OPEN")
+                            + ((", and you have entered "
+                                + ", ".join(list(dict.fromkeys(_left))[:6])
+                                + " since") if _left else
+                               (", on this visit" if not _rec.get("shut")
+                                else ""))
+                            + " — what it is now is not known from here")
             _op += _since
             if c.get("held"):
                 return _at + _op + " — a BOULDER IS ON IT NOW"
