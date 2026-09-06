@@ -80,6 +80,24 @@ ck("the twin is not added", out == legs)
 ck("the model's own wording is written to the upkeep list",
    scratch.exists() and "a party Pokemon knows HM01" in scratch.read_text())
 
+# the upkeep round may still ADD "knows CUT" right after the HM01 fetch:
+# the fold made them share a name, and the "hangs off what gives it to
+# you" backstop refused it (two passes, 2026-09-06). Getting the machine
+# does not teach the move.
+legs = ["Reach Vermilion City", "Retrieve the HM01 from the S.S. Anne",
+        "Defeat Lt. Surge for the Thunder Badge"]
+A.brock_probe.chat = lambda msgs, model: json.dumps(
+    [{"item": "a party Pokemon knows CUT", "after": 2},
+     {"item": "Obtain the HM01 Cut", "after": 2}])
+try:
+    out = A._outline_upkeep_once("g", legs, "m")
+finally:
+    A.brock_probe.chat = _real
+ck("a knows-move leg is added after the fetch that makes it possible",
+   "a party Pokemon knows CUT" in out)
+ck("...while a re-fetch of the same machine is still refused",
+   "Obtain the HM01 Cut" not in out)
+
 # the plan: knows_move HM01 means CUT, and has_item TM28 is TM_DIG
 plan = {"subgoals": [{"id": "a", "done_when": {"knows_move": "HM01"}},
                      {"id": "b", "done_when": {"knows_move": {"move": "hm03",

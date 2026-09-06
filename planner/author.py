@@ -4930,6 +4930,10 @@ def _outline_upkeep(goal: str, legs: list, model: str,
 # much upkeep as the round's own additions, protected the same way
 UPKEEP_TWINS: list = []
 
+# the shapes the upkeep round writes in: a STATE of the party, not a deed
+_UPKEEP_SHAPE = re.compile(r"^\s*(a party pokemon knows|the party holds|"
+                           r"every party member|the party has)\b", re.I)
+
 
 def _outline_upkeep_once(goal: str, legs: list, model: str,
                          cap: int = 12) -> list:
@@ -5022,7 +5026,15 @@ def _outline_upkeep_once(goal: str, legs: list, model: str,
         # shape of "X for the thing X gives you", and it also catches the
         # duplicate that slipped the sig test earlier — "Obtain HM01 Cut"
         # anchored to "Clear S.S. Anne and obtain HM01".
-        if anchor and (_names(item) & _names(anchor)):
+        # ...BUT A STATE OF THE PARTY IS NOT "THE THING X GIVES YOU".
+        # Once HM01 read as CUT (MACHINE_MOVES), "a party Pokemon knows
+        # CUT" anchored to "Retrieve the HM01 from the S.S. Anne" shared a
+        # name with it and this refused it — in two passes on 2026-09-06
+        # the CUT and SURF legs were refused and the outlines lost half
+        # their move upkeep. Fetching the machine does not teach the move;
+        # that gap is exactly what an upkeep leg is for.
+        if anchor and not _UPKEEP_SHAPE.match(item) \
+                and (_names(item) & _names(anchor)):
             print(f"[upkeep] refused {item!r}: it hangs off "
                   f"{anchor!r}, which is what gives it to you")
             continue
