@@ -355,6 +355,17 @@ ENGINE_MOVES = _engine_names("engine_moves.txt")
 # outline (2026-09-06) carried "a party Pokemon knows HM01" AND "a party
 # Pokemon knows CUT" three lines apart, the first of them unprotected and
 # never true as written (user: "TM/HM names should be synonymous").
+# EVERY MAP THE GAME NAMES (data/generated/maps.lua), and from them the
+# words that name a PLACE — safari, zone, tunnel, tower, mansion, anne...
+# Manual tier: the Town Map labels them. Used by one rule only: two
+# objectives that share nothing but a place are not the same objective.
+# The dedupe's two-shared-names threshold ate "Retrieve the HM04 from the
+# Safari Zone" as a repeat of "Navigate the Safari Zone" in two of three
+# passes on 2026-09-06 — STRENGTH gone from the outline before play, on
+# {safari, zone} — and "Obtain the Master Ball from Silph Co." as a repeat
+# of "Clear the Silph Co. building". A fetch inside a place and the visit
+# to the place share the place's name and nothing else.
+ENGINE_MAPS = _engine_names("engine_maps.txt")
 MACHINE_MOVES = {}
 for _row in _engine_names("engine_machines.txt"):
     _parts = _row.split()
@@ -4026,6 +4037,12 @@ def outline_eras(goal: str, model: str) -> list:
             reply = ""
         msgs.append({"role": "assistant", "content": reply})
         print(f"[era:{era}] {len(reply)} chars of prose", file=sys.stderr)
+        # ...AND THE PROSE ITSELF, so what the model said before the
+        # checklist reduced it can be read afterwards (five passes never
+        # named Oak's parcel; whether the prose had it was unknowable)
+        for _ln in reply.splitlines():
+            if _ln.strip():
+                print(f"[era:{era}]   {_ln.rstrip()}", file=sys.stderr)
     msgs.append({"role": "user", "content": ERA_LIST_ASK})
     try:
         reply = brock_probe.chat(msgs, model) or ""
@@ -4047,7 +4064,7 @@ def outline_eras(goal: str, model: str) -> list:
         if not t or _HEDGES.search(t):
             continue
         k = _objective_key(t)
-        if k and any(k == s or len(k & s) >= 2 for s in seen):
+        if k and any(_same_objective(k, s) for s in seen):
             print(f"[era] the checklist repeats itself: {t!r}",
                   file=sys.stderr)
             continue
@@ -4175,6 +4192,38 @@ def _objective_key(text: str) -> frozenset:
     return _names(text)
 
 
+def _place_words() -> frozenset:
+    """The stemmed words of every map name, minus the generic ones."""
+    global _PLACE_CACHE
+    try:
+        return _PLACE_CACHE
+    except NameError:
+        pass
+    words = set()
+    for mid in ENGINE_MAPS:
+        for w in re.sub(r"_(B?\d+F|ROOF|\d+)$", "", mid).lower().split("_"):
+            if len(w) > 1 and w not in _STOP and w not in _GENERIC \
+                    and not w.isdigit():
+                words.add(_stem(w))
+    _PLACE_CACHE = frozenset(words)
+    return _PLACE_CACHE
+
+
+def _same_objective(a: frozenset, b: frozenset) -> bool:
+    """The dedupe's rule in one place: the same names outright, or two in
+    common of which at least one is not merely a PLACE. "Retrieve the HM04
+    from the Safari Zone" and "Navigate the Safari Zone" share {safari,
+    zone} and nothing else; a fetch inside a place is not the visit."""
+    if not a or not b:
+        return False
+    if a == b:
+        return True
+    both = a & b
+    if len(both) < 2:
+        return False
+    return bool(both - _place_words())
+
+
 def _dedupe_outline(legs: list) -> list:
     """Drop objectives that are the same thing twice, keeping the first.
 
@@ -4214,7 +4263,7 @@ def _dedupe_outline(legs: list) -> list:
         # getting the machine and having taught the move are two
         # objectives, and an upkeep-shaped leg only ever twins another.
         hit = next(((k, t) for k, t in kept
-                    if key and (k == key or len(k & key) >= 2)
+                    if _same_objective(k, key)
                     and bool(_UPK.match(leg)) == bool(_UPK.match(t))
                     and not (_nums(leg) and _nums(t)
                              and _nums(leg) != _nums(t))), None)
