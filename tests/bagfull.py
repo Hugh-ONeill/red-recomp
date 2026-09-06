@@ -93,9 +93,12 @@ def main():
           "destroys nothing" in t3 and "destroys nothing" not in t, t3)
     check("...and neither of those says there is nothing here",
           "THERE IS NEITHER" not in t2 and "THERE IS NEITHER" not in t3)
-    check("key items are not offered",
-          all(k not in t.split("What may go at all")[1] for k in
-              ("BIKE_VOUCHER", "S_S_TICKET", "HM_CUT")), t)
+    _how = t.split("WHAT MAY GO, AND HOW.")[1]
+    _free, _pc = _how.split("KEY ITEMS AND HMs")
+    check("key items are not offered for tossing or selling",
+          all(k not in _free for k in ("BIKE_VOUCHER", "S_S_TICKET", "HM_CUT")), t)
+    check("...but ARE named as what the PC takes",
+          all(k in _pc for k in ("BIKE_VOUCHER", "S_S_TICKET", "HM_CUT")), t)
 
     print("\none short of full:")
     t = line(FULL[:-1])
@@ -108,7 +111,7 @@ def main():
     check("a roomy bag is silent", line(FULL[:5]) == "")
     t = line(KEYS + ["X_1", "Y_2"] * 0 + FULL[:0] or KEYS)
     check("a bag of nothing but key items says so",
-          line(KEYS * 4) == "" or "every single thing you carry is a key item"
+          line(KEYS * 4) == "" or "nothing that is not a key item"
           in line([k for k in FULL], keys=FULL))
 
     print("\n...and the leg that was crossed off anyway:")

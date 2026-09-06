@@ -9604,6 +9604,17 @@ class Executor:
             return ""
         keys = set((obs or {}).get("key_items") or [])
         spare = sorted(k for k in bag if k not in keys)
+        # KEY ITEMS ARE NOT STUCK. This line closed with "key items can be
+        # neither sold nor tossed" and listed only the rest as what "may go
+        # at all" — and the PC takes key items and HMs (PlayerPC.lua's
+        # DEPOSIT ITEM list leaves out badges and nothing else; the game
+        # only skips the how-many prompt for them). With 12 of 18 kinds key
+        # items the run was carrying a six-slot bag and tossing TMs and
+        # RARE_CANDYs to make room, and stored a key item exactly never
+        # (2026-09-05, user: "how can we handle its key-item holding
+        # habit?"). Say the one way they CAN go. Which still has a use
+        # ahead is the model's to know.
+        key_here = sorted(k for k in bag if k in keys)
         # SPEND BEFORE THROW. The list used to open with tossing, and
         # tossing is also the shortest op to write — one item, no slot, no
         # forget — so the reflex under pressure was to destroy a TM, twice
@@ -9627,10 +9638,20 @@ class Executor:
                     + ", ".join(usable) + ".")
                    if usable else "")
                 + self._where_the_slot_goes(obs)
-                + "\nWhat may go at all (key items can be neither sold nor "
-                  "tossed): "
-                + (", ".join(spare[:12]) if spare else "nothing — every "
-                   "single thing you carry is a key item")
+                + "\nWHAT MAY GO, AND HOW. Tossed, sold, used or stored: "
+                + (", ".join(spare[:12]) if spare else "nothing that is "
+                   "not a key item")
+                + ". KEY ITEMS AND HMs the game will neither toss nor sell "
+                  "(\"That's too important to toss!\") — but a Pokemon "
+                  "Center's PC TAKES them, frees the slot, and hands them "
+                  "back whenever you ask, so these can go too, that one "
+                  "way: "
+                + (", ".join(key_here[:14])
+                   + f" — {len(key_here)} of your {n} kinds, so a bag that "
+                     f"treats them as stuck is {len(key_here)} kinds "
+                     f"smaller than it is. Which of them still has a use "
+                     f"ahead of you is yours to know"
+                   if key_here else "you carry none")
                 + ".")
 
     def _where_the_slot_goes(self, obs) -> str:
@@ -9871,6 +9892,9 @@ class Executor:
         singles = sorted(k for k, v in bag.items() if int(v or 0) == 1)
         stacks = sorted((k, int(v or 0)) for k, v in bag.items() if int(v or 0) > 1)
         tms = [k for k in singles if k.startswith(("TM_", "HM_"))]
+        # ...and which of the singles only the PC will take (see _bag_line)
+        _keys = set((obs or {}).get("key_items") or [])
+        keyk = [k for k in singles if k in _keys]
         # the nearest PC the run has walked into, by walked legs
         here = self._where(obs)
         best = None
@@ -9894,6 +9918,9 @@ class Executor:
                + ", ".join(singles) + "." if singles else "")
             + (f" Stacks (the whole count must go): "
                + ", ".join(f"{k} x{v}" for k, v in stacks) + "." if stacks else "")
+            + (f" Of the singles, KEY ITEMS AND HMs ({', '.join(keyk)}) the "
+               f"game will neither toss nor sell — STORING is the one way "
+               f"those {len(keyk)} go, and the PC takes them." if keyk else "")
             + " WAYS TO FREE A SLOT, the reversible one first: STORING at a "
               "Pokemon Center's PC keeps the thing and frees the slot "
               "({\"op\":\"store_item\",\"item\":...}; "
@@ -12053,7 +12080,8 @@ raises money AND frees the slot — a NUGGET exists to be sold; key items
 are refused. What to part with is your call),
 {"op":"store_item","item":"HM_CUT","count":N} (put an item into the PC at
 THIS map's PC — every Pokemon Center has one. Frees a bag slot and
-DESTROYS NOTHING; obs.pc_items lists what is already in there),
+DESTROYS NOTHING; key items and HMs go in too, and it is the ONE place the
+game lets those go; obs.pc_items lists what is already in there),
 {"op":"retrieve_item","item":"HM_CUT","count":N} (take one back out of
 the PC; it fails if the bag is already at 20 kinds),
 {"op":"pc_deposit","slot":N} (put party member N into a PC box, at THIS
