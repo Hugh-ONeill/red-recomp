@@ -346,6 +346,20 @@ ENGINE_ITEMS = _engine_names("engine_items.txt")
 # can be spell-checked the same way. Manual tier: the TM's own description
 # names the move it teaches, and a Pokemon's summary screen lists its moves.
 ENGINE_MOVES = _engine_names("engine_moves.txt")
+# WHICH MOVE EACH MACHINE TEACHES (data/generated/items.lua, machine.move),
+# as "HM01 CUT" rows. On-screen tier: booting the machine prints "It
+# contained CUT!", and the bag names the item HM01. So HM01 and CUT are one
+# name wherever objectives are compared (_norm_obj), a knows_move written
+# with the machine's name means the move (normalize_items), and the
+# validator says so instead of "not a move". Without this, run 15's chosen
+# outline (2026-09-06) carried "a party Pokemon knows HM01" AND "a party
+# Pokemon knows CUT" three lines apart, the first of them unprotected and
+# never true as written (user: "TM/HM names should be synonymous").
+MACHINE_MOVES = {}
+for _row in _engine_names("engine_machines.txt"):
+    _parts = _row.split()
+    if len(_parts) == 2:
+        MACHINE_MOVES[_parts[0].upper()] = _parts[1].upper()
 # Every species and every type the engine defines. Same tier as the rest:
 # the Pokedex names species, the status screen prints types. These exist so
 # that "catch a WATER type before the next gym" is a condition a plan can
@@ -524,14 +538,31 @@ def edges_text() -> str:
 # numbering is Gen 1 canon.
 ITEM_ALIASES = {"HM01": "HM_CUT", "HM02": "HM_FLY", "HM03": "HM_SURF",
                 "HM04": "HM_STRENGTH", "HM05": "HM_FLASH"}
+# ...and every TM the same way, from the game's table (TM28 -> TM_DIG)
+ITEM_ALIASES.update({n: f"{n[:2]}_{mv}" for n, mv in MACHINE_MOVES.items()})
+
+
+def _machine_move(mv) -> str:
+    """A knows_move written with the machine's name means the move."""
+    m = str(mv or "").upper().replace(" ", "")
+    return MACHINE_MOVES.get(m, str(mv or ""))
 
 
 def normalize_items(plan: dict):
     for s in plan.get("subgoals") or []:
         dw = s.get("done_when")
-        if isinstance(dw, dict) and isinstance(dw.get("has_item"), dict):
+        if not isinstance(dw, dict):
+            continue
+        if isinstance(dw.get("has_item"), dict):
             dw["has_item"] = {ITEM_ALIASES.get(k, k): v
                               for k, v in dw["has_item"].items()}
+        # "knows HM01" is "knows CUT": the leg says the machine's name, the
+        # predicate wants the move's, and the game's table joins them
+        km = dw.get("knows_move")
+        if isinstance(km, str):
+            dw["knows_move"] = _machine_move(km)
+        elif isinstance(km, dict) and "move" in km:
+            km["move"] = _machine_move(km.get("move"))
 
 BADGES = ["BOULDERBADGE", "CASCADEBADGE", "THUNDERBADGE",
           "RAINBOWBADGE", "SOULBADGE", "MARSHBADGE", "VOLCANOBADGE",
@@ -1438,7 +1469,11 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                 if mv not in ENGINE_MOVES:
                     stripped = mv.split("_", 1)[-1] if mv.startswith(
                         ("TM_", "HM_")) else ""
-                    if stripped in ENGINE_MOVES:
+                    if mv.replace(" ", "") in MACHINE_MOVES:
+                        hint = (f" — {mv} is the machine; the move it "
+                                f"teaches is "
+                                f"{MACHINE_MOVES[mv.replace(' ', '')]}")
+                    elif stripped in ENGINE_MOVES:
                         hint = (f" — {mv} is the ITEM; the move it teaches "
                                 f"is {stripped}")
                     else:
@@ -4162,6 +4197,9 @@ def _dedupe_outline(legs: list) -> list:
     def _nums(t: str) -> set:
         return set(re.findall(r"\d+", t))
 
+    _UPK = re.compile(r"^\s*(a party pokemon knows|the party holds|"
+                      r"every party member|the party has)\b", re.I)
+
     for leg in legs:
         key = _objective_key(leg)
         # A DIFFERENT NUMBER IS A DIFFERENT OBJECTIVE. Digits are one
@@ -4170,8 +4208,14 @@ def _dedupe_outline(legs: list) -> list:
         # and the second was dropped as the first again (live,
         # 2026-09-06). Two legs that each carry a number, and not the same
         # one, are not the same thing however alike their words.
+        # A STATE OF THE PARTY IS NOT A DEED. Verbs are noise to the key,
+        # and with machines folded to their moves (_norm_obj) "Obtain HM01"
+        # and "a party Pokemon knows CUT" would share the whole key {cut}:
+        # getting the machine and having taught the move are two
+        # objectives, and an upkeep-shaped leg only ever twins another.
         hit = next(((k, t) for k, t in kept
                     if key and (k == key or len(k & key) >= 2)
+                    and bool(_UPK.match(leg)) == bool(_UPK.match(t))
                     and not (_nums(leg) and _nums(t)
                              and _nums(leg) != _nums(t))), None)
         if hit:
@@ -4750,6 +4794,7 @@ def _outline_upkeep(goal: str, legs: list, model: str,
     output and stops when a pass adds nothing.
     """
     out, budget = list(legs), cap
+    UPKEEP_TWINS.clear()
     for r in range(rounds):
         before = len(out)
         out = _outline_upkeep_once(goal, out, model, budget)
@@ -4765,6 +4810,7 @@ def _outline_upkeep(goal: str, legs: list, model: str,
     # round, so it holds everything every round added.
     was = set(legs)
     upkeep = [l for l in out if l not in was]
+    upkeep += [l for l in UPKEEP_TWINS if l in out and l not in upkeep]
     if upkeep:
         try:
             UPKEEP_PATH.write_text("\n".join(upkeep) + "\n")
@@ -4773,6 +4819,11 @@ def _outline_upkeep(goal: str, legs: list, model: str,
         print(f"[upkeep] {len(upkeep)} upkeep objective(s) recorded in "
               f"{UPKEEP_PATH}; these never stop the chain")
     return out
+
+
+# legs the model wrote itself that the upkeep round would have added: as
+# much upkeep as the round's own additions, protected the same way
+UPKEEP_TWINS: list = []
 
 
 def _outline_upkeep_once(goal: str, legs: list, model: str,
@@ -4825,8 +4876,19 @@ def _outline_upkeep_once(goal: str, legs: list, model: str,
         # against still-listed objectives: a new entry whose significant
         # words are contained in one already on the list is that one.
         sig = _sig(item)
-        if sig and any(sig <= _sig(l) or _sig(l) <= sig for l in result):
+        _twins = [l for l in result
+                  if sig and (sig <= _sig(l) or _sig(l) <= sig)]
+        if _twins:
             print(f"[upkeep] already on the list in other words: {item!r}")
+            # ...AND THAT WORDING IS UPKEEP TOO. The pass wanted "a party
+            # Pokemon knows CUT"; the outline already said "a party Pokemon
+            # knows HM01", so nothing was added — and nothing was
+            # protected, so the model's own wording stood as a fatal leg
+            # (2026-09-06). What the upkeep round would have added is
+            # upkeep whoever wrote it.
+            for l in _twins:
+                if l not in UPKEEP_TWINS:
+                    UPKEEP_TWINS.append(l)
             continue
         try:
             after = int(a.get("after") or 0)
@@ -5828,7 +5890,16 @@ def _norm_obj(t: str) -> str:
     """
     t = unicodedata.normalize("NFKD", t)
     t = "".join(c for c in t if not unicodedata.combining(c))
-    return re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
+    t = re.sub(r"[^a-z0-9]+", " ", t.lower()).strip()
+    # A MACHINE IS THE MOVE IT TEACHES. "knows HM01" and "knows CUT" are
+    # one objective; the game's own table (MACHINE_MOVES) says so.
+    if MACHINE_MOVES:
+        def _fold(m):
+            name = f"{m.group(1).upper()}{int(m.group(2)):02d}"
+            mv = MACHINE_MOVES.get(name)
+            return mv.lower().replace("_", " ") if mv else m.group(0)
+        t = re.sub(r"\b(hm|tm) ?(\d{1,2})\b", _fold, t)
+    return t
 
 
 def departure_text(path) -> str:
