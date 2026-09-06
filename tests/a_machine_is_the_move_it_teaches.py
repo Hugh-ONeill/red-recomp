@@ -91,6 +91,35 @@ ck("a knows_move written as the machine becomes the move",
    and plan["subgoals"][1]["done_when"]["knows_move"]["move"] == "SURF")
 ck("a TM in has_item takes its engine id",
    plan["subgoals"][2]["done_when"]["has_item"] == {"TM_DIG": 1})
+# the repass: the harness's own passes re-applied to a drawn outline, in
+# place, with the upkeep protection following to the surviving wording
+import shutil, tempfile
+tmp = Path(tempfile.mkdtemp(dir="/tmp/claude-1000/-home-wiz/"
+                            "b5fe8565-91da-4233-b62f-8b773e98e750/scratchpad"))
+(tmp / "cand.txt").write_text("Retrieve the HM01 from the S.S. Anne\n"
+                              "a party Pokemon knows HM01\n"
+                              "a party Pokemon knows CUT\n"
+                              "Defeat Lt. Surge for the Thunder Badge\n")
+(tmp / "cand.upkeep").write_text("a party Pokemon knows CUT\n")
+(tmp / "cand.stages").write_text("Vermilion City\ta party Pokemon knows CUT\n"
+                                 "Vermilion City\tDefeat Lt. Surge for the Thunder Badge\n")
+_u, _s = A.UPKEEP_PATH, A.STAGES_PATH
+try:
+    kept = A.outline_repass(tmp / "cand.txt")
+finally:
+    A.UPKEEP_PATH, A.STAGES_PATH = _u, _s
+ck("the repass drops the later twin in place",
+   kept == ["Retrieve the HM01 from the S.S. Anne", "a party Pokemon knows HM01",
+            "Defeat Lt. Surge for the Thunder Badge"]
+   and (tmp / "cand.txt").read_text().count("\n") == 3)
+ck("...and protection follows to the model's own wording",
+   (tmp / "cand.upkeep").read_text().strip() == "a party Pokemon knows HM01")
+ck("...and the stages file names only living legs",
+   "knows CUT" not in (tmp / "cand.stages").read_text())
+ck("...and the note says what the dropped line said",
+   "also written as 'a party Pokemon knows CUT'" in (tmp / "cand.notes").read_text())
+shutil.rmtree(tmp, ignore_errors=True)
+
 src = Path("planner/author.py").read_text()
 ck("the validator names the move the machine teaches",
    "is the machine; the move it" in src)

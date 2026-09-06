@@ -4477,6 +4477,47 @@ def outline(goal: str, model: str, rounds: int = 3,
     return legs
 
 
+def outline_repass(path: Path) -> list:
+    """Re-run the outline's MECHANICAL passes on a drawn candidate, in
+    place: the dedupe (with whatever it has learned since the draw) and
+    the upkeep reconcile that follows protection to a surviving twin. No
+    model call, no wording of ours — the list is the model's, and this is
+    what the author would have done to that same list today.
+
+    The chosen outline for run 16 was drawn an hour before the harness
+    learned that HM01 is CUT (2026-09-06). Redrawing would hand back a
+    different outline and lose the pick; editing the file by hand is the
+    thing this project avoids ("hand-tidying it kind of defeats the
+    purpose"). Re-applying the harness's own passes is neither."""
+    global UPKEEP_PATH, STAGES_PATH
+    base = str(path)[:-4] if str(path).endswith(".txt") else str(path)
+    UPKEEP_PATH, STAGES_PATH = Path(base + ".upkeep"), Path(base + ".stages")
+    legs = [l.strip() for l in path.read_text().splitlines() if l.strip()]
+    OUTLINE_NOTES.clear()
+    kept = _dedupe_outline(legs)
+    _reconcile_upkeep(kept)
+    if kept != legs:
+        path.write_text("\n".join(kept) + "\n")
+        notes = Path(base + ".notes")
+        try:
+            old = notes.read_text() if notes.exists() else ""
+            notes.write_text(old + "".join(
+                f"{leg}\t{' '.join(note.split())}\n"
+                for leg, note in OUTLINE_NOTES))
+        except OSError:
+            pass
+        try:
+            if STAGES_PATH.exists():
+                live = set(kept)
+                STAGES_PATH.write_text("".join(
+                    l + "\n" for l in STAGES_PATH.read_text().splitlines()
+                    if "\t" in l and l.split("\t", 1)[1].strip() in live))
+        except OSError:
+            pass
+    print(f"[repass] {len(legs)} -> {len(kept)} legs in {path}")
+    return kept
+
+
 def _reconcile_upkeep(legs: list):
     """Make the upkeep list agree with the outline it protects.
 
@@ -7593,6 +7634,9 @@ def main():
                          "come before the stuck --goal; prints the leg "
                          "number and exits 0, or exits 3")
     ap.add_argument("--outline-path", type=Path, default=None)
+    ap.add_argument("--outline-repass", action="store_true",
+                    help="re-run the dedupe and upkeep reconcile on the "
+                         "outline at --outline-path, in place (no model)")
     ap.add_argument("--no-eras", action="store_true",
                     help="--outline: skip the loose three-era conversation "
                          "that is otherwise the first draft")
@@ -7621,8 +7665,14 @@ def main():
                     help="executor_log.jsonl: what actually happened last "
                          "run (money, wipes, failed steps) for the audit")
     args = ap.parse_args()
-    if not args.goal and not args.validate:
+    if not args.goal and not (args.validate or args.outline_repass):
         ap.error("--goal is required")
+    if args.outline_repass:
+        if not args.outline_path:
+            ap.error("--outline-repass needs --outline-path")
+        for i, l in enumerate(outline_repass(args.outline_path), 1):
+            print(f"  {i}. {l}")
+        return
     if args.validate:
         # A PLAN ON DISK, CHECKED AGAINST THE WORLD AS IT IS NOW. The
         # campaign falls back to the last plan when a re-author produces
