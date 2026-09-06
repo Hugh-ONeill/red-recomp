@@ -4158,10 +4158,22 @@ def _dedupe_outline(legs: list) -> list:
     not one.
     """
     out, kept = [], []
+
+    def _nums(t: str) -> set:
+        return set(re.findall(r"\d+", t))
+
     for leg in legs:
         key = _objective_key(leg)
+        # A DIFFERENT NUMBER IS A DIFFERENT OBJECTIVE. Digits are one
+        # character and fell out of the names, so "the party has at least
+        # 3 Pokemon" and "...at least 4 Pokemon" had the same key ({has})
+        # and the second was dropped as the first again (live,
+        # 2026-09-06). Two legs that each carry a number, and not the same
+        # one, are not the same thing however alike their words.
         hit = next(((k, t) for k, t in kept
-                    if key and (k == key or len(k & key) >= 2)), None)
+                    if key and (k == key or len(k & key) >= 2)
+                    and not (_nums(leg) and _nums(t)
+                             and _nums(leg) != _nums(t))), None)
         if hit:
             print(f"[outline] dropped {leg!r}: the same objective as "
                   f"{hit[1]!r} ({', '.join(sorted(hit[0] & key)) or 'same'})")

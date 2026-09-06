@@ -127,6 +127,21 @@ ck("...so two badge lines in that voice are not repeats of each other",
    len(A._objective_key("Defeated Misty and earned the Cascade Badge")
        & A._objective_key("Defeated Brock and earned the Boulder Badge")) == 0)
 
+# a different number is a different objective: the dedupe kept "at least 3
+# Pokemon" and dropped "at least 4 Pokemon" as the same thing (live,
+# 2026-09-06)
+A.OUTLINE_NOTES.clear()
+kept = A._dedupe_outline(["the party has at least 3 Pokemon",
+                          "the party has at least 4 Pokemon",
+                          "every party member is at least level 12",
+                          "every party member is at least level 20",
+                          "Obtain the S.S. Ticket",
+                          "Obtain the S.S. Ticket from Bill"])
+ck("legs that differ only by their number both survive",
+   "the party has at least 4 Pokemon" in kept
+   and "every party member is at least level 20" in kept)
+ck("...and the wordless twin is still dropped", len(kept) == 5)
+
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:
     print(("  ok   " if ok else "  FAIL ") + n)
