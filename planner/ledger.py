@@ -2768,8 +2768,20 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # Rocket who is standing in front of the way down, off the page behind
     # a wall of furniture (user: "its only looking at the slot machines
     # instead of talking to anyone"). They keep their entries and lookup
-    # still finds each; they read as one line at the rank of the first,
-    # which is all thirty-six of them are worth saying.
+    # still finds each; they read as one line at the rank of the first.
+    # ...AND THE LINE SAYS WHERE EACH ONE STANDS, AND NOTHING ABOUT WHAT
+    # IT HOLDS. The fold used to read "they are the same thing over and
+    # over, so whatever one of them does, all of them do" and named four
+    # of them. Lt. Surge's gym has fifteen TRASH_CANs and two of them
+    # hold the switches that open his door; the run spent 50 rounds in
+    # that room (run 15, autopsy of 2026-09-06) being told the cans were
+    # interchangeable, with no way to say which can it had pressed or
+    # which stood beside it — the second switch is in a can NEXT TO the
+    # first, and "next to" needs positions. A shared name is on-screen
+    # tier; "all of them do the same" was a claim about the world, and a
+    # false one. So: the name, the count, where each stands, and — once
+    # any of that name has been pressed here — what each pressed one
+    # said, which is the fact the puzzle turns on.
     i = 0
     for c in shown:
         _herd = (_mob.get(_stem(c.key))
@@ -2777,13 +2789,32 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  else None)
         if _herd:
             i += 1
-            _names = ", ".join(x.key for x in _herd[:4])
+            _st = _stem(c.key)
+
+            def _num(x):
+                return str(x.key)[len(_st):] or str(x.key)
+
+            def _at(x):
+                return (f" ({x.x},{x.y})"
+                        if x.x is not None and x.y is not None else "")
+
+            _kin = [x for x in rest
+                    if x.kind == "fixture" and _stem(x.key) == _st
+                    and x.status != "untouched"]
             lines.append(
-                f" {i}. {len(_herd)} x {_stem(c.key).rstrip('_')} "
-                f"({_herd[0].kind}) — none of them pressed; they are the "
-                f"same thing over and over, so whatever one of them does, "
-                f"all of them do: {_names}"
-                + (f" and {len(_herd) - 4} more" if len(_herd) > 4 else ""))
+                f" {i}. {len(_herd)} x {_st.rstrip('_')} "
+                f"({_herd[0].kind}) — none of these pressed. They share a "
+                f"name, {_st}<n>; what each one holds is its own to say. "
+                f"Where each stands, n (x,y): "
+                + ", ".join(f"{_num(x)}{_at(x)}" for x in _herd)
+                + (f". {len(_kin)} of that name pressed here already: "
+                   + "; ".join(
+                       f"{_num(x)}{_at(x)}"
+                       + (f" said \"{str(x.note).strip()[:90]}\""
+                          if x.note else " — nothing recorded of what it said")
+                       for x in _kin[:8])
+                   + (f"; and {len(_kin) - 8} more" if len(_kin) > 8 else "")
+                   if _kin else ""))
             continue
         if c in weak and len(weak) > 2:
             if not weak_done:
