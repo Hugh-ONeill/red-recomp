@@ -1204,6 +1204,32 @@ def choose_battle_policy(subgoal: dict) -> tuple:
     return "traversal", "default"
 
 
+def push_went_down_hole(pre_obs, obs, to_x, to_y) -> bool:
+    """A push aimed at a boulder hole has worked when the boulder is GONE.
+
+    The op's success test asked "is a boulder standing on the target cell",
+    which a hole can never satisfy: the game hides a boulder that drops
+    through (Victory Road 3F's (23,15) sends it to 2F beside the second
+    switch), so the boulder vanished from the floor, the resume rule saw no
+    boulder on (23,15), re-sent the push, and the round read "nothing is
+    standing at (22,15) to push ... FAILED" about the one shove the whole
+    puzzle turns on (2026-09-06). The target is a hole the map lists for
+    boulders, and the floor holds one boulder fewer than when the op began:
+    that is the drop, seen. Where it landed is not this floor's to say."""
+    m0 = (pre_obs or {}).get("map") or {}
+    m1 = (obs or {}).get("map") or {}
+    if m0.get("id") != m1.get("id"):
+        return False
+    holes = {(h.get("x"), h.get("y")) for h in (m1.get("boulder_holes") or [])
+             if isinstance(h, dict)}
+    if (to_x, to_y) not in holes:
+        return False
+    def _n(m):
+        return sum(1 for t in (m.get("objects") or [])
+                   if isinstance(t, dict) and t.get("kind") == "boulder")
+    return _n(m1) < _n(m0)
+
+
 def drop_edges_contradicting_doors(explored: dict, door_dests: dict) -> int:
     """Drop every door edge whose destination map contradicts the door's
     own table, and say how many.
@@ -13817,7 +13843,16 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 return dict(_step)
 
             _pdet = str((r or {}).get("detail") or "")
+            self._push_hole_note = ""
             if (op == "push" and step.get("to_x") is not None
+                    and push_went_down_hole(pre_obs, obs, step.get("to_x"),
+                                            step.get("to_y"))):
+                self._push_hole_note = (
+                    f" — the boulder went down the hole at "
+                    f"({step.get('to_x')},{step.get('to_y')}) and is no "
+                    f"longer on this floor; where it landed is not recorded "
+                    f"here")
+            elif (op == "push" and step.get("to_x") is not None
                     and not _rock_on(obs, step.get("to_x"),
                                      step.get("to_y"))):
                 _o2 = obs
@@ -14316,7 +14351,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 det = r.get("detail")
                 if det:
                     chg.append(str(det))
-                note += ": ok" + (f" ({', '.join(chg)})" if chg else "")
+                note += (": ok" + (f" ({', '.join(chg)})" if chg else "")
+                         + (getattr(self, "_push_hole_note", "") or ""))
             # THE SCREEN'S OWN REFUSAL OF A FIGHT IS REMEMBERED, from
             # whichever op met it (an intent:fight walk, the probe).
             _dtxt = str(r.get("detail") or "")

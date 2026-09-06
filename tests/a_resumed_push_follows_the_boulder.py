@@ -23,7 +23,7 @@ checks = []
 def ck(name, cond): checks.append((name, bool(cond)))
 
 i = EXEC.index("def _follow(_step, _o):")
-blk = EXEC[i - 1200:i + 2600]
+blk = EXEC[i - 1200:i + 4200]
 ck("the boulders' cells at op start are remembered",
    "_rocks0 = {(t.get(\"x\"), t.get(\"y\"))" in blk and "(pre_obs or {})" in blk)
 ck("the one that moved is the one whose cell is new",
