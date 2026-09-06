@@ -3345,7 +3345,19 @@ local function walk(G, dir, steps)
     end
     if moved and ow.map and ow.map.id == map_before then
       local top = G.stack:top()
-      if top and top ~= ow and not (top.enemy or top.kind)
+      -- A WILD ENCOUNTER IS NOT A SCRIPT. The engine pushes a
+      -- BattleTransition (the wipe) before the battle state, and for those
+      -- frames the top is neither the overworld nor a battle — so every
+      -- cell where a fight began while pacing was filed here as a script
+      -- tile, grind kept off script tiles, and after a few fights in a
+      -- small pocket every neighbour was one: "boxed in on floor to pace"
+      -- three rounds running on open cave floor, and the strikes it earned
+      -- shut grind out of the whole region (2026-09-06, user:
+      -- "not really true here though?"). The wipe is the engine's own
+      -- object; ask it.
+      local okbt, BT = pcall(require, "src.render.BattleTransition")
+      local _wipe = okbt and BT and getmetatable(top) == BT
+      if top and top ~= ow and not (top.enemy or top.kind) and not _wipe
          and not is_warp_cell(ow.map.def, p.cellX, p.cellY) then
         local t = trigger_cells(G)
         local k = p.cellX .. "," .. p.cellY
