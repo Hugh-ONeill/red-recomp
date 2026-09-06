@@ -12062,7 +12062,13 @@ itself offers. FLY IS ONLY EVER LISTED WHILE YOU ARE OUTSIDE: indoors, in
 a cave or on any floor of a building it is not in the menu at all, however
 well the Pokemon knows it (`map.outdoor` in the observation says which you
 are). Nothing carries you off a floor from inside — walk out first. TELEPORT
-is the same; FLASH is listed only where it is DARK),
+is the same; FLASH is listed only where it is DARK. DIG AND TELEPORT ARE
+WAYS OUT: {"op":"field_move","move":"DIG"} from inside a cave, forest, tower
+or building floor, or {"op":"field_move","move":"TELEPORT"} from outdoors,
+sets the party down OUTSIDE the door of the last Pokemon Center it used,
+spending nothing; an ESCAPE_ROPE ({"op":"use_item","item":"ESCAPE_ROPE"},
+no slot) does the same from the same indoor places and is used up. None of
+them brings you back: the walk in again is yours),
 {"op":"push","x":N,"y":N,"to_x":N,"to_y":N} (send the kind:"boulder" at
 (x,y) to the cell (to_x,to_y). WHERE it should end up is yours; every shove
 in between is worked out for you — which side to stand on each time, and in
@@ -12118,7 +12124,9 @@ who is protected — and a Pokemon that never gets sent out never gains a
 level. obs.party is in slot order),
 {"op":"heal"} (restore the WHOLE party at a Pokemon Center: walks in if
 you are outside one on this map and talks to the NURSE. Free, always. It
-fails plainly if this map has no Center),
+fails plainly if this map has no Center, and then names any way back to
+one you are holding — an ESCAPE_ROPE, a party member that knows DIG or
+TELEPORT — with what each would cost),
 {"op":"wait"}. Battles are auto-handled.
 {"op":"tap","btn":"b"} (press B once: closes an open menu, counter or
 list you are standing in — the way OUT of a shop counter or a PC screen

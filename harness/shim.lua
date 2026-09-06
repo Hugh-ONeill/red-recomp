@@ -6570,6 +6570,114 @@ end
 
 -- Use a bag item in the field (START -> ITEM -> item -> USE -> party
 -- slot). Healing items target c.slot (default the lead).
+-- THE WAYS BACK TO A POKEMON CENTER FROM WHERE YOU STAND. DIG and
+-- TELEPORT from the party menu and an ESCAPE_ROPE from the bag all run the
+-- game's one escape warp: a spin, a fade, and the party set down OUTSIDE
+-- the door of the last Pokemon Center it used (src/ui/PartyMenu.lua
+-- "escape", src/ui/BagMenu.lua escape_rope, OverworldController
+-- warpToHealPoint). The rope and DIG are offered only in the dungeon
+-- tilesets of escape_rope_tilesets.asm — cave, forest, tower, building
+-- floor — and never in Agatha's room; TELEPORT only outdoors. The party
+-- and the bag are on screen and what the move and the item do is on their
+-- own labels: manual tier. `heal` names these when there is no Center to
+-- walk to, and the ops say why the game would refuse BEFORE a menu opens
+-- (user, 2026-09-05: "if its ever trying to get to the pokecenter and cant
+-- but it has dig or escape rope it can use either of those ... teleport is
+-- included sorta in that as well").
+local ESCAPE_TILESETS = { FOREST = true, CEMETERY = true, CAVERN = true,
+                          FACILITY = true, INTERIOR = true }
+local function escape_gate(G)
+  -- dig_ok, teleport_ok, and the reason DIG (and the rope) is not
+  local ow = G.overworld
+  local md = ow and ow.map and ow.map.def
+  local ts = md and md.tileset
+  local mid = ow and ow.map and ow.map.id
+  local dig_ok = (ts and ESCAPE_TILESETS[ts] and mid ~= "AGATHAS_ROOM")
+                 and true or false
+  local tele_ok = false
+  local okm, MapM = pcall(require, "src.world.Map")
+  local okf, FD = pcall(require, "src.world.FieldDefaults")
+  if okm and okf and md and MapM and MapM.isOutside then
+    local okv, out = pcall(MapM.isOutside, md,
+                           FD.field and FD.field(G.data, "outsideTilesets"))
+    tele_ok = (okv and out) and true or false
+  end
+  local why
+  if not dig_ok then
+    if mid == "AGATHAS_ROOM" then
+      why = "it is never offered in Agatha's room"
+    else
+      why = "this map is not a cave, forest, tower or building floor (its "
+        .. "kind is " .. tostring(ts or "?") .. "), so there is nothing to "
+        .. "dig out of; outdoors it is TELEPORT that does this"
+    end
+  end
+  return dig_ok, tele_ok, why
+end
+local function party_knows(G, mv)
+  for i, mon in ipairs((G.save and G.save.party) or {}) do
+    for _, m in ipairs(mon.moves or {}) do
+      if tostring(type(m) == "table" and m.id or m) == mv then
+        return i, tostring(mon.species or ("slot " .. i))
+      end
+    end
+  end
+  return nil
+end
+-- what `heal` adds when there is no Center here: the ways back to one
+-- that are in the party or the bag right now, each with its op
+local function escape_ways(G)
+  local dig_ok, tele_ok = escape_gate(G)
+  local ways = {}
+  if bag_count(G, "ESCAPE_ROPE") > 0 and dig_ok then
+    ways[#ways + 1] = "an ESCAPE_ROPE is in your bag ({\"op\":\"use_item\","
+      .. "\"item\":\"ESCAPE_ROPE\"}, no slot) and is spent by the use"
+  end
+  local ds, dsp = party_knows(G, "DIG")
+  if ds and dig_ok then
+    ways[#ways + 1] = dsp .. " (slot " .. ds .. ") knows DIG "
+      .. "({\"op\":\"field_move\",\"move\":\"DIG\"}), which spends nothing"
+  end
+  local tsl, tsp = party_knows(G, "TELEPORT")
+  if tsl and tele_ok then
+    ways[#ways + 1] = tsp .. " (slot " .. tsl .. ") knows TELEPORT "
+      .. "({\"op\":\"field_move\",\"move\":\"TELEPORT\"}), which spends "
+      .. "nothing"
+  end
+  if #ways == 0 then return "" end
+  local heal = G.save and G.save.lastHeal
+  local where = heal and ((heal.outdoor and heal.outdoor.id) or heal.map)
+  return ". From where you stand these would set you down OUTSIDE the door "
+    .. "of the last Pokemon Center you used"
+    .. (where and (", on " .. tostring(where)) or "")
+    .. " — not back at this spot: " .. table.concat(ways, "; ")
+end
+-- ride the escape warp out: the 48-frame spin, the fade, the landing
+local function ride_escape(G, from_map, what)
+  for _ = 1, 400 do
+    local ow = G.overworld
+    if ow and G.stack:top() == ow and not ow.teleportOut
+       and not ow.transitioning and (ow.map or {}).id ~= from_map then
+      break
+    end
+    U.wait(4)
+  end
+  local ow = G.overworld
+  local now = ow and ow.map and ow.map.id
+  if not now or now == from_map then
+    return false, what .. " did not carry you anywhere — the party is still "
+      .. "on " .. tostring(from_map)
+      .. ((G.save and G.save.lastHeal) and ""
+          or ". This save has never used a Pokemon Center, so there is no "
+             .. "Center for it to return to")
+  end
+  local p = ow.player or {}
+  return true, ("%s took you out of %s and set you down on %s at (%d,%d), "
+    .. "outside the door of the last Pokemon Center you used")
+    :format(what, tostring(from_map), tostring(now),
+            p.cellX or -1, p.cellY or -1)
+end
+
 function OPS.use_item(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close: "
@@ -6578,6 +6686,15 @@ function OPS.use_item(G, c)
   if not c.item then return false, "use_item needs item" end
   if bag_count(G, c.item) < 1 then
     return false, "no " .. c.item .. " in the bag"
+  end
+  local _from0 = (G.overworld and G.overworld.map or {}).id
+  if c.item == "ESCAPE_ROPE" then
+    local _dok, _, _dwhy = escape_gate(G)
+    if not _dok then
+      return false, "ESCAPE_ROPE would be refused here — the game answers "
+        .. "\"OAK: This isn't the time to use that!\" — because "
+        .. tostring(_dwhy) .. ". Nothing was spent"
+    end
   end
   -- DO NOT OPEN A BOX YOU WILL ONLY HAVE TO CLIMB BACK OUT OF. A machine
   -- taught to a Pokemon that already knows four moves needs a forget=,
@@ -6672,6 +6789,14 @@ function OPS.use_item(G, c)
   if ui_is_menu(G) or ui_is_choice(G) then         -- USE/TOSS -> USE
     ui_cursor_to(G, "index", 1)
     U.tap(G, "a"); U.wait(8)
+  end
+  if c.item == "ESCAPE_ROPE" then
+    local _ok, _why = ride_escape(G, _from0, "ESCAPE_ROPE")
+    if _ok then
+      _why = _why .. (" — one ESCAPE_ROPE was spent (%d left)")
+        :format(bag_count(G, "ESCAPE_ROPE"))
+    end
+    return _ok, _why
   end
   local pm
   for _ = 1, 20 do                                 -- ride to the party picker
@@ -7276,6 +7401,18 @@ function OPS.field_move(G, c)
   end
   local ow = G.overworld
   local p = ow.player
+  local _fromMap0 = (ow.map or {}).id
+  if mv == "DIG" or mv == "TELEPORT" then
+    local _dok, _tok, _dwhy = escape_gate(G)
+    if mv == "DIG" and not _dok then
+      return false, "DIG is not offered here — " .. tostring(_dwhy)
+    end
+    if mv == "TELEPORT" and not _tok then
+      return false, "TELEPORT is offered only while you are OUTSIDE, and "
+        .. "this map is not; indoors — a cave, forest, tower or building "
+        .. "floor — it is DIG that does this"
+    end
+  end
   if c.x and c.y then
     local adj = { {c.x, c.y + 1, "up"}, {c.x, c.y - 1, "down"},
                   {c.x - 1, c.y, "right"}, {c.x + 1, c.y, "left"} }
@@ -7462,6 +7599,10 @@ function OPS.field_move(G, c)
       _extra = " — the menu lists FLASH only where it is DARK, and it is "
         .. "not dark here"
     end
+    if _extra == "" and mv == "DIG" then
+      local _dok2, _, _dwhy2 = escape_gate(G)
+      if not _dok2 then _extra = " — " .. tostring(_dwhy2) end
+    end
     return false, mv .. " was not offered in the menu (it lists: "
       .. table.concat(seen, ", ") .. ")" .. _extra
   end
@@ -7470,6 +7611,11 @@ function OPS.field_move(G, c)
     U.tap(G, pm2.subIndex > mrow and "up" or "down"); U.wait(3)
   end
   U.tap(G, "a"); U.wait(10)
+  -- DIG AND TELEPORT ARE A WARP, NOT A TEXT: the menu pops at once and the
+  -- spin, fade and landing follow; ride them out and say where you stand.
+  if mv == "DIG" or mv == "TELEPORT" then
+    return ride_escape(G, _fromMap0, mv)
+  end
   -- FLY IS A PICKER, NOT A TEXT. Choosing it opens "FLY TO?" — a list of
   -- the towns this save has VISITED (FlyMenu reads save.visited through
   -- the fly-town gate) — and the text ride-out below can only watch
@@ -8388,7 +8534,7 @@ function OPS.heal(G, c)
     end
     if not (d and d.x and d.y) then
       return false, "no Pokemon Center nurse here, and no Center door on "
-        .. "this map"
+        .. "this map" .. escape_ways(G)
     end
     went_in = OPS.use_warp(G, { x = d.x, y = d.y }) and true or false
     if not went_in then
