@@ -3924,8 +3924,21 @@ seen_reach = function(G, sx, sy, surf)
       if nx >= 0 and ny >= 0 and nx < W and ny < H and not mask[nk] then
         edge = true
       elseif mask[nk] and not dist[nk] and not THROUGH[ck] then
+        -- A SURFING PROBE IS SURFING ONLY ON WATER. The swim flood marked
+        -- its probe `surfing` for every step, and the engine gives a
+        -- surfing mover the WATER tile-pair rules in place of the land ones
+        -- (Collision.pairBlocked) — so the probe walked across cave ledges
+        -- no walker can cross, reached ground on the far side, and that
+        -- ground was reported as "where seen ground ends across the water"
+        -- on Victory Road 3F, a floor with no water at all: explore rode to
+        -- (1,10) and the walk answered "nothing here is water to surf on",
+        -- 44 times this run (2026-09-06). A surfer is on water; a step is
+        -- a surfing step only when it leaves or lands on a water cell.
+        local _wet = (surf or p.surfing)
+          and (real_water(G, ow.map, nx, ny)
+               or real_water(G, ow.map, cur.x, cur.y))
         local probe = setmetatable({ cellX = cur.x, cellY = cur.y,
-                                     surfing = (surf or p.surfing) and true or nil },
+                                     surfing = _wet and true or nil },
                                    { __index = p })
         if hidden_open(nx, ny, nk) and not stale_at[ck] then
           stale_at[ck] = true

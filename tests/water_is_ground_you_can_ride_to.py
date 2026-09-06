@@ -22,8 +22,9 @@ checks = []
 def ck(name, ok): checks.append((name, bool(ok)))
 lua = (ROOT / "harness/shim.lua").read_text()
 ck("seen_reach takes a surf flag", "seen_reach = function(G, sx, sy, surf)" in lua)
-ck("...and the probe surfs when the party is surfing or asked to",
-   "surfing = (surf or p.surfing) and true or nil" in lua)
+ck("...and the probe surfs when the party is surfing or asked to — on a step that touches water",
+   "local _wet = (surf or p.surfing)" in lua
+   and "surfing = _wet and true or nil" in lua)
 ck("the observation carries the frontier across the water, apart from the foot frontier",
    "m.frontier_water = fw" in lua and "m.seen.frontier_water_n = #front_water" in lua)
 ck("...only when someone knows SURF and the party is not already on the water",
