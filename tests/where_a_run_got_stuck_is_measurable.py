@@ -51,6 +51,16 @@ ck("the Safari Zone's four maps are one place",
 ck("a town is itself", arc.building("CERULEAN_CITY") == "CERULEAN_CITY")
 ck("the Center by Mt Moon is not the cave",
    arc.building("MT_MOON_POKECENTER") == "MT_MOON_POKECENTER")
+ck("a road is filed under the stage it is walked in, so a corridor is one number",
+   arc.stage_of("ROUTE_9") == "ROCK_TUNNEL" and arc.stage_of("ROUTE_10") == "ROCK_TUNNEL"
+   and arc.stage_of("ROCK_TUNNEL") == "ROCK_TUNNEL")
+ck("the opening is its own stage", arc.stage_of("ROUTE_1") == "OPENING"
+   and arc.stage_of("VIRIDIAN_FOREST") == "OPENING" and arc.stage_of("PEWTER_GYM") == "OPENING")
+ck("a building folds into its stage by prefix when the name is longer",
+   arc.stage_of("CINNABAR_LAB_FOSSIL_ROOM") == "CINNABAR" and arc.stage_of("SAFARI_ZONE") == "FUCHSIA")
+ck("a map nobody classed is ELSEWHERE, never dropped", arc.stage_of("SOME_NEW_MAP") == "ELSEWHERE")
+ck("every stage member is a distinct name",
+   len(arc._STAGE_OF) == sum(len(m) for _, m in arc.STAGES))
 ck("the named sticking points are all on the watch-list, as buildings",
    all(b in arc.WATCH for b in ("MT_MOON", "ROCK_TUNNEL", "ROUTE_7_GATE",
                                  "CELADON_MART", "POKEMON_TOWER",
@@ -79,6 +89,32 @@ with tempfile.TemporaryDirectory() as d:
     t = out.getvalue()
     ck("...and every mart together, since returning to marts is the complaint",
        "(every _MART together)" in t and "     3  " in t)
+    ck("...and the stages beside the buildings",
+       "-- by stage --" in t and "MT_MOON" in t.split("-- by stage --")[1]
+       and "CELADON" in t.split("-- by stage --")[1])
+    ck("stage rounds are the sum of their buildings",
+       arc.stages_of(r) == {"MT_MOON": 5, "CELADON": 2, "FUCHSIA": 1, "CERULEAN": 1})
+
+    # --- rounds per leg: the axis "more time in the initial legs" is about
+    pl = os.path.join(d, "executor_log.legs.jsonl")
+    journal(pl, [{"kind": "plan_start", "goal": "Obtain a starter Pokemon"}]
+            + [ctx("PALLET_TOWN|10,0")] * 4
+            + [{"kind": "plan_start", "goal": "Reach Viridian City"}]
+            + [ctx("ROUTE_1|10,0")] * 9
+            + [{"kind": "plan_start", "goal": "Reach Viridian City"}]      # a re-authoring
+            + [ctx("ROUTE_1|10,0")] * 2
+            + [{"kind": "plan_start", "goal": "Defeat Brock"}])
+    rl = arc.scan(pl)
+    ck("rounds are counted per plan start, in order", rl["rounds_by_leg"] == [4, 9, 2, 0])
+    ck("...with each start's goal text", rl["goals"] == ["Obtain a starter Pokemon", "Reach Viridian City",
+                                                          "Reach Viridian City", "Defeat Brock"])
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        arc.legs_table([rl], n=3)
+    t = out.getvalue()
+    ck("the legs table prints the first n starts with their goals and the share they took",
+       "leg  1     4  Obtain a starter Pokemon" in t and "first 3 legs = 15 rounds (100%)" in t)
+    ck("...and says a start is not an outline leg", "A plan start is an attempt or a re-authoring" in t)
 
     # a journal from before the marker existed
     p0 = os.path.join(d, "executor_log.old.jsonl")

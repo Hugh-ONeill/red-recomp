@@ -150,7 +150,8 @@ stuck, the fix is almost never in the model.
 ```
 planner/arc.py --diff        # the last two runs, side by side
 planner/arc.py --phases      # each run split into quarters by leg
-planner/arc.py --areas A B   # where each run spent its rounds, by building
+planner/arc.py --areas A B   # where each run spent its rounds, by building and by stage
+planner/arc.py --legs 15 A B # rounds per leg for the first legs of each run
                              # (name the two journals: the newest by date
                              #  are usually restart fragments)
 ```

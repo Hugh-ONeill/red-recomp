@@ -23,7 +23,8 @@ the executor already writes down, then puts the runs side by side.
   planner/arc.py --diff               what moved between the last two
   planner/arc.py --kinds              which row kinds each journal contains
   planner/arc.py --deep A B            also: is it still reasoning from the page?
-  planner/arc.py --areas               where each run spent its rounds, by building
+  planner/arc.py --areas               where each run spent its rounds, by building and by stage
+  planner/arc.py --legs                rounds per leg for the first legs of each run, side by side
 
 WHERE IT GOT STUCK IS A PLACE, AND PLACES ARE COMPARABLE. The sticking
 points of a run are named by the user from memory — "mt moon taking
@@ -36,6 +37,17 @@ had to think. --areas prints that per run, folded to the building (Mt Moon's
 three floors are one place; so are a mart's five), and puts the last two runs
 side by side on a watch-list of the named spots plus whatever else is large.
 A journal whose pages never carried the marker prints "--", not zeros.
+
+A BUILDING HIDES A CORRIDOR. Rock Tunnel by itself read 45 -> 96 rounds
+between the two Hall of Fame runs; the roads to it, Route 9 and Route 10,
+read 91 -> 276 and 108 -> 241, and nobody names a road as a sticking point
+(user, 2026-09-06: "the leadup to rocktunnel should be included in the runs
+rocktunnel area, because a big issue this run was the inflation of that
+specific part of it"). So every building also belongs to a STAGE — the
+stretch of the game it is walked in — and --areas prints the stages beside
+the buildings. And "a larger amount of time spent in the initial legs" is a
+claim about LEGS, not places: --legs puts rounds per leg for the first legs
+of each run side by side.
 
 THE OUTCOME TABLE IS THE CHEAP HALF. Routing either lands or it does not,
 and that is countable from row kinds alone. The question that actually
@@ -87,6 +99,7 @@ NEWCELLS = re.compile(rb"(\d+) cell\(s\) newly on screen")
 TOREG = re.compile(rb'"to":\s*"([A-Z_0-9]+\|[0-9]+,[0-9]+)"')
 STEP = re.compile(rb'"step":\s*"([a-z_]+)"')
 TOMAP = re.compile(rb'"to":\s*"([A-Z_0-9]+)\|')
+GOAL = re.compile(rb'"goal":\s*"((?:[^"\\]|\\.){0,120})')
 AREA = re.compile(rb'WHERE YOU STAND:\s*([A-Z_0-9]+)\|')
 _FLOOR = re.compile(r"_(?:B\d+F|\d+F|ROOF|ELEVATOR)$")
 
@@ -103,6 +116,81 @@ def building(map_id: str) -> str:
         if m == pre or m.startswith(pre + "_"):
             return pre
     return _FLOOR.sub("", m)
+
+
+# STAGES: the stretch of the game a map is walked in. Every building falls
+# in exactly one; the rest is ELSEWHERE. These are watch buckets, not
+# geography — Route 22 is here as the League road because that is where
+# its rounds pile up, though the rival is fought on it early.
+STAGES = [
+    ("OPENING",       ("PALLET_TOWN", "REDS_HOUSE", "BLUES_HOUSE", "OAKS_LAB",
+                       "ROUTE_1", "VIRIDIAN_CITY", "VIRIDIAN_POKECENTER",
+                       "VIRIDIAN_MART", "VIRIDIAN_SCHOOL_HOUSE",
+                       "VIRIDIAN_NICKNAME_HOUSE", "ROUTE_2", "VIRIDIAN_FOREST",
+                       "PEWTER_CITY", "PEWTER_POKECENTER", "PEWTER_MART",
+                       "PEWTER_GYM", "PEWTER_NIDORAN_HOUSE",
+                       "PEWTER_SPEECH_HOUSE", "MUSEUM")),
+    ("MT_MOON",       ("ROUTE_3", "ROUTE_4", "MT_MOON", "MT_MOON_POKECENTER")),
+    ("CERULEAN",      ("CERULEAN_CITY", "CERULEAN_POKECENTER", "CERULEAN_MART",
+                       "CERULEAN_GYM", "CERULEAN_BADGE_HOUSE",
+                       "CERULEAN_TRADE_HOUSE", "CERULEAN_TRASHED_HOUSE",
+                       "BIKE_SHOP", "ROUTE_24", "ROUTE_25", "BILLS_HOUSE")),
+    ("VERMILION",     ("ROUTE_6", "ROUTE_6_GATE", "VERMILION_CITY",
+                       "VERMILION_POKECENTER", "VERMILION_MART", "VERMILION_GYM",
+                       "VERMILION_PIDGEY_HOUSE", "VERMILION_TRADE_HOUSE",
+                       "VERMILION_OLD_ROD_HOUSE", "VERMILION_DOCK", "SS_ANNE",
+                       "POKEMON_FAN_CLUB", "ROUTE_11", "ROUTE_11_GATE",
+                       "DIGLETTS_CAVE")),
+    ("ROCK_TUNNEL",   ("ROUTE_9", "ROUTE_10", "ROCK_TUNNEL", "ROCK_TUNNEL_POKECENTER",
+                       "POWER_PLANT")),
+    ("LAVENDER",      ("LAVENDER_TOWN", "LAVENDER_POKECENTER", "LAVENDER_MART",
+                       "LAVENDER_CUBONE_HOUSE", "NAME_RATERS_HOUSE",
+                       "MR_FUJIS_HOUSE", "POKEMON_TOWER", "ROUTE_12",
+                       "ROUTE_12_GATE")),
+    ("SAFFRON_GATES", ("ROUTE_5", "ROUTE_5_GATE", "ROUTE_7", "ROUTE_7_GATE",
+                       "ROUTE_8", "ROUTE_8_GATE", "UNDERGROUND_PATH_NORTH_SOUTH",
+                       "UNDERGROUND_PATH_WEST_EAST", "UNDERGROUND_PATH_ROUTE_5",
+                       "UNDERGROUND_PATH_ROUTE_6", "UNDERGROUND_PATH_ROUTE_7",
+                       "UNDERGROUND_PATH_ROUTE_8", "DAYCARE")),
+    ("CELADON",       ("CELADON_CITY", "CELADON_POKECENTER", "CELADON_MART",
+                       "CELADON_GYM", "CELADON_MANSION", "CELADON_HOTEL",
+                       "CELADON_DINER", "CELADON_CHIEF_HOUSE", "GAME_CORNER",
+                       "GAME_CORNER_PRIZE_ROOM", "ROCKET_HIDEOUT", "ROUTE_16",
+                       "ROUTE_16_GATE", "ROUTE_16_FLY_HOUSE", "ROUTE_17",
+                       "ROUTE_18", "ROUTE_18_GATE")),
+    ("SAFFRON",       ("SAFFRON_CITY", "SAFFRON_POKECENTER", "SAFFRON_MART",
+                       "SAFFRON_GYM", "SILPH_CO", "FIGHTING_DOJO",
+                       "MR_PSYCHICS_HOUSE", "COPYCATS_HOUSE", "SAFFRON_PIDGEY_HOUSE")),
+    ("FUCHSIA",       ("ROUTE_13", "ROUTE_14", "ROUTE_15", "ROUTE_15_GATE",
+                       "FUCHSIA_CITY", "FUCHSIA_POKECENTER", "FUCHSIA_MART",
+                       "FUCHSIA_GYM", "FUCHSIA_GOOD_ROD_HOUSE",
+                       "FUCHSIA_BILLS_GRANDPAS_HOUSE", "FUCHSIA_MEETING_ROOM",
+                       "WARDENS_HOUSE", "SAFARI_ZONE")),
+    ("CINNABAR",      ("ROUTE_19", "ROUTE_20", "ROUTE_21", "SEAFOAM_ISLANDS",
+                       "CINNABAR_ISLAND", "CINNABAR_POKECENTER", "CINNABAR_MART",
+                       "CINNABAR_GYM", "CINNABAR_LAB", "POKEMON_MANSION")),
+    ("LEAGUE",        ("VIRIDIAN_GYM", "ROUTE_22", "ROUTE_22_GATE", "ROUTE_23",
+                       "VICTORY_ROAD", "INDIGO_PLATEAU", "INDIGO_PLATEAU_LOBBY",
+                       "LORELEIS_ROOM", "BRUNOS_ROOM", "AGATHAS_ROOM",
+                       "LANCES_ROOM", "CHAMPIONS_ROOM", "HALL_OF_FAME")),
+]
+_STAGE_OF = {}
+for _name, _members in STAGES:
+    for _m in _members:
+        _STAGE_OF[_m] = _name
+
+
+def stage_of(bld: str) -> str:
+    """The stage a building belongs to, by exact name and then by prefix
+    (CELADON_MANSION_1F folds to CELADON_MANSION before it gets here;
+    CINNABAR_LAB_FOSSIL_ROOM does not, so the prefix catches it)."""
+    b = str(bld or "")
+    if b in _STAGE_OF:
+        return _STAGE_OF[b]
+    for m, st in _STAGE_OF.items():
+        if b.startswith(m + "_"):
+            return st
+    return "ELSEWHERE"
 
 
 # the sticking points named from memory, as buildings; --areas always
@@ -146,6 +234,8 @@ def scan(path: str, keep_lines: bool = False) -> dict:
     maps: dict = {}
     areas: dict = {}         # building -> rounds the party stood in it
     located = 0              # rounds whose page said where it stood
+    goals: list = []         # each plan_start's goal text, in order
+    rounds_by_leg: list = [] # escalate_context rows between plan_starts
     regions: set = set()
     cells = [0]
     legs: list = []          # line index of each plan_start, for --phases
@@ -171,6 +261,11 @@ def scan(path: str, keep_lines: bool = False) -> dict:
                     areas[b] = areas.get(b, 0) + 1
             if k == "plan_start":
                 legs.append(n)
+                g = GOAL.search(raw)
+                goals.append(g.group(1).decode("utf-8", "replace") if g else "")
+                rounds_by_leg.append(0)
+            if k == "escalate_context" and rounds_by_leg:
+                rounds_by_leg[-1] += 1
             elif k == "explored":
                 t = TOMAP.search(raw)
                 if t:
@@ -196,7 +291,17 @@ def scan(path: str, keep_lines: bool = False) -> dict:
                 per_line.append((k, n))
     return {"path": path, "counts": counts, "maps": maps, "legs": legs,
             "lines": n + 1, "per_line": per_line, "swept_cells": cells[0],
-            "areas": areas, "located": located}
+            "areas": areas, "located": located, "goals": goals,
+            "rounds_by_leg": rounds_by_leg}
+
+
+def stages_of(r: dict) -> dict:
+    """Rounds per stage, summed from the buildings."""
+    out: dict = {}
+    for b, n in (r.get("areas") or {}).items():
+        st = stage_of(b)
+        out[st] = out.get(st, 0) + n
+    return out
 
 
 def areas_rows(r: dict, top: int = 12):
@@ -226,6 +331,9 @@ def areas_table(runs: list, top: int = 12):
         if marts:
             print(f"   {'(every _MART together)':<28}{marts:>6}  "
                   f"{marts / r['located'] * 100:5.1f}%")
+        print("   -- by stage --")
+        for st, n in sorted(stages_of(r).items(), key=lambda kv: -kv[1]):
+            print(f"   {st:<28}{n:>6}  {n / r['located'] * 100:5.1f}%")
 
 
 def areas_diff(a: dict, b: dict, top: int = 10):
@@ -241,7 +349,18 @@ def areas_diff(a: dict, b: dict, top: int = 10):
         for bld, _n, _s in areas_rows(r, top) or []:
             if bld not in names:
                 names.append(bld)
-    print(f"\n{label(a['path'])}  ->  {label(b['path'])}   (rounds, share)")
+    print(f"\n{label(a['path'])}  ->  {label(b['path'])}   (rounds, share) — by stage")
+    sa_, sb_ = stages_of(a), stages_of(b)
+    for st, _ in STAGES + [("ELSEWHERE", ())]:
+        na, nb = sa_.get(st, 0), sb_.get(st, 0)
+        if not na and not nb:
+            continue
+        fa, fb = na / a["located"], nb / b["located"]
+        mark = "  "
+        if max(na, nb) >= 20 and abs(fb - fa) >= 0.02:
+            mark = "UP" if fb > fa else "DOWN"
+        print(f"  {st:<26}{na:>5} {fa * 100:5.1f}%  ->  {nb:>5} {fb * 100:5.1f}%  {mark}")
+    print(f"\n{label(a['path'])}  ->  {label(b['path'])}   (rounds, share) — by building")
     for bld in names:
         na, nb = a["areas"].get(bld, 0), b["areas"].get(bld, 0)
         if not na and not nb:
@@ -417,6 +536,36 @@ def quarters(r: dict) -> list:
     return out
 
 
+def legs_table(runs: list, n: int = 15):
+    """Rounds per leg for the first n legs of each run, side by side.
+
+    Legs are matched by INDEX, not by name — two outlines authored by the
+    model differ — so each run's goal text is printed with its count. The
+    axis the question is about ("a larger amount of time spent in the
+    initial legs") is position in the run, and this is that axis."""
+    if not runs:
+        return
+    width = max(len(label(r["path"])) for r in runs)
+    print("\nROUNDS PER LEG, the first %d legs of each run (a leg re-authored "
+          "mid-campaign counts its rounds under the same index)" % n)
+    for r in runs:
+        rb = r.get("rounds_by_leg") or []
+        gs = r.get("goals") or []
+        tot = sum(rb)
+        print(f"\n{label(r['path'])}: {len(rb)} plan starts, {tot} rounds"
+              + (f", first {n} legs = {sum(rb[:n])} rounds "
+                 f"({sum(rb[:n]) / tot * 100:.0f}%)" if tot else ""))
+        for i in range(min(n, len(rb))):
+            print(f"   leg {i + 1:>2} {rb[i]:>5}  {gs[i][:60] if i < len(gs) else ''}")
+    if len(runs) >= 2:
+        a, b = runs[-2], runs[-1]
+        ra, rb = a.get("rounds_by_leg") or [], b.get("rounds_by_leg") or []
+        print(f"\n{label(a['path'])}  ->  {label(b['path'])}   rounds in the first {n} plan starts: "
+              f"{sum(ra[:n])} -> {sum(rb[:n])}")
+    print("\nA plan start is an attempt or a re-authoring, not an outline leg: a leg that "
+          "took four attempts is four starts. Read the goal texts to line them up.")
+
+
 def diff(a: dict, b: dict):
     print(f"\n{label(a['path'])}  ->  {label(b['path'])}")
     for name, nums, den, per in METRICS:
@@ -454,8 +603,10 @@ def main():
     ap.add_argument("--min-legs", type=int, default=3,
                     help="skip journals with fewer legs than this")
     ap.add_argument("--areas", action="store_true",
-                    help="where each run spent its rounds, by building; "
-                         "with two or more runs, the last two side by side")
+                    help="where each run spent its rounds, by building and "
+                         "by stage; with two or more runs, the last two side by side")
+    ap.add_argument("--legs", type=int, nargs="?", const=15, default=None,
+                    help="rounds per leg for the first N legs of each run (default 15)")
     a = ap.parse_args()
     logs = a.logs or sorted(glob.glob("run/executor_log*.jsonl"),
                             key=os.path.getmtime)
@@ -478,6 +629,9 @@ def main():
         areas_table(runs)
         if len(runs) >= 2:
             areas_diff(runs[-2], runs[-1])
+        return
+    if a.legs:
+        legs_table(runs, a.legs)
         return
     table(runs, a.phases)
     group(runs, EXPLORE, "EXPLORE — is the looking still finding anything?",
