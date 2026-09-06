@@ -9342,7 +9342,7 @@ function OPS.grind(G, c)
     return false, "no wild Pokemon live on this map (no grass, and not a "
       .. "cave or tower floor that spawns them)"
   end
-  local ground = anywhere and "the floor" or (afloat and "the water" or "grass")
+  local ground = anywhere and "floor to pace" or (afloat and "water" or "grass")
   local function dirname_of(d)
     return (d[1] == 0 and (d[2] < 0 and "up" or "down"))
       or (d[1] < 0 and "left" or "right")
@@ -9389,7 +9389,12 @@ function OPS.grind(G, c)
       local W2, H2 = map_dims_cells(G)
       for yy = 0, math.max(0, H2 - 1) do
         for xx = 0, math.max(0, W2 - 1) do
-          if map:isGrassCell(xx, yy) and _gm[xx .. "," .. yy] then
+          -- ...ON A CAVE FLOOR, THE FLOOR IS THE GROUND. This tested for
+          -- grass alone, so in Victory Road it always found none and said
+          -- "no the floor anywhere on the ground you have seen" straight
+          -- after a fight on that floor (2026-09-06).
+          if _gm[xx .. "," .. yy] and (anywhere and enc_cell(xx, yy)
+                                       or map:isGrassCell(xx, yy)) then
             any_ground = true
             local dd = math.abs(xx - p.cellX) + math.abs(yy - p.cellY)
             if not ngd or dd < ngd then ngd, ngx, ngy = dd, xx, yy end
@@ -9444,8 +9449,16 @@ function OPS.grind(G, c)
     end
     if not moved then
       -- isolated grass cell: step off and back on (re-entry rolls the RNG)
+      -- ...BUT NEVER ONTO A WARP. The pacing above keeps off ladders and
+      -- mouths; this branch used bare collision, and in the 2F pocket
+      -- where the 3F ladder lands the only neighbour IS the ladder — so
+      -- the step-off changed floors and the grind ended "encounter" with
+      -- nothing fought, 0 exp, three rounds running (2026-09-06, user:
+      -- "grinds are producing 0 exp for some reason").
       for _, dn in ipairs({ "left", "right", "up", "down" }) do
-        if Collision.canMove(map, ow.entities, p, dn) then
+        local d = DIRS[dn]
+        if Collision.canMove(map, ow.entities, p, dn)
+           and not warp_at[(p.cellX + d[1]) .. "," .. (p.cellY + d[2])] then
           walk(G, dn, 1)
           if G.stack:top() ~= ow then return true, "encounter" end
           walk(G, BACK[dn], 1)
@@ -9453,7 +9466,12 @@ function OPS.grind(G, c)
           break
         end
       end
-      if not moved then return false, "boxed in on the " .. ground end
+      if not moved then
+        return false, "boxed in on " .. ground .. " — every neighbour of "
+          .. "this cell is a wall, a warp or a person, so nothing here "
+          .. "rolls an encounter; wild ground elsewhere on the floor is "
+          .. "where to grind"
+      end
     end
   end
   if G.stack:top() ~= ow then return true, "encounter" end

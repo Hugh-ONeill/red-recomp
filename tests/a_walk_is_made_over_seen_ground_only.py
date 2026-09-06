@@ -51,7 +51,7 @@ ck("surf mounts, grind and interact reach over the seen flood "
    and sh.count("blind and (warp_reach(G) or {})") == 2)
 ck("grind's spawn-ground flood and its nearest-grass address are seen facts",
    "and not (gate and gate(nx, ny, key(nx, ny))) then" in sh
-   and 'if map:isGrassCell(xx, yy) and _gm[xx .. "," .. yy] then' in sh
+   and 'if _gm[xx .. "," .. yy] and (anywhere and enc_cell(xx, yy)' in sh
    and "no \" .. ground .. \" anywhere on the ground you have " in sh)
 ck("the model's op vocabulary states the seen-ground contract",
    "over ground that has BEEN\nON SCREEN" in ex)
