@@ -49,15 +49,17 @@ GATES = [
      r"fuji|pokemon tower|lavender"),
     ("cut",     r"\bcut\b|hm01|captain|s\.?\s?s\.?\s?anne",
      r"thunder badge", None, r"vermilion|cascade badge"),
-    ("silph",   r"silph co|card key|president|master ball",
+    ("silph",   r"silph co|card key|president|master ball|"
+                r"rocket.*saffron|saffron.*rocket|liberate silph",
      r"marsh badge", None, r"saffron"),
     ("surf",    r"\bsurf\b|hm03",
      r"seafoam|cinnabar|volcano badge", r"gym|blaine|cinnabar",
      r"fuchsia|soul badge"),
     ("strength", r"strength|hm04|warden|gold teeth",
-     r"seafoam|victory road", None, r"fuchsia|soul badge"),
+     r"seafoam|victory road", r"cinnabar|gym|mansion|celadon|game corner",
+     r"fuchsia|soul badge"),
     ("secret key", r"secret key|mansion",
-     r"volcano badge", None, r"cinnabar"),
+     r"volcano badge", r"game corner|safari|celadon|saffron", r"cinnabar"),
     ("victory road", r"victory road",
      r"elite four|champion|indigo plateau", None, r"earth badge"),
 ]
@@ -67,6 +69,9 @@ ARRIVE = re.compile(r"(reach|arrive|travel|go|sail|enter|walk|fly|ride|"
 
 ACQUIRE = re.compile(r"(obtain|retrieve|get|receive|collect|find|acquire|"
                      r"pick up|take|grab)\b", re.I)
+
+TOWNS = ["pallet", "viridian", "pewter", "cerulean", "vermilion",
+         "lavender", "celadon", "saffron", "fuchsia", "cinnabar"]
 
 UPKEEP = re.compile(r"^(every party member|the party holds|a party pokemon "
                     r"knows|the party has|a .* type is in the party|"
@@ -141,13 +146,26 @@ def judge(legs: list) -> dict:
         if late:
             flags.append(f"Earth Badge before {', '.join(late)}: Viridian's "
                          f"gym is shut until the other seven are won")
-    # arriving after acting there
+    # arriving after acting there: a gym leader beaten before "Reach" his
+    # town, or any deed that names a town before the leg that arrives in it
     for leader, town in TOWN_OF.items():
         a = _first(legs, rf"^(reach|arrive|travel|get)\b.*{town}")
         d = _first(legs, rf"{leader}")
         if a is not None and d is not None and d < a:
             flags.append(f"arrival after the deed: {legs[a]!r} comes after "
                          f"{legs[d]!r}")
+    for town in TOWNS:
+        a = next((n for n, l in enumerate(legs)
+                  if ARRIVE.match(l) and re.search(town, l, re.I)), None)
+        if a is None:
+            continue
+        for n in range(a):
+            l = legs[n]
+            if (re.search(town, l, re.I) and not ARRIVE.match(l)
+                    and not UPKEEP.search(l)):
+                flags.append(f"arrival after the deed: {legs[a]!r} comes "
+                             f"after {l!r}")
+                break
     # the same thing twice (two shared significant words, the author's own
     # dedupe threshold), badges and upkeep legs excluded
     plain = [(i, l) for i, l in enumerate(legs)
