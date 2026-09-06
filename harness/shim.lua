@@ -653,6 +653,43 @@ local function drop_groups(cells)
   return out
 end
 
+-- A SWITCH YOU CAN SEE HELD DOWN IS A WITNESS THAT ITS WAY IS OPEN. The
+-- freeze below snapshots a cell's passability only while it is on screen,
+-- so a barrier a boulder-switch opens elsewhere on the floor stayed a WALL
+-- in the sidecar until the run walked back to look at it — while the same
+-- page said, from the boulder visibly sitting on the switch, "THAT WAY IS
+-- OPEN RIGHT NOW". Victory Road 3F, 2026-09-06: the boulder on (3,5), the
+-- barrier at (6,10) open, and sweep(until=map_change) answered "nothing
+-- more to see from ground you can reach" because its flood would not cross
+-- the opened block (user: "sweep should have swept the rest of the map").
+-- The game's rule ties the two: a switch held down is the barrier open, a
+-- switch released is the barrier shut. So while the SWITCH is on screen,
+-- the barrier block's live passability is written into the snapshot as if
+-- seen — both ways. Only cells the run has already SEEN are touched: this
+-- lifts the freeze, never the unseen gate. Pure over its arguments, so it
+-- is tested without a game.
+local function switch_witness(map, px, py, view, t, wt)
+  local dirty = false
+  for _, c in ipairs((view and view.boulder_switches) or {}) do
+    local sx, sy, bx, by = c[1], c[2], c[3], c[4]
+    if sx and sy and bx and by
+       and sx >= px - VIEW_L and sx <= px + VIEW_R
+       and sy >= py - VIEW_U and sy <= py + VIEW_D then
+      for dy = 0, 1 do
+        for dx = 0, 1 do
+          local x, y = bx * 2 + dx, by * 2 + dy
+          local k = x .. "," .. y
+          if t[k] then
+            local wcell = (map.isWalkableCell
+                           and map:isWalkableCell(x, y)) and true or false
+            if wt[k] ~= wcell then wt[k] = wcell; dirty = true end
+          end
+        end
+      end
+    end
+  end
+  return dirty
+end
 seen_paint = function(G)
   local ow = G and G.overworld
   local p, map = ow and ow.player, ow and ow.map
@@ -689,6 +726,14 @@ seen_paint = function(G)
           if wt[k] ~= wcell then wt[k] = wcell; seen_dirty = true end
         end
       end
+    end
+  end
+  -- ...and what a switch in view says about its barrier (see above)
+  do
+    local okms, MS = pcall(require, "src.script.MapScripts")
+    local view = okms and MS and MS.get and MS.get(map.id) or nil
+    if view and switch_witness(map, p.cellX, p.cellY, view, t, wt) then
+      seen_dirty = true
     end
   end
 end
