@@ -4885,7 +4885,7 @@ must come after (0 = before everything)."""
 
 
 def _outline_upkeep(goal: str, legs: list, model: str,
-                    cap: int = 12, rounds: int = 3) -> list:
+                    cap: int = 20, rounds: int = 3) -> list:
     """Repeat the question until it stops finding anything.
 
     ONE PASS IS NOT ENOUGH, and the reason is a dependency rather than a
@@ -4898,6 +4898,14 @@ def _outline_upkeep(goal: str, legs: list, model: str,
     catching before the means to catch. So the round runs again on its own
     output and stops when a pass adds nothing.
     """
+    # THE CAP IS OURS, AND IT WAS CUTTING THE LEVEL CURVE. At twelve, two
+    # of three passes on 2026-09-06 stopped with "5 more were offered" and
+    # "3 more were offered", and what fell off the end was the levels: the
+    # model lists type coverage first and the level curve last, so those
+    # outlines kept one level leg ("50") where earlier ones kept four
+    # (user: "this doesnt have as many maintainance legs as it should").
+    # The cap guards against a runaway round, not against the model's
+    # count; twenty leaves the run's whole maintenance list to the model.
     out, budget = list(legs), cap
     UPKEEP_TWINS.clear()
     for r in range(rounds):
@@ -4973,8 +4981,11 @@ def _outline_upkeep_once(goal: str, legs: list, model: str,
     result, added = list(legs), []
     for a in adds:
         if len(added) >= cap:
+            _rest = [str((x or {}).get("item") or "").strip()
+                     for x in adds[adds.index(a):] if isinstance(x, dict)]
             print(f"[upkeep] stopping at {cap} additions; "
-                  f"{len(adds) - cap} more were offered")
+                  f"{len(adds) - adds.index(a)} more were offered: "
+                  + "; ".join(repr(r) for r in _rest if r))
             break
         if not isinstance(a, dict):
             continue
