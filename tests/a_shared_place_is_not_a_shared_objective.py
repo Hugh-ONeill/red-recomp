@@ -61,6 +61,22 @@ ck("the dedupe keeps STRENGTH and the teeth beside the Safari visit",
    and "Obtain the Gold Teeth from the Safari Zone" in kept)
 ck("...and still folds the two tickets", len(kept) == 5)
 
+# an arrival never merges with a deed
+A.OUTLINE_NOTES.clear()
+kept = A._dedupe_outline(["Reach the Pokemon Tower", "Clear the Pokemon Tower",
+                          "Reach Celadon City", "Visit Celadon City"])
+ck("reaching the Tower is not clearing it", "Clear the Pokemon Tower" in kept)
+ck("...while two arrivals in one city still fold", len(kept) == 3)
+
+# the twin question is not asked about a shared place
+pairs = A._twin_pairs(["Obtain the Silph Scope",
+                       "Obtain the S.S. Ticket/Silph Co. access",
+                       "Retrieve the Pokemon Flute from Mr. Fuji",
+                       "Obtain the Snorlax-blocking Poke Flute"])
+ck("the Scope and the Silph ticket line are not a pair (they share a place)",
+   not any(n == "silph" for _, _, n in pairs))
+ck("the two flutes still are", any(n == "flute" for _, _, n in pairs))
+
 src = Path("planner/author.py").read_text()
 ck("the era repeat guard uses the same rule",
    "if k and any(_same_objective(k, s) for s in seen):" in src)

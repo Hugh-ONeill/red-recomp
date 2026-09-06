@@ -4248,6 +4248,14 @@ def _dedupe_outline(legs: list) -> list:
 
     _UPK = re.compile(r"^\s*(a party pokemon knows|the party holds|"
                       r"every party member|the party has)\b", re.I)
+    # GOING SOMEWHERE IS NOT DOING SOMETHING THERE. Verbs are noise to the
+    # key, so "Reach the Pokemon Tower" and "Clear the Pokemon Tower" had
+    # the same key ({tower}) and the clear was dropped as the arrival
+    # again (pass of 2026-09-06 16:46). An arrival only ever twins another
+    # arrival; "Reach Celadon City" and "Visit Celadon City" still fold.
+    _ARR = re.compile(r"^\s*(reach|arrive|travel|go|visit|enter|walk|fly|"
+                      r"ride|sail|navigate|cross|trek|pass|head|get to|"
+                      r"make your way|return)\b", re.I)
 
     for leg in legs:
         key = _objective_key(leg)
@@ -4265,6 +4273,7 @@ def _dedupe_outline(legs: list) -> list:
         hit = next(((k, t) for k, t in kept
                     if _same_objective(k, key)
                     and bool(_UPK.match(leg)) == bool(_UPK.match(t))
+                    and bool(_ARR.match(leg)) == bool(_ARR.match(t))
                     and not (_nums(leg) and _nums(t)
                              and _nums(leg) != _nums(t))), None)
         if hit:
@@ -4324,7 +4333,13 @@ def _twin_pairs(legs: list) -> list:
             if not keys[j]:
                 continue
             both = keys[i] & keys[j]
-            if len(both) == 1:
+            # ...AND NOT ABOUT A SHARED PLACE. "Obtain the Silph Scope" and
+            # "Obtain the S.S. Ticket/Silph Co. access" share only {silph},
+            # the building; asked, the model called them one thing and the
+            # Scope left the outline (2026-09-06 16:46). A place in common
+            # is not a thing in common — the dedupe's rule, applied to the
+            # question as well as the answer.
+            if len(both) == 1 and not (both & _place_words()):
                 out.append((i, j, next(iter(both))))
     return out
 

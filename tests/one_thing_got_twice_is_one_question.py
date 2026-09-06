@@ -47,12 +47,13 @@ ck("Giovanni's two fights are not — they are not acquisitions",
    not any("Giovanni" in a and "Giovanni" in b for a, b in names))
 ck("a leg that USES the flute is not paired with one that gets it",
    not any("Wake Snorlax" in a or "Wake Snorlax" in b for a, b in names))
-# the S.S. Anne's HM and the S.S. Ticket share the one name "ss": they ARE
-# a pair, and the model's answer ("two things") is what settles it — the
-# harness proposes, and never rules a pair out on its own
-ck("two acquisitions sharing one name are proposed, whatever they are",
+# the S.S. Anne's HM and the S.S. Ticket share only "ss" — the ship, a
+# PLACE — and a place in common is not a thing in common, so they are not
+# asked about (the question was asked once and the model called the Silph
+# Scope and a Silph ticket line one thing; the Scope left the outline)
+ck("two acquisitions sharing only a place are not proposed",
    ("Retrieve the HM01 from the S.S. Anne",
-    "Obtain the S.S. Ticket from Bill") in names)
+    "Obtain the S.S. Ticket from Bill") not in names)
 ck("two acquisitions sharing nothing are not a pair",
    not any(a == "Obtain a starter Pokemon" or b == "Obtain a starter Pokemon"
            for a, b in names))
