@@ -23,6 +23,19 @@ the executor already writes down, then puts the runs side by side.
   planner/arc.py --diff               what moved between the last two
   planner/arc.py --kinds              which row kinds each journal contains
   planner/arc.py --deep A B            also: is it still reasoning from the page?
+  planner/arc.py --areas               where each run spent its rounds, by building
+
+WHERE IT GOT STUCK IS A PLACE, AND PLACES ARE COMPARABLE. The sticking
+points of a run are named by the user from memory — "mt moon taking
+*forever* this run, rock tunnel, the thirsty guards and celadons mart,
+pokemon tower, silph co, safari a little, then seafoam, now this leg"
+(2026-09-05) — and a memory of where it was slow is the thing a regression
+hides behind. Every escalation page opens with WHERE YOU STAND, so the
+rounds of a run can be bucketed by the building the party stood in when it
+had to think. --areas prints that per run, folded to the building (Mt Moon's
+three floors are one place; so are a mart's five), and puts the last two runs
+side by side on a watch-list of the named spots plus whatever else is large.
+A journal whose pages never carried the marker prints "--", not zeros.
 
 THE OUTCOME TABLE IS THE CHEAP HALF. Routing either lands or it does not,
 and that is countable from row kinds alone. The question that actually
@@ -74,6 +87,30 @@ NEWCELLS = re.compile(rb"(\d+) cell\(s\) newly on screen")
 TOREG = re.compile(rb'"to":\s*"([A-Z_0-9]+\|[0-9]+,[0-9]+)"')
 STEP = re.compile(rb'"step":\s*"([a-z_]+)"')
 TOMAP = re.compile(rb'"to":\s*"([A-Z_0-9]+)\|')
+AREA = re.compile(rb'WHERE YOU STAND:\s*([A-Z_0-9]+)\|')
+_FLOOR = re.compile(r"_(?:B\d+F|\d+F|ROOF|ELEVATOR)$")
+
+
+def building(map_id: str) -> str:
+    """One place however many floors — the same fold ledger._building
+    makes, plus the compounds that split by name rather than by floor."""
+    m = str(map_id or "")
+    if m.endswith("_POKECENTER"):
+        return m                  # the Center by Mt Moon is not the cave
+    for pre in ("SAFARI_ZONE", "SEAFOAM_ISLANDS", "POKEMON_MANSION",
+                "VICTORY_ROAD", "ROCKET_HIDEOUT", "SILPH_CO", "MT_MOON",
+                "ROCK_TUNNEL", "POKEMON_TOWER", "CELADON_MART"):
+        if m == pre or m.startswith(pre + "_"):
+            return pre
+    return _FLOOR.sub("", m)
+
+
+# the sticking points named from memory, as buildings; --areas always
+# shows these beside the largest of whatever else the run did
+WATCH = ["MT_MOON", "ROCK_TUNNEL", "ROUTE_5_GATE", "ROUTE_6_GATE",
+         "ROUTE_7_GATE", "ROUTE_8_GATE", "CELADON_MART", "POKEMON_TOWER",
+         "MR_FUJIS_HOUSE", "SILPH_CO", "SAFARI_ZONE", "SEAFOAM_ISLANDS",
+         "POKEMON_MANSION", "VICTORY_ROAD"]
 
 # name -> (numerator kinds, denominator kind, "per what")
 METRICS = [
@@ -107,6 +144,8 @@ def scan(path: str, keep_lines: bool = False) -> dict:
     costs the run its RAM is not a meter."""
     counts: dict = {}
     maps: dict = {}
+    areas: dict = {}         # building -> rounds the party stood in it
+    located = 0              # rounds whose page said where it stood
     regions: set = set()
     cells = [0]
     legs: list = []          # line index of each plan_start, for --phases
@@ -124,6 +163,12 @@ def scan(path: str, keep_lines: bool = False) -> dict:
                 if s and s.group(1) == b"none":
                     counts["explore_none"] = counts.get("explore_none", 0) + 1
             counts[k] = counts.get(k, 0) + 1
+            if k == "escalate_context":
+                w = AREA.search(raw)
+                if w:
+                    located += 1
+                    b = building(w.group(1).decode())
+                    areas[b] = areas.get(b, 0) + 1
             if k == "plan_start":
                 legs.append(n)
             elif k == "explored":
@@ -150,7 +195,67 @@ def scan(path: str, keep_lines: bool = False) -> dict:
             if keep_lines:
                 per_line.append((k, n))
     return {"path": path, "counts": counts, "maps": maps, "legs": legs,
-            "lines": n + 1, "per_line": per_line, "swept_cells": cells[0]}
+            "lines": n + 1, "per_line": per_line, "swept_cells": cells[0],
+            "areas": areas, "located": located}
+
+
+def areas_rows(r: dict, top: int = 12):
+    """(building, rounds, share) for the places a run spent its rounds,
+    largest first; None when the journal's pages never said where the
+    party stood — absence of the marker is not a run that went nowhere."""
+    if not r.get("located"):
+        return None
+    tot = r["located"]
+    rows = sorted(r["areas"].items(), key=lambda kv: -kv[1])[:top]
+    return [(b, n, n / tot) for b, n in rows]
+
+
+def areas_table(runs: list, top: int = 12):
+    for r in runs:
+        rows = areas_rows(r, top)
+        c = r["counts"]
+        print(f"\n{label(r['path'])}: {c.get('escalate_context', 0)} rounds, "
+              f"{r.get('located', 0)} of them placed")
+        if rows is None:
+            print("   -- these pages carry no WHERE YOU STAND line; nothing "
+                  "was writing the place down, so this run has no opinion")
+            continue
+        marts = sum(n for b, n in r["areas"].items() if b.endswith("_MART"))
+        for b, n, sh in rows:
+            print(f"   {b:<28}{n:>6}  {sh * 100:5.1f}%")
+        if marts:
+            print(f"   {'(every _MART together)':<28}{marts:>6}  "
+                  f"{marts / r['located'] * 100:5.1f}%")
+
+
+def areas_diff(a: dict, b: dict, top: int = 10):
+    """The watch-list and the big movers, side by side. Rounds AND share:
+    a longer run spends more rounds everywhere, and share alone hides a
+    place that doubled while the run tripled."""
+    if not (a.get("located") and b.get("located")):
+        print("\n-- areas not comparable: one journal's pages never said "
+              "where the party stood")
+        return
+    names = list(WATCH)
+    for r in (a, b):
+        for bld, _n, _s in areas_rows(r, top) or []:
+            if bld not in names:
+                names.append(bld)
+    print(f"\n{label(a['path'])}  ->  {label(b['path'])}   (rounds, share)")
+    for bld in names:
+        na, nb = a["areas"].get(bld, 0), b["areas"].get(bld, 0)
+        if not na and not nb:
+            continue
+        sa, sb = na / a["located"], nb / b["located"]
+        mark = "  "
+        if max(na, nb) >= 20 and abs(sb - sa) >= 0.02:
+            mark = "UP" if sb > sa else "DOWN"
+        print(f"  {bld:<26}{na:>5} {sa * 100:5.1f}%  ->  {nb:>5} "
+              f"{sb * 100:5.1f}%  {mark}")
+    print("\nA place that took more of the run is a question, not a verdict: "
+          "the run may have arrived there weaker, or the leg list may have "
+          "sent it back. UP/DOWN marks a share that moved two points or more "
+          "with at least twenty rounds behind it.")
 
 
 # the deep half: the prompt and the reply, side by side
@@ -348,6 +453,9 @@ def main():
                          "journals you want)")
     ap.add_argument("--min-legs", type=int, default=3,
                     help="skip journals with fewer legs than this")
+    ap.add_argument("--areas", action="store_true",
+                    help="where each run spent its rounds, by building; "
+                         "with two or more runs, the last two side by side")
     a = ap.parse_args()
     logs = a.logs or sorted(glob.glob("run/executor_log*.jsonl"),
                             key=os.path.getmtime)
@@ -365,6 +473,11 @@ def main():
         for r in runs:
             print(f"\n{label(r['path'])}: "
                   + ", ".join(sorted(r["counts"])))
+        return
+    if a.areas:
+        areas_table(runs)
+        if len(runs) >= 2:
+            areas_diff(runs[-2], runs[-1])
         return
     table(runs, a.phases)
     group(runs, EXPLORE, "EXPLORE — is the looking still finding anything?",
