@@ -2613,7 +2613,16 @@ class Executor:
             # and the dry-walk rule still finishes the demotion.
             _stale = (1 if (unseen and not left and not unpressed and not _unr
                             and self._dry_from_within(region)) else 0)
-            r = (_pri, _stale, _local, len(path), _way_here,
+            # ...THEN TOWARD THE GOAL BEFORE AWAY FROM IT. Under a map
+            # goal the walk went AWAY from the goal on the printed map 66
+            # times and toward it once in run 15 (Route 4 -> Pewter under
+            # CERULEAN, 47 of them), the model walking itself back each
+            # time. The printed map is manual tier — ledger.goalward_tier
+            # says why this is not pointing; distance still decides among
+            # areas level with the goal, and the area you are in still
+            # comes first.
+            _goal = ledger.goalward_tier(self, region, here, target)
+            r = (_pri, _stale, _local, _goal, len(path), _way_here,
                  -(len(left) + len(unpressed) + unseen + len(_unr)),
                  region)
             if best is None or r < best[0]:
@@ -2663,9 +2672,11 @@ class Executor:
         _leg = _trips.setdefault((self._cur_target or "", here), [])
         _leg.append(region)
         del _leg[:-8]
+        _goalward = ledger.goalward_tier(self, region, here, target)
         self.log("explore_step", subgoal=sg.get("id"), step="walk",
                  to=region, legs=len(path), left=len(left),
-                 unpressed=len(unpressed), unseen=unseen)
+                 unpressed=len(unpressed), unseen=unseen,
+                 goalward=_goalward)
         arrived = self._walk_route(sg, path)
         if isinstance(arrived, dict):
             arrived = self._where(arrived)
@@ -2676,6 +2687,7 @@ class Executor:
               f"{len(unpressed)} thing(s) never pressed"
               + (f" and {unseen} spot(s) where its seen ground ends"
                  if unseen else "")
+              + ledger.goalward_words(_goalward, target)
               + (" — a room off the area you are in, its door taken from "
                  "here, so this is finishing where you stand"
                  if (region.split("|")[0] != here.split("|")[0]

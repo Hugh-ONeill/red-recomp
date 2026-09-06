@@ -36,11 +36,11 @@ src = (ROOT / "planner" / "executor.py").read_text()
 ck("the deed ranks locality above distance, and a room means a DOOR not a seam",
    "_local = 0 if (_reg_b == _here_b or region in _rooms) else 1" in src
    and 'if str(k)[:1].isdigit() and (e or {}).get("to")}' in src
-   and "r = (_pri, _stale, _local, len(path), _way_here," in src)
+   and "r = (_pri, _stale, _local, _goal, len(path), _way_here," in src)
 ck("...and the trace says why it went there",
    "a room off the area you are in, its door taken from " in src)
 lsrc = (ROOT / "planner" / "ledger.py").read_text()
-ck("the words carry the same order", "r = (_pri, _local, len(path), 0 if (left or _unr) else 1," in lsrc)
+ck("the words carry the same order", "r = (_pri, _local, _goal, len(path), 0 if (left or _unr) else 1," in lsrc)
 # ...AND THE SAME NOTION OF NEAR. A floor is its own map, so measuring
 # locality by map name made the next floor up as foreign as another town
 # (2026-09-05). Both rankings read _building now; if only one had, the

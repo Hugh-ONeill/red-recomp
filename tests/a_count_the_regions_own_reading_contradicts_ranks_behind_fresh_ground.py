@@ -52,7 +52,7 @@ ck("...and persisted",
    '"frontier_here": getattr(self, "frontier_here", {})' in src
    and 'self.frontier_here = data.get("frontier_here", {}) or {}' in src)
 ck("explore ranks it behind fresh ground of its tier, before distance",
-   "r = (_pri, _stale, _local, len(path), _way_here," in src
+   "r = (_pri, _stale, _local, _goal, len(path), _way_here," in src
    and "and self._dry_from_within(region)) else 0)" in src)
 ck("...only when the count is all the region has to offer",
    "if (unseen and not left and not unpressed and not _unr" in src)

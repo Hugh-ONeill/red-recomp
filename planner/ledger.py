@@ -171,6 +171,70 @@ def _stem(key: str | None) -> str:
     return _re.sub(r"\d+$", "", str(key or ""))
 
 
+def goalward_tier(ex, region: str | None, here: str | None,
+                  target: str | None) -> int:
+    """0 = toward the goal, 1 = level with it or unknown, 2 = AWAY from
+    it — read off the printed map (the town map the game itself hands
+    you: which roads join which towns), and only under a map goal.
+
+    THE EXPLORE WALK WENT AWAY FROM THE GOAL 66 TIMES AND TOWARD IT ONCE
+    (run 15's journal, autopsy of 2026-09-06). Under a map goal the
+    remote picker ranked walked areas by distance from HERE, so from
+    Route 4 with the goal Cerulean the nearest area with something
+    untried was Pewter's museum, and explore walked the party back west
+    47 times; Route 10 to Route 9 under Lavender, Route 23 to Route 22
+    under Indigo Plateau, Route 20 to Route 15 under Cinnabar. The model
+    read "now at PEWTER_CITY", wrote "I need to go back east", and
+    walked back — its judgment right every time, and nothing on the page
+    said the walk had gone the wrong way on a map any player holds in
+    their hand. This is not the harness pointing: the printed map is
+    manual tier, and it says nothing about what an area holds or whether
+    a road is open — only which way, along the roads the box lists, an
+    area lies from the place the goal names. Distance still decides
+    among areas level with the goal. One word for the deed (executor
+    _explore_step) and the page (plan_explore), so they cannot drift."""
+    t = str(target or "")
+    if not t.startswith("map:"):
+        return 1
+    goal = t[4:].split("|")[0]
+    import sys as _sys
+    E = None
+    for _n in (type(ex).__module__, "executor", "__main__"):
+        _m = _sys.modules.get(_n)
+        if _m is not None and hasattr(_m, "static_hops") \
+                and hasattr(_m, "_doorstep"):
+            E = _m
+            break
+    if E is None:
+        return 1
+    try:
+        _g = E._doorstep(goal)
+        _a = E._doorstep(_map_of(region))
+        _h = E._doorstep(_map_of(here))
+        da, dh = E.static_hops(_a, _g), E.static_hops(_h, _g)
+    except Exception:
+        return 1
+    if da is None or dh is None:
+        return 1
+    return 0 if da < dh else (2 if da > dh else 1)
+
+
+def goalward_words(tier: int, target: str | None, short: bool = False) -> str:
+    """The page's word for a goalward tier; nothing when there is nothing
+    to say (no map goal, or level with it)."""
+    t = str(target or "")
+    goal = t[4:].split("|")[0] if t.startswith("map:") else ""
+    if not goal or tier == 1:
+        return ""
+    if short:
+        return (f", AWAY from {goal} on the printed map" if tier == 2
+                else f", toward {goal} on the printed map")
+    if tier == 2:
+        return (f" — on the printed map that is AWAY from {goal}, not "
+                f"toward it")
+    return f" — on the printed map that is toward {goal}"
+
+
 def _goal_kinds_of(target: str | None) -> set:
     """The kind of thing that answers this goal. An item goal is answered
     by items; an event by the fixtures that fire them (a switch, a machine,
@@ -1485,7 +1549,11 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         # paying for.
         _local = 0 if (_building(region) == _building(here)
                        or region in _rooms) else 1
-        r = (_pri, _local, len(path), 0 if (left or _unr) else 1,
+        # ...THEN TOWARD THE GOAL BEFORE AWAY FROM IT, on the printed map
+        # (goalward_tier says why that is manual tier and not pointing);
+        # distance decides among areas level with it. The deed's rule.
+        _goal = goalward_tier(ex, region, here, target)
+        r = (_pri, _local, _goal, len(path), 0 if (left or _unr) else 1,
              -(len(left) + len(things) + unseen + len(_unr)), region)
         found.append((r, region, left, things, path, unseen, _unr))
     found.sort(key=lambda f: f[0])
@@ -1580,10 +1648,17 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                 _has.append(f"{len(_unr2)} way(s) out never taken that no "
                             f"walk reached from there")
             _more.append(f"{_reg2} ({len(_path2)} leg(s), first {_first2}"
-                         f" to {_fd2}) has " + " and ".join(_has))
+                         f" to {_fd2}"
+                         + goalward_words(goalward_tier(ex, _reg2, here,
+                                                        target),
+                                          target, short=True)
+                         + ") has " + " and ".join(_has))
         return (_head + f" The nearest "
                 f"ground with something never tried is {region} "
-                f"({len(path)} leg(s), first {first} to {fd}); explore "
+                f"({len(path)} leg(s), first {first} to {fd}"
+                + goalward_words(goalward_tier(ex, region, here, target),
+                                 target)
+                + "); explore "
                 f"walks there to " + " and ".join(what)
                 + (". Other ground you have walked that still has "
                    "something: " + "; ".join(_more)
