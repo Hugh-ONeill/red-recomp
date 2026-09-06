@@ -3953,8 +3953,10 @@ not deciding what was important.
 Each line becomes its own plan, written later and played separately from
 the line alone, so write each one as a thing that is either DONE or NOT
 DONE — a milestone you could tell someone you had reached. Short phrases in
-the player's own terms. No numbering, no headings, no commentary, no steps
-folded inside one line, no "if" and no "or equivalent".
+the player's own terms, written as the thing TO DO, not as a thing done
+("Defeat Brock for the Boulder Badge", not "Defeated Brock and earned the
+Boulder Badge"). No numbering, no headings, no commentary, no steps folded
+inside one line, no "if" and no "or equivalent".
 
 Reply with ONLY a JSON array of strings."""
 
@@ -4018,6 +4020,8 @@ def outline_eras(goal: str, model: str) -> list:
             seen.append(k)
         out.append(t)
     print(f"[era] checklist: {len(out)} objectives", file=sys.stderr)
+    for t in out:
+        print(f"[era]   {t}", file=sys.stderr)
     return out
 
 
@@ -4181,6 +4185,98 @@ def _dedupe_outline(legs: list) -> list:
     return out
 
 
+_ACQUIRE = re.compile(r"^\s*(obtain|retrieve|get|receive|collect|find|"
+                      r"acquire|pick up|take|grab|recover|fetch)\b", re.I)
+
+TWIN_SYS = """You wrote a Pokemon Red playthrough outline. Some pairs of
+its objectives both GET something, and the two share a name. Each pair is
+either ONE thing the game hands over once, written two ways in two places
+— or two different things that happen to share a word.
+
+For each lettered pair, say which. Reply with ONLY a JSON array of the
+letters of the pairs that are the SAME thing got twice. An empty array
+means every pair is two different things. Nothing you leave out is
+changed."""
+
+
+def _twin_pairs(legs: list) -> list:
+    """Pairs of acquisition legs sharing exactly ONE name: (i, j, name).
+
+    The dedupe needs two names in common, for a reason it documents
+    (Giovanni's two fights share one). But a thing the game hands over
+    once and the model names two ways shares one name too, and both
+    outlines drawn on 2026-09-06 carried "Retrieve the Pokemon Flute from
+    Mr. Fuji" AND "Obtain the Snorlax-blocking Poke Flute" (run 15 played
+    the second as a leg of its own). Two legs that both GET a thing and
+    share its name are worth one question — asked of the model, which
+    wrote both, never decided here."""
+    out = []
+    keys = [_objective_key(l) if _ACQUIRE.match(l) else None for l in legs]
+    for i in range(len(legs)):
+        if not keys[i]:
+            continue
+        for j in range(i + 1, len(legs)):
+            if not keys[j]:
+                continue
+            both = keys[i] & keys[j]
+            if len(both) == 1:
+                out.append((i, j, next(iter(both))))
+    return out
+
+
+def _apply_twins(legs: list, pairs: list, same: list) -> list:
+    """Drop the LATER of each pair the model called the same thing, and
+    keep what the loser knew as a note (the dedupe's own rule)."""
+    drop = {}
+    for n in same:
+        if 0 <= n < len(pairs):
+            i, j, name = pairs[n]
+            if legs[j] in drop.values() or legs[i] in drop:
+                continue
+            drop[legs[j]] = legs[i]
+    out = []
+    for leg in legs:
+        if leg in drop:
+            kept = drop[leg]
+            print(f"[outline] dropped {leg!r}: the model says it is "
+                  f"{kept!r} again")
+            OUTLINE_NOTES.append(
+                (kept, f"also written as {leg!r} when the outline was "
+                       f"drafted; the two were judged the same objective"))
+            continue
+        out.append(leg)
+    return out
+
+
+def _twin_check(goal: str, legs: list, model: str) -> list:
+    """One question about the pairs, applied verbatim; nothing else moves."""
+    pairs = _twin_pairs(legs)
+    if not pairs:
+        return legs
+    letters = [chr(ord("A") + n) for n in range(min(len(pairs), 26))]
+    pairs = pairs[:len(letters)]
+    body = (f"THE GOAL: {goal}\n\nTHE OUTLINE YOU WROTE:\n"
+            + "\n".join(f"  {i}. {l}" for i, l in enumerate(legs, 1))
+            + "\n\nPAIRS THAT BOTH GET SOMETHING AND SHARE A NAME:\n"
+            + "\n".join(f"  {ch}. {i + 1} and {j + 1}  (share: {name})"
+                        for ch, (i, j, name) in zip(letters, pairs)))
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": TWIN_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\[.*?\]", reply or "", re.S)
+        picks = json.loads(m.group(0)) if m else []
+    except (ValueError, KeyError, OSError):
+        return legs
+    same = [letters.index(str(x).strip().upper()[:1]) for x in picks
+            if isinstance(x, str) and str(x).strip()[:1].upper() in letters]
+    for n in range(len(pairs)):
+        i, j, name = pairs[n]
+        print(f"[outline] twins? {legs[i]!r} / {legs[j]!r} ({name}): "
+              + ("the same thing" if n in same else "two things"))
+    return _apply_twins(legs, pairs, same) if same else legs
+
+
 def _outline_draw(goal: str, model: str, rounds: int = 3) -> list | None:
     for _ in range(rounds):
         reply = brock_probe.chat(
@@ -4208,7 +4304,8 @@ def _outline_draw(goal: str, model: str, rounds: int = 3) -> list | None:
 
 
 def outline(goal: str, model: str, rounds: int = 3,
-            draws: int = 3, max_draws: int = 6) -> list | None:
+            draws: int = 3, max_draws: int = 6,
+            eras: bool = True) -> list | None:
     """The MODEL decides what the legs are.
 
     Handing it "win your first/second/third badge" is our decomposition of
@@ -4244,6 +4341,28 @@ def outline(goal: str, model: str, rounds: int = 3,
     """
     OUTLINE_NOTES.clear()
     drafts, seen_sigs, tries = [], [], 0
+    # THE FIRST DRAFT IS THE LOOSE ONE. outline_eras (the user's design,
+    # 2026-08-17: ask about early, middle and late game as a person would,
+    # in one conversation, and only then ask for the checklist) was built
+    # and never wired in. The constrained draws never once named Oak's
+    # parcel across every outline drawn since (parcel 1-for-9 authorings
+    # in August; 0-for-2 on 2026-09-06), and the hand conversation that
+    # inspired the era pass produced it unprompted. The merge chooses
+    # from a menu of everything every draft said, so this only widens
+    # what the model can choose from; it decides nothing.
+    if eras:
+        d = outline_eras(goal, model)
+        if len(d) >= 3:
+            for o in d:
+                sig = _sig(o)
+                if sig:
+                    seen_sigs.append(sig)
+            drafts.append(d)
+            print(f"[outline] draft 1 (three eras, asked loosely): "
+                  f"{len(d)} objectives")
+        else:
+            print("[outline] the era conversation gave no usable "
+                  "checklist; drawing without it")
     while len(drafts) < max_draws and tries < max_draws + 2:
         tries += 1
         d = _outline_draw(goal, model, rounds)
@@ -4289,6 +4408,10 @@ def outline(goal: str, model: str, rounds: int = 3,
         # say, so what is still absent here is absent on purpose or by
         # oversight, and this is the question that tells them apart.
         legs = _dedupe_outline(_stage_missing(goal, legs, stages, model))
+    # ...AND ONE THING GOT TWICE IS ONE QUESTION, on the final list, so a
+    # twin the stage pass just added is asked about too (_twin_check).
+    legs = _twin_check(goal, legs, model)
+    if stages:
         try:
             STAGES_PATH.write_text("".join(
                 f"{stages[l]}\t{l}\n" for l in legs if l in stages))
@@ -4528,12 +4651,25 @@ _GENERIC = frozenset("""
 obtain get retrieve acquire find fetch collect deliver bring give
 defeat beat win battle fight clear navigate cross enter exit
 reach travel visit go return wake help
+defeated beaten won battled fought cleared navigated crossed entered exited
+reached traveled travelled visited went returned woke woken helped
+obtained got retrieved acquired found fetched collected delivered brought
+given earn earned receive received rescue rescued catch caught
+talk talked explore explored use used learn learned teach taught buy
+bought purchase purchased complete completed finish finished
 pokemon pokemons badge badges item items thing things
 first second third next new
 city town island area house place way path sail
 party member team level type types move moves hold holds know knows
 every least is at with capable or and the a an of from
 """.split())
+# ...AND THE VERBS IN EVERY TENSE. The era checklist came back in the past
+# tense ("Defeated Misty and earned the Cascade Badge"), _stem does not
+# reach "defeated" or "earned", and every badge line then shared
+# {defeated, earned} with every other — so the era pass's own repeat guard
+# threw away seven of its eight badges as repeats of the first (live,
+# 2026-09-06, the first wired era draft). A verb is not what an objective
+# is about, whatever tense it is in.
 # ...that last line is about FALSE MATCHES, not about verbs. The two-name
 # dedupe collapsed "Obtain the Secret Key from the house in Celadon City"
 # into "Obtain the S.S. Ticket from Celadon City" — two different things
@@ -7374,6 +7510,9 @@ def main():
                          "come before the stuck --goal; prints the leg "
                          "number and exits 0, or exits 3")
     ap.add_argument("--outline-path", type=Path, default=None)
+    ap.add_argument("--no-eras", action="store_true",
+                    help="--outline: skip the loose three-era conversation "
+                         "that is otherwise the first draft")
     ap.add_argument("--plan", type=Path, default=None,
                     help="--check-blocker: the stuck leg's own plan, so a "
                          "pull into a place that plan could not reach is "
@@ -7545,7 +7684,7 @@ def main():
         legs = (outline_skeleton(args.goal, args.model)
                 if args.outline_skeleton
                 else outline(args.goal, args.model,
-                             draws=args.draws))
+                             draws=args.draws, eras=not args.no_eras))
         if not legs:
             sys.exit("author failed to produce an outline")
         args.out.write_text("\n".join(legs) + "\n")
