@@ -62,6 +62,12 @@ GATES = [
      r"elite four|champion|indigo plateau", None, r"earth badge"),
 ]
 
+ARRIVE = re.compile(r"(reach|arrive|travel|go|sail|enter|walk|fly|ride|"
+                    r"navigate|cross|get to|head|make your way)\b", re.I)
+
+ACQUIRE = re.compile(r"(obtain|retrieve|get|receive|collect|find|acquire|"
+                     r"pick up|take|grab)\b", re.I)
+
 UPKEEP = re.compile(r"^(every party member|the party holds|a party pokemon "
                     r"knows|the party has|a .* type is in the party|"
                     r"a .* is in the party)", re.I)
@@ -109,9 +115,11 @@ def judge(legs: list) -> dict:
             flags.append(f"{name}: not named")
             continue
         j = _first(legs, before)
-        # the first OTHER leg that reaches the place it is got in
+        # the first leg that ARRIVES where it is got (or wins a badge
+        # there); a deed that merely names the town is not an arrival
         k = next((n for n, l in enumerate(legs)
-                  if n != i and re.search(after, l, re.I)), None)
+                  if n != i and re.search(after, l, re.I)
+                  and (ARRIVE.match(l) or "badge" in l.lower())), None)
         if wrong and re.search(wrong, legs[i], re.I):
             gates[name] = "?"
             flags.append(f"{name}: named at a wrong source — {legs[i]!r}")
@@ -148,7 +156,8 @@ def judge(legs: list) -> dict:
     for a in range(len(plain)):
         for b in range(a + 1, len(plain)):
             wa, wb = _words(plain[a][1]), _words(plain[b][1])
-            if len(wa & wb) >= 2:
+            both = len(wa & wb)
+            if both >= 2 and both / max(1, min(len(wa), len(wb))) >= 0.67:
                 dupes.append((plain[a][1], plain[b][1]))
     # ...and a thing the game hands over ONCE, named by two legs (run 15's
     # "Retrieve the Pokemon Flute from Mr. Fuji" and "Retrieve the
@@ -160,7 +169,9 @@ def judge(legs: list) -> dict:
                      ("hm01", r"hm01"), ("hm02", r"hm02"), ("hm03", r"hm03"),
                      ("hm04", r"hm04"), ("hm05", r"hm05"),
                      ("gold teeth", r"gold teeth"), ("parcel", r"parcel")]:
-        hits = [l for _, l in plain if re.search(rx, l, re.I)]
+        # two legs that GET it; a leg that then uses it is not a twin
+        hits = [l for _, l in plain if re.search(rx, l, re.I)
+                and ACQUIRE.match(l)]
         if len(hits) > 1 and not any(set(h) == set(hits) for h in
                                      ([x, y] for x, y in dupes)):
             dupes.append((hits[0], hits[1]))
