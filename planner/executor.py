@@ -1204,6 +1204,37 @@ def choose_battle_policy(subgoal: dict) -> tuple:
     return "traversal", "default"
 
 
+def drop_edges_contradicting_doors(explored: dict, door_dests: dict) -> int:
+    """Drop every door edge whose destination map contradicts the door's
+    own table, and say how many.
+
+    A DOOR HAS ONE DESTINATION, AND THE GAME'S TABLE KNOWS IT. use_warp
+    aimed at Victory Road 1F's ladder (1,1) was carried back out the
+    entrance instead, answered "warped", and the crossing was filed under
+    the ladder: "1,1 -> ROUTE_23|4,31", three times, while door_dests —
+    written from the game's own warp table as doors are walked — said
+    VICTORY_ROAD_2F (2026-09-06). An edge that names a map the door does
+    not lead to is a mis-filed crossing, not a fact about the door. Walk
+    and lift edges are not doors; LAST_MAP doors have no one answer and
+    are left alone. Pure over its arguments."""
+    n = 0
+    for region, edges in list((explored or {}).items()):
+        mid = str(region).split("|")[0]
+        table = (door_dests or {}).get(mid) or {}
+        for key, e in list((edges or {}).items()):
+            k = str(key)
+            if k.startswith("walk:") or k.startswith("lift:") or "," not in k:
+                continue
+            known = table.get(k.split("#")[0])
+            if not known or str(known) in ("LAST_MAP", "UNKNOWN", "None"):
+                continue
+            to = str((e or {}).get("to") or "") if isinstance(e, dict) else ""
+            if to and to.split("|")[0] != str(known):
+                del edges[key]
+                n += 1
+    return n
+
+
 # ----------------------------------------------------------------- executor
 class Executor:
     def __init__(self, bridge: Bridge, max_battle_turns: int = 40,
@@ -3795,6 +3826,11 @@ class Executor:
                                    for k, v
                                    in (data.get("reach_settings") or {}).items()}
             self.door_dests = data.get("door_dests") or {}
+            # ...and no door edge may contradict it (see the helper)
+            _nd = drop_edges_contradicting_doors(self.explored, self.door_dests)
+            if _nd:
+                print(f"[memory] {_nd} door edge(s) dropped: each named a "
+                      f"map the door's own table says it does not lead to")
             # Wipe counts persist: each campaign attempt is a fresh process
             # and the badge gate is one-strike, so the in-memory counter
             # reset before ever reaching 2 — the TOO-WEAK note was aimed at
@@ -5428,6 +5464,19 @@ class Executor:
         key = (f"{step.get('x')},{step.get('y')}"
                if step.get("x") is not None else step.get("dir"))
         if key is None:
+            return
+        # A LANDING THE DOOR'S OWN TABLE CONTRADICTS IS NOT THIS DOOR'S. The
+        # shim now refuses the op when another door fired, but a table
+        # that already knows where this door leads is the cheaper check,
+        # and it is the one that stops a poisoned edge at the source.
+        _dmap = str(src).split("|")[0]
+        _known = ((getattr(self, "door_dests", None) or {}).get(_dmap)
+                  or {}).get(str(key).split("#")[0])
+        if (_known and str(_known) not in ("LAST_MAP", "UNKNOWN", "None")
+                and "," in str(key) and str(dst).split("|")[0] != str(_known)):
+            self._count_visit(dst)
+            self.log("transition_dropped_contradicts_door", frm=src,
+                     via=key, landed=dst, door_leads=_known)
             return
         # A CROSSING MADE AT ANOTHER CELL OF THE SEAM IS NOT THE PLAIN ONE.
         # The uncork steps back out and re-crosses with skip=N, which lands

@@ -5178,10 +5178,28 @@ local function yield_ground(G)
     end
     return false
   end
+  -- STANDING ON A DOOR, A BLOCKED PRESS IS THE DOOR FIRING. The party
+  -- arrives on a map standing ON the mat it came in by, and an edge door
+  -- fires on a blocked step toward the edge (Warp.extraCheck) — so
+  -- "back off a tile" from the Victory Road entrance pressed DOWN into
+  -- the map's bottom row, the cell below being off-map and so not a
+  -- warp, and the press carried the party straight back out to Route 23
+  -- while use_warp was trying to reach the ladder (2026-09-06, user:
+  -- "shunted it out the door to rt 23 for some reason"). On a warp tile,
+  -- only a step that actually lands on walkable ground is a yield.
+  local on_warp = is_warp(p.cellX, p.cellY)
+  local okc, Collision = pcall(require, "src.world.Collision")
   for _, dir in ipairs({ "down", "up", "left", "right" }) do
     local d = DIRS[dir]
     if d and not is_warp(p.cellX + d[1], p.cellY + d[2]) then
-      if walk(G, dir, 1) then
+      local nx, ny = p.cellX + d[1], p.cellY + d[2]
+      local safe = true
+      if on_warp then
+        safe = ow.map and ow.map.inBounds and ow.map:inBounds(nx, ny)
+          and okc and Collision and Collision.canMove
+          and Collision.canMove(ow.map, ow.entities, p, dir) and true or false
+      end
+      if safe and walk(G, dir, 1) then
         U.wait(45)          -- NPCs pace on their own timer, not ours
         return true
       end
@@ -5260,7 +5278,16 @@ function OPS.use_warp(G, c)
       if (ow.map and ow.map.id) == startMap then return nil end
       local _note = safari_ended_note(G, _sf0)
       if stepped then return true, "warped" .. _note .. THAW_LAST end
-      return true, "crossed mid-walk (door unknown)" .. _note .. THAW_LAST
+      -- A DOOR YOU DID NOT ASK FOR IS NOT THE ONE YOU ASKED FOR. This
+      -- answered true, and the executor filed the landing against the
+      -- door the op was AIMED at: the 1F ladder at (1,1) went into the
+      -- ledger as leading to Route 23, three times (2026-09-06). The
+      -- party did move; the thing asked for did not happen.
+      local _now = G.overworld and G.overworld.map and G.overworld.map.id
+      return false, ("couldn't reach (%d,%d): the walk toward it crossed a "
+        .. "DIFFERENT door mid-way (door unknown) and the map is now %s. "
+        .. "That says nothing about where (%d,%d) leads")
+        :format(x, y, tostring(_now or "?"), x, y) .. _note .. THAW_LAST
     end
     -- Three passes, yielding ground between them: pass 1 is the plain
     -- walk, and each retry backs off a tile first so an NPC pinned by the
@@ -5399,15 +5426,32 @@ function OPS.use_warp(G, c)
   local _sf0u = safari_running(G)     -- use_warp discards attempt's detail
   for _, t in ipairs(tiles) do
     local ok, w = attempt(t.x, t.y)
-    if ok or (ow.map and ow.map.id) ~= startMap then
+    if ok then
       -- say WHERE a same-map warp put you; "warped" alone reads like
       -- nothing happened when the map id is unchanged
-      if (ow.map and ow.map.id) == startMap then
+      if (G.overworld and G.overworld.map and G.overworld.map.id) == startMap then
         local _pp = (G.overworld and G.overworld.player) or p
         return true, ("warped — same map, you are now at %d,%d")
           :format(_pp.cellX or -1, _pp.cellY or -1) .. THAW_LAST
       end
       return true, "warped" .. safari_ended_note(G, _sf0u) .. THAW_LAST
+    end
+    local _nowmap = G.overworld and G.overworld.map and G.overworld.map.id
+    if _nowmap ~= startMap then
+      -- the map changed under an attempt that did NOT reach its door:
+      -- some other door fired (see crossed() and yield_ground). Not a
+      -- success of the op that was asked for, whatever moved the party.
+      if type(w) == "string" and w:find("door unknown", 1, true) then
+        return false, w
+      end
+      local _pp = (G.overworld and G.overworld.player) or p
+      return false, ("couldn't reach the door at (%d,%d) — %s — and on the "
+        .. "way the party was carried through a DIFFERENT door (door "
+        .. "unknown): the map is now %s and you stand at (%d,%d). That "
+        .. "says nothing about where (%d,%d) leads")
+        :format(t.x, t.y, tostring(w or walk_why or "no path"),
+                tostring(_nowmap or "?"), _pp.cellX or -1, _pp.cellY or -1,
+                t.x, t.y) .. safari_ended_note(G, _sf0u) .. THAW_LAST
     end
     reached_any = reached_any or (w == "no fire")
   end

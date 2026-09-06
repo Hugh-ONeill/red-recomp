@@ -31,7 +31,8 @@ ck("...and names the clock when a warp ends it",
    "Ding-dong! Time's up!" in lua and "local function safari_ended_note" in lua)
 ck("the step-walk op says it", 'tostring(ow.map and ow.map.id)\n        .. safari_ended_note(G, _sf0)' in lua)
 ck("walk_to says it, whether it stepped or crossed",
-   '"warped" .. _note' in lua and '"crossed mid-walk (door unknown)" .. _note' in lua)
+   '"warped" .. _note' in lua
+   and ':format(x, y, tostring(_now or "?"), x, y) .. _note' in lua)
 ck("the explore loop says it", 'why = "warped to " .. tostring(ow.map and ow.map.id)\n        .. safari_ended_note(G, _sf0)' in lua)
 ck("each site captures the flag at op start", lua.count("local _sf0 = safari_running(G)") >= 3)
 
