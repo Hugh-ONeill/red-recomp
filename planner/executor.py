@@ -1313,6 +1313,9 @@ class Executor:
         self.region_seen: dict = {}         # region -> frontier count at last look
         self._dry_walks: dict = {}          # region -> explore walks there that swept nothing new
         self.unreached_at: dict = {}        # region -> ways out never taken no walk reached
+        self.switch_seen: dict = {}         # "MAP|x,y" -> {"open_at": seq when last seen OPEN, "shut": bool}
+        self._map_trail: list = []          # [[seq, map_id], ...] maps entered, in order
+        self._map_seq: int = 0              # how many map entries the trail has ever counted
         self.shut_settings: dict = {}       # map -> door -> switch settings
                                             # it was seen unreachable in
         self.reach_settings: dict = {}      # map -> thing -> switch settings
@@ -3056,6 +3059,63 @@ class Executor:
             return out
         return left
 
+    def _note_map(self, obs) -> None:
+        """The maps the party has entered, in order — its own path, kept so
+        the page can say "since then you have entered ..." about a thing
+        that changed while it was away. Consecutive repeats fold; each entry
+        carries a running number so a record can point at a moment in the
+        trail after the trail has been trimmed."""
+        mid = ((obs or {}).get("map") or {}).get("id")
+        if not mid or mid == "None":
+            return
+        tr = getattr(self, "_map_trail", None)
+        if tr is None:
+            tr = self._map_trail = []
+        if tr and tr[-1][1] == mid:
+            return
+        self._map_seq = int(getattr(self, "_map_seq", 0) or 0) + 1
+        tr.append([self._map_seq, mid])
+        del tr[:-40]
+
+    def _note_switches(self, obs) -> None:
+        """WHAT WAS UNSET SINCE YOU WERE HERE. Victory Road's barriers live
+        in event flags the game clears from OTHER maps — 1F's when 2F or the
+        Plateau lobby is entered, 2F's and 3F's when Route 23 is — so a run
+        that walks out to heal comes back to every way it opened shut again
+        and the boulders back at their starts (user, 2026-09-06). The page
+        says "what unsets it is not recorded here", which is true of the
+        RULE; the run's own record can still say the FACT: this way was open
+        the last time you stood on this floor, and here are the maps you
+        have entered since. Which of them did it is the model's to work out,
+        exactly as a player works it out. Recorded AFTER the round's page is
+        built, so the page reads the state as it stood.
+
+        Only a switch whose state the observation actually carries is
+        recorded: off screen it is nil and no claim is made."""
+        m = (obs or {}).get("map") or {}
+        mid = m.get("id")
+        if not mid or mid == "None":
+            return
+        recs = getattr(self, "switch_seen", None)
+        if recs is None:
+            recs = self.switch_seen = {}
+        changed = False
+        for c in m.get("boulder_switches") or []:
+            if not isinstance(c, dict) or c.get("open_now") is None:
+                continue
+            key = f"{mid}|{c.get('x')},{c.get('y')}"
+            rec = recs.get(key) or {}
+            if c["open_now"]:
+                new = {"open_at": int(getattr(self, "_map_seq", 0) or 0),
+                       "shut": False}
+            else:
+                new = {"open_at": rec.get("open_at"), "shut": True}
+            if new != rec:
+                recs[key] = new
+                changed = True
+        if changed:
+            self._save_memory()
+
     def _count_visit(self, region):
         """ONE ARRIVAL, ONE VISIT. Two places counted: note_transition on a
         recorded crossing, and _note on the settle that follows it — so every
@@ -3303,6 +3363,10 @@ class Executor:
             self._ghost_said = data.get("ghost_said", "") or ""
             self._dry_walks = data.get("dry_walks", {}) or {}
             self.unreached_at = data.get("unreached_at", {}) or {}
+            self.switch_seen = data.get("switch_seen", {}) or {}
+            self._map_trail = [list(e) for e in (data.get("map_trail", []) or [])
+                               if isinstance(e, (list, tuple)) and len(e) == 2]
+            self._map_seq = int(data.get("map_seq", 0) or 0)
             # A BLOCK STAMPED BY A FOOT-ONLY REPLAY IS NOT A FACT ABOUT THE
             # WORLD. Until 2026-09-05 an intra-map walk was replayed on
             # foot however it was made, so the swims between Route 20's two
@@ -3915,6 +3979,9 @@ class Executor:
                  "ghost_said": getattr(self, "_ghost_said", ""),
                  "dry_walks": getattr(self, "_dry_walks", {}),
                  "unreached_at": getattr(self, "unreached_at", {}),
+                 "switch_seen": getattr(self, "switch_seen", {}),
+                 "map_trail": list(getattr(self, "_map_trail", []) or [])[-40:],
+                 "map_seq": int(getattr(self, "_map_seq", 0) or 0),
                  "no_cross": {r: sorted(s)
                               for r, s in self._no_cross.items()},
                  "no_cross_at": self._no_cross_at,
@@ -13165,6 +13232,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # note_transition rewrites it the moment a warp lands
             _arr_snap = (getattr(self, "_arrived", None),
                          getattr(self, "_came_from", None))
+            self._note_map(obs)
             before = self._snapshot(obs)
             traversal = op in ("cross", "walk_to", "use_warp", "grind", "sweep")
             blackout = None
@@ -14474,6 +14542,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             self._stop_if_asked()
             rnd += 1
             start = self.settle()
+            self._note_map(start)
             # NEVER ASK THE MODEL FROM INSIDE A FIGHT. settle() resolves
             # dialogue but not battles, so a wild that jumped the party at
             # the end of the last round left mode=="battle" standing here —
@@ -14641,6 +14710,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # played its "got it!" text into a 20-of-20 bag and vanished.
             # The game normally says "no room" on screen; say it here.
             memory += self._bag_pressure_line(start)
+            # the switches as they stood on this page, for the next page's
+            # "it was open the last time you stood here" (see _note_switches)
+            self._note_switches(start)
             # A TM IS ONLY MENTIONED WHEN THE BAG IS FULL, which is the
             # one moment it is least likely to be the right move: the note
             # above lists using one as a way to FREE A SLOT, so TMs sit

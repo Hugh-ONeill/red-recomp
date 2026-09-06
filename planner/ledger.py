@@ -2382,6 +2382,35 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                    + ("" if c.get("open_now") is None else
                       " — THAT WAY IS OPEN RIGHT NOW" if c["open_now"]
                       else " — that way is SHUT right now"))
+            # ...AND WHAT WAS UNSET WHILE YOU WERE AWAY. The run's own
+            # record: the way was open the last time the party stood on
+            # this floor, and these are the maps it has entered since. The
+            # rule that did it is the game's; the path is the run's.
+            _since = ""
+            if c.get("open_now") is False:
+                _rec = ((getattr(ex, "switch_seen", None) or {})
+                        .get(f"{m.get('id')}|{c.get('x')},{c.get('y')}") or {})
+                _oa = _rec.get("open_at")
+                _tr = list(getattr(ex, "_map_trail", None) or [])
+                if _oa is not None:
+                    _walk = [e[1] for e in _tr
+                             if isinstance(e, (list, tuple)) and len(e) == 2
+                             and int(e[0]) > int(_oa)]
+                    if _walk and _walk[-1] == str(m.get("id") or ""):
+                        _walk = _walk[:-1]
+                    _uniq = list(dict.fromkeys(_walk))
+                    _cut = bool(_tr) and int(_tr[0][0]) > int(_oa) + 1
+                    _since = (" — IT WAS OPEN THE LAST TIME YOU STOOD ON THIS "
+                              "FLOOR and it is shut now, so something between "
+                              "then and now unset it. Since then you have "
+                              "entered: "
+                              + (("…, " if _cut else "")
+                                 + ", ".join(_uniq[:8])
+                                 + ("…" if len(_uniq) > 8 else "")
+                                 if _uniq else "no other map")
+                              + ". Which of those did it is not recorded here; "
+                                "your own path is")
+            _op += _since
             if c.get("held"):
                 return _at + _op + " — a BOULDER IS ON IT NOW"
             # WHETHER *YOU* CAN STAND THERE IS THE WRONG TEST. A boulder
