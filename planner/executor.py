@@ -10202,8 +10202,27 @@ class Executor:
                 _c = self._route(here, _r2)
                 if _c is not None and (_p is None or len(_c) < len(_p)):
                     _p = _c
-            if _p is None:
-                continue
+            # A FLOOR YOU CANNOT ROUTE TO RIGHT NOW IS STILL A FLOOR. This
+            # dropped any floor with no walked route from here — and the
+            # one intra-map swim between Route 23's halves was stamped
+            # blocked, so from the cave's own doorstep every floor of
+            # Victory Road vanished from this list while the run stood on
+            # Route 23 planning to walk north into the Plateau (2026-09-06,
+            # user: "hooked on trying to get to indigo plateau without going
+            # through victory road"). A route being unknown right now is a
+            # fact about the graph, said as such; the floor's unfinished
+            # ways are a fact about the world and stay on the page.
+            # ...AND A DOOR SEEN BUT NEVER REACHED IS ITS OWN KIND. The four
+            # ways out of Victory Road 2F the run saw and could never walk
+            # to (the barriers) were filed under "on parts you have never
+            # stood on" — but they were seen from the part it stood on, and
+            # the floor's own page said so. That is the puzzle floor's
+            # signature, and it ranks between a plain untried door and a
+            # part never stood on.
+            _unr = set()
+            for _r2, _ks in (getattr(self, "unreached_at", None) or {}).items():
+                if str(_r2).split("|")[0] == _mid:
+                    _unr |= {str(k) for k in (_ks or [])}
             # NEVER TAKEN IS NOT NEVER STOOD BESIDE. This line called every
             # untaken door "on parts you have never stood on … how to reach
             # the rest is not known" — including Route 5's underground-path
@@ -10230,9 +10249,11 @@ class Executor:
                                         or len(_pr) < _open_dist):
                     _open_dist = len(_pr)
             _open = sorted(_left & _fr)
-            _far = sorted(_left - _fr)
+            _barred = sorted((_left - _fr) & _unr)
+            _far = sorted(_left - _fr - _unr)
             _rows.append((_open_dist if (_open and _open_dist is not None)
-                          else len(_p), _mid, len(_doors), _open, _far))
+                          else (len(_p) if _p is not None else 99),
+                          _mid, len(_doors), _open, _far, _barred))
         if _rows:
             # A FLOOR WITH A DOOR YOU CAN GO BACK AND OPEN OUTRANKS ONE
             # WHOSE UNFINISHED PART IS UNREACHABLE. Sorted by distance
@@ -10240,9 +10261,14 @@ class Executor:
             # doors on ground already stood in, the only way to the Fly
             # house — was crowded out by floors whose only "unfinished"
             # part cannot be walked to at all, for four attempts.
-            _rows.sort(key=lambda r: (0 if r[3] else 1, r[0], r[1]))
-            def _floor_row(_n, _m, _t, _open, _far):
+            _rows.sort(key=lambda r: (0 if r[3] else 1 if r[5] else 2,
+                                      r[0], r[1]))
+            def _floor_row(_n, _m, _t, _open, _far, _barred=()):
                 parts = []
+                _legs = (f"{_n} leg(s) away" if _n < 99 else
+                         "no walked route from here right now (a way you "
+                         "walked before is stamped blocked or its door is "
+                         "shut, so replay cannot get there from here)")
                 if _open:
                     # "PLAIN" IS A CLAIM, AND FOR TWO OF THESE IT IS FALSE.
                     # B4F's (20,17)/(21,17) were advertised here as plain
@@ -10257,7 +10283,7 @@ class Executor:
                         parts.append(
                             f"{len(_open)} never taken and on ground you "
                             f"have stood on ({', '.join(_open[:4])}), "
-                            f"{_n} leg(s) away — but "
+                            f"{_legs} — but "
                             + ("both of those" if len(_bad) == len(_open)
                                and len(_bad) == 2 else
                                "all of those" if len(_bad) == len(_open)
@@ -10269,7 +10295,15 @@ class Executor:
                         parts.append(
                             f"{len(_open)} never taken and on ground you "
                             f"have stood on ({', '.join(_open[:4])}) — "
-                            f"plain untried doors, {_n} leg(s) away")
+                            f"plain untried doors, {_legs}")
+                if _barred:
+                    parts.append(
+                        f"{len(_barred)} seen from ground you have stood on "
+                        f"and never taken, and no walk from there reached "
+                        f"them ({', '.join(_barred[:4])}) — something in "
+                        f"between that a walk could not pass; that floor's "
+                        f"own page says what"
+                        + ("" if _open else f", {_legs}"))
                 if _far:
                     parts.append(f"{len(_far)} on parts you have never stood "
                                  f"on ({', '.join(_far[:4])})")
@@ -10284,15 +10318,23 @@ class Executor:
             # The sibling list below already learned this: name every
             # floor, the near ones in full and the rest in a short form,
             # and count only a very long tail.
-            _full = "; ".join(_floor_row(*r) for r in _rows[:3])
-            _rest = _rows[3:30]
-            _more = len(_rows) - 3 - len(_rest)
+            # THE NEAR PUZZLE FLOOR IS SAID IN FULL. Tiering by "has a door
+            # you can go back and open" put VICTORY_ROAD_2F — four barred
+            # ways, one leg away — fifteenth in the "also" tail behind
+            # Saffron at 25 legs and the Safari gate at 41. A floor within
+            # three legs with anything to go back for reads in full.
+            _near = [r for r in _rows[3:] if r[0] <= 3 and (r[3] or r[5])]
+            _head_rows = _rows[:3] + _near
+            _restall = [r for r in _rows[3:] if r not in _near]
+            _full = "; ".join(_floor_row(*r) for r in _head_rows)
+            _rest = _restall[:30]
+            _more = len(_restall) - len(_rest)
             _tail = ""
             if _rest:
                 _tail = ("; also " + ", ".join(
-                    f"{_m} ({len(_o) + len(_f)} of {_t} never taken, "
-                    + (f"{_n} leg(s))" if _n < 99 else "no walked route)")
-                    for _n, _m, _t, _o, _f in _rest))
+                    f"{_m} ({len(_o) + len(_f) + len(_b)} of {_t} never taken, "
+                    + (f"{_n} leg(s))" if _n < 99 else "no walked route from here right now)")
+                    for _n, _m, _t, _o, _f, _b in _rest))
             if _more > 0:
                 _tail += f"; and {_more} more floor(s) not named"
             floor_away = ("\nFLOORS YOU HAVE WALKED THAT ARE NOT FINISHED: "
@@ -10340,6 +10382,14 @@ class Executor:
                     for _d, _n, _m in _shown)
                 + (f"; and {len(_urows) - len(_shown)} more floor(s)"
                    if len(_urows) > len(_shown) else "")
+                # ...AND THE ONES NO WALKED ROUTE REACHES RIGHT NOW, which
+                # sort last and were cut with the tail: Victory Road 3F's
+                # seven spots sat in "and 68 more floor(s)" from Route 23.
+                + ((". No walked route from here right now reaches: "
+                    + ", ".join(f"{_m} ({-_n} spot(s))"
+                                for _d, _n, _m in [r for r in _urows[len(_shown):]
+                                                   if r[0] >= 99][:6]))
+                   if any(r[0] >= 99 for r in _urows[len(_shown):]) else "")
                 + ". What is past those spots is not known — one spot can "
                   "open onto most of a floor; the cell count says how much "
                   "you have looked at, not how big the floor is.")
@@ -13694,6 +13744,28 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                            and t.get("x") == _x and t.get("y") == _y
                            for t in (((_o or {}).get("map") or {})
                                      .get("objects") or []))
+            # A RESUMED PUSH FOLLOWS THE BOULDER. The re-send carried the
+            # cell the boulder stood on when the op was WRITTEN, and a push
+            # the grass interrupted had already moved it — so every resume
+            # answered "nothing is standing at (15,14) to push" about a
+            # boulder two cells on (Victory Road 1F, 2026-09-06; the model
+            # fixed it by hand a round later). The boulder that moved is the
+            # one whose cell is new since the op began; when exactly one is,
+            # the resume aims there.
+            _rocks0 = {(t.get("x"), t.get("y"))
+                       for t in (((pre_obs or {}).get("map") or {})
+                                 .get("objects") or [])
+                       if isinstance(t, dict) and t.get("kind") == "boulder"}
+
+            def _follow(_step, _o):
+                _now = {(t.get("x"), t.get("y"))
+                        for t in (((_o or {}).get("map") or {})
+                                  .get("objects") or [])
+                        if isinstance(t, dict) and t.get("kind") == "boulder"}
+                _new = list(_now - _rocks0)
+                if len(_new) == 1 and _new[0] != (_step.get("x"), _step.get("y")):
+                    return dict(_step, x=int(_new[0][0]), y=int(_new[0][1]))
+                return dict(_step)
 
             _pdet = str((r or {}).get("detail") or "")
             if (op == "push" and step.get("to_x") is not None
@@ -13717,7 +13789,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # for the verdict printed "FAILED — None" over the
                     # shim's "no sequence of shoves puts it on (9,16)"
                     # (Victory Road 2F, 2026-08-28).
-                    _ro = self.b.send("push", **step)
+                    _cur = _follow(step, obs)
+                    if (_cur.get("x"), _cur.get("y")) != (step.get("x"), step.get("y")):
+                        self.log("push_resume_followed", subgoal=sg.get("id"),
+                                 frm=f"{step.get('x')},{step.get('y')}",
+                                 to=f"{_cur.get('x')},{_cur.get('y')}")
+                    _ro = self.b.send("push", **_cur)
                     r = (_ro or {}).get("result") or {}
                     obs = self.settle()
                     _tries += 1

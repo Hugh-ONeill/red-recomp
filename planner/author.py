@@ -1056,6 +1056,46 @@ def validate(plan: dict) -> list:
                 f"not_area carves off the region you are LEAVING, and the "
                 f"ledger names the ones you have stood in.")
 
+    # A MAP YOU HAVE STOOD ON IS ALREADY REACHED. "Navigate through the exit
+    # of Victory Road to reach Route 23" ended on {"map": "ROUTE_23"}, and
+    # the run had walked in from Route 23's south half — so stepping back
+    # out the door it came in by satisfied the step, and the plan then tried
+    # to walk north into the Plateau from a half that does not touch it
+    # (2026-09-06, user: "hooked on trying to get to indigo plateau without
+    # going through victory road, or thinking its already gotten through
+    # somehow when it hasnt"). new_part exists for exactly this and was not
+    # used. When a BARE map condition names a map this run has stood on and
+    # the step's own words say it comes OUT of somewhere, the author has to
+    # choose; nothing here says which.
+    _OUT = re.compile(r"\b(exit|exits|exiting|leave|leaves|leaving|emerge|"
+                      r"emerges|emerging|come out|comes out|coming out|"
+                      r"out of|other side|far side)\b", re.I)
+    _vr5 = visited_regions()
+    _walked_maps = {str(r).split("|")[0] for r in _vr5}
+    for _i5, _s5 in enumerate(subs or []):
+        if not isinstance(_s5, dict):
+            continue
+        _dw5 = _s5.get("done_when") or {}
+        if not isinstance(_dw5, dict) or set(_dw5) != {"map"}:
+            continue
+        _m5 = str(_dw5.get("map") or "")
+        _words5 = f"{_s5.get('goal_text') or ''} {_s5.get('id') or ''}"
+        if _m5 in _walked_maps and _OUT.search(_words5.replace("_", " ")):
+            _parts5 = sorted(r for r in _vr5 if str(r).split("|")[0] == _m5)
+            probs.append(
+                f"subgoal[{_i5}] ({_s5.get('id')}) ends on "
+                f"{{\"map\": \"{_m5}\"}} and its words say it comes OUT "
+                f"somewhere — but this run has already stood on {_m5} "
+                f"({', '.join(_parts5[:4])}), so that condition is TRUE the "
+                f"moment you stand on any part you already know: walking "
+                f"back out the door you came in by satisfies it, and the "
+                f"step would count as done with nothing crossed. If this "
+                f"step means coming out on a part of {_m5} you have NOT "
+                f"stood on — the far side of a cave, the other half of a "
+                f"split route — write {{\"new_part\": \"{_m5}\"}}. If any "
+                f"part of {_m5} will do, keep {{\"map\"}} and say so in "
+                f"the goal_text instead of exit/out.")
+
     # A FINAL FLAG THAT HAS ALREADY FIRED can witness nothing: the inserted
     # "Defeat the Team Rocket Admin" leg ended on EVENT_GOT_TM34 — Brock's
     # TM, fired hours before — so the plan completed in seconds twice and

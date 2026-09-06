@@ -15,7 +15,7 @@ src = (ROOT / "planner" / "executor.py").read_text()
 checks = []
 def ck(name, ok): checks.append((name, bool(ok)))
 ck("the resumed push unwraps the result envelope",
-   'r = (_ro or {}).get("result") or {}' in src and '_ro = self.b.send("push", **step)' in src)
+   'r = (_ro or {}).get("result") or {}' in src and '_ro = self.b.send("push", **_cur)' in src)
 ck("no bare send is taken for a verdict on the resume path",
    'r = self.b.send("push", **step)' not in src)
 # the bridge contract this rests on: send() returns the observation

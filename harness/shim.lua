@@ -7326,7 +7326,18 @@ function OPS.push(G, c)
     if npc.cellX == c.x and npc.cellY == c.y then rock = npc end
   end
   if not rock then
+    -- ...AND WHERE THEY ARE. A resumed push named the cell the boulder
+    -- had already been shoved off; say where the boulders stand now.
+    local _rocks = {}
+    for _, npc in ipairs(ow.npcs or {}) do
+      if ((npc.def or {}).sprite) == "SPRITE_BOULDER" and npc.cellX then
+        _rocks[#_rocks + 1] = ("(%d,%d)"):format(npc.cellX, npc.cellY)
+      end
+    end
     return false, ("nothing is standing at (%d,%d) to push"):format(c.x, c.y)
+      .. (#_rocks > 0 and (" — the boulders on this floor stand at "
+          .. table.concat(_rocks, ", ") .. "; a boulder already shoved is "
+          .. "where it was shoved to, not where it began") or "")
   end
   if ((rock.def or {}).sprite) ~= "SPRITE_BOULDER" then
     return false, ("what is at (%d,%d) is %s, not a boulder — only a "

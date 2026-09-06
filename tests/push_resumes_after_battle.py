@@ -27,7 +27,7 @@ def ck(name, ok):
 
 # the executor half: decide from the floor
 i = src.find("DO NOT ASK THE OP WHETHER IT WORKED")
-block = src[i:i + 3200] if i > 0 else ""
+block = src[i:i + 5200] if i > 0 else ""
 ck("the executor checks the floor, not the op", i > 0)
 ck("...by looking for a boulder on the target cell",
    'get("kind") == "boulder"' in block)

@@ -26,13 +26,13 @@ ck("the bare cut at three is gone",
 ck("the nearest few are still named in full",
    "_full = " in blk and "_rows[:3]" in blk)
 ck("...and the rest are named, not dropped",
-   "_rest = _rows[3:30]" in blk and "also " in blk)
+   "_rest = _restall[:30]" in blk and "also " in blk)
 ck("...each with how many of its doorways are untaken and how far",
    "never taken, " in blk and "leg(s))" in blk)
 ck("...saying so when there is no walked route to one",
-   "no walked route)" in blk)
+   "no walked route from here right now)" in blk)
 ck("a tail beyond that is COUNTED, never silently dropped",
-   "_more = len(_rows) - 3 - len(_rest)" in blk
+   "_more = len(_restall) - len(_rest)" in blk
    and "more floor(s) not named" in blk)
 
 # the sibling list is the precedent; if it regresses, this rule has no anchor

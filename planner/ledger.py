@@ -1926,6 +1926,41 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                                         getattr(_E, "MAP_EDGES", {}) or {})
     except Exception:
         pass
+    # NO PART YOU HAVE STOOD ON TOUCHES THAT SIDE. The printed map said
+    # "north -> INDIGO_PLATEAU (that side never on screen)" and the run
+    # spent an attempt surfing Route 23's pond to "uncover the northern
+    # boundary", while both halves of Route 23 it knows were fully seen and
+    # the cave door was the only way on (2026-09-06). Each fact was on the
+    # page; the conclusion the run's own record supports was not: when
+    # every part of this map you have stood on is fully seen and a side has
+    # never been on screen, nothing you can walk or swim to reaches that
+    # side, so the way to it starts somewhere else. Where, is not said.
+    if _unseen_sides:
+        try:
+            _mid0 = str(m.get("id") or "")
+            _parts0 = sorted({str(r) for r in
+                              list(getattr(ex, "visits", {}) or {})
+                              + list(getattr(ex, "explored", {}) or {})
+                              if str(r).split("|")[0] == _mid0})
+            _sn0 = m.get("seen") or {}
+            _here_done = all(int(_sn0.get(k, 0) or 0) == 0 for k in
+                             ("frontier_n", "frontier_water_n",
+                              "frontier_stale_n"))
+            _rs0 = getattr(ex, "region_seen", None) or {}
+            _others_done = all(int(_rs0.get(r, 0) or 0) == 0
+                               for r in _parts0 if r != here)
+            if _parts0 and _here_done and _others_done:
+                head += (". NO PART OF THIS MAP YOU HAVE STOOD ON TOUCHES ITS "
+                         + " OR ".join(x.upper() for x in _unseen_sides)
+                         + f" SIDE: you have stood on {len(_parts0)} part(s) "
+                           f"of it ({', '.join(_parts0[:4])}), every one of "
+                           "them fully seen, and nothing you can walk or swim "
+                           "to from any of them reaches that side. Whatever "
+                           "reaches it starts somewhere else — a part of this "
+                           "map you have never stood on, entered from another "
+                           "map or another floor — not from where you know")
+        except Exception:
+            pass
     # UNSEEN GROUND IS SAID IN THE HEAD LINE, not only at the foot of the
     # page (executor coverage_text): the first-listed thing is taken 54%
     # of the time, and a page that opened "FULLY WORKED" over a floor with
