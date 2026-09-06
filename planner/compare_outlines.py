@@ -111,6 +111,16 @@ def judge(legs: list) -> dict:
     out["badges_missing"] = [n.capitalize() for n, c in BADGES
                              if c not in out["badges"]]
     out["upkeep"] = sum(1 for l in legs if UPKEEP.search(l))
+    # the maintenance legs by kind: the level curve, type asks, move asks,
+    # party-size asks — the user reads these before anything else
+    out["levels"] = [int(m) for l in legs if UPKEEP.search(l)
+                     for m in re.findall(r"level (\d+)", l, re.I)]
+    out["types"] = sum(1 for l in legs if UPKEEP.search(l)
+                       and re.search(r"\btype\b", l, re.I))
+    out["moves"] = sum(1 for l in legs if UPKEEP.search(l)
+                       and re.search(r"\bknows\b", l, re.I))
+    out["size"] = sum(1 for l in legs if UPKEEP.search(l)
+                      and re.search(r"at least \d+ pokemon", l, re.I))
     # gates
     gates, flags = {}, []
     for name, need, before, wrong, after in GATES:
@@ -213,14 +223,15 @@ def main(paths):
     names = [str(p.name) for p, _, _ in rows]
     w = max(len(n) for n in names)
     gate_names = [g[0] for g in GATES]
-    print(f"{'outline':<{w}}  legs  badges    upkeep  time    "
+    print(f"{'outline':<{w}}  legs  badges    upkeep  {'levels':<16} time    "
           + "  ".join(g[:8].center(8) for g in gate_names))
     for p, legs, j in rows:
         t = f"{j['seconds'] // 60}m{j['seconds'] % 60:02d}s" if j["seconds"] else "--"
         b = j["badges"] + ("" if not j["badges_missing"]
                            else f" -{len(j['badges_missing'])}")
+        lv = "/".join(str(x) for x in j["levels"]) or "--"
         print(f"{p.name:<{w}}  {j['legs']:>4}  {b:<9} {j['upkeep']:>6}  "
-              f"{t:<7} "
+              f"{lv:<16} {t:<7} "
               + "  ".join(j["gates"][g].center(8) for g in gate_names))
     print("\n  ✓ named and in a place that can work   ↓ named, but after what "
           "needs it   ↑ named before the town it is got in   ? named at a "
@@ -230,6 +241,10 @@ def main(paths):
     for p, legs, j in rows:
         print(f"\n== {p.name}: {j['legs']} legs"
               + (f", {j['seconds']}s" if j["seconds"] else ""))
+        print(f"   maintenance: {j['upkeep']} legs — levels "
+              f"{'/'.join(str(x) for x in j['levels']) or 'none'}; "
+              f"{j['types']} type ask(s), {j['moves']} move ask(s), "
+              f"{j['size']} party-size ask(s)")
         if j["badges_missing"]:
             print(f"   MISSING BADGES: {', '.join(j['badges_missing'])}")
         for f in j["flags"]:
