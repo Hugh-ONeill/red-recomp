@@ -1878,6 +1878,37 @@ class Executor:
         except (OSError, AttributeError):
             pass
 
+    def _later_steps_true(self, sg, obs) -> list:
+        """The plan's LATER steps whose condition already holds where the
+        party stands: [(id, done_when), ...], in plan order.
+
+        A PLAN'S OWN CONDITIONS, READ AGAINST THE SCREEN. Run 16's Vermilion
+        plan went Route 5 -> Saffron City -> Route 6 -> Vermilion; the party
+        found the Underground Path and came up on Route 6 with the Saffron
+        step still the one in play, and nothing on the page said that the
+        step AFTER it was already true. It walked back north to work on
+        Saffron — a thirsty guard — and the attempt died on Route 24
+        (2026-09-07). {"op":"skip"} was there the whole time; the model
+        could not know it applied. Saying which later steps hold decides
+        nothing: whether this step is still needed is its call."""
+        subs = (self.plan or {}).get("subgoals") or []
+        idx = next((i for i, s2 in enumerate(subs)
+                    if isinstance(s2, dict) and s2.get("id") == sg.get("id")),
+                   None)
+        if idx is None:
+            return []
+        out = []
+        for s2 in subs[idx + 1:]:
+            if not isinstance(s2, dict):
+                continue
+            dw = s2.get("done_when")
+            try:
+                if dw and pred_holds(dw, obs):
+                    out.append((s2.get("id"), dw))
+            except Exception:
+                continue
+        return out
+
     def _count_blackout(self, target, obs) -> bool:
         """ONE WIPE, COUNTED ONCE. Four detectors notice a blackout — the
         state watch, the battle handler, the op-result reader and the
@@ -16284,6 +16315,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                    if m.get("max_hp")]
             if _pl:
                 stuck_note += "\nYOUR PARTY RIGHT NOW: " + "; ".join(_pl) + "."
+            # A LATER STEP THAT IS ALREADY TRUE IS SAID (_later_steps_true).
+            _later = self._later_steps_true(sg, cur) if cur.get("mode") == "overworld" else []
+            if _later:
+                stuck_note += (
+                    "\nLATER STEPS OF THIS PLAN THAT ARE ALREADY TRUE WHERE "
+                    "YOU STAND: " + "; ".join(
+                        f"{i2} ({json.dumps(dw2)})" for i2, dw2 in _later[:3])
+                    + ". This step is still the one in play. If it is not "
+                      "needed for what comes after, {\"op\":\"skip\"} ends "
+                      "it and the plan moves on; whether it is needed is "
+                      "yours to judge.")
             # SAID ONCE, WHEREVER IT WAS NOTICED. The walk-back note below
             # only speaks when a route home exists; the knockout itself has
             # to be said either way, because the op that was in flight has
