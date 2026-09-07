@@ -1567,6 +1567,24 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                         for j, x in enumerate(_segs)) + "$")
                     _mem = sorted(f for f in ENGINE_FLAGS
                                   if _pat.match(f) and f != v)
+                    # ...BUT A BLANK BESIDE A NUMBER THAT FITS NOTHING IS
+                    # STILL THE SERIES THE MODEL NAMED. "EVENT_BEAT_SS_ANNE
+                    # _N_TRAINER_14" (2026-09-07) has the blank AND a
+                    # trainer number no group reaches, so the strict shape
+                    # matched nothing and the author got no list at all —
+                    # one round after the hint had been rebuilt to give the
+                    # whole series. With a blank present the words are the
+                    # model's series and the numbers are its guesses at
+                    # the members: the words stay literal, so no other
+                    # place's events can be suggested, and the numbers
+                    # widen to blanks.
+                    if not _mem:
+                        _pat2 = _re.compile("^" + "_".join(
+                            r"[A-Z0-9]+" if (j in _blank or x.isdigit())
+                            else _re.escape(x)
+                            for j, x in enumerate(_segs)) + "$")
+                        _mem = sorted(f for f in ENGINE_FLAGS
+                                      if _pat2.match(f) and f != v)
                 if not _mem:
                     _ser = _re.sub(r"_[A-Z0-9]+$", "", str(v))
                     _mem = sorted(f for f in ENGINE_FLAGS
