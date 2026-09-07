@@ -5936,6 +5936,10 @@ def recognize_done(start: str, model: str, listed: list) -> list:
     got = ans.get("done")
     if not isinstance(got, list) or not got:
         return []
+    if _inferred(ans.get("why")):
+        print(f"[sweep] refused: the reason infers rather than points — "
+              f"{str(ans.get('why') or '')[:160]}", file=sys.stderr)
+        return []
     rows = [(str(r.get("did") or "").strip(),
              str(r.get("opens") or "").strip())
             for r in got if isinstance(r, dict)]
@@ -5989,6 +5993,28 @@ Reply with ONLY {"why": "<one sentence>", "done": true} or
 {"why": "<one sentence>", "done": false} — the why comes first."""
 
 
+_INFERRED = re.compile(
+    r"\b(impl(?:y|ies|ying|ied)|suggest(?:s|ing|ed)?|likely|probably|"
+    r"presumably|should have|must have|would have|assum(?:e|es|ing|ed)|"
+    r"so (?:it|they|the \w+) (?:is|are|was|were) (?:presumably|likely))\b",
+    re.I)
+
+
+def _inferred(why) -> bool:
+    """A DONE VERDICT THAT REASONS FROM ONE FACT TO ANOTHER IS NOT A
+    VERDICT. check-done crossed "Chase the Team Rocket thief out of the
+    burgled house" off run 16 with the reason "the player has already
+    helped Bill, and the event record indicates they have left Bill's
+    house, IMPLYING the thief sequence in Cerulean is complete" — no
+    EVENT_BEAT_CERULEAN_ROCKET_THIEF, no TM28 in the bag, the house never
+    entered (2026-09-07). The prompts already ask for something you can
+    point at; the model's own hedging words (implying, suggests, likely,
+    presumably, must have) are the tell that it is pointing at nothing.
+    Refusing a hedged claim decides nothing about the objective — the leg
+    simply runs — and it never refuses a reason that names the fact."""
+    return bool(_INFERRED.search(str(why or "")))
+
+
 def check_already_done(deed: str, start: str, model: str,
                        observed=None) -> bool:
     """Has this objective ALREADY been accomplished, at any point in the run?
@@ -6023,6 +6049,11 @@ def check_already_done(deed: str, start: str, model: str,
         m = re.search(r"\{.*\}", reply, re.S)
         ans = json.loads(m.group(0)) if m else {}
     except (ValueError, KeyError, OSError, AttributeError):
+        return False
+    if ans.get("done") and _inferred(ans.get("why")):
+        print(f"[already-done] refused: the reason reasons from one fact to "
+              f"another instead of pointing at the deed — "
+              f"{str(ans.get('why') or '')[:160]}", file=sys.stderr)
         return False
     if ans.get("done"):
         print(f"[already-done] {str(ans.get('why') or '')[:160]}",
@@ -6084,6 +6115,10 @@ def sweep_already_done(ahead: list, start: str, model: str,
         return []
     want = ans.get("done")
     if not isinstance(want, list) or not want:
+        return []
+    if _inferred(ans.get("why")):
+        print(f"[sweep] refused: the reason infers rather than points — "
+              f"{str(ans.get('why') or '')[:160]}", file=sys.stderr)
         return []
     by_n = dict(ahead)
     cand = []
@@ -7766,6 +7801,10 @@ def check_done(goal: str, start: str, model: str,
         print("[check-done] no parseable answer")
         return False
     _why = str(_ans.get("why") or "")[:240]
+    if _ans.get("done") and _inferred(_why):
+        print(f"[check-done] refused: the reason reasons from one fact to "
+              f"another instead of pointing at the deed — {_why}")
+        return False
     print(f"[check-done] {'done' if _ans.get('done') else 'not done'}: {_why}")
     return bool(_ans.get("done"))
 
