@@ -42,8 +42,8 @@ ck("a warp whose look is lift renders as a lift door", isinstance(lab, str) and 
 ck("...as one door two tiles wide, its other tile unnamed (a coordinate on the page is a place to go, 2026-09-07)",
    isinstance(lab, str) and "elevator door (24,19), two tiles wide" in lab and "25" not in lab, lab)
 lua = (ROOT / "harness" / "shim.lua").read_text()
-ck("the shim marks the look from the tile drawn on an elevator warp",
-   'if _look == "door" and type(dest) == "string"\n             and dest:match("_ELEVATOR$") then\n            _look = "lift"' in lua)
+ck("the shim marks the look from the TILE drawn on an elevator warp, never from where it leads",
+   '[88] = "lift"' in lua and '[56] = "lift"' in lua and 'dest:match("_ELEVATOR$")' not in lua)
 src = (ROOT / "planner" / "ledger.py").read_text()
 ck("...and the page has the game's word for it", 'if _l == "lift":' in src and 'return f"elevator door ({_key}){_tw}"' in src)
 ck("the destination is not said by the look", "ELEVATOR" not in (lab or ""))

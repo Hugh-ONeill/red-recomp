@@ -62,6 +62,13 @@ ck("...and stays 'stairs/ladder' when the drawing does not settle it",
    L.Candidate(key="1,1", kind="door", look="stairs").label() == "stairs/ladder (1,1)")
 ck("a door is still a door", L.Candidate(key="9,11", kind="door").label() == "door (9,11)")
 
+ck("the elevator door is known by its tile (Silph's 88, Celadon's and the car's 56)",
+   table.get(("FACILITY", 88)) == "lift" and table.get(("LOBBY", 56)) == "lift")
+ck("...and the hideout's mat-drawn entry is not called one",
+   ("FACILITY", 66) not in table and ("FACILITY", 82) not in table)
+ck("the drawing is consulted before the engine's door-animation list",
+   sh.index("local _wl0 = WARP_LOOKS[md and md.tileset]") < sh.index("if lm and lm.isDoorTileCell and lm:isDoorTileCell(x, y) then"))
+
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:
     print(("ok  " if ok else "FAIL"), n)

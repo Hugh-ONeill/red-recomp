@@ -41,6 +41,58 @@ def floor(mid):
     return -int(t[1:]) if t.startswith("B") else int(t)
 
 
+def lift_tiles():
+    """(tileset, cell tile) -> "lift": the elevator-door graphic. A tile whose
+    warps ALL lead into an *_ELEVATOR map, or out of one (the car's own
+    door), two or more of them, and which the tileset lists as a door
+    graphic. Silph Co's is FACILITY 88, Celadon's and the hideout car's
+    LOBBY 56. The Rocket Hideout's two-wide entry (FACILITY 66/82) is the
+    exit-mat pair every FACILITY building uses, drawn on the bottom wall
+    with plain floor above — not the elevator door, so it stays "door"
+    until taken (user, 2026-09-07: "that doesnt actually get a sprite ...
+    just looks like a recession maybe with a mat in front of it")."""
+    S = (G / "maps.lua").read_text()
+    T = (G / "tilesets.lua").read_text()
+    tiles, doors = {}, {}
+    for m in re.finditer(r"\n  ([A-Z_0-9]+) = \{\n    animation", T):
+        blk = T[m.start(): m.start() + 200000]
+        e = re.search(r"\n  [A-Z_0-9]+ = \{\n    animation", blk[10:])
+        blk = blk[:e.start() + 10] if e else blk
+        b = re.search(r"\n    blocks = \{(.*?)\n    \},", blk, re.S)
+        nums = list(map(int, re.findall(r"\d+", b.group(1))))
+        tiles[m.group(1)] = [nums[i * 16:(i + 1) * 16] for i in range(len(nums) // 16)]
+        d = re.search(r"\n    doorTiles = \{([^}]*)\}", blk)
+        doors[m.group(1)] = {int(x) for x in re.findall(r"\d+", d.group(1))} if d else set()
+    seen = collections.defaultdict(lambda: [0, 0])      # (ts, tile) -> [elevator warps, other warps]
+    for m in re.finditer(r"\n  ([A-Z_0-9]+) = \{\n    blocks = \{(.*?)\},", S, re.S):
+        mid = m.group(1)
+        blocks = list(map(int, re.findall(r"\d+", m.group(2))))
+        blk = S[m.start(): m.start() + 60000]
+        e = re.search(r"\n  [A-Z_0-9]+ = \{\n    blocks", blk[10:])
+        blk = blk[:e.start() + 10] if e else blk
+        w = re.search(r"width = (\d+)", blk)
+        ts = re.search(r'tileset = "([A-Z_0-9]+)"', blk)
+        if not (w and ts) or ts.group(1) not in tiles:
+            continue
+        W, tset = int(w.group(1)), tiles[ts.group(1)]
+        wb = re.search(r"warps = \{(.*?)\n    \}", blk, re.S)
+        for x in re.findall(r"\{[^{}]*\}", wb.group(1), re.S) if wb else []:
+            d = dict(re.findall(r"(\w+) = ([^,\n]+)", x))
+            try:
+                sx, sy = int(d["x"]), int(d["y"])
+            except (KeyError, ValueError):
+                continue
+            bi = (sy // 2) * W + (sx // 2)
+            if bi >= len(blocks) or blocks[bi] >= len(tset):
+                continue
+            cell_tile = tset[blocks[bi]][((sy % 2) * 2 + 1) * 4 + (sx % 2) * 2]
+            dest = d.get("destMap", "").strip('"')
+            lift = dest.endswith("_ELEVATOR") or mid.endswith("_ELEVATOR")
+            seen[(ts.group(1), cell_tile)][0 if lift else 1] += 1
+    return {k: "lift" for k, (n_l, n_o) in seen.items()
+            if n_l >= 2 and n_o == 0 and k[1] in doors.get(k[0], set())}
+
+
 def survey():
     S = (G / "maps.lua").read_text()
     T = (G / "tilesets.lua").read_text()
@@ -98,6 +150,7 @@ def table():
             continue
         kind = "ladder" if ts in LADDER_SETS else "stairs"
         out[(ts, tile)] = f"{kind}_{'up' if up else 'down'}"
+    out.update(lift_tiles())
     out.update(HAND)
     return out, by
 

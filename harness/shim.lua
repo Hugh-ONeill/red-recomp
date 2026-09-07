@@ -2397,9 +2397,9 @@ local function observe(G, seq, result)
         CAVERN       = { [24] = "ladder_down", [26] = "ladder_up" },
         CEMETERY     = { [19] = "stairs_up", [27] = "stairs_down" },
         DOJO         = { [74] = "stairs" },
-        FACILITY     = { [19] = "stairs_up", [27] = "stairs_down", [67] = "stairs_up" },
+        FACILITY     = { [19] = "stairs_up", [27] = "stairs_down", [67] = "stairs_up", [88] = "lift" },
         GATE         = { [26] = "stairs_down", [28] = "stairs_up" },
-        LOBBY        = { [26] = "stairs_down", [28] = "stairs_up" },
+        LOBBY        = { [26] = "stairs_down", [28] = "stairs_up", [56] = "lift" },
         MANSION      = { [26] = "stairs_down", [28] = "stairs_up" },
         MUSEUM       = { [26] = "stairs_down", [28] = "stairs_up" },
         REDS_HOUSE_1 = { [28] = "stairs_up" },
@@ -2408,6 +2408,19 @@ local function observe(G, seq, result)
         UNDERGROUND  = { [19] = "stairs_up" },
       }
       local function warp_look(x, y)
+        -- THE DRAWING FIRST. The engine's door list is the tiles that get
+        -- the door-opening animation, and in FACILITY, LOBBY and MANSION
+        -- that list holds the STAIRCASE tiles too (27/67, 26/28), so every
+        -- staircase in Silph Co, the Rocket Hideout, Celadon's store and
+        -- the Mansion read "door" (2026-09-07, seen by rendering the
+        -- cells). The elevator door is in the table by its own tile; the
+        -- hideout's mat-drawn entry is not, and reads as the door it looks
+        -- like until taken.
+        local _wl0 = WARP_LOOKS[md and md.tileset]
+        if _wl0 and lm and lm.cellTile then
+          local _k0 = _wl0[lm:cellTile(x, y)]
+          if _k0 then return _k0 end
+        end
         if lm and lm.isDoorTileCell and lm:isDoorTileCell(x, y) then
           return "door"
         end
@@ -2484,10 +2497,9 @@ local function observe(G, seq, result)
           -- "use the elevator", and it took the stairs beside it to hunt
           -- an elevator on another floor (2026-09-04). The look is what a
           -- player sees; where the lift goes stays unknown until ridden.
-          if _look == "door" and type(dest) == "string"
-             and dest:match("_ELEVATOR$") then
-            _look = "lift"
-          end
+          -- (the "lift" look now comes from the tile, WARP_LOOKS; naming it
+          -- from the destination was a peek at the warp table, and wrong
+          -- for the hideout's mat-drawn entry, 2026-09-07)
           _n = _n + 1
           o.map.warps[_n] = { x = w.x, y = w.y, dest = dest,
                               look = _look,
