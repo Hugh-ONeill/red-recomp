@@ -4,13 +4,14 @@
 #
 #   ./replay_from.sh run/saves/leg_06_reach_pewter_city.20260907-073012
 #
-# The executor writes a checkpoint after every completed leg (run/saves/,
-# executor.checkpoint_leg): the game's save, the run's memory
-# (explored.json), the footprint (seen.json, seen_walk.json), the outline as
-# it stood and the chain's own state files, with meta.json naming the leg
-# and the harness revision. This restores one of them and sets
-# run/outline_leg to that leg, so the chain's next launch starts the leg
-# after it — same ground, same outline, whatever harness is current — and
+# The executor writes a checkpoint at the end of EVERY attempt, complete or
+# not (run/saves/, executor.checkpoint_leg): the game's save, the run's
+# memory (explored.json), the footprint (seen.json, seen_walk.json), the
+# outline as it stood and the chain's own state files, with meta.json naming
+# the leg, whether that attempt completed it, and the harness revision. This
+# restores one of them and sets run/outline_leg so the chain's next launch
+# starts the leg after a completed one, or replays an uncompleted one — same
+# ground, same outline, whatever harness is current — and
 # the meter reads the two journals side by side (user, 2026-09-07: "is
 # there a way to reset its progress at boundaries so we can get clean
 # splits for the fixed runs?").
