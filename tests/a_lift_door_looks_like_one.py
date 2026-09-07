@@ -45,7 +45,7 @@ lua = (ROOT / "harness" / "shim.lua").read_text()
 ck("the shim marks the look from the tile drawn on an elevator warp",
    'if _look == "door" and type(dest) == "string"\n             and dest:match("_ELEVATOR$") then\n            _look = "lift"' in lua)
 src = (ROOT / "planner" / "ledger.py").read_text()
-ck("...and the page has a word for it", 'if _l == "lift":\n                return f"lift door ({self.key}){_tw}"' in src)
+ck("...and the page has a word for it", 'if _l == "lift":\n                return f"lift door ({_key}){_tw}"' in src)
 ck("the destination is not said by the look", "ELEVATOR" not in (lab or ""))
 bad = [x for x in checks if not x[1]]
 for n, ok, d in checks:
