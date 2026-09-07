@@ -4451,11 +4451,13 @@ local function doorway_labels(ws)
       if a.x ~= b.x then return a.x < b.x end
       return a.y < b.y
     end)
-    local parts = {}
-    for _, w in ipairs(g) do
-      parts[#parts + 1] = ("(%d,%d)"):format(w.x, w.y)
-    end
-    out[#out + 1] = table.concat(parts, "+")
+    -- ONE coordinate for one doorway. "(3,7)+(4,7)" was read as two doors
+    -- four wordings running; on the S.S. Anne the model took the second
+    -- tile of the door it came in by three rounds in one attempt (run 16,
+    -- 2026-09-07). The planner's ledger prints one tile and says the
+    -- width in words; the shim names the first tile and nothing else.
+    -- Either tile of the doorway is the same use_warp.
+    out[#out + 1] = ("(%d,%d)"):format(g[1].x, g[1].y)
   end
   table.sort(out)
   return out
@@ -5599,10 +5601,16 @@ function OPS.use_warp(G, c)
       if w.x == c.x and w.y == c.y then is_door = true break end
     end
     if not is_door then
-      local here = {}
+      -- one doorway, one coordinate (doorway_labels): listing both tiles
+      -- of every cabin door here — "(2,5), (3,5), (12,5), (13,5) ..." —
+      -- is the twin-door leak in one more place (user, 2026-09-07)
+      local here_ws = {}
       for _, w in ipairs((md2 and md2.warps) or {}) do
-        here[#here + 1] = ("(%d,%d)"):format(w.x, w.y)
+        if w.x and w.y then
+          here_ws[#here_ws + 1] = { x = w.x, y = w.y, dest = w.destMap }
+        end
       end
+      local here = doorway_labels(here_ws)
       return false, ("there is no door at (%d,%d) on %s — door coordinates "
         .. "belong to ONE map. For a door on a map you have walked, say "
         .. "{\"op\":\"use_warp\",\"map\":\"THAT_MAP\",\"x\":..,\"y\":..} "

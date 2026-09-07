@@ -48,6 +48,12 @@ ck("...and counts the cell the run landed on as a door it came in by",
 ck("the ledger's unreachable-doors line names one tile per doorway",
    "_firsts.append(_g0[0])" in lg and '_others = ", ".join(f"({t})" for t in _firsts[:6])' in lg)
 
+sh = (ROOT / "harness" / "shim.lua").read_text()
+ck("the shim's doorway labels are one coordinate each",
+   'table.concat(parts, "+")' not in sh and 'out[#out + 1] = ("(%d,%d)"):format(g[1].x, g[1].y)' in sh)
+ck("...and the 'no door at' message lists doorways through them",
+   "local here = doorway_labels(here_ws)" in sh)
+
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)

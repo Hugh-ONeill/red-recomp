@@ -164,7 +164,7 @@ local function eq(got, want)
 end
 local W = function(x, y, d) return { x = x, y = y, dest = d } end
 assert(eq(doorway_labels({ W(14,8,"LAST_MAP"), W(14,9,"LAST_MAP") }),
-          { "(14,8)+(14,9)" }), "gate pair folds")
+          { "(14,8)" }), "gate pair folds to its first tile")
 assert(eq(doorway_labels({ W(6,1,"CELADON_MANSION_2F"),
                            W(7,1,"CELADON_MANSION_ROOF") }),
           { "(6,1)", "(7,1)" }), "adjacent stairs stay separate")
