@@ -183,7 +183,10 @@ class Candidate:
             return f"door ({_key}){_tw}"
         if self.kind == "frontier":
             if getattr(self, "look", "") == "arrow":
-                return f"arrow tile ({self.key}) slides onto unseen ground"
+                _ad = getattr(self, "arrow_dir", "") or ""
+                return (f"arrow tile ({self.key})"
+                        + (f" pointing {_ad.upper()}" if _ad else "")
+                        + " slides onto unseen ground")
             return f"seen ground ends at ({self.key})"
         if self.kind == "op":
             return self.key
@@ -1236,11 +1239,17 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         if f.get("slide"):
             # an ARROW whose slide ends on ground never on screen: you
             # cannot stand on it, you step on and are carried (leftover (c))
+            # ...AND THE WAY IT POINTS IS DRAWN ON IT: a spinner slides you
+            # across this floor the way it points and is not a warp pad, which
+            # sets you down elsewhere (user, 2026-09-07).
             c.look = "arrow"
-            c.note = (f"{c.n} step(s) from you; an ARROW tile — stepping "
-                      "onto it carries you onto ground that has never been "
-                      "on screen: {\"op\":\"walk_to\",\"x\":%d,\"y\":%d} "
-                      "steps on and reports where the slide put you"
+            c.arrow_dir = str(f.get("dir") or "")
+            c.note = (f"{c.n} step(s) from you; an ARROW tile"
+                      + (f" pointing {c.arrow_dir.upper()}" if c.arrow_dir else "")
+                      + " — stepping onto it slides you that way across this "
+                      "floor, onto ground that has never been on screen: "
+                      '{"op":"walk_to","x":%d,"y":%d} steps on and '
+                      "reports where the slide put you"
                       % (f["x"], f["y"]))
         else:
             c.note = (f"{c.n} step(s) from you over seen ground; "

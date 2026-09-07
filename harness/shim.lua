@@ -960,7 +960,8 @@ local function seen_filter(G, o)
   local fl = {}
   for i, f in ipairs(front) do
     if i > 24 then break end
-    fl[i] = { x = f.x, y = f.y, d = f.d, slide = f.slide or nil }
+    fl[i] = { x = f.x, y = f.y, d = f.d, slide = f.slide or nil,
+              dir = f.dir or nil }
   end
   -- ...AND THE MAP'S OWN COUNT, stand-point-free: seen walkable cells
   -- anywhere on this map with an unseen in-bounds neighbour. frontier_n
@@ -3587,6 +3588,26 @@ end
 -- plans routes that cannot be walked -- it thinks it can step onto an
 -- arrow and stay there. Same shape as ledge_landing: read the table the
 -- engine reads, and report where you END UP.
+-- THE WAY AN ARROW TILE POINTS is drawn on it, and it is what tells a
+-- spinner from a warp pad: a Hideout arrow slides you across THIS floor
+-- the way it points and never off it, where Silph's and Saffron's pads
+-- (the engine's warp-pad tiles, a different drawing) set you down
+-- somewhere else (user, 2026-09-07). The first move of the spinner under
+-- (x,y), as a compass word; nil when no spinner lies there.
+local function spinner_dir(G, map, x, y)
+  local list = G.data and G.data.field and G.data.field.spinners
+               and G.data.field.spinners[map and map.id]
+  if not list then return nil end
+  local words = { up = "north", down = "south", left = "west", right = "east" }
+  for _, sp in ipairs(list) do
+    if sp.x == x and sp.y == y then
+      local mv = (sp.moves or {})[1]
+      return mv and words[mv.dir] or nil
+    end
+  end
+  return nil
+end
+
 local function spinner_landing(G, map, x, y, depth)
   local list = G.data and G.data.field and G.data.field.spinners
                and G.data.field.spinners[map and map.id]
@@ -4016,7 +4037,8 @@ seen_reach = function(G, sx, sy, surf)
                    and not slid[nk] then
               slid[nk] = true
               front[#front + 1] = { x = nx, y = ny, d = dist[ck] + 1,
-                                    slide = true }
+                                    slide = true,
+                                    dir = spinner_dir(G, ow.map, nx, ny) }
             end
           else
             dist[nk] = dist[ck] + 1
@@ -5249,8 +5271,12 @@ function OPS.walk_to(G, c)
     if _arrow and DIRS[dir]
        and _x0 + DIRS[dir][1] == c.x and _y0 + DIRS[dir][2] == c.y then
       settle_slide(G)
-      return true, ("stepped onto the arrow tile at (%d,%d) and were "
-        .. "carried to (%d,%d)"):format(c.x, c.y, p.cellX, p.cellY)
+      local _sd = spinner_dir(G, ow.map, c.x, c.y)
+      return true, ("stepped onto the arrow tile at (%d,%d)%s and were "
+        .. "carried to (%d,%d) — an arrow slides you across this floor the "
+        .. "way it points"):format(c.x, c.y,
+                                  _sd and (", pointing " .. _sd) or "",
+                                  p.cellX, p.cellY)
     end
   end
   return false, "step budget exhausted"
