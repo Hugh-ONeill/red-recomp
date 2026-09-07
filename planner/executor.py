@@ -13747,6 +13747,41 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     self._record_outcome(_pre, op, step, "walk_to: ok")
                     continue
                 if "no path" in _d0:
+                    # A CELL WHERE SOMEBODY STANDS IS NOT A CELL TO WALK TO.
+                    # walk_to(9,5) in the Game Corner named the Rocket's own
+                    # cell; "no path" then rode the front door out and back
+                    # in as "a pad you have ridden before", twice, for a
+                    # target that was a person all along (run 16,
+                    # 2026-09-07). The page's own rule: you never walk onto
+                    # a person, and standing beside them is the whole of
+                    # reaching them. Stand beside, say who, say how.
+                    _occ = next((o for o in (((_pre or {}).get("map") or {}).get("objects") or [])
+                                 if o.get("name") and str(o.get("x")) == str(step.get("x"))
+                                 and str(o.get("y")) == str(step.get("y"))), None)
+                    if _occ:
+                        _stood = None
+                        try:
+                            _tx, _ty = int(step.get("x")), int(step.get("y"))
+                        except (TypeError, ValueError):
+                            _tx = _ty = None
+                        if _tx is not None:
+                            for _dx, _dy in ((0, 1), (0, -1), (-1, 0), (1, 0)):
+                                _rn = (self._send_safe("walk_to", x=_tx + _dx, y=_ty + _dy) or {})
+                                if (_rn.get("result") or {}).get("ok"):
+                                    _stood = (_tx + _dx, _ty + _dy)
+                                    break
+                        obs = self.settle() or _pre
+                        _kind = str(_occ.get("kind") or "thing")
+                        _who = "person" if _kind in ("npc", "trainer") else "thing"
+                        trace.append(
+                            f"walk_to({step.get('x')},{step.get('y')}): that cell is where "
+                            f"{_occ['name']} stands — you never walk onto a {_who}, and "
+                            f"standing beside it is the whole of reaching it"
+                            + (f"; you stand beside it now at ({_stood[0]},{_stood[1]})" if _stood
+                               else "; no free cell beside it could be reached from here")
+                            + '. {"op":"interact","name":"' + str(_occ["name"]) + '"} is how it is pressed.')
+                        self._record_outcome(_pre, op, step, f"walk_to: beside {_occ['name']}")
+                        continue
                     _here = self._where(_pre)
                     _mid = _here.split("|")[0]
                     _tried_regions = 0
