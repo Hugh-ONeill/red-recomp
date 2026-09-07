@@ -38,6 +38,23 @@ ck("a later wipe, with the money halved again, counts",
    ex._count_blackout("badge:BOULDERBADGE", obs2) and ex._blackouts["badge:BOULDERBADGE"] == 2)
 ck("no target, no count", not ex._count_blackout(None, obs2))
 
+# the recount runs at memory load, BEFORE the journal is open: it must not
+# need self.logf (run 16 crashed at boot on exactly that, 2026-09-07)
+bare = E.Executor.__new__(E.Executor)
+bare._blackouts = {"badge:BOULDERBADGE": 4}; bare._blackout_lead = {}
+try:
+    bare._recount_blackouts()
+    ck("the recount works before the journal exists", True)
+except AttributeError as e:                          # pragma: no cover
+    ck(f"the recount works before the journal exists ({e})", False)
+bare.blockers = {"X|north": {"where": "X", "key": "north", "kind": "seam",
+                             "what": "the walk was fenced — CUT_TREE at 1,1"}}
+try:
+    bare._scrub_footprint_fences()
+    ck("the fence scrub works before the journal exists", True)
+except AttributeError as e:                          # pragma: no cover
+    ck(f"the fence scrub works before the journal exists ({e})", False)
+
 src = Path("planner/executor.py").read_text()
 ck("every detector goes through the one counter", src.count("self._count_blackout(") == 4
    and "self._blackouts.get(self._cur_target, 0) + 1" not in src

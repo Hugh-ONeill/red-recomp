@@ -1799,9 +1799,19 @@ class Executor:
         for k, b in fenced.items():
             if k in edges and k not in walls:
                 del self.blockers[k]
-                self.log("blocker_scrubbed", where=b.get("where"),
-                         key=b.get("key"),
-                         why="every failed crossing stopped at the footprint's edge")
+                self._log_or_print("blocker_scrubbed", where=b.get("where"),
+                                   key=b.get("key"),
+                                   why="every failed crossing stopped at the footprint's edge")
+
+    def _log_or_print(self, kind, **kw):
+        """The memory is loaded before the journal is opened, so anything
+        the load wants to say goes to the journal if it exists and to
+        stdout if not — never to an AttributeError (run 16 crashed at boot
+        on exactly that, 2026-09-07)."""
+        if getattr(self, "logf", None):
+            self.log(kind, **kw)
+        else:
+            print(f"[{kind}] " + " ".join(f"{k}={v}" for k, v in kw.items()))
 
     def _recount_blackouts(self):
         """Rebuild the per-target wipe counts from the journal's own
@@ -1839,8 +1849,9 @@ class Executor:
                     changed[tk] = (self._blackouts[tk], counts[tk])
                     self._blackouts[tk] = counts[tk]
             if changed:
-                self.log("blackouts_recounted", changed=json.dumps(changed))
-        except OSError:
+                self._log_or_print("blackouts_recounted",
+                                   changed=json.dumps(changed))
+        except (OSError, AttributeError):
             pass
 
     def _count_blackout(self, target, obs) -> bool:
