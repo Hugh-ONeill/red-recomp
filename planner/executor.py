@@ -531,6 +531,23 @@ def pred_keys(pred: dict | None) -> set:
     return out
 
 
+def _footprint_ended(note: str) -> bool:
+    """Did this seam walk stop where the LOOKING stopped, not at a wall?
+
+    THE FENCE AT THE EDGE OF THE SEEN GROUND IS NOT WHAT TURNED YOU BACK.
+    The shim's seam verdict says which failure it was — "stopped where
+    your footprint ends, NOT at a proven wall" — and then, like every
+    no-path answer, lists what stands at the edge of the ground it could
+    search. The recorder matched that list and wrote Viridian City's north
+    seam down as "the walk was fenced — CUT_TREE at 14,4" (run 16,
+    2026-09-07): the bush stood beside unseen ground, the road north was
+    simply not on screen yet, and the model then spent rounds looking for
+    a way around a tree that was never in the way (user: "the tree isnt in
+    the way though"). A footprint edge is untried ground, not a refusal."""
+    n = str(note or "")
+    return ("footprint ends" in n) or ("NOT at a proven wall" in n)
+
+
 # WHAT THE SHIM ACTUALLY SAYS when an interact leaves a yes/no box open.
 # Two guards were written against the phrase "asked a QUESTION", which the
 # shim has never emitted — `grep 'asked a QUESTION' harness/shim.lua` is
@@ -1662,6 +1679,43 @@ class Executor:
         self.log("machine_stock", region=region, map=mid, sells=rows)
         self._save_memory()
 
+    def _scrub_footprint_fences(self):
+        """Drop stored 'fenced' seam blockers whose every failed crossing in
+        the journal stopped at the footprint's edge (see _footprint_ended).
+        The record was written by the rule this run's boot now refuses to
+        apply; the journal has the words it was written from."""
+        fenced = {k: b for k, b in (self.blockers or {}).items()
+                  if str((b or {}).get("what") or "").startswith("the walk was fenced")
+                  and (b or {}).get("kind") == "seam" and not (b or {}).get("cleared")}
+        if not fenced:
+            return
+        walls = set()      # area|key that some crossing failed at a real wall
+        edges = set()      # area|key that some crossing failed at the footprint
+        try:
+            for _l in (RUN / "executor_log.jsonl").read_text().splitlines():
+                if '"escalate_feedback"' not in _l or "cross(dir=" not in _l:
+                    continue
+                try:
+                    _r = json.loads(_l)
+                except ValueError:
+                    continue
+                _at = str(_r.get("at") or "")
+                for _t in (_r.get("trace") or []):
+                    _t = str(_t)
+                    _m = _re.match(r"cross\(dir=(\w+)\): FAILED", _t)
+                    if not _m:
+                        continue
+                    _bk = f"{_at}|{_m.group(1)}"
+                    (edges if _footprint_ended(_t) else walls).add(_bk)
+        except OSError:
+            return
+        for k, b in fenced.items():
+            if k in edges and k not in walls:
+                del self.blockers[k]
+                self.log("blocker_scrubbed", where=b.get("where"),
+                         key=b.get("key"),
+                         why="every failed crossing stopped at the footprint's edge")
+
     def _note_blocker(self, area: str, key: str, kind: str, what: str):
         """Write (or bump) a way that turned the run back. Evidence only:
         WHERE, WHICH exit, WHAT was seen or said. Never what lifts it."""
@@ -1975,7 +2029,8 @@ class Executor:
             self._save_memory()
         elif op == "cross" and "FAILED" in note and (
                 "standing at its edge:" in note
-                or "Right where the walk stopped:" in note):
+                or "Right where the walk stopped:" in note) \
+                and not _footprint_ended(note):
             # THE PRECISE CLAUSE FIRST. "Right where the walk stopped" is
             # the shim naming what the walk actually died against;
             # "standing at its edge" is the whole fence of the pocket it
@@ -3539,6 +3594,7 @@ class Executor:
                 for r, v in (data.get("shut_doors") or {}).items()}
             self.hints = data.get("hints") or {}
             self.blockers = data.get("blockers") or {}
+            self._scrub_footprint_fences()
             # BACKFILL THE BLOCKERS FROM THE JOURNAL, once: the recorders
             # for a fenced or spoken-at way arrived mid-run, so ways that
             # turned the run back before they existed (Route 9's bush wall,
@@ -3574,7 +3630,8 @@ class Executor:
                             _hit = False
                             for tag in ("standing at its edge:",
                                         "Right where the walk stopped:"):
-                                if "FAILED" in _t and tag in _t:
+                                if "FAILED" in _t and tag in _t \
+                                        and not _footprint_ended(_t):
                                     clause = _t.split(tag, 1)[1].strip() \
                                         .split(".")[0][:160]
                                     self._note_blocker(
