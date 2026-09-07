@@ -41,25 +41,23 @@ ck("the table covers the engine's trainer events and only real maps",
 ck("the validator uses the helper with the flags fired so far",
    "_hint = _series_hint(" in (ROOT / "planner" / "author.py").read_text())
 
-# the matcher itself, on the guess that got no list at all
-import re as _re
-def members(v):
-    segs = v.split("_")
-    blank = [j for j, x in enumerate(segs) if len(x) == 1 and x.isalpha()]
-    pat = _re.compile("^" + "_".join(r"[A-Z0-9]+" if j in blank else _re.escape(x) for j, x in enumerate(segs)) + "$")
-    mem = sorted(f for f in A.ENGINE_FLAGS if pat.match(f) and f != v)
-    if blank and not mem:
-        pat2 = _re.compile("^" + "_".join(r"[A-Z0-9]+" if (j in blank or x.isdigit()) else _re.escape(x) for j, x in enumerate(segs)) + "$")
-        mem = sorted(f for f in A.ENGINE_FLAGS if pat2.match(f) and f != v)
-    return mem
+# the matcher itself (_series_members): what a guessed id is read as
+def maps_of(v):
+    return sorted({A.TRAINER_EVENT_MAP.get(x, "?") for x in A._series_members(v)})
 ck("a blank beside an impossible number still yields the named series",
-   len(members("EVENT_BEAT_SS_ANNE_N_TRAINER_14")) == 16
-   and all("SS_ANNE" in m for m in members("EVENT_BEAT_SS_ANNE_N_TRAINER_14")))
-ck("a number alone is never a blank (Route 4 stays Route 4)",
-   all("ROUTE_4_" in m for m in members("EVENT_BEAT_ROUTE_4_TRAINER_N")))
+   len(A._series_members("EVENT_BEAT_SS_ANNE_N_TRAINER_14")) == 16)
+ck("a number that completes no map name is an index guess and widens (SS_ANNE_1, SS_ANNE_B1)",
+   len(A._series_members("EVENT_BEAT_SS_ANNE_1_TRAINER_0")) == 16
+   and len(A._series_members("EVENT_BEAT_SS_ANNE_B1_TRAINER_0")) == 16
+   and maps_of("EVENT_BEAT_SS_ANNE_1_TRAINER_0") == ["SS_ANNE_1F_ROOMS", "SS_ANNE_2F_ROOMS", "SS_ANNE_B1F_ROOMS", "SS_ANNE_BOW"])
+ck("a number that IS a map's name stays literal (Route 4 never suggests Route 10)",
+   maps_of("EVENT_BEAT_ROUTE_4_TRAINER_N") == ["ROUTE_4"] and maps_of("EVENT_BEAT_ROUTE_4_TRAINER_7") == ["ROUTE_4"])
+ck("a place with no trainers gets no other place's trainers",
+   A._series_members("EVENT_BEAT_ROUTE_5_TRAINER_0") == [])
+ck("a floor index inside a dungeon widens to the dungeon's floors only",
+   maps_of("EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_9") == ["ROCK_TUNNEL_1F", "ROCK_TUNNEL_B1F"])
 src = (ROOT / "planner" / "author.py").read_text()
-ck("the validator carries that fallback",
-   'r"[A-Z0-9]+" if (j in _blank or x.isdigit())' in src)
+ck("the validator reads guesses through that one function", "_mem = _series_members(str(v))" in src)
 
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)

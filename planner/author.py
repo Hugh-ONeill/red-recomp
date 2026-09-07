@@ -1461,6 +1461,52 @@ def _series_hint(mem: list, fired=()) -> str:
               "for a trainer in its own group's place.")
 
 
+def _series_members(v: str) -> list:
+    """Every real event of the series a guessed flag names, or none.
+
+    A guess is read segment by segment. A lone letter (N) is a blank and
+    matches anything. A number is a value the model chose — EVENT_BEAT_
+    ROUTE_4_TRAINER_N must never suggest Route 10's trainers — UNLESS it
+    completes no map name: ROUTE_4 is a map, so its 4 is the place; SS_ANNE_1
+    and SS_ANNE_B1 are not, so those are guesses at a map index inside the
+    building and widen to blanks (EVENT_BEAT_SS_ANNE_1_TRAINER_0 and
+    _B1_TRAINER_0 got no list at all, 2026-09-07, one authoring after
+    N_TRAINER_N got sixteen). The trailing member number widens with them.
+    The words stay literal, so nothing outside the place the model named
+    is ever suggested."""
+    segs = str(v).split("_")
+    blank = [j for j, x in enumerate(segs) if len(x) == 1 and x.isalpha()]
+
+    def members(wild):
+        pat = _re.compile("^" + "_".join(
+            r"[A-Z0-9]+" if j in wild else _re.escape(x)
+            for j, x in enumerate(segs)) + "$")
+        return sorted(f for f in ENGINE_FLAGS if pat.match(f) and f != v)
+
+    mem = []
+    if blank:
+        mem = members(set(blank))
+        if not mem:
+            mem = members(set(blank) | {j for j, x in enumerate(segs) if x.isdigit()})
+    if not mem:
+        # an index guess is a number (or B1-style floor) that completes no
+        # map id when joined to the words before it
+        idx = set()
+        for j, x in enumerate(segs):
+            if j < 2 or not _re.fullmatch(r"B?\d{1,2}", x):
+                continue
+            place = "_".join(segs[2:j + 1])          # after EVENT_BEAT_
+            if place not in ENGINE_MAPS:
+                idx.add(j)
+        if idx:
+            mem = members(idx | set(blank))
+    if not mem:
+        ser = _re.sub(r"_[A-Z0-9]+$", "", str(v))
+        mem = sorted(f for f in ENGINE_FLAGS
+                     if ser and f.startswith(ser + "_") and f != v)
+    return mem
+
+
 def _check_pred(dw: dict, tag: str, sid, probs: list):
     """Validate one predicate — recursively, so an any_of branch gets the
     same item/map/flag scrutiny as a top-level one. Without the recursion an
@@ -1552,44 +1598,7 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                 # fired six real members of (2026-08-30). Read every
                 # single-letter or bare-number segment as the blank it
                 # plainly is and match the rest in order.
-                _segs = str(v).split("_")
-                # A BLANK IS A LONE LETTER, NEVER A NUMBER. Reading a
-                # digit as a placeholder made EVENT_BEAT_ROUTE_4_TRAINER_N
-                # match EVENT_BEAT_ROUTE_10_TRAINER_0 and suggest a
-                # different route's trainers — a wrong answer is worse
-                # than none, and the 4 is a value the model chose.
-                _blank = [j for j, x in enumerate(_segs)
-                          if len(x) == 1 and x.isalpha()]
-                _mem = []
-                if _blank:
-                    _pat = _re.compile("^" + "_".join(
-                        r"[A-Z0-9]+" if j in _blank else _re.escape(x)
-                        for j, x in enumerate(_segs)) + "$")
-                    _mem = sorted(f for f in ENGINE_FLAGS
-                                  if _pat.match(f) and f != v)
-                    # ...BUT A BLANK BESIDE A NUMBER THAT FITS NOTHING IS
-                    # STILL THE SERIES THE MODEL NAMED. "EVENT_BEAT_SS_ANNE
-                    # _N_TRAINER_14" (2026-09-07) has the blank AND a
-                    # trainer number no group reaches, so the strict shape
-                    # matched nothing and the author got no list at all —
-                    # one round after the hint had been rebuilt to give the
-                    # whole series. With a blank present the words are the
-                    # model's series and the numbers are its guesses at
-                    # the members: the words stay literal, so no other
-                    # place's events can be suggested, and the numbers
-                    # widen to blanks.
-                    if not _mem:
-                        _pat2 = _re.compile("^" + "_".join(
-                            r"[A-Z0-9]+" if (j in _blank or x.isdigit())
-                            else _re.escape(x)
-                            for j, x in enumerate(_segs)) + "$")
-                        _mem = sorted(f for f in ENGINE_FLAGS
-                                      if _pat2.match(f) and f != v)
-                if not _mem:
-                    _ser = _re.sub(r"_[A-Z0-9]+$", "", str(v))
-                    _mem = sorted(f for f in ENGINE_FLAGS
-                                  if _ser and f.startswith(_ser + "_")
-                                  and f != v)
+                _mem = _series_members(str(v))
                 # SAY IT AS A SUGGESTION, AND SAY HOW MANY THERE ARE. The
                 # retry prompt tells the author "where a problem offers a
                 # 'did you mean' suggestion, use that exact id verbatim",
