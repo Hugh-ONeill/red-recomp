@@ -142,21 +142,39 @@ class Candidate:
             # hidden by that: the doorway is one door, either tile of it
             # is the same use_warp, and the op says so if the model finds
             # the tile some other way.
+            # ...AND THE ONE DOOR IS WRITTEN AS ONE COORDINATE: "door
+            # (4+5,7)" — both tiles inside one pair of brackets, the way a
+            # player would point at a two-tile doorway (user, 2026-09-07:
+            # "should be something like door (4+5,7)"). No second "(x,y)"
+            # anywhere in the line for the model to take for another door.
             _tws = [t for t in (getattr(self, "twins", None) or []) if t]
-            _tw = ""
+            _key = self.key
             if _tws:
-                _tw = f" [one doorway, {len(_tws) + 1} tiles wide]"
+                try:
+                    _pts = sorted({tuple(int(v) for v in str(k).split(","))
+                                   for k in [self.key] + _tws})
+                    _xs = sorted({x for x, _ in _pts})
+                    _ys = sorted({y for _, y in _pts})
+                    if len(_ys) == 1:
+                        _key = "+".join(str(x) for x in _xs) + f",{_ys[0]}"
+                    elif len(_xs) == 1:
+                        _key = f"{_xs[0]}," + "+".join(str(y) for y in _ys)
+                    else:
+                        _key = f"{self.key} [one doorway, {len(_pts)} tiles]"
+                except (TypeError, ValueError):
+                    _key = f"{self.key} [one doorway, {len(_tws) + 1} tiles]"
+            _tw = ""
             if _l == "pad":
-                return f"warp pad ({self.key}){_tw}"
+                return f"warp pad ({_key}){_tw}"
             if _l == "hole":
-                return f"hole ({self.key}){_tw}"
+                return f"hole ({_key}){_tw}"
             if _l == "lift":
-                return f"lift door ({self.key}){_tw}"
+                return f"lift door ({_key}){_tw}"
             if _l == "stairs":
-                return f"stairs/ladder ({self.key}){_tw}"
+                return f"stairs/ladder ({_key}){_tw}"
             if _l == "threshold":        # an older shim's word for a door
-                return f"door ({self.key}){_tw}"
-            return f"door ({self.key}){_tw}"
+                return f"door ({_key}){_tw}"
+            return f"door ({_key}){_tw}"
         if self.kind == "frontier":
             if getattr(self, "look", "") == "arrow":
                 return f"arrow tile ({self.key}) slides onto unseen ground"

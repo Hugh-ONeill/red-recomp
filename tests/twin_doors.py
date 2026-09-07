@@ -100,7 +100,7 @@ def main():
     check("the most-walked tile speaks for it", d.key == "3,7", d.key)
     check("the counts combine", d.n == 8, d.n)
     check("the label shows every tile it spans",
-          d.label() == "door (3,7) [one doorway, 2 tiles wide]", d.label())
+          d.label() == "door (2+3,7)", d.label())
     check("it is the door you came in by", d.status == "came_in_by",
           d.status)
     check("a use_warp at EITHER tile is on-ledger",
