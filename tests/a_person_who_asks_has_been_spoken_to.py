@@ -69,10 +69,26 @@ except Exception as e:                                    # pragma: no cover
 
 src = Path("planner/executor.py").read_text()
 ck("the post-op retraction keeps the same exception",
-   "and not self._asks_as_talk(obs, step[\"name\"])):" in src)
+   "and not self._asks_as_talk(obs, step[\"name\"]," in src)   # ...now with the remembered kinds as a third argument
 ck("the sweep says a person it declined for counts as spoken to, and how to say yes",
    src.count("asked_people") >= 4 and "the sweep declined for you" in src
    and 'self._record_outcome(cur, "interact",' in src)
+
+# ...EVEN WHEN THE BOX HE OPENED HID THE MAP. The observation taken while a
+# yes/no box is open carries no map, so the kinds remembered per map answer
+# (Game Corner coin clerk, run 16, 2026-09-07: two presses, still "never
+# spoken to", explore pressed him first again).
+ck("with no map in the observation, the remembered kinds say he is a person",
+   E.Executor._asks_as_talk({}, "GAMECORNER_CLERK1", {"GAMECORNER_CLERK1": "npc"})
+   and not E.Executor._asks_as_talk({}, "ITEM_BALL_3", {"ITEM_BALL_3": "item"})
+   and not E.Executor._asks_as_talk({}, "UNKNOWN_THING", {"GAMECORNER_CLERK1": "npc"}))
+_src = open("planner/executor.py").read()
+ck("kinds are remembered per map as observations arrive", '_kinds[str(_o["name"])] = str(_o["kind"])' in _src)
+ck("...and both asks-as-talk call sites consult them",
+   "self._asks_as_talk(res_obs, name, self._kinds_for(region))" in _src
+   and "self._kinds_for(self._where(pre_obs))" in _src)
+ck("the walk fallback says what it rides: a way in used before, door or pad",
+   "a pad you have ridden before" not in _src and _src.count("door or a pad) was used again") == 3)
 
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

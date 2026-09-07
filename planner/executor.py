@@ -1691,7 +1691,7 @@ class Executor:
                 and said != ((pre_obs or {}).get("last_text") or "").strip())
 
     @staticmethod
-    def _asks_as_talk(obs, name) -> bool:
+    def _asks_as_talk(obs, name, kinds=None) -> bool:
         """A PERSON WHO ASKS YOU SOMETHING HAS BEEN SPOKEN TO. The fossil
         rule — a press that opened a question and got no answer is not a
         press — was written for ITEMS: "You want the DOME FOSSIL?" declined
@@ -1709,7 +1709,15 @@ class Executor:
         for o in (((obs or {}).get("map") or {}).get("objects") or []):
             if o.get("name") == name:
                 return str(o.get("kind") or "") in ("npc", "trainer")
+        # the observation had no map (a box was open): the kinds remembered
+        # for this map say what the thing is
+        if kinds and name in kinds:
+            return str(kinds.get(name) or "") in ("npc", "trainer")
         return False
+
+    def _kinds_for(self, region_or_map) -> dict:
+        _mid = str(region_or_map or "").split("|")[0]
+        return (getattr(self, "_obj_kinds", None) or {}).get(_mid) or {}
 
     def _record_touch(self, region, name, res_obs) -> bool:
         """Write a touch, if the interaction earned it. Returns whether."""
@@ -1724,7 +1732,7 @@ class Executor:
         # recording block at the end of this function.
         self._record_machine_stock(region, r.get("detail"))
         if ASKING in str(r.get("detail") or "") \
-                and not self._asks_as_talk(res_obs, name):
+                and not self._asks_as_talk(res_obs, name, self._kinds_for(region)):
             return False                       # it asked; nothing answered
         if LIST_OPEN in str(r.get("detail") or ""):
             return False                       # it offered; nothing picked
@@ -4879,6 +4887,16 @@ class Executor:
                     _n = str(_o["name"])
                     _rs[_n] = sorted(set(_rs.get(_n, ()))
                                      | {"pressed" if _on else "unpressed"})
+            # WHAT KIND EACH NAMED THING IS, remembered per map: the check
+            # "a person who asks has been spoken to" reads kinds off the
+            # observation taken right after the press, and with a yes/no
+            # box open that observation has no map — so the Game Corner's
+            # coin clerk stayed "never spoken to" through two presses and
+            # explore pressed him first again (run 16, 2026-09-07).
+            _kinds = self.__dict__.setdefault("_obj_kinds", {}).setdefault(_mid, {})
+            for _o in (_m.get("objects") or []):
+                if _o.get("name") and _o.get("kind"):
+                    _kinds[str(_o["name"])] = str(_o["kind"])
             _dd = self.door_dests.setdefault(_mid, {})
             for _w in (_m.get("warps") or []):
                 if _w.get("x") is not None and _w.get("dest") is not None:
@@ -13794,8 +13812,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             trace.append(
                                 f"walk_to({step.get('x')},"
                                 f"{step.get('y')}): no path from where you "
-                                f"stood, so a pad you have ridden before "
-                                f"was ridden again — and from the cell it "
+                                f"stood, so a way in you have used before (a "
+                                f"door or a pad) was used again — and from the cell it "
                                 f"set you down on, "
                                 + ("the walk put you BESIDE it: that tile "
                                    "is occupied by the thing lying on it, "
@@ -14529,7 +14547,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self._retract_touch(self._where(pre_obs), step["name"])
             if (ASKING in str(r.get("detail") or "")
                     and op == "interact" and step.get("name")
-                    and not self._asks_as_talk(obs, step["name"])):
+                    and not self._asks_as_talk(obs, step["name"],
+                                               self._kinds_for(self._where(pre_obs)))):
                 self._retract_touch(self._where(pre_obs), step["name"])
             # A PICKER BACKED OUT OF IS A QUESTION UNANSWERED. "asked WHICH
             # POKEMON, and nothing here had chosen one — backed out" counted
@@ -14750,8 +14769,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                                   "") or "")
                                 trace.append(
                                     f"{name} could not be reached from "
-                                    f"where you stood, so a pad you have "
-                                    f"ridden before was ridden again — "
+                                    f"where you stood, so a way in you have "
+                                    f"used before (a door or a pad) was used again — "
                                     f"and from the cell it set you down "
                                     f"on, it could"
                                     + (f": {_pd[:200]}" if _pd else "."))
@@ -14789,8 +14808,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                   or "")
                         trace.append(
                             f"({step['x']},{step['y']}) could not be "
-                            f"reached from where you stood, so a pad you "
-                            f"have ridden before was ridden again — and "
+                            f"reached from where you stood, so a way in you "
+                            f"have used before (a door or a pad) was used again — and "
                             f"from the cell it set you down on, it could"
                             + (f": {_pd[:200]}" if _pd else "."))
                     else:
