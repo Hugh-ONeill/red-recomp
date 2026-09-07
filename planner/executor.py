@@ -540,6 +540,84 @@ def pred_keys(pred: dict | None) -> set:
     return out
 
 
+_HARNESS_REV = [None]
+
+
+def harness_rev() -> str:
+    """The git revision of the harness this process runs, '+' when the
+    working tree differs from it; '?' outside a checkout. Read once."""
+    if _HARNESS_REV[0] is None:
+        try:
+            import subprocess
+            root = Path(__file__).resolve().parent.parent
+            rev = subprocess.run(["git", "rev-parse", "--short", "HEAD"],
+                                 cwd=root, capture_output=True, text=True,
+                                 timeout=5).stdout.strip() or "?"
+            dirty = subprocess.run(["git", "status", "--porcelain", "--",
+                                    "planner", "harness"],
+                                   cwd=root, capture_output=True, text=True,
+                                   timeout=5).stdout.strip()
+            _HARNESS_REV[0] = rev + ("+" if dirty else "")
+        except Exception:
+            _HARNESS_REV[0] = "?"
+    return _HARNESS_REV[0]
+
+
+SAVE_PATH = Path(os.environ.get(
+    "RED_SAVE",
+    str(Path.home() / ".local/share/love/pokemon-love2d/saves/red/slot1.lua")))
+CHECKPOINTS = RUN / "saves"
+# the chain's own state files, alongside the game's save and the run's memory
+CHECKPOINT_FILES = ["run/explored.json", "run/seen.json", "run/seen_walk.json",
+                    "plans/outline.txt", "plans/outline.done",
+                    "run/outline_reorders", "run/outline_skips",
+                    "run/outline_inserts", "run/outline_void",
+                    "run/outline_wording_asked", "run/outline_pushes",
+                    "run/outline_pullbacks", "run/outline_pulls",
+                    "run/outline_pulls_failed", "run/outline_replays",
+                    "run/outline_rewordings", "run/leg_unconfirmed"]
+
+
+def checkpoint_leg(plan_path, root=None, save_path=None, out_dir=None) -> "Path | None":
+    """A LEG BOUNDARY IS A PLACE THE RUN CAN BE PUT BACK TO. After a plan
+    completes and the game is saved, copy the save, the run's memory, the
+    footprint and the chain's state files into run/saves/<leg>.<time>/,
+    with a meta.json naming the leg number, the plan, the harness revision
+    and the clock. replay_from.sh restores one, and the legs after it play
+    again on whatever harness is current — the same ground, the same
+    outline, a different harness: a clean split, measured by the meter
+    (user, 2026-09-07: "is there a way to reset its progress at boundaries
+    so we can get clean splits for the fixed runs?"). Nothing here reaches
+    the model."""
+    import shutil
+    root = Path(root) if root else Path(__file__).resolve().parent.parent
+    save_path = Path(save_path) if save_path else SAVE_PATH
+    stem = Path(str(plan_path)).stem
+    m = _re.match(r"leg_(\d+)_", stem)
+    if not m:
+        return None
+    leg = int(m.group(1))
+    out = Path(out_dir) if out_dir else (root / CHECKPOINTS)
+    d = out / f"{stem[:40]}.{time.strftime('%Y%m%d-%H%M%S')}"
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+        copied = []
+        if save_path.exists():
+            shutil.copy2(save_path, d / "slot1.lua"); copied.append("slot1.lua")
+        for rel in CHECKPOINT_FILES:
+            src = root / rel
+            if src.exists():
+                shutil.copy2(src, d / src.name); copied.append(rel)
+        (d / "meta.json").write_text(json.dumps({
+            "leg": leg, "plan": stem, "rev": harness_rev(),
+            "t": round(time.time(), 1),
+            "when": time.strftime("%Y-%m-%d %H:%M:%S"), "files": copied},
+            indent=1))
+    except OSError:
+        return None
+    return d
+
+
 def _footprint_ended(note: str) -> bool:
     """Did this seam walk stop where the LOOKING stopped, not at a wall?
 
@@ -17393,7 +17471,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                   f"this condition cannot be met as written")
 
     def run_plan(self, plan: dict) -> bool:
-        self.log("plan_start", goal=plan.get("goal"), escalate=self.can_escalate)
+        # WHICH HARNESS PLAYED THIS ATTEMPT. Fixes land at the next boot,
+        # so one run's journal is several harnesses in a row; the meter
+        # can only split a run cleanly if each attempt says which it was
+        # (user, 2026-09-07: "clean splits for the fixed runs").
+        self.log("plan_start", goal=plan.get("goal"), escalate=self.can_escalate,
+                 rev=harness_rev())
         fails = 0
         backtracks = 0
         subgoals = plan["subgoals"]
@@ -18062,6 +18145,11 @@ def main():
         if args.save_after_each:
             r = (ex._send_safe("save_game") or {}).get("result") or {}
             print(f"[save] {r.get('detail') or 'save failed'}")
+            _cp = checkpoint_leg(plan_path)
+            if _cp:
+                ex.log("checkpoint", plan=plan_path.name, dir=str(_cp),
+                       rev=harness_rev())
+                print(f"[checkpoint] {_cp}")
     o = b.obs() or {}
     # Durable snapshot of where the run ENDED. obs.json belongs to the live
     # bridge and is gone once the game process dies, so the campaign's

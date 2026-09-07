@@ -225,6 +225,7 @@ EXPLORE = [
 
 
 DT = re.compile(rb'"dt": ([0-9.]+)')
+REV = re.compile(rb'"rev": "([^"]*)"')
 TT = re.compile(rb'"t": ([0-9.]+)')
 
 
@@ -263,6 +264,7 @@ def scan(path: str, keep_lines: bool = False) -> dict:
     # authoring, the re-authoring, the ladder. Older journals have only
     # dt, and say so ("attempts only"). Time between two rows is charged
     # to the stage the party stood in at the earlier row.
+    revs: list = []          # the harness revision each plan_start ran on
     exec_by_leg: list = []   # seconds inside attempts, per plan_start
     wall_by_leg: list = []   # seconds including the gap before the attempt
     stage_secs: dict = {}    # stage -> seconds (dt increments)
@@ -327,6 +329,8 @@ def scan(path: str, keep_lines: bool = False) -> dict:
                     cur_stage[0] = stage_of(b)
             if k == "plan_start":
                 legs.append(n)
+                _rv = REV.search(raw)
+                revs.append(_rv.group(1).decode() if _rv else "")
                 g = GOAL.search(raw)
                 goals.append(g.group(1).decode("utf-8", "replace") if g else "")
                 rounds_by_leg.append(0)
@@ -365,6 +369,7 @@ def scan(path: str, keep_lines: bool = False) -> dict:
             "lines": n + 1, "per_line": per_line, "swept_cells": cells[0],
             "areas": areas, "located": located, "goals": goals,
             "rounds_by_leg": rounds_by_leg,
+            "revs": revs,
             "exec_by_leg": exec_by_leg, "wall_by_leg": wall_by_leg,
             "exec_total": exec_total, "wall_total": wall_total,
             "stage_secs": stage_secs, "has_t": has_t[0]}
@@ -644,10 +649,17 @@ def legs_table(runs: list, n: int = 15):
               + (f", first {n} legs = {sum(rb[:n])} rounds "
                  f"({sum(rb[:n]) / tot * 100:.0f}%), "
                  f"{hms(sum((wl if r.get('has_t') else ex)[:n]))}" if tot else ""))
+        rv = r.get("revs") or []
         for i in range(min(n, len(rb))):
             tm = (hms(wl[i]) if r.get("has_t") and i < len(wl)
                   else (hms(ex[i]) + "*" if i < len(ex) else "--"))
-            print(f"   leg {i + 1:>2} {rb[i]:>5} {tm:>9}  {gs[i][:56] if i < len(gs) else ''}")
+            _rev = f" {rv[i]:>9}" if i < len(rv) and rv[i] else ""
+            print(f"   leg {i + 1:>2} {rb[i]:>5} {tm:>9}{_rev}  {gs[i][:52] if i < len(gs) else ''}")
+        _seen_revs = [x for x in dict.fromkeys(rv) if x]
+        if len(_seen_revs) > 1:
+            print(f"   harness revisions across this run's starts: "
+                  + ", ".join(_seen_revs)
+                  + " — split the comparison at those boundaries")
     if len(runs) >= 2:
         a, b = runs[-2], runs[-1]
         ra, rb = a.get("rounds_by_leg") or [], b.get("rounds_by_leg") or []
