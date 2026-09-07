@@ -2024,6 +2024,8 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     obs = obs or {}
     m = obs.get("map") or {}
     here = ex._where(obs)
+    _book = ((getattr(ex, "_outcomes", None) or {})
+             .get(f"{getattr(ex, '_cur_target', '')}|{here}") or {})
     # NO MAP, NO VERDICT. An observation taken while a box is up carries no
     # map, and this page then said "WHERE YOU STAND: None|None — FULLY
     # WORKED: nothing here is untried" with three starter balls standing
@@ -2987,6 +2989,17 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # ONLY A TOGGLE IS "PRESSABLE AGAIN". The line was written for the
         # Mansion's statue switches and it invited re-pressing Blaine's
         # quiz machines, which answer once (2026-08-28).
+        # A THING THAT HAS NOT ALWAYS SAID THE SAME IS NOT "NOTHING CHANGED".
+        # Its distinct replies, counted, replace the last-reply label (the
+        # executor's outcome book, "said"); see _record_outcome.
+        _oc = (_book or {}).get(c.key) or {}
+        _sd = _oc.get("said") or {}
+        if len(_sd) > 1 and c.kind in ("fixture", "person"):
+            words = words.replace("; nothing changed", "")
+            words += (" — it has NOT always said the same thing: "
+                      + "; ".join('"%s" (%dx)' % (k, n) for k, n in
+                                  sorted(_sd.items(), key=lambda kv: -kv[1])[:4])
+                      + " — its answer changed between presses")
         if c.kind == "fixture" and c.status in ("touched", "inert", "worth_a_word") \
                 and str(c.key).upper().startswith(("SWITCH", "TRASH_CAN")):
             words += " — a fixture; it can be pressed again"
@@ -3129,6 +3142,16 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
             by[c.status] = by.get(c.status, 0) + 1
         lines.append(f" … and {len(cut)} more thing(s) not shown: "
                      + ", ".join(f"{n} {s}" for s, n in sorted(by.items())))
+    # ...AND THE ROOM'S PRESSES IN ORDER, when what things here say has
+    # varied: the same record as above, read as a history (earliest first).
+    _pl = (getattr(ex, "_press_log", None) or {}).get(here) or []
+    _varied_here = any(len(((_book or {}).get(c.key) or {}).get("said") or {}) > 1
+                       for c in cands if c.kind in ("fixture", "person"))
+    if _varied_here and len(_pl) >= 3:
+        lines.append("WHAT PRESSING THINGS HERE HAS SAID, IN ORDER (earliest first, "
+                     f"the last {len(_pl)}): "
+                     + " → ".join('%s: "%s"' % (k, t) for k, t in _pl)
+                     + ". The order is the record; what it means is yours to read.")
     lines.append("Every entry above may be taken; the ones marked never "
                  "taken / never pressed are the only ones that can find "
                  "anything new here. Which matters is your call.")
