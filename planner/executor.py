@@ -2197,6 +2197,29 @@ class Executor:
         rec["n"] = int(rec.get("n") or 0) + 1
         last = note.split(": ", 1)[1] if ": " in note else note
         rec["last"] = speech_excerpt(last.strip(), 200)   # head AND tail
+        # WHAT IT SAID, EVERY DISTINCT TIME — AND IN WHAT ORDER. The page
+        # showed each of Vermilion Gym's cans with the LAST thing it said,
+        # so "the electric locks were reset!" read as a property of cans 0,
+        # 5, 9, 13 and 14, and "the 1st electric lock opened!" as a property
+        # of can 12 — while the game's rule makes both depend on the ORDER
+        # of presses, and the run had seen the opener move five times. The
+        # model wrote "TRASH_CAN_0, 5, 9, 13 and 14 reset the locks" and
+        # avoided them (run 16, 2026-09-07; user: "it has odd ideas about
+        # the trash"). Keep every distinct reply with its count, and the
+        # room's presses in order, so the record reads as a history and
+        # not as a label. Nothing here says what the rule is.
+        _sm = _re.search(r'it said: "(.*)"', note)
+        _sd_txt = speech_excerpt(_sm.group(1).strip(), 90) if _sm else ""
+        if _sd_txt:
+            _sd = rec.setdefault("said", {})
+            if _sd_txt in _sd or len(_sd) < 6:
+                _sd[_sd_txt] = int(_sd.get(_sd_txt) or 0) + 1
+        if op == "interact":
+            if not hasattr(self, "_press_log"):
+                self._press_log = {}
+            _pl = self._press_log.setdefault(here, [])
+            _pl.append([key, _sd_txt or speech_excerpt(last.strip(), 70)])
+            del _pl[:-12]
         # A WAY THAT SPOKE AND DID NOT OPEN turned you back: the fixed
         # ghost, a guard's line, a sleeping thing's — evidence for the
         # blockers ledger, in the words the game used.
