@@ -34,13 +34,13 @@ if lab is None:
             v = getattr(c, name)
             if callable(v):
                 out = v()
-                if isinstance(out, str) and ("24,19" in out or "24+25,19" in out):
+                if isinstance(out, str) and ("24,19" in out or "24,19), two tiles wide" in out):
                     lab = out; break
         except Exception:
             continue
 ck("a warp whose look is lift renders as a lift door", isinstance(lab, str) and lab.startswith("lift door (24"), lab)
 ck("...as one door two tiles wide, its other tile unnamed (a coordinate on the page is a place to go, 2026-09-07)",
-   isinstance(lab, str) and "lift door (24+25,19)" in lab and "(25,19)" not in lab, lab)
+   isinstance(lab, str) and "lift door (24,19), two tiles wide" in lab and "25" not in lab, lab)
 lua = (ROOT / "harness" / "shim.lua").read_text()
 ck("the shim marks the look from the tile drawn on an elevator warp",
    'if _look == "door" and type(dest) == "string"\n             and dest:match("_ELEVATOR$") then\n            _look = "lift"' in lua)

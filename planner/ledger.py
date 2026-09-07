@@ -147,23 +147,21 @@ class Candidate:
             # player would point at a two-tile doorway (user, 2026-09-07:
             # "should be something like door (4+5,7)"). No second "(x,y)"
             # anywhere in the line for the model to take for another door.
+            # ...AND "(12+13,5)" READ AS TWO DOORS TOO. Run 16, leg 14, the
+            # S.S. Anne (2026-09-07): three pages read "door (12+13,5) ->
+            # SS_ANNE_B1F|7,3 — the door you came in by; taken" (and the
+            # same at (12+13,15) and the bow's (13,6+7)), and three rounds
+            # the model wrote "exit through the untried door at (13,5)",
+            # took the twin tile and walked back out. Fourth wording, same
+            # failure, same lesson as above: any number on the page that
+            # can be read as a coordinate will be. So ONE coordinate, and
+            # the width said in words that cannot be.
             _tws = [t for t in (getattr(self, "twins", None) or []) if t]
             _key = self.key
-            if _tws:
-                try:
-                    _pts = sorted({tuple(int(v) for v in str(k).split(","))
-                                   for k in [self.key] + _tws})
-                    _xs = sorted({x for x, _ in _pts})
-                    _ys = sorted({y for _, y in _pts})
-                    if len(_ys) == 1:
-                        _key = "+".join(str(x) for x in _xs) + f",{_ys[0]}"
-                    elif len(_xs) == 1:
-                        _key = f"{_xs[0]}," + "+".join(str(y) for y in _ys)
-                    else:
-                        _key = f"{self.key} [one doorway, {len(_pts)} tiles]"
-                except (TypeError, ValueError):
-                    _key = f"{self.key} [one doorway, {len(_tws) + 1} tiles]"
             _tw = ""
+            if _tws:
+                _n = len(_tws) + 1
+                _tw = ", " + {2: "two", 3: "three", 4: "four"}.get(_n, str(_n)) + " tiles wide"
             if _l == "pad":
                 return f"warp pad ({_key}){_tw}"
             if _l == "hole":
@@ -712,8 +710,18 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                             f"{w0.get('x')},{w0.get('y')}",
                             (f"{w0.get('x')},{w0.get('y')}",)))]
             if _unreach and (m.get("warps") or []):
-                _others = ", ".join(f"({w0.get('x')},{w0.get('y')})"
-                                    for w0 in _unreach[:6])
+                # ONE TILE PER DOORWAY: "(12,5), (13,5)" is one door said
+                # twice, and the second number was taken for another door
+                # (run 16, 2026-09-07, S.S. Anne B1F rooms).
+                _firsts, _seen_g = [], set()
+                for w0 in _unreach:
+                    _k0 = f"{w0.get('x')},{w0.get('y')}"
+                    _g0 = _groups.get(_k0, (_k0,))
+                    if _g0 in _seen_g:
+                        continue
+                    _seen_g.add(_g0)
+                    _firsts.append(_g0[0])
+                _others = ", ".join(f"({t})" for t in _firsts[:6])
                 # ...BUT HOW THE OTHER ROOM IS ENTERED IS NOT RECORDED.
                 # This said "is entered by its OWN door from outside" — one
                 # true observation about Route 16's gate, promoted into a

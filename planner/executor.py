@@ -6339,7 +6339,10 @@ class Executor:
                 if any((byw.get(m2) or {}).get("reachable")
                        or m2 not in byk for m2 in g):
                     continue          # some tile of it is open or walked
-                folded.append(("+".join(g), d, who))
+                # ONE tile names it: "(12,5+13,5)" is two coordinates on the
+                # page and the second was read as another door (run 16,
+                # 2026-09-07). Either tile is the same use_warp.
+                folded.append((g[0], d, who))
             out = folded
         return out
 
@@ -10649,6 +10652,12 @@ class Executor:
         open_here = {k for k in open_here
                      if not any(t in (here_keys | ever) for t in _grp.get(k, (k,)))}
         unseen = allw - _known_wide
+        # ...AND NAMED ONCE. Both tiles of an unknown two-tile doorway sat
+        # here as two doors; the model went for the second one as "the
+        # other door" (run 16, 2026-09-07). One doorway, one coordinate.
+        open_here = {_grp.get(k, (k,))[0] for k in open_here}
+        unseen = {_grp.get(k, (k,))[0] for k in unseen}
+        _n_doors = len({_grp.get(k, (k,)) for k in allw})
         floor_note = ""
         if open_here:
             floor_note += (
@@ -10659,7 +10668,7 @@ class Executor:
                 f"taking one is walking, not searching.")
         if unseen:
             floor_note += (
-                f"\nTHIS FLOOR IS NOT FINISHED. {mid} has {len(allw)} "
+                f"\nTHIS FLOOR IS NOT FINISHED. {mid} has {_n_doors} "
                 f"doorway(s) in total and {len(unseen)} of them "
                 f"({', '.join(sorted(unseen))}) are on part of it you have "
                 f"never stood on — not reachable on foot from any spot "
@@ -10700,7 +10709,30 @@ class Executor:
             for _r2, _e2 in (self.explored or {}).items():
                 if _r2.split("|")[0] == _mid:
                     _stood |= set(_e2.keys())
-            _left = set(_doors) - _stood
+                    # THE DOOR YOU CAME IN BY IS NOT AN UNTRIED DOOR. A
+                    # part's key is the cell the run landed on entering it;
+                    # a door tile there was used, from the other side.
+                    # SS_ANNE_1F's (26,0) — the doorway from the dock the
+                    # run had just walked through — was "1 of 4 plain
+                    # untried doors" here (run 16, 2026-09-07).
+                    if "|" in _r2:
+                        _stood.add(_r2.split("|", 1)[1])
+            # ...AND A DOORWAY IS ONE DOOR HERE TOO: the twin tile of a
+            # door stood at is not another door, and a two-tile doorway
+            # is one doorway in the count (door_dests carries what the
+            # table says each tile leads to; _door_groups welds adjacent
+            # tiles with one destination).
+            _dd2 = (getattr(self, "door_dests", {}) or {}).get(_mid) or {}
+            _grp2 = self._door_groups([
+                {"x": int(str(k).split(",")[0]), "y": int(str(k).split(",")[1]),
+                 "dest": _dd2.get(k)}
+                for k in _doors if "," in str(k)
+                and str(k).replace("-", "").replace(",", "").isdigit()])
+            def _wide(_s, _g=_grp2):
+                return {t for k in _s for t in _g.get(k, (k,))}
+            _stood = _wide(_stood)
+            _units = {_grp2.get(k, (k,))[0] for k in _doors}
+            _left = _units - _stood
             if not _left:
                 continue
             _p = None
@@ -10756,12 +10788,13 @@ class Executor:
                 if _pr is not None and (_open_dist is None
                                         or len(_pr) < _open_dist):
                     _open_dist = len(_pr)
+            _fr, _unr = _wide(_fr), _wide(_unr)
             _open = sorted(_left & _fr)
             _barred = sorted((_left - _fr) & _unr)
             _far = sorted(_left - _fr - _unr)
             _rows.append((_open_dist if (_open and _open_dist is not None)
                           else (len(_p) if _p is not None else 99),
-                          _mid, len(_doors), _open, _far, _barred))
+                          _mid, len(_units), _open, _far, _barred))
         if _rows:
             # A FLOOR WITH A DOOR YOU CAN GO BACK AND OPEN OUTRANKS ONE
             # WHOSE UNFINISHED PART IS UNREACHABLE. Sorted by distance
