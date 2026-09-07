@@ -687,6 +687,53 @@ def _walked_door_from_into(from_map, to_map, stood) -> bool:
     return False
 
 
+def _came_from(from_map, to_map, explored=None, hops: int = 3) -> bool:
+    """Did the run walk INTO the place `from_map` belongs to FROM `to_map`,
+    within a few doors? Then leaving back to `to_map` is a real change of
+    place witnessed by reaching it: you are inside, it is outside.
+
+    "Exit the S.S. Anne to Vermilion City" ending on {"map":
+    "VERMILION_CITY"} was refused fifteen rounds running as a step "TRUE
+    the moment you stand on any part you already know" — while the run
+    stood on the ship's second deck, three doors in from the city (run 16,
+    2026-09-07). The refusal was written for the cave whose far exit lands
+    on a route already stood on from its near side; coming back out the
+    way you came in is the plain meaning of "leave", not the loophole.
+    Walks the run's own door record forward from `to_map`."""
+    if not from_map or not to_map:
+        return False
+    if explored is None:
+        try:
+            explored = (json.loads(Path("run/explored.json").read_text() or "{}")
+                        .get("explored") or {})
+        except (OSError, ValueError, json.JSONDecodeError):
+            return False
+    frontier = {r for r in explored if str(r).split("|")[0] == str(to_map)}
+    seen = set(frontier)
+    for _ in range(max(1, hops)):
+        nxt = set()
+        for reg in frontier:
+            for _k, e in (explored.get(reg) or {}).items():
+                to = str((e or {}).get("to") or "")
+                if not to or to in seen:
+                    continue
+                if to.split("|")[0] == str(from_map):
+                    return True
+                if to.split("|")[0] == str(to_map):
+                    continue          # back where we started is not "in"
+                seen.add(to); nxt.add(to)
+        frontier = nxt
+        if not frontier:
+            break
+    return False
+
+
+# words that mean the OTHER side of a place, where coming back out the way
+# you came in would not be the deed
+_SIDE = re.compile(r"\b(through|other side|far side|opposite|beyond|past|"
+                   r"east|west|north|south|eastern|western|northern|southern)\b", re.I)
+
+
 def _map_has_more(map_id: str) -> bool:
     """Does the run's own record show more of this map than the party has
     stood on — so that "a part never stood on" is a thing that exists?
@@ -1238,9 +1285,14 @@ def validate(plan: dict) -> list:
         if not _from5:
             _from5 = ((_obs_now().get("map") or {}).get("id")
                       if callable(globals().get("_obs_now")) else None)
+        # ...AND LEAVING TO WHERE YOU CAME IN FROM IS NOT THE LOOPHOLE. See
+        # _came_from: the step means "back outside", and its words name no
+        # far side.
+        _w5 = _words5.replace("_", " ")
         if (_m5 in _walked_now and _map_has_more(_m5)
                 and not _walked_door_from_into(_from5, _m5, _vr5)
-                and _OUT.search(_words5.replace("_", " "))):
+                and not (_came_from(_from5, _m5) and not _SIDE.search(_w5))
+                and _OUT.search(_w5)):
             _parts5 = sorted(r for r in _vr5 if str(r).split("|")[0] == _m5)
             probs.append(
                 f"subgoal[{_i5}] ({_s5.get('id')}) ends on "
