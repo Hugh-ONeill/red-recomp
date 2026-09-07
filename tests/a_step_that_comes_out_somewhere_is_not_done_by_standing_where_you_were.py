@@ -93,12 +93,16 @@ try:
     finally:
         A._map_has_more = _real_more
     A.visited_regions = lambda *a, **k: set()
+    _real_now = A._map_now
+    A._map_now = lambda *a, **k: None      # no record of where the run stands either (the live
+                                          # map would be a pinned place, and the pin rule would rightly speak)
     plan2 = {"goal": "g", "subgoals": [
         {"id": "exit_forest", "goal_text": "Exit the forest onto Route 2",
          "done_when": {"map": "ROUTE_2"}}]}
     probs2 = A.validate(plan2) or []
     ck("with no earlier step and no record on that map, a bare map still passes",
        not any("comes OUT" in p for p in probs2))
+    A._map_now = _real_now
 finally:
     A.visited_regions = _real
 
