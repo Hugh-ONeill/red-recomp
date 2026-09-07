@@ -43,6 +43,11 @@ fake2._tried_objs = {"B3F|9,5": {"ITEM_26_17"}, "B2F|1,1": {"ROCKET1"}}
 ck("...but a same-named thing on another floor does not count",
    L.untouched_in(fake2, "B3F|9,5") == ["ROCKET1", "ROCKET2"])
 
+_ex = (ROOT / "planner" / "executor.py").read_text()
+ck("at observation time, a sighted ball of this map inside the window and absent from the object list is marked gone",
+   "A BALL WHOSE SPOT IS ON SCREEN AND EMPTY IS GONE" in _ex and "-4 <= _bx - _px <= 5 and -4 <= _by - _py <= 4" in _ex
+   and "self._gone.setdefault(_reg, set()).add(_nm)" in _ex)
+
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:
     print(("ok  " if ok else "FAIL"), n)

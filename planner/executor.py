@@ -4919,6 +4919,27 @@ class Executor:
             for _o in (_m.get("objects") or []):
                 if _o.get("name") and _o.get("kind"):
                     _kinds[str(_o["name"])] = str(_o["kind"])
+            # A BALL WHOSE SPOT IS ON SCREEN AND EMPTY IS GONE. The Lift Key's
+            # ball on B4F stayed a sighting after it was taken, and the page
+            # said the floor "still has 1 thing never pressed" until the
+            # model pressed the empty spot again (run 16, 2026-09-07). The
+            # object list is what is on screen; a sighted ball of this map
+            # whose cell lies inside the 10x9 window around the player and is
+            # not in that list is not there any more.
+            _pl = (_obs or {}).get("player") or {}
+            if _pl.get("x") is not None and _pl.get("y") is not None:
+                _present = {str(_o.get("name")) for _o in (_m.get("objects") or []) if _o.get("name")}
+                _px, _py = int(_pl["x"]), int(_pl["y"])
+                for _reg, _names in list((getattr(self, "sightings", None) or {}).items()):
+                    if str(_reg).split("|")[0] != _mid:
+                        continue
+                    for _nm in list(_names or []):
+                        _mb = _re.fullmatch(r"ITEM_" + _re.escape(str(_mid)) + r"_(\d+)_(\d+)", str(_nm))
+                        if not _mb or _nm in _present:
+                            continue
+                        _bx, _by = int(_mb.group(1)), int(_mb.group(2))
+                        if -4 <= _bx - _px <= 5 and -4 <= _by - _py <= 4:
+                            self._gone.setdefault(_reg, set()).add(_nm)
             _dd = self.door_dests.setdefault(_mid, {})
             for _w in (_m.get("warps") or []):
                 if _w.get("x") is not None and _w.get("dest") is not None:
