@@ -6407,7 +6407,12 @@ _INFERRED = re.compile(
     # lore, and false (the badge gates USING Cut, not teaching it), offered
     # as the reason for a prerequisite (2026-09-07)
     r"in pok[e\u00e9]mon (?:red|blue|yellow|green|gen(?:eration)?|games?)\b|"
-    r"in (?:the )?(?:original|first[- ]gen(?:eration)?) games?)\b",
+    r"in (?:the )?(?:original|first[- ]gen(?:eration)?) games?|"
+    # "In FireRed/LeafGreen, the player must first obtain the Tea" — another
+    # game's rule, offered as this game's prerequisite (2026-09-07)
+    r"in (?:fire ?red|leaf ?green|gold|silver|crystal|ruby|sapphire|emerald|"
+    r"diamond|pearl|platinum|heart ?gold|soul ?silver|(?:the )?remakes?|"
+    r"(?:gen(?:eration)? ?[2-9ivx]+)|later games?)\b)\b",
     re.I)
 
 
@@ -6683,6 +6688,53 @@ def people_said_text(observed) -> str:
     return "\n\n" + (rest if j < 0 else rest[:j])
 
 
+_FETCH_VERBS = {"obtain", "get", "retrieve", "collect", "receive", "take", "fetch",
+                "buy", "purchase", "acquire", "find", "pick", "grab", "deliver", "give",
+                "bring", "return", "use", "catch", "capture"}
+
+
+def _thing_unknown(objective: str) -> "str | None":
+    """For a fetch-like objective, the thing it names when that thing is not
+    an item, species, machine, badge or map this game defines — else None.
+    "Obtain the Tea from the Celadon Mansion" -> "TEA". "Retrieve the S.S.
+    Ticket from Bill" -> None (S_S_TICKET). Fuzzy on the engine's ids so
+    spelling ("SS Ticket", "Poke Flute") is not refused."""
+    words = re.findall(r"[A-Za-z][A-Za-z0-9'.]*", objective or "")
+    if not words or words[0].lower() not in _FETCH_VERBS:
+        return None
+    rest = words[1:]
+    # the object: from after a leading article to the first preposition
+    stop = {"from", "at", "in", "to", "for", "on", "with", "into", "of", "and", "before", "after", "by"}
+    obj = []
+    for w in rest:
+        if w.lower() in stop:
+            break
+        if w.lower() in ("the", "a", "an", "some", "one", "your", "my", "an"):
+            continue
+        obj.append(w)
+    if not obj:
+        return None
+    key = re.sub(r"[^A-Z0-9]+", "_", " ".join(obj).upper()).strip("_")
+    if not key or key.isdigit():
+        return None
+    def _known(cands):
+        cands = [str(c).upper() for c in (cands or [])]
+        if key in cands:
+            return True
+        return bool(difflib.get_close_matches(key, cands, n=1, cutoff=0.8))
+    pools = [ENGINE_ITEMS, ENGINE_SPECIES if "ENGINE_SPECIES" in globals() else [],
+             ENGINE_MAPS, list(BADGES) if "BADGES" in globals() else [],
+             list(MACHINE_MOVES.keys()) + list(MACHINE_MOVES.values())]
+    if any(_known(pool) for pool in pools):
+        return None
+    # a species by common noun ("a Water type", "trainers", "Pokemon") is not a thing to look up
+    if key.endswith("_TYPE") or key in ("POKEMON", "TRAINERS", "TRAINER", "MONEY", "ITEMS", "ITEM", "BADGE", "BADGES"):
+        return None
+    if len(key) < 3:
+        return None
+    return key
+
+
 def check_missing(goal: str, ahead: list, start: str, model: str,
                   behind: list = (), observed=None, tries: int = 3,
                   journal=None) -> str:
@@ -6763,6 +6815,18 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
             print(f"[missing] turned down {ins!r}: already on your own "
                   f"list — {_why}", file=sys.stderr)
             turned_down.append((ins, "already on your own list"))
+            continue
+        # A DEED ABOUT A THING THIS GAME DOES NOT HAVE IS NOT A DEED. "Obtain
+        # the Tea from the Celadon Mansion" — FireRed's item, in front of
+        # Erika (2026-09-07). The object of a fetch is checked against the
+        # game's own lists, the way a plan's has_item already is.
+        _unknown = _thing_unknown(ins)
+        if _unknown:
+            print(f"[missing] turned down {ins!r}: {_unknown} is not a thing this "
+                  f"game defines — {_why}", file=sys.stderr)
+            turned_down.append((ins, f"{_unknown} is not an item, Pokemon, machine, "
+                                     f"badge or place this game has; name a deed "
+                                     f"about something that exists here, or none"))
             continue
         _ph_item = _premise_item_not_held(_why, start)
         if _ph_item:

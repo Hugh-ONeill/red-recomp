@@ -72,6 +72,20 @@ def main():
     except (OSError, ValueError):
         _done = 0
     ahead = lines[max(0, _done):]
+    # A PREREQUISITE ABOUT A THING THIS GAME DOES NOT HAVE IS REFUSED HERE
+    # TOO. "Obtain the Tea from the Celadon Mansion" — FireRed's item — went
+    # into the outline in front of Erika (2026-09-07). The rung's own gate
+    # is the first line; this is the last one before the outline changes.
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from author import _thing_unknown
+        _unk = _thing_unknown(proposed)
+    except Exception:
+        _unk = None
+    if _unk:
+        print(f"insertion refused: '{proposed}' names {_unk}, which is not an item, "
+              f"Pokemon, machine, badge or place this game has")
+        sys.exit(3)
     p = _norm(proposed)
     # A PREREQUISITE THAT NAMES ONLY WHAT THE LEG NAMES IS THE LEG. "Battle
     # Lt. Surge" was inserted in front of "Defeat Lt. Surge for the Thunder
