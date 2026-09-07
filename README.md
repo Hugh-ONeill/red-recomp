@@ -116,7 +116,7 @@ off and moves them.
 for t in tests/*.py; do python3 "$t"; done
 ```
 
-286 of them, and they are named as sentences, because each one is a claim
+287 of them, and they are named as sentences, because each one is a claim
 about what the harness owes the model:
 
 ```
@@ -151,7 +151,7 @@ stuck, the fix is almost never in the model.
 planner/arc.py --diff        # the last two runs, side by side
 planner/arc.py --phases      # each run split into quarters by leg
 planner/arc.py --areas A B   # where each run spent its rounds, by building and by stage
-planner/arc.py --legs 15 A B # rounds per leg for the first legs of each run
+planner/arc.py --legs 15 A B # rounds and clock time per leg for the first legs of each run
                              # (name the two journals: the newest by date
                              #  are usually restart fragments)
 ```

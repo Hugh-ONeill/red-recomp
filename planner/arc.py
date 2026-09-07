@@ -224,6 +224,20 @@ EXPLORE = [
 ]
 
 
+DT = re.compile(rb'"dt": ([0-9.]+)')
+TT = re.compile(rb'"t": ([0-9.]+)')
+
+
+def hms(secs) -> str:
+    """Seconds as 12m34s or 1h02m; -- when unknown."""
+    if secs is None:
+        return "--"
+    secs = int(secs)
+    if secs >= 3600:
+        return f"{secs // 3600}h{(secs % 3600) // 60:02d}m"
+    return f"{secs // 60}m{secs % 60:02d}s"
+
+
 def scan(path: str, keep_lines: bool = False) -> dict:
     """One pass, regex only: an 89 MB journal is not worth json.loads.
 
@@ -240,6 +254,25 @@ def scan(path: str, keep_lines: bool = False) -> dict:
     cells = [0]
     legs: list = []          # line index of each plan_start, for --phases
     per_line: list = []      # (kind, line_no) for the kinds we bucket
+    # CLOCK TIME, beside the rounds (user, 2026-09-07: "maybe we should
+    # track clock time as well while were at it"). Every row carries dt,
+    # seconds since ITS executor booted, and a boot is an attempt — so an
+    # attempt's span is its largest dt, and a leg's executing time is the
+    # sum over its attempts. Rows written since 2026-09-07 also carry t,
+    # the wall clock, which closes the gaps between attempts: the
+    # authoring, the re-authoring, the ladder. Older journals have only
+    # dt, and say so ("attempts only"). Time between two rows is charged
+    # to the stage the party stood in at the earlier row.
+    exec_by_leg: list = []   # seconds inside attempts, per plan_start
+    wall_by_leg: list = []   # seconds including the gap before the attempt
+    stage_secs: dict = {}    # stage -> seconds (dt increments)
+    seg_max = [None]         # largest dt in the current attempt
+    prev_dt = [None]
+    prev_t_last = [None]     # wall clock of the previous attempt's last row
+    t_first = [None]         # this journal's first wall clock
+    t_last = [None]
+    cur_stage = ["?"]
+    has_t = [False]
     n = 0
     with open(path, "rb") as fh:
         for n, raw in enumerate(fh):
@@ -247,6 +280,38 @@ def scan(path: str, keep_lines: bool = False) -> dict:
             if not m:
                 continue
             k = m.group(1).decode()
+            _dt = DT.search(raw)
+            dt = float(_dt.group(1)) if _dt else None
+            _tt = TT.search(raw)
+            tt = float(_tt.group(1)) if _tt else None
+            if tt is not None:
+                has_t[0] = True
+                if t_first[0] is None:
+                    t_first[0] = tt
+                t_last[0] = tt
+            if k == "plan_start":
+                # close the attempt before: its span is its largest dt
+                if exec_by_leg and seg_max[0] is not None:
+                    exec_by_leg[-1] += seg_max[0]
+                    wall_by_leg[-1] += seg_max[0]
+                exec_by_leg.append(0.0)
+                # the gap since the last row of the previous attempt is
+                # this attempt's authoring, when the clock is on the rows
+                gap = ((tt - prev_t_last[0])
+                       if (tt is not None and prev_t_last[0] is not None)
+                       else 0.0)
+                wall_by_leg.append(max(0.0, gap))
+                seg_max[0] = dt if dt is not None else 0.0
+                prev_dt[0] = dt
+            elif dt is not None:
+                if seg_max[0] is None or dt > seg_max[0]:
+                    seg_max[0] = dt
+                if prev_dt[0] is not None and dt >= prev_dt[0]:
+                    stage_secs[cur_stage[0]] = (stage_secs.get(cur_stage[0], 0.0)
+                                                + (dt - prev_dt[0]))
+                prev_dt[0] = dt
+            if tt is not None:
+                prev_t_last[0] = tt
             # an explore step that found nothing is its own outcome
             if k == "explore_step":
                 s = STEP.search(raw)
@@ -259,6 +324,7 @@ def scan(path: str, keep_lines: bool = False) -> dict:
                     located += 1
                     b = building(w.group(1).decode())
                     areas[b] = areas.get(b, 0) + 1
+                    cur_stage[0] = stage_of(b)
             if k == "plan_start":
                 legs.append(n)
                 g = GOAL.search(raw)
@@ -289,10 +355,19 @@ def scan(path: str, keep_lines: bool = False) -> dict:
                     counts["sweep_dry"] = counts.get("sweep_dry", 0) + 1
             if keep_lines:
                 per_line.append((k, n))
+    if exec_by_leg and seg_max[0] is not None:
+        exec_by_leg[-1] += seg_max[0]
+        wall_by_leg[-1] += seg_max[0]
+    exec_total = sum(exec_by_leg)
+    wall_total = ((t_last[0] - t_first[0])
+                  if (has_t[0] and t_first[0] is not None) else None)
     return {"path": path, "counts": counts, "maps": maps, "legs": legs,
             "lines": n + 1, "per_line": per_line, "swept_cells": cells[0],
             "areas": areas, "located": located, "goals": goals,
-            "rounds_by_leg": rounds_by_leg}
+            "rounds_by_leg": rounds_by_leg,
+            "exec_by_leg": exec_by_leg, "wall_by_leg": wall_by_leg,
+            "exec_total": exec_total, "wall_total": wall_total,
+            "stage_secs": stage_secs, "has_t": has_t[0]}
 
 
 def stages_of(r: dict) -> dict:
@@ -331,9 +406,13 @@ def areas_table(runs: list, top: int = 12):
         if marts:
             print(f"   {'(every _MART together)':<28}{marts:>6}  "
                   f"{marts / r['located'] * 100:5.1f}%")
-        print("   -- by stage --")
+        print("   -- by stage --                 rounds   share    clock*")
+        ss = r.get("stage_secs") or {}
         for st, n in sorted(stages_of(r).items(), key=lambda kv: -kv[1]):
-            print(f"   {st:<28}{n:>6}  {n / r['located'] * 100:5.1f}%")
+            print(f"   {st:<28}{n:>6}  {n / r['located'] * 100:5.1f}%  "
+                  f"{hms(ss.get(st)):>8}")
+        print("   * clock inside attempts, charged to where the party stood "
+              "at the earlier of two rows")
 
 
 def areas_diff(a: dict, b: dict, top: int = 10):
@@ -496,15 +575,17 @@ def group(runs: list, metrics: list, title: str, extra=None):
 
 
 def table(runs: list, phases: bool):
-    head = f"{'run':<14}{'legs':>5}{'esc':>6}{'rnds':>7}"
+    head = f"{'run':<14}{'legs':>5}{'esc':>6}{'rnds':>7}{'clock':>9}"
     for name, _, _, _ in METRICS:
         head += f"{name:>12}"
     print(head)
     for r in runs:
         c = r["counts"]
+        clock = (hms(r["wall_total"]) if r.get("wall_total") is not None
+                 else hms(r.get("exec_total")) + "*")
         row = (f"{label(r['path']):<14}{c.get('plan_start', 0):>5}"
                f"{c.get('escalate_start', 0):>6}"
-               f"{c.get('escalate_proposal', 0):>7}")
+               f"{c.get('escalate_proposal', 0):>7}{clock:>9}")
         for name, nums, den, _ in METRICS:
             row += f"{fmt(rate(c, nums, den), name.endswith('%')):>12}"
         print(row)
@@ -520,6 +601,10 @@ def table(runs: list, phases: bool):
                 for name, nums, den, _ in METRICS:
                     line += f"{fmt(rate(q, nums, den), name.endswith('%')):>12}"
                 print(line)
+    if any(r.get("wall_total") is None for r in runs):
+        print("  * clock from inside attempts only: this journal predates "
+              "the wall-clock stamp, so authoring between attempts is not "
+              "counted")
 
 
 def quarters(r: dict) -> list:
@@ -552,22 +637,33 @@ def legs_table(runs: list, n: int = 15):
         rb = r.get("rounds_by_leg") or []
         gs = r.get("goals") or []
         tot = sum(rb)
-        print(f"\n{label(r['path'])}: {len(rb)} plan starts, {tot} rounds"
+        ex, wl = r.get("exec_by_leg") or [], r.get("wall_by_leg") or []
+        clock = (hms(r["wall_total"]) if r.get("wall_total") is not None
+                 else hms(r.get("exec_total")) + " in attempts")
+        print(f"\n{label(r['path'])}: {len(rb)} plan starts, {tot} rounds, {clock}"
               + (f", first {n} legs = {sum(rb[:n])} rounds "
-                 f"({sum(rb[:n]) / tot * 100:.0f}%)" if tot else ""))
+                 f"({sum(rb[:n]) / tot * 100:.0f}%), "
+                 f"{hms(sum((wl if r.get('has_t') else ex)[:n]))}" if tot else ""))
         for i in range(min(n, len(rb))):
-            print(f"   leg {i + 1:>2} {rb[i]:>5}  {gs[i][:60] if i < len(gs) else ''}")
+            tm = (hms(wl[i]) if r.get("has_t") and i < len(wl)
+                  else (hms(ex[i]) + "*" if i < len(ex) else "--"))
+            print(f"   leg {i + 1:>2} {rb[i]:>5} {tm:>9}  {gs[i][:56] if i < len(gs) else ''}")
     if len(runs) >= 2:
         a, b = runs[-2], runs[-1]
         ra, rb = a.get("rounds_by_leg") or [], b.get("rounds_by_leg") or []
         print(f"\n{label(a['path'])}  ->  {label(b['path'])}   rounds in the first {n} plan starts: "
               f"{sum(ra[:n])} -> {sum(rb[:n])}")
     print("\nA plan start is an attempt or a re-authoring, not an outline leg: a leg that "
-          "took four attempts is four starts. Read the goal texts to line them up.")
+          "took four attempts is four starts. Read the goal texts to line them up.\n"
+          "Clock per start includes the authoring before it when the journal carries "
+          "the wall clock (2026-09-07 on); * marks time inside the attempt only.")
 
 
 def diff(a: dict, b: dict):
     print(f"\n{label(a['path'])}  ->  {label(b['path'])}")
+    print(f"  {'clock':<12}{hms(a.get('exec_total')):>8} -> "
+          f"{hms(b.get('exec_total')):>8}        (inside attempts; wall "
+          f"{hms(a.get('wall_total'))} -> {hms(b.get('wall_total'))})")
     for name, nums, den, per in METRICS:
         ra, rb = rate(a["counts"], nums, den), rate(b["counts"], nums, den)
         if ra is None or rb is None:

@@ -113,7 +113,9 @@ with tempfile.TemporaryDirectory() as d:
         arc.legs_table([rl], n=3)
     t = out.getvalue()
     ck("the legs table prints the first n starts with their goals and the share they took",
-       "leg  1     4  Obtain a starter Pokemon" in t and "first 3 legs = 15 rounds (100%)" in t)
+       any(l.strip().startswith("leg  1     4") and l.rstrip().endswith("Obtain a starter Pokemon")
+           for l in t.splitlines())          # a clock column sits between, since 2026-09-07
+       and "first 3 legs = 15 rounds (100%)" in t)
     ck("...and says a start is not an outline leg", "A plan start is an attempt or a re-authoring" in t)
 
     # a journal from before the marker existed

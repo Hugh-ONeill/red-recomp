@@ -11882,7 +11882,8 @@ class Executor:
 
     def log(self, kind, **kw):
         self.logf.write(json.dumps(
-            {"dt": round(time.time() - self.t0, 1), "kind": kind, **kw}) + "\n")
+            {"dt": round(time.time() - self.t0, 1),
+             "t": round(time.time(), 1), "kind": kind, **kw}) + "\n")
         self.logf.flush()
 
     def handle_battle(self, subgoal: dict, obs: dict) -> dict:
