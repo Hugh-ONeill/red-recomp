@@ -21,7 +21,7 @@ checks = []
 def ck(n, ok): checks.append((n, bool(ok)))
 d = L.Candidate(key="4,7", kind="door", twins=["5,7"])
 ck("a two-tile doorway is labelled as ONE door with the other tile named as the same door",
-   d.label() == "door (4,7) [ONE door, 2 tiles wide: (5,7) is the SAME door, not another]")
+   d.label() == "door (4,7) [one doorway, 2 tiles wide]")   # the twin tile is not named: a coordinate is a place to go (2026-09-07)
 ck("the arrival record is snapshotted before the op runs",
    "_arr_snap = (getattr(self, \"_arrived\", None)," in ex)
 ck("a use_warp back through it is said, with where it put you",

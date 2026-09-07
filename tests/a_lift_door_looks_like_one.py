@@ -39,7 +39,8 @@ if lab is None:
         except Exception:
             continue
 ck("a warp whose look is lift renders as a lift door", isinstance(lab, str) and lab.startswith("lift door (24,19)"), lab)
-ck("...as one door two tiles wide", isinstance(lab, str) and "(25,19) is" in lab and "the SAME door" in lab, lab)
+ck("...as one door two tiles wide, its other tile unnamed (a coordinate on the page is a place to go, 2026-09-07)",
+   isinstance(lab, str) and "[one doorway, 2 tiles wide]" in lab and "(25,19)" not in lab, lab)
 lua = (ROOT / "harness" / "shim.lua").read_text()
 ck("the shim marks the look from the tile drawn on an elevator warp",
    'if _look == "door" and type(dest) == "string"\n             and dest:match("_ELEVATOR$") then\n            _look = "lift"' in lua)

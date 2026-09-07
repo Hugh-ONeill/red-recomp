@@ -1114,15 +1114,30 @@ def validate(plan: dict) -> list:
                       r"out of|other side|far side)\b", re.I)
     _vr5 = visited_regions()
     _walked_maps = {str(r).split("|")[0] for r in _vr5}
+    # ...AND THE MAPS THIS PLAN'S OWN EARLIER STEPS END ON. The rule read
+    # the run's record only, so a plan written in Viridian City — "reach
+    # Route 2" then "go through the forest and exit to the NORTH side of
+    # Route 2", both {"map":"ROUTE_2"} — passed: Route 2 had not been stood
+    # on yet. By the second step it had, the party walked back out the
+    # forest's south gate, the step counted as done with nothing crossed,
+    # and the next step looked for Pewter from the wrong half of the road
+    # (run 16, 2026-09-07). The plan's own order puts the party there first.
+    _ahead5: set = set()
     for _i5, _s5 in enumerate(subs or []):
         if not isinstance(_s5, dict):
             continue
         _dw5 = _s5.get("done_when") or {}
+        _walked_now = _walked_maps | _ahead5
+        for _dwk in ("map", "new_part"):
+            if isinstance(_dw5, dict) and isinstance(_dw5.get(_dwk), str):
+                _ahead5.add(_dw5[_dwk])
+        if isinstance(_dw5, dict) and isinstance(_dw5.get("area"), str):
+            _ahead5.add(_dw5["area"].split("|")[0])
         if not isinstance(_dw5, dict) or set(_dw5) != {"map"}:
             continue
         _m5 = str(_dw5.get("map") or "")
         _words5 = f"{_s5.get('goal_text') or ''} {_s5.get('id') or ''}"
-        if _m5 in _walked_maps and _OUT.search(_words5.replace("_", " ")):
+        if _m5 in _walked_now and _OUT.search(_words5.replace("_", " ")):
             _parts5 = sorted(r for r in _vr5 if str(r).split("|")[0] == _m5)
             probs.append(
                 f"subgoal[{_i5}] ({_s5.get('id')}) ends on "

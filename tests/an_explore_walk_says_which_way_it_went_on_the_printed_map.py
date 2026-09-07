@@ -56,6 +56,18 @@ ck("a map the printed map does not know is level, not a guess",
    L.goalward_tier(Fake(), "NOWHERE|1,1", "ROUTE_4|3,5",
                    "map:CERULEAN_CITY") == 1)
 
+# a place's gates sit where the place does: the forest's north gate is off
+# Route 2, not in Viridian City (it read as the city, two legs from Pewter,
+# and explore walked back to the city instead of on to the gate, run 16)
+ck("the forest's gates stand on Route 2",
+   E._doorstep("VIRIDIAN_FOREST_NORTH_GATE") == "ROUTE_2"
+   and E._doorstep("VIRIDIAN_FOREST_SOUTH_GATE") == "ROUTE_2")
+ck("...so from Route 2 under PEWTER the gate is level and the city is away",
+   L.goalward_tier(Fake(), "VIRIDIAN_FOREST_NORTH_GATE|5,0", "ROUTE_2|3,43",
+                   "map:PEWTER_CITY") == 1
+   and L.goalward_tier(Fake(), "VIRIDIAN_CITY|17,0", "ROUTE_2|3,43",
+                       "map:PEWTER_CITY") == 2)
+
 # the words
 ck("away is said as away, naming the goal",
    "AWAY from CERULEAN_CITY" in L.goalward_words(2, "map:CERULEAN_CITY"))

@@ -348,6 +348,15 @@ def _doorstep(map_id: str, _seen=None) -> str:
     fam = _re.sub(r"_(B?\d+F|ROOF|ELEVATOR)$", "", map_id)
     if fam in INTERIOR_ROAD:
         return INTERIOR_ROAD[fam]
+    # A PLACE'S GATES AND FLOORS CARRY ITS NAME. VIRIDIAN_FOREST is off
+    # ROUTE_2 and says so above; VIRIDIAN_FOREST_NORTH_GATE fell through
+    # to the city rule below and read as VIRIDIAN_CITY — two legs from
+    # Pewter instead of one — so the explore picker ranked the gate's
+    # unseen north end (the way on) level with Viridian City's leftovers
+    # (the way back) and walked back by distance (run 16, 2026-09-07).
+    for _k in sorted(INTERIOR_ROAD, key=len, reverse=True):
+        if map_id.startswith(_k + "_"):
+            return INTERIOR_ROAD[_k]
     for suffix in ("_GYM", "_MART", "_POKECENTER", "_GATE"):
         if map_id.endswith(suffix):
             for kind in ("_CITY", "_TOWN", "_ISLAND"):   # CINNABAR_GYM, too

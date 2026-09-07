@@ -131,13 +131,21 @@ class Candidate:
             # tile of the door it came in by, and walked back out
             # (2026-08-29, user watching). Say it as one door with a width,
             # and name the other tiles as the SAME door.
+            # ...AND THAT STILL READ AS TWO. "[ONE door, 2 tiles wide: (5,7)
+            # is the SAME door, not another]" — and run 16 took (5,7) as
+            # "the unknown door" in the forest's south gate and again in
+            # its north gate, one round each, walking back out both times
+            # (2026-09-07; user: "it did the same thing at the north gate
+            # so its a pattern"). Three wordings, one lesson: a coordinate
+            # on the page is a place to go, whatever the words around it
+            # say. So the other tiles are not named at all. Nothing is
+            # hidden by that: the doorway is one door, either tile of it
+            # is the same use_warp, and the op says so if the model finds
+            # the tile some other way.
             _tws = [t for t in (getattr(self, "twins", None) or []) if t]
             _tw = ""
             if _tws:
-                _tw = (f" [ONE door, {len(_tws) + 1} tiles wide: "
-                       + " and ".join(f"({t})" for t in _tws)
-                       + (" is" if len(_tws) == 1 else " are")
-                       + " the SAME door, not another]")
+                _tw = f" [one doorway, {len(_tws) + 1} tiles wide]"
             if _l == "pad":
                 return f"warp pad ({self.key}){_tw}"
             if _l == "hole":
