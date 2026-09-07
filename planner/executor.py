@@ -2206,6 +2206,14 @@ class Executor:
         # it (ROCKET_HIDEOUT_B4F's Lift Key ball, run 16, 2026-09-07).
         if op == "interact" and "has been taken, and a ball taken is gone" in note:
             self._gone.setdefault(here, set()).add(key)
+        # ...AND THE OLDER REPLY MEANS THE SAME WHEN THE MAP IT NAMES IS THIS
+        # ONE. The shim's new wording lands only when the game itself reboots;
+        # "no item lies at (x,y) on M" with M the map stood on is the same
+        # fact said the old way (2026-09-07).
+        elif op == "interact":
+            _m_no = _re.search(r"no item lies at \(\d+,\d+\) on ([A-Z_0-9]+)", note)
+            if _m_no and _m_no.group(1) == str(here).split("|")[0]:
+                self._gone.setdefault(here, set()).add(key)
         book = self._outcomes.setdefault(f"{self._cur_target}|{here}", {})
         rec = book.setdefault(key, {"n": 0, "last": ""})
         rec["n"] = int(rec.get("n") or 0) + 1
