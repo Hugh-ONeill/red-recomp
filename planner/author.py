@@ -759,7 +759,18 @@ def _load_explored() -> dict:
         return {}
 
 
-def _came_out_onto(from_map: str, to_map: str, explored=None) -> list:
+_COMPASS = re.compile(r"\b(north|south|east|west)(?:ern)?\b", re.I)
+
+
+def _compass(text: str) -> "str | None":
+    """The LAST compass word in a sentence, if any: which side a leg or a
+    step says it wants. "from the north side of Route 10 to its south side"
+    names both; the destination comes last."""
+    ms = _COMPASS.findall(str(text or ""))
+    return ms[-1].lower() if ms else None
+
+
+def _came_out_onto(from_map: str, to_map: str, explored=None, side=None) -> list:
     """Parts of `to_map` the run has reached by a door FROM inside the place
     `from_map` belongs to (any floor of it), with the door and how often:
     [(part, door, n)]. The run's own record. Rock Tunnel's far ladder
@@ -776,23 +787,48 @@ def _came_out_onto(from_map: str, to_map: str, explored=None) -> list:
     # the run back on ROUTE_10|0,4 in attempt 3, and this then named THAT
     # part as the far side (2026-09-07). A part the run has entered the
     # place FROM is the near side, and is left out.
+    # ...AND "ENTERED FROM" IS NOT THE TEST EITHER: by attempt 3 the run had
+    # gone into the tunnel from both ends, and that left no far side at all.
+    # The near side is any part the run has ARRIVED ON from somewhere other
+    # than this place (Route 9, the Pokemon Center beside the entrance); a
+    # part reached only through the place is the far side.
     near = set()
     for reg, edges in (ex or {}).items():
-        if str(reg).split("|")[0].upper() != str(to_map).upper():
+        src_map = str(reg).split("|")[0].upper()
+        if _root(src_map) == root or src_map == str(to_map).upper():
             continue
         for _door, e in (edges or {}).items():
-            if _root((e or {}).get("to") or "") == root and int((e or {}).get("n") or 0) > 0:
-                near.add(str(reg))
-    out = []
+            to = str((e or {}).get("to") or "")
+            if to.split("|")[0].upper() == str(to_map).upper() and int((e or {}).get("n") or 0) > 0:
+                near.add(to)
+    cands = []
     for reg, edges in (ex or {}).items():
         if _root(reg) != root:
             continue
         for door, e in (edges or {}).items():
             to = str((e or {}).get("to") or "")
-            if (to.split("|")[0].upper() == str(to_map).upper() and int((e or {}).get("n") or 0) > 0
-                    and to not in near):
-                out.append((to, str(door), int(e.get("n") or 0), str(reg).split("|")[0]))
-    return sorted(set(out))
+            if to.split("|")[0].upper() == str(to_map).upper() and int((e or {}).get("n") or 0) > 0:
+                cands.append((to, str(door), int(e.get("n") or 0), str(reg).split("|")[0]))
+    cands = sorted(set(cands))
+    # ...AND WHEN THE WORDS NAME A SIDE, THE SIDE DECIDES. By the time the
+    # leg was re-authored a fourth time the run had walked on to Lavender
+    # and back, so the far side had an arrival "from elsewhere" too and the
+    # rule above left nothing (2026-09-07). "to its south side" and the
+    # parts' own coordinates settle it: this engine's y grows southward,
+    # x eastward — the page's coordinates are the model's own vocabulary.
+    if side in ("north", "south", "east", "west") and cands:
+        def _xy(part):
+            try:
+                x, y = part.split("|")[1].split(",")
+                return int(x), int(y)
+            except (IndexError, ValueError):
+                return (0, 0)
+        key = {"south": lambda c: _xy(c[0])[1], "north": lambda c: -_xy(c[0])[1],
+               "east": lambda c: _xy(c[0])[0], "west": lambda c: -_xy(c[0])[0]}[side]
+        best = max(cands, key=key)
+        far_part = best[0]
+        return [c for c in cands if c[0] == far_part]
+    return [c for c in cands if c[0] not in near]
 
 
 def _map_has_more(map_id: str) -> bool:
@@ -1383,8 +1419,9 @@ def validate(plan: dict) -> list:
                                     + [_map_now()])
                         if m and m not in MAP_EDGES]
                 _co_a = []
+                _side_a = _compass(f"{plan.get('goal') or plan.get('objective') or ''} {_words5}")
                 for _m_in in dict.fromkeys(_ins):
-                    _co_a += _came_out_onto(_m_in, _am)
+                    _co_a += _came_out_onto(_m_in, _am, side=_side_a)
                 _bad_ex = sorted(set(str(x) for x in _na) & {pt for pt, _d, _n, _f in _co_a})
                 if _bad_ex:
                     _pt = _bad_ex[0]
@@ -1446,7 +1483,9 @@ def validate(plan: dict) -> list:
             # ...AND IF YOU HAVE ALREADY COME OUT THERE, SAY WHICH PART. The
             # advice "write new_part" is wrong once the run has stood on the
             # far side: the witness is that part, by name.
-            _co5 = _came_out_onto(_from5, _m5) if _from5 else []
+            _co5 = (_came_out_onto(_from5, _m5, side=_compass(
+                        f"{plan.get('goal') or plan.get('objective') or ''} {_words5}"))
+                    if _from5 else [])
             if _co5:
                 _pt, _door, _n, _flr = _co5[0]
                 probs.append(

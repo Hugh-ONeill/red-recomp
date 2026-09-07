@@ -24,12 +24,22 @@ def ck(n, ok, d=""): checks.append((n, bool(ok), d))
 explored = {"ROCK_TUNNEL_1F|24,16": {"15,33": {"to": "ROUTE_10|14,52", "n": 2}, "37,17": {"to": "ROCK_TUNNEL_B1F|2,2", "n": 3}},
             "ROCK_TUNNEL_1F|14,2": {"15,3": {"to": "ROUTE_10|0,4", "n": 1}},      # walked back out the entrance too
             "ROUTE_10|0,4": {"8,17": {"to": "ROCK_TUNNEL_1F|14,2", "n": 3}},       # ...which is the side it went IN from
+            "ROUTE_10|14,52": {"8,53": {"to": "ROCK_TUNNEL_1F|24,16", "n": 1}},    # and later it went back in from the far side too
+            "ROCK_TUNNEL_POKECENTER|0,3": {"3,7": {"to": "ROUTE_10|0,4", "n": 4}},  # the near side was reached from elsewhere
+            "LAVENDER_TOWN|6,0": {"north": {"to": "ROUTE_10|14,52", "n": 1}}}      # and later the run walked on past the far side and back
+explored_no_lav = {k: v for k, v in explored.items() if k != "LAVENDER_TOWN|6,0"}
+_unused = {
             "ROUTE_9|50,6": {"east": {"to": "ROUTE_10|0,4", "n": 1}}}
 A._load_explored = lambda: explored
 A.holding_town_map = lambda: True
 A.visited_regions = lambda *a, **k: {"ROUTE_10|0,4", "ROUTE_10|14,52", "ROCK_TUNNEL_1F|24,16", "ROCK_TUNNEL_B1F|2,2"}
 A._map_now = lambda *a, **k: "ROCK_TUNNEL_B1F"
-co = A._came_out_onto("ROCK_TUNNEL_B1F", "ROUTE_10", explored)
+co = A._came_out_onto("ROCK_TUNNEL_B1F", "ROUTE_10", explored_no_lav)
+co_s = A._came_out_onto("ROCK_TUNNEL_B1F", "ROUTE_10", explored, side="south")
+ck("with the leg's compass word, the far side is the part that lies that way, even after walking past it",
+   co_s == [("ROUTE_10|14,52", "15,33", 2, "ROCK_TUNNEL_1F")], co_s)
+ck("without a compass word, a part arrived at from beyond counts as near (nothing is claimed)",
+   A._came_out_onto("ROCK_TUNNEL_B1F", "ROUTE_10", explored) == [])
 ck("the record knows the far side was reached from inside, by which door, from which floor — and the side it went in from is not it",
    co == [("ROUTE_10|14,52", "15,33", 2, "ROCK_TUNNEL_1F")], co)
 p0 = [p for p in A.validate({"goal": g if 'g' in dir() else "Travel through Rock Tunnel to its south side", "subgoals": [
