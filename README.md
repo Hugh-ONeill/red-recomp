@@ -154,6 +154,8 @@ planner/arc.py --areas A B   # where each run spent its rounds, by building and 
 planner/arc.py --legs 15 A B # rounds, clock time and harness revision per leg
 ./replay_from.sh run/saves/<leg>.<time>   # put the run back to a leg boundary and
                              # play the legs after it on the harness as it stands
+planner/splits.py            # the quickest each leg has ever been played, and the
+                             # sum of those best splits; --keep marks a leg's split
                              # (name the two journals: the newest by date
                              #  are usually restart fragments)
 ```
