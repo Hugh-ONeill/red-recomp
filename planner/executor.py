@@ -4926,7 +4926,7 @@ class Executor:
             # object list is what is on screen; a sighted ball of this map
             # whose cell lies inside the 10x9 window around the player and is
             # not in that list is not there any more.
-            _pl = (_obs or {}).get("player") or {}
+            _pl = (obs or {}).get("player") or {}
             if _pl.get("x") is not None and _pl.get("y") is not None:
                 _present = {str(_o.get("name")) for _o in (_m.get("objects") or []) if _o.get("name")}
                 _px, _py = int(_pl["x"]), int(_pl["y"])
