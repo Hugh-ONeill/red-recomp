@@ -56,6 +56,9 @@ ck("a place with no trainers gets no other place's trainers",
    A._series_members("EVENT_BEAT_ROUTE_5_TRAINER_0") == [])
 ck("a floor index inside a dungeon widens to the dungeon's floors only",
    maps_of("EVENT_BEAT_ROCK_TUNNEL_1_TRAINER_9") == ["ROCK_TUNNEL_1F", "ROCK_TUNNEL_B1F"])
+ck("a bare prefix is not a series: EVENT_GOT_TEA offers no other event's name",
+   A._series_members("EVENT_GOT_TEA") == [] and A._series_members("EVENT_GOT_SECRET_CLUB_CARD") == [])
+ck("...while a numbered tail still finds its series", len(A._series_members("EVENT_BEAT_ROUTE_4_TRAINER_7")) >= 1)
 src = (ROOT / "planner" / "author.py").read_text()
 ck("the validator reads guesses through that one function", "_mem = _series_members(str(v))" in src)
 

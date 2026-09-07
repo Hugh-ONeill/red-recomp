@@ -1714,10 +1714,11 @@ def _series_hint(mem: list, fired=()) -> str:
         desc = ", ".join(ms)
         if where:
             desc += f" — the {len(ms)} trainer(s) of {where}"
+        _verb = "beaten" if where else "set"
         if n_f == len(ms):
-            desc += " (all already beaten)"
+            desc += f" (all already {_verb})"
         elif n_f:
-            desc += f" ({n_f} of them already beaten)"
+            desc += f" ({n_f} of them already {_verb})"
         parts.append(desc)
     return (f" Did you mean one of these? The game defines {len(mem)} events "
             f"of that series, in {len(groups)} group(s): " + "; ".join(parts)
@@ -1765,9 +1766,15 @@ def _series_members(v: str) -> list:
         if idx:
             mem = members(idx | set(blank))
     if not mem:
+        # ONLY A NUMBERED SERIES IS A SERIES. Stripping the last segment of
+        # EVENT_GOT_TEA left EVENT_GOT, and every "got an item" event in the
+        # game — 46 of them — was offered as "did you mean" (2026-09-07):
+        # other events' names, which are the game's to reveal. A trailing
+        # member number (TRAINER_0, _1, ...) is the shape this fallback is for.
         ser = _re.sub(r"_[A-Z0-9]+$", "", str(v))
         mem = sorted(f for f in ENGINE_FLAGS
-                     if ser and f.startswith(ser + "_") and f != v)
+                     if ser and f.startswith(ser + "_") and f != v
+                     and _re.fullmatch(r"\d+", f[len(ser) + 1:]))
     return mem
 
 
