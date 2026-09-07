@@ -351,7 +351,22 @@ def untouched_in(ex, region: str) -> list:
     minus the touched ledger, the same subtraction the prose makes for
     'rooms you have seen things in that you have never touched'."""
     names = (getattr(ex, "sightings", {}) or {}).get(region) or []
-    got = (getattr(ex, "_tried_objs", {}) or {}).get(region, set()) or set()
+    # A NAMED THING PRESSED FROM ANY PART OF A FLOOR IS PRESSED. Names are
+    # unique per map, and a floor its own walls split into parts records the
+    # press under the part it was made from: B3F's two Rockets, fought from
+    # |18,16, stayed "never pressed" in |9,5 and kept explore walking the run
+    # back there (run 16, 2026-09-07). Same reading as _touched_on_map.
+    if hasattr(ex, "_touched_on_map"):
+        try:
+            got = set(ex._touched_on_map(region) or ())
+        except Exception:
+            got = (getattr(ex, "_tried_objs", {}) or {}).get(region, set()) or set()
+    else:
+        got = set()
+        _mid = str(region).split("|")[0]
+        for _r, _names in (getattr(ex, "_tried_objs", {}) or {}).items():
+            if str(_r).split("|")[0] == _mid:
+                got |= set(_names or ())
     # ...MINUS WHAT IS GONE: a ball taken, a person who left (the gone
     # ledger). Counting the Lift Key's empty spot as "1 thing never pressed"
     # sent the run back to B4F for it (2026-09-07).

@@ -34,6 +34,14 @@ fake = types.SimpleNamespace(sightings={"B4F|17,1": ["ITEM_B4F_10_2", "ITEM_B4F_
 ck("the never-pressed count leaves gone things out", L.untouched_in(fake, "B4F|17,1") == [], L.untouched_in(fake, "B4F|17,1"))
 fake._gone = {}
 ck("...and still counts a thing that is there", L.untouched_in(fake, "B4F|17,1") == ["ITEM_B4F_10_2"])
+# ...AND A THING PRESSED FROM THE NEXT PART OVER IS PRESSED (B3F's Rockets, 2026-09-07)
+fake2 = types.SimpleNamespace(sightings={"B3F|9,5": ["ROCKET1", "ROCKET2", "ITEM_26_17"]},
+                              _tried_objs={"B3F|9,5": {"ITEM_26_17"}, "B3F|18,16": {"ROCKET1", "ROCKET2"}}, _gone={})
+ck("a thing pressed from another part of the same floor is not 'never pressed' here",
+   L.untouched_in(fake2, "B3F|9,5") == [], L.untouched_in(fake2, "B3F|9,5"))
+fake2._tried_objs = {"B3F|9,5": {"ITEM_26_17"}, "B2F|1,1": {"ROCKET1"}}
+ck("...but a same-named thing on another floor does not count",
+   L.untouched_in(fake2, "B3F|9,5") == ["ROCKET1", "ROCKET2"])
 
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:
