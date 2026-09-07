@@ -2380,19 +2380,32 @@ local function observe(G, seq, result)
       -- Center, Mart and gym, the gate doorways, the cabin doors, the
       -- Vermilion pier. So the catch-all is a DOOR and the stairs are the
       -- list, which is the way round the game actually is.
-      local STAIR_TILES = {
-        CAVERN       = { [24] = true, [26] = true },   -- cave ladders
-        CEMETERY     = { [19] = true, [27] = true },   -- Pokemon Tower
-        DOJO         = { [74] = true },                -- Lance's room
-        FACILITY     = { [19] = true },
-        GATE         = { [26] = true, [28] = true },
-        MUSEUM       = { [26] = true, [28] = true },
-        REDS_HOUSE_1 = { [28] = true },
-        REDS_HOUSE_2 = { [26] = true },
-        SHIP         = { [55] = true, [57] = true },   -- NOT 74 or 52,
-                                                       -- which are cabin
-                                                       -- doorways
-        UNDERGROUND  = { [19] = true },
+      -- ...AND A STAIRCASE IS DRAWN GOING UP OR GOING DOWN. The model
+      -- wanted "the stairs to the upper deck" and had no word for it: every
+      -- staircase read "stairs/ladder", so it opened the S.S. Anne's cabin
+      -- doors hunting one (run 16, 2026-09-07; user: "the actual tiles
+      -- often show what they are ... stairs going up, stairs going down,
+      -- ladder versions of those two"). Every warp of every map was
+      -- surveyed by the tile the engine reads for its cell against the
+      -- floor it leads to (planner/engine_warp_looks.py): a tile whose
+      -- warps all climb is the ascending drawing, one whose warps all
+      -- descend the descending one, in every tileset that has stairs.
+      -- Caves draw ladders. The table below is that script's output; it
+      -- says what the tile LOOKS like, which any player sees, never where
+      -- it goes.
+      local WARP_LOOKS = {
+        CAVERN       = { [24] = "ladder_down", [26] = "ladder_up" },
+        CEMETERY     = { [19] = "stairs_up", [27] = "stairs_down" },
+        DOJO         = { [74] = "stairs" },
+        FACILITY     = { [19] = "stairs_up", [27] = "stairs_down", [67] = "stairs_up" },
+        GATE         = { [26] = "stairs_down", [28] = "stairs_up" },
+        LOBBY        = { [26] = "stairs_down", [28] = "stairs_up" },
+        MANSION      = { [26] = "stairs_down", [28] = "stairs_up" },
+        MUSEUM       = { [26] = "stairs_down", [28] = "stairs_up" },
+        REDS_HOUSE_1 = { [28] = "stairs_up" },
+        REDS_HOUSE_2 = { [26] = "stairs_down" },
+        SHIP         = { [55] = "stairs_down", [57] = "stairs_up" },
+        UNDERGROUND  = { [19] = "stairs_up" },
       }
       local function warp_look(x, y)
         if lm and lm.isDoorTileCell and lm:isDoorTileCell(x, y) then
@@ -2442,9 +2455,10 @@ local function observe(G, seq, result)
           end
           return "landing"
         end
-        local _st = STAIR_TILES[md and md.tileset]
-        if _st and lm and lm.cellTile and _st[lm:cellTile(x, y)] then
-          return "stairs"
+        local _wl = WARP_LOOKS[md and md.tileset]
+        if _wl and lm and lm.cellTile then
+          local _k = _wl[lm:cellTile(x, y)]
+          if _k then return _k end        -- stairs_up | stairs_down | ladder_up | ladder_down | stairs
         end
         return "door"
       end

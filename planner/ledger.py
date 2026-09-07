@@ -168,8 +168,14 @@ class Candidate:
                 return f"hole ({_key}){_tw}"
             if _l == "lift":
                 return f"lift door ({_key}){_tw}"
-            if _l == "stairs":
-                return f"stairs/ladder ({_key}){_tw}"
+            # A STAIRCASE SAYS WHICH WAY IT IS DRAWN (shim WARP_LOOKS,
+            # 2026-09-07): "stairs up", "stairs down", "ladder up", "ladder
+            # down"; plain "stairs/ladder" when the drawing does not settle it.
+            _STAIR_WORDS = {"stairs": "stairs/ladder", "ladder": "ladder",
+                            "stairs_up": "stairs up", "stairs_down": "stairs down",
+                            "ladder_up": "ladder up", "ladder_down": "ladder down"}
+            if _l in _STAIR_WORDS:
+                return f"{_STAIR_WORDS[_l]} ({_key}){_tw}"
             if _l == "threshold":        # an older shim's word for a door
                 return f"door ({_key}){_tw}"
             return f"door ({_key}){_tw}"
