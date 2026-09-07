@@ -1909,6 +1909,61 @@ class Executor:
                 continue
         return out
 
+    def _later_steps_walked(self, sg, obs) -> list:
+        """The plan's LATER steps whose place the run has ALREADY WALKED TO
+        and can reach again over walked ground: [(id, map, legs), ...].
+
+        Run 16's Vermilion plan: Route 5 -> Saffron -> Route 6 -> Vermilion.
+        The party had stood on Route 6 in the attempt before; the Saffron
+        step, a thirsty guard, ate fourteen rounds of the next attempt
+        before it was carried past, and only then did the plan reach the
+        Route 6 step and `go` there in one op (2026-09-07; user: "its been
+        to rt6 but because saffron is in the plan it took a while to get
+        there again and it didnt just go"). _later_steps_true speaks only
+        where a later step is true on the spot; this speaks where its
+        ground is a walked route away. The plan's own steps against the
+        run's own record; whether the step in play is still needed is the
+        model's."""
+        subs = (self.plan or {}).get("subgoals") or []
+        idx = next((i for i, s2 in enumerate(subs)
+                    if isinstance(s2, dict) and s2.get("id") == sg.get("id")),
+                   None)
+        if idx is None:
+            return []
+        here = self._where(obs)
+        if not here or "None" in str(here):
+            return []
+        out = []
+        for s2 in subs[idx + 1:]:
+            if not isinstance(s2, dict):
+                continue
+            dw = s2.get("done_when") or {}
+            if not isinstance(dw, dict):
+                continue
+            mp = dw.get("map") if isinstance(dw.get("map"), str) else None
+            if not mp:
+                a = dw.get("area")
+                mp = str(a).split("|")[0] if isinstance(a, str) else None
+            if not mp or str(here).split("|")[0] == mp:
+                continue
+            try:
+                if pred_holds(dw, obs):
+                    continue                      # _later_steps_true's case
+            except Exception:
+                pass
+            regions = [r for r in (self.visits or {}) if str(r).split("|")[0] == mp]
+            best = None
+            for r in regions:
+                try:
+                    path = self._route(here, r)
+                except Exception:
+                    path = None
+                if path and (best is None or len(path) < best):
+                    best = len(path)
+            if best is not None:
+                out.append((s2.get("id"), mp, best))
+        return out
+
     def _count_blackout(self, target, obs) -> bool:
         """ONE WIPE, COUNTED ONCE. Four detectors notice a blackout — the
         state watch, the battle handler, the op-result reader and the
@@ -16315,7 +16370,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                    if m.get("max_hp")]
             if _pl:
                 stuck_note += "\nYOUR PARTY RIGHT NOW: " + "; ".join(_pl) + "."
-            # A LATER STEP THAT IS ALREADY TRUE IS SAID (_later_steps_true).
+            # A LATER STEP THAT IS ALREADY TRUE IS SAID (_later_steps_true),
+            # AND SO IS ONE WHOSE GROUND IS ALREADY WALKED (_later_steps_walked).
             _later = self._later_steps_true(sg, cur) if cur.get("mode") == "overworld" else []
             if _later:
                 stuck_note += (
@@ -16326,6 +16382,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                       "needed for what comes after, {\"op\":\"skip\"} ends "
                       "it and the plan moves on; whether it is needed is "
                       "yours to judge.")
+            _walked = (self._later_steps_walked(sg, cur)
+                       if cur.get("mode") == "overworld" else [])
+            if _walked:
+                stuck_note += (
+                    "\nLATER STEPS OF THIS PLAN WHOSE GROUND YOU HAVE ALREADY "
+                    "WALKED: " + "; ".join(
+                        f"{i2} ({mp2}, {n2} leg(s) over walked ground — "
+                        f"{{\"op\":\"go\",\"to\":\"{mp2}\"}} walks it)"
+                        for i2, mp2, n2 in _walked[:3])
+                    + ". This step is still the one in play; if it is not "
+                      "needed for what comes after, {\"op\":\"skip\"} ends "
+                      "it and the plan moves on.")
             # SAID ONCE, WHEREVER IT WAS NOTICED. The walk-back note below
             # only speaks when a route home exists; the knockout itself has
             # to be said either way, because the op that was in flight has

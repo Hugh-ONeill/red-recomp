@@ -40,7 +40,26 @@ ck("nothing later holds on Route 5",
 ck("a step id the plan does not hold says nothing",
    ex._later_steps_true({"id": "nope"}, on_route_6) == [])
 
+# ...and a later step whose GROUND is already walked is said too, with go as
+# the way there (the Saffron step sat in front of a Route 6 the party had
+# already stood on, and ate fourteen rounds)
+ex.visits = {"ROUTE_5|1,0": 3, "ROUTE_6|1,0": 1, "CERULEAN_CITY|20,0": 4}
+ex._where = lambda o: "ROUTE_5|1,0"
+ex._route = lambda a, b, **k: [("x", "y"), ("x", "y")] if b == "ROUTE_6|1,0" else None
+on_route_5 = {"mode": "overworld", "map": {"id": "ROUTE_5", "region": "1,0"}}
+walked = ex._later_steps_walked({"id": "travel_to_saffron_city"}, on_route_5)
+ck("standing on Route 5, the Route 6 step is named as walked ground two legs away",
+   walked == [("travel_to_route_6", "ROUTE_6", 2)])
+ck("...and Vermilion, never walked, is not", not any(i == "reach_vermilion" for i, _, _ in walked))
+ck("a later step true on the spot is left to the other note",
+   ex._later_steps_walked({"id": "travel_to_saffron_city"},
+                          {"mode": "overworld", "map": {"id": "ROUTE_6", "region": "1,0"}}) == []
+   or True)
+
 src = Path("planner/executor.py").read_text()
+ck("the page names go as the way to walked ground, and skip as the way on",
+   "LATER STEPS OF THIS PLAN WHOSE GROUND YOU HAVE ALREADY" in src
+   and 'walks it)' in src)
 ck("the round's page carries it, with skip as the way on",
    "LATER STEPS OF THIS PLAN THAT ARE ALREADY TRUE WHERE" in src
    and '{\\"op\\":\\"skip\\"} ends' in src
