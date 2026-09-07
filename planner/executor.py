@@ -579,7 +579,7 @@ CHECKPOINT_FILES = ["run/explored.json", "run/seen.json", "run/seen_walk.json",
 
 
 def checkpoint_leg(plan_path, root=None, save_path=None, out_dir=None,
-                   complete=True) -> "Path | None":
+                   complete=True, carried=()) -> "Path | None":
     """A LEG BOUNDARY IS A PLACE THE RUN CAN BE PUT BACK TO. After a plan
     completes and the game is saved, copy the save, the run's memory, the
     footprint and the chain's state files into run/saves/<leg>.<time>/,
@@ -612,6 +612,7 @@ def checkpoint_leg(plan_path, root=None, save_path=None, out_dir=None,
         (d / "meta.json").write_text(json.dumps({
             "leg": leg, "plan": stem, "rev": harness_rev(),
             "complete": bool(complete),
+            "carried": list(carried or ()),
             "t": round(time.time(), 1),
             "when": time.strftime("%Y-%m-%d %H:%M:%S"), "files": copied},
             indent=1))
@@ -18565,11 +18566,19 @@ def main():
     # one (2026-09-07). meta.json says whether the leg was completed, and
     # replay_from.sh resumes AT the leg after a complete one and ON the leg
     # after an incomplete one.
+    # ...AND "COMPLETE" MEANS THE LEG'S WITNESS HOLDS. A plan's LAST step
+    # ends on what the objective leaves behind (the validator's rule), so
+    # plan_complete IS the leg done, whatever middle hop was carried. The
+    # leg-13 checkpoint of run 16 was written one second after
+    # plan_complete for "Reach Vermilion City", standing in Vermilion, and
+    # said complete=False because a map hop had been carried; the replay
+    # would have resumed ON a leg the run had finished (2026-09-07). The
+    # carried ids are recorded beside the flag, not folded into it.
     if args.save_after_each and getattr(ex, "plan_path", None):
-        _cp = checkpoint_leg(ex.plan_path, complete=bool(ok and not _carried))
+        _cp = checkpoint_leg(ex.plan_path, complete=bool(ok), carried=list(_carried))
         if _cp:
             ex.log("checkpoint", plan=ex.plan_path.name, dir=str(_cp),
-                   rev=harness_rev(), complete=bool(ok and not _carried))
+                   rev=harness_rev(), complete=bool(ok), carried=list(_carried))
             print(f"[checkpoint] {_cp}")
     _verdict = ("ALL PLANS COMPLETE" if ok and not _carried else
                 (f"PLANS ENDED WITH UNMET SUBGOALS ({', '.join(_carried)})"

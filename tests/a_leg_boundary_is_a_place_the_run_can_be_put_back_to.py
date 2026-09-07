@@ -60,7 +60,10 @@ ck("a checkpoint after a failed attempt says the leg was not completed",
    d2 is not None and json.loads((d2 / "meta.json").read_text()).get("complete") is False)
 ck("...and one after a completed leg says it was", meta.get("complete") is True)
 ck("the checkpoint is taken at every attempt's end, not only after a completed plan",
-   "checkpoint_leg(ex.plan_path, complete=bool(ok and not _carried))" in src)
+   "checkpoint_leg(ex.plan_path, complete=bool(ok), carried=list(_carried))" in src)
+ck("...and complete means the plan completed: a carried middle hop is recorded beside the flag, not folded into it "
+   "(run 16's leg-13 checkpoint said incomplete one second after plan_complete, 2026-09-07)",
+   '"carried": list(carried or ()),' in src and "complete=bool(ok and not _carried)" not in src)
 ck("a plan that is not a leg makes no checkpoint",
    E.checkpoint_leg(tmp / "plans" / "brock.json", root=tmp, save_path=tmp / "saves" / "slot1.lua",
                     out_dir=tmp / "run" / "saves") is None)
