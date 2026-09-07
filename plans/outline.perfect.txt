@@ -4,11 +4,11 @@ Retrieve the Town Map from Daisy in Pallet Town
 Buy Poke Balls at the Viridian City Poke Mart
 Catch a NIDORAN on Route 22
 Reach Pewter City
-the party holds a WATER or GRASS type
 every party member is at least level 12
 Defeat Brock for the Boulder Badge
 Take one of the fossils from the deepest floor of Mt. Moon
 Reach Cerulean City
+the party holds a WATER or GRASS type
 Retrieve the S.S. Ticket from Bill
 Defeat Misty for the Cascade Badge
 Chase the Team Rocket thief out of the burgled house in Cerulean City
