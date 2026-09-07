@@ -2733,6 +2733,12 @@ class Executor:
                          # the model's to give.
                          and ASKING not in
                          ((outs.get(c.key) or {}).get("last") or "")
+                         # A FULL BAG'S REFUSAL IS AN ANSWER: a thing whose last press
+                         # said "No more room for items!" is not pressed first again
+                         # until that answer changes (Hideout B3F's floor item, three
+                         # rounds of one attempt, run 16, 2026-09-07)
+                         and "No more room for items" not in
+                         ((outs.get(c.key) or {}).get("last") or "")
                          # A SWITCH IS A CHOICE, NOT AN UNTRIED THING. It
                          # moves the walls of the whole building; explore
                          # pressing it "first" undid the setting the model
@@ -3111,6 +3117,8 @@ class Executor:
                           and "no reachable tile" not in
                           ((outs2.get(c.key) or {}).get("last") or "")
                           and ASKING not in
+                          ((outs2.get(c.key) or {}).get("last") or "")
+                          and "No more room for items" not in
                           ((outs2.get(c.key) or {}).get("last") or "")),
                          key=_thing_key)
         exits2 = [c for c in cands2

@@ -31,13 +31,10 @@ ck("...and rides no doorway for it", src.find("continue", j) < src.find("_pad_re
 ck("the doorway fallback's own words no longer call every way in a pad",
    src.count("door or a pad) was used again") == 3)
 
+ck("explore does not press first again a thing whose last answer was a full bag (both choosers)",
+   src.count('and "No more room for items" not in') == 2)
+
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)
 
-# A FULL BAG'S REFUSAL IS AN ANSWER (2026-09-07): explore pressed Hideout
-# B3F's floor item first three rounds running while the bag was full.
-_src3 = open("planner/executor.py").read()
-assert '''                         and "No more room for items" not in
-                         ((outs.get(c.key) or {}).get("last") or "")''' in _src3, "explore full-bag exclusion"
-print("ok  explore does not press again a thing whose last answer was a full bag")
