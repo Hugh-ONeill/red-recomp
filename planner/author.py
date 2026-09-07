@@ -1283,8 +1283,7 @@ def validate(plan: dict) -> list:
                 _from5 = (_pdw.get("map") or _pdw.get("new_part")
                           or str(_pdw.get("area") or "").split("|")[0] or None)
         if not _from5:
-            _from5 = ((_obs_now().get("map") or {}).get("id")
-                      if callable(globals().get("_obs_now")) else None)
+            _from5 = _map_now()          # obs.json has no map; last_state.json does
         # ...AND LEAVING TO WHERE YOU CAME IN FROM IS NOT THE LOOPHOLE. See
         # _came_from: the step means "back outside", and its words name no
         # far side.
@@ -1917,6 +1916,27 @@ def _obs_now(path="run/obs.json") -> dict:
         return normalize_obs(o)
     except Exception:
         return o
+
+
+def _map_now(obs=None, last=None) -> "str | None":
+    """The map the run stands on, from whichever record has it. run/obs.json
+    is a STATE snapshot (bag, party, flags) and carries no map, so every
+    reader that asked it "where are you" got None — and the exit rule's
+    from-map was None for every first step, which is why "exit the S.S.
+    Anne to Vermilion City" was refused again after _came_from was added
+    (2026-09-07). run/last_state.json has the map."""
+    if obs is None:
+        obs = _obs_now()
+    mid = ((obs or {}).get("map") or {}).get("id") if isinstance((obs or {}).get("map"), dict) else None
+    if mid:
+        return str(mid)
+    if last is None:
+        try:
+            last = json.loads(Path("run/last_state.json").read_text() or "{}")
+        except (OSError, ValueError, TypeError):
+            last = {}
+    m = (last or {}).get("map")
+    return str(m) if isinstance(m, str) and m else None
 
 
 def witness_holds_now(dw, obs) -> "bool | None":

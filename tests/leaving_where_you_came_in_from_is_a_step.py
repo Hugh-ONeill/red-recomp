@@ -39,6 +39,12 @@ src = (ROOT / "planner" / "author.py").read_text()
 ck("the exit rule consults both",
    "and not (_came_from(_from5, _m5) and not _SIDE.search(_w5))" in src)
 
+ck("the from-map falls back to last_state.json, since obs.json carries no map",
+   A._map_now({}, {"map": "SS_ANNE_2F"}) == "SS_ANNE_2F"
+   and A._map_now({"map": {"id": "SS_ANNE_1F"}}, {"map": "SS_ANNE_2F"}) == "SS_ANNE_1F"
+   and A._map_now({}, {}) is None)
+ck("...and the exit rule uses it for a first step", "_from5 = _map_now()" in src)
+
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)
