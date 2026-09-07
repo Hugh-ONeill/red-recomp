@@ -5996,7 +5996,14 @@ Reply with ONLY {"why": "<one sentence>", "done": true} or
 _INFERRED = re.compile(
     r"\b(impl(?:y|ies|ying|ied)|suggest(?:s|ing|ed)?|likely|probably|"
     r"presumably|should have|must have|would have|assum(?:e|es|ing|ed)|"
-    r"so (?:it|they|the \w+) (?:is|are|was|were) (?:presumably|likely))\b",
+    r"so (?:it|they|the \w+) (?:is|are|was|were) (?:presumably|likely)|"
+    # ...AND GAME LORE IS INFERENCE TOO. The missing rung put "Defeat all
+    # trainers on the S.S. Anne" in front of the captain's cabin because
+    # not having done so "is typical" (run 16, 2026-09-07) — no sailor
+    # said it, no door turned the run back; the ship's cabins were simply
+    # never all opened. What is usual in games is not what this game said.
+    r"typical(?:ly)?|usually|generally|normally|(?:in|as in|like) "
+    r"(?:most|other|many|the) (?:pokemon |such )?games|it is common|commonly)\b",
     re.I)
 
 
@@ -6362,6 +6369,23 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
                                      f"the bag holds no {_ph_item} — say the "
                                      f"deed again without that, or the deed "
                                      f"that gets it"))
+            continue
+        # A PREREQUISITE IS SOMETHING THE GAME SAID OR DID. The parcel
+        # before the mart, Cut before Surge's door: each is a person's
+        # words or a way that turned the run back, and both are on this
+        # page (WHAT PEOPLE HAVE SAID, the run's own words). A reason
+        # that infers the need from what is "typical" is game lore, and
+        # it wrote a leg the game never asked for (2026-09-07). Same rule
+        # as a done verdict: the reason must point at something, or the
+        # answer is none.
+        if _inferred(_why):
+            print(f"[missing] turned down {ins!r}: its reason infers the "
+                  f"need rather than pointing at what the game said or did "
+                  f"— {_why}", file=sys.stderr)
+            turned_down.append((ins, "your reason infers it; a deed the game "
+                                     "wants first is one the game SAID it "
+                                     "wants — a person's words, a door that "
+                                     "turned you back — name that, or none"))
             continue
         if check_already_done(ins, start, model, observed=observed):
             print(f"[missing] turned down {ins!r}: judged already done — "
