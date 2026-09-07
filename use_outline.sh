@@ -29,7 +29,10 @@ case "$src" in
   *) echo "the outline should be the .txt file; its sidecars are found beside it" >&2; exit 2 ;;
 esac
 
-if [ -f run/outline_leg ] && pgrep -f fresh_discovery.sh >/dev/null 2>&1; then
+# the chain's own process is "bash ./fresh_discovery.sh N"; matching the bare
+# name caught the shell that was about to launch it (its command line named
+# the script too) and refused a staging that was fine
+if [ -f run/outline_leg ] && pgrep -f "^bash .*fresh_discovery\.sh" >/dev/null 2>&1; then
   echo "a chain looks live (run/outline_leg exists and fresh_discovery.sh is running); stop it first" >&2
   exit 1
 fi
