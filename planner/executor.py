@@ -1687,6 +1687,27 @@ class Executor:
         return (bool(said) and said != self._last_said
                 and said != ((pre_obs or {}).get("last_text") or "").strip())
 
+    @staticmethod
+    def _asks_as_talk(obs, name) -> bool:
+        """A PERSON WHO ASKS YOU SOMETHING HAS BEEN SPOKEN TO. The fossil
+        rule — a press that opened a question and got no answer is not a
+        press — was written for ITEMS: "You want the DOME FOSSIL?" declined
+        is a fossil still on the floor. Applied to people it made Pewter's
+        museum guide ("Did you check out the MUSEUM?") a man never spoken
+        to, so the sweep pressed him blind every round, could only decline,
+        left him "NOT recorded as done", and the next round's explore
+        pressed him first again — 21 presses across two attempts of run 16
+        while the party stood in the town it needed to leave (2026-09-07;
+        user: "talked to the museum nerd a bunch of times"). His question
+        IS his answer; declining it is a choice the model can reverse by
+        pressing him with an answer, and his line on the page keeps the
+        question. Items keep the old rule: the kind is read off the map's
+        own object list, and an unknown kind is treated as an item."""
+        for o in (((obs or {}).get("map") or {}).get("objects") or []):
+            if o.get("name") == name:
+                return str(o.get("kind") or "") in ("npc", "trainer")
+        return False
+
     def _record_touch(self, region, name, res_obs) -> bool:
         """Write a touch, if the interaction earned it. Returns whether."""
         if not (region and name) or "None" in str(region):
@@ -1699,7 +1720,8 @@ class Executor:
         # unsee them, and the guard below deliberately returns before the
         # recording block at the end of this function.
         self._record_machine_stock(region, r.get("detail"))
-        if ASKING in str(r.get("detail") or ""):
+        if ASKING in str(r.get("detail") or "") \
+                and not self._asks_as_talk(res_obs, name):
             return False                       # it asked; nothing answered
         if LIST_OPEN in str(r.get("detail") or ""):
             return False                       # it offered; nothing picked
@@ -14276,7 +14298,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             if blackout and op == "interact" and step.get("name"):
                 self._retract_touch(self._where(pre_obs), step["name"])
             if (ASKING in str(r.get("detail") or "")
-                    and op == "interact" and step.get("name")):
+                    and op == "interact" and step.get("name")
+                    and not self._asks_as_talk(obs, step["name"])):
                 self._retract_touch(self._where(pre_obs), step["name"])
             # A PICKER BACKED OUT OF IS A QUESTION UNANSWERED. "asked WHICH
             # POKEMON, and nothing here had chosen one — backed out" counted
@@ -16848,7 +16871,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                              objects=loose[:8],
                              standing=[f"{n}@{x},{y}" + ("*" if _op else "")
                                        for n, x, y, _op in _bushes[:4]])
-                    asked_back, listed_back = [], []
+                    asked_back, listed_back, asked_people = [], [], []
                     for name in loose[:8]:
                         o2 = self._send_safe("interact", name=name)
                         if o2 and o2.get("mode") == "battle":
@@ -16869,13 +16892,23 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         # Declining stays the safe default; what changes is
                         # that a thing which asked something is not recorded
                         # as spent, and the model is told it is still open.
+                        _det = str(((o2 or {}).get("result") or {})
+                                   .get("detail") or "")
                         if not self._record_touch(here_s, name, o2):
-                            _det = str(((o2 or {}).get("result") or {})
-                                       .get("detail") or "")
                             if ASKING in _det:
                                 asked_back.append(name)
                             elif LIST_OPEN in _det:
                                 listed_back.append(name)
+                        elif ASKING in _det:
+                            # a PERSON who asked: spoken to, the question
+                            # kept as what they said (_record_outcome), and
+                            # said here so the decline is the model's to
+                            # reverse — not a blank "done"
+                            asked_people.append(name)
+                            self._record_outcome(cur, "interact",
+                                                 {"name": name},
+                                                 f"interact(name={name}): "
+                                                 f"{_det}")
                         cur = o2 or cur
                         if pred_holds(done, cur):
                             break
@@ -16944,6 +16977,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                             f"recorded as done. To accept, press one "
                             f"yourself with an answer: "
                             f'{{"op":"interact","name":"{asked_back[0]}",'
+                            f'"answer":"yes"}})')
+                    if asked_people:
+                        trace.append(
+                            f"({', '.join(asked_people)} ASKED you something "
+                            f"and the sweep declined for you — they count "
+                            f"as spoken to, and their line says what they "
+                            f"asked. Saying yes instead is one press: "
+                            f'{{"op":"interact","name":"{asked_people[0]}",'
                             f'"answer":"yes"}})')
                     if pred_holds(done, self.settle() or cur):
                         self.log("escalate_success", subgoal=sg["id"],

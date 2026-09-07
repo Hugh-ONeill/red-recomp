@@ -53,7 +53,7 @@ ck("the sweep reports a list it could not pick from",
    "OPENED A LIST and " in src and "NOT recorded as done" in src
    and "listed_back" in src)
 ck("...told separately from a thing that ASKED",
-   "asked_back, listed_back = [], []" in src
+   "asked_back, listed_back, asked_people = [], [], []" in src   # + people who asked (2026-09-07)
    and "elif LIST_OPEN in _det:" in src)
 ck("it names the op that picks a row",
    'f"{{\\"op\\":\\"menu\\",\\"index\\":N}} with the "' in src)
