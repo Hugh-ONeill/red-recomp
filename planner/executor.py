@@ -1803,6 +1803,73 @@ class Executor:
                          key=b.get("key"),
                          why="every failed crossing stopped at the footprint's edge")
 
+    def _recount_blackouts(self):
+        """Rebuild the per-target wipe counts from the journal's own
+        "blackout" rows (one per wipe), mapping each row's subgoal to its
+        target through the leg plans on disk. Targets the journal never
+        names keep their stored count."""
+        try:
+            sg_target = {}
+            for pf in sorted(Path("plans").glob("leg_[0-9]*.json")):
+                try:
+                    plan = json.loads(pf.read_text())
+                except (OSError, ValueError):
+                    continue
+                for sg in plan.get("subgoals") or []:
+                    if isinstance(sg, dict) and sg.get("id"):
+                        sg_target.setdefault(str(sg["id"]),
+                                             self._target_key(sg))
+            counts, seen_targets = {}, set()
+            for _l in (RUN / "executor_log.jsonl").read_text().splitlines():
+                if '"blackout"' not in _l:
+                    continue
+                try:
+                    _r = json.loads(_l)
+                except ValueError:
+                    continue
+                if _r.get("kind") != "blackout":
+                    continue
+                tk = sg_target.get(str(_r.get("subgoal") or ""))
+                if tk:
+                    counts[tk] = counts.get(tk, 0) + 1
+                    seen_targets.add(tk)
+            changed = {}
+            for tk in list(self._blackouts):
+                if tk in seen_targets and self._blackouts[tk] != counts[tk]:
+                    changed[tk] = (self._blackouts[tk], counts[tk])
+                    self._blackouts[tk] = counts[tk]
+            if changed:
+                self.log("blackouts_recounted", changed=json.dumps(changed))
+        except OSError:
+            pass
+
+    def _count_blackout(self, target, obs) -> bool:
+        """ONE WIPE, COUNTED ONCE. Four detectors notice a blackout — the
+        state watch, the battle handler, the op-result reader and the
+        round-level check — and each of them bumped the counter, so two
+        real blackouts read "Your party has been WIPED OUT 4x pursuing this
+        goal" on every page of run 16's Brock leg (2026-09-07), and the
+        model, told it had lost twice as often as it had, walked between
+        the gym and Route 2 unable to decide whether it was strong enough.
+        A blackout halves the money and lands the party healed somewhere;
+        two detectors reading the same one see the same money and the same
+        party. That is the signature; the count moves once per signature."""
+        if not target:
+            return False
+        mons = (obs or {}).get("party") or []
+        sig = (str(target), (obs or {}).get("money"),
+               tuple((m.get("species"), m.get("level")) for m in mons))
+        seen = getattr(self, "_wipe_sigs", None)
+        if seen is None:
+            seen = self._wipe_sigs = set()
+        if sig in seen:
+            return False
+        seen.add(sig)
+        self._blackouts[target] = self._blackouts.get(target, 0) + 1
+        if mons:
+            self._blackout_lead[target] = (mons[0] or {}).get("level")
+        return True
+
     def _note_blocker(self, area: str, key: str, kind: str, what: str):
         """Write (or bump) a way that turned the run back. Evidence only:
         WHERE, WHICH exit, WHAT was seen or said. Never what lifts it."""
@@ -3399,10 +3466,7 @@ class Executor:
             self._faint_at = was_region
             self.log("faint_marked", subgoal="(state watch)", at=was_region)
         if self._cur_target:
-            self._blackouts[self._cur_target] = \
-                self._blackouts.get(self._cur_target, 0) + 1
-            self._blackout_lead[self._cur_target] = \
-                (mons[0] or {}).get("level")
+            self._count_blackout(self._cur_target, obs)
         self._wipe_note = (
             f"YOUR PARTY FAINTED. Every one of them was knocked out on "
             f"{was_map}, you blacked out, and you woke at {mid} with the "
@@ -4030,6 +4094,14 @@ class Executor:
             # reset before ever reaching 2 — the TOO-WEAK note was aimed at
             # Misty and structurally could not fire on her.
             self._blackouts = data.get("blackouts") or {}
+            # ...RECOUNTED ONCE FROM THE JOURNAL, for a memory written
+            # before the counter learned to count a wipe once: the journal
+            # logs one "blackout" row per wipe, under the subgoal that was
+            # running, and the leg plans on disk say which target that
+            # subgoal served.
+            if not data.get("blackouts_recounted"):
+                self._recount_blackouts()
+                self._blackouts_recounted = True
             self._blackout_lead = data.get("blackout_lead") or {}
             # Waypoints COMPLETED this campaign stay completed across
             # attempt resumes: a resumed journey-plan re-litigated its
@@ -4224,6 +4296,8 @@ class Executor:
                  "shut_doors": self.shut_doors,
                  "hints": self.hints,
                  "blockers": self.blockers,
+                 "blackouts_recounted": bool(getattr(self, "_blackouts_recounted", False)
+                                             or True),
                  "blockers_backfilled": bool(getattr(
                      self, "_blockers_backfilled", False)),
                  "hints_at": getattr(self, "hints_at", {}),
@@ -13800,11 +13874,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         self.log("faint_marked", subgoal=sg["id"],
                                  at=self._faint_at)
                         if self._cur_target:
-                            self._blackouts[self._cur_target] = \
-                                self._blackouts.get(self._cur_target, 0) + 1
-                            lv = ((obs or {}).get("party") or [{}])[0]
-                            self._blackout_lead[self._cur_target] = \
-                                lv.get("level")
+                            self._count_blackout(self._cur_target, obs)
                             self._save_memory()
                             # A room is contested when a fight here BEAT US:
                             # that is the unfinished business worth coming
@@ -13910,10 +13980,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     blackout = after[0]
                     self._faint_at = self._where(pre_obs)
                     if self._cur_target:
-                        self._blackouts[self._cur_target] = \
-                            self._blackouts.get(self._cur_target, 0) + 1
-                        self._blackout_lead[self._cur_target] = \
-                            ((obs or {}).get("party") or [{}])[0].get("level")
+                        self._count_blackout(self._cur_target, obs)
                         self._save_memory()
                     self.log("blackout", subgoal=sg["id"], op=op,
                              respawn=after[0], detected="state")
@@ -16130,6 +16197,20 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             else:
                 self._ui_pending = 0
             stuck_note = ""      # per-round; the walk-back note appends below
+            # THE PARTY'S HP IS ON THE SCREEN EVERY ROUND, so it is on the
+            # page every round. It was said only for a become-goal
+            # (training_text) and at a plan's start line; under a badge
+            # goal the page before run 16's Brock fight carried no HP at
+            # all, and the party walked in at 18/39 straight from the gym
+            # trainer's fight (2026-09-07). Whether to heal first is the
+            # model's call, and it needs the number to make it.
+            _pl = [f"{m.get('species')} L{m.get('level')} "
+                   f"{m.get('hp')}/{m.get('max_hp')}hp"
+                   + (f" [{m.get('status')}]" if m.get("status") else "")
+                   for m in ((cur or {}).get("party") or [])
+                   if m.get("max_hp")]
+            if _pl:
+                stuck_note += "\nYOUR PARTY RIGHT NOW: " + "; ".join(_pl) + "."
             # SAID ONCE, WHEREVER IT WAS NOTICED. The walk-back note below
             # only speaks when a route home exists; the knockout itself has
             # to be said either way, because the op that was in flight has
@@ -17327,10 +17408,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         if healed and tot(obs) > tot(pre_obs):
                             self._faint_at = self._where(pre_obs)
                             tk0 = self._target_key(sg)
-                            self._blackouts[tk0] = \
-                                self._blackouts.get(tk0, 0) + 1
-                            self._blackout_lead[tk0] = \
-                                (mons or [{}])[0].get("level")
+                            self._count_blackout(tk0, obs)
                             self._save_memory()
                             self.log("blackout", subgoal=sg["id"], op=op,
                                      respawn=post_map, detected="macro")
