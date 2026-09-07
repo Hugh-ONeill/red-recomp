@@ -6189,7 +6189,12 @@ _INFERRED = re.compile(
     # said it, no door turned the run back; the ship's cabins were simply
     # never all opened. What is usual in games is not what this game said.
     r"typical(?:ly)?|usually|generally|normally|(?:in|as in|like) "
-    r"(?:most|other|many|the) (?:pokemon |such )?games|it is common|commonly)\b",
+    r"(?:most|other|many|the) (?:pokemon |such )?games|it is common|commonly|"
+    # "In Pokemon Red/Blue/Yellow, HM01 cannot be taught until ..." — recalled
+    # lore, and false (the badge gates USING Cut, not teaching it), offered
+    # as the reason for a prerequisite (2026-09-07)
+    r"in pok[e\u00e9]mon (?:red|blue|yellow|green|gen(?:eration)?|games?)\b|"
+    r"in (?:the )?(?:original|first[- ]gen(?:eration)?) games?)\b",
     re.I)
 
 

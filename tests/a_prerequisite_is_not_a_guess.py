@@ -25,6 +25,9 @@ ck("'which is typical' is an inference",
 ck("'usually' / 'in most games' are inferences",
    A._inferred("the captain usually needs all trainers beaten")
    and A._inferred("in most Pokemon games the gym opens after the event"))
+ck("recalled lore about the games is an inference too",
+   A._inferred("In Pokemon Red/Blue/Yellow, HM01 (Cut) cannot be taught until the badge is obtained")
+   and A._inferred("in the original games the gym opens after the event"))
 ck("a reason that quotes the game is not",
    not A._inferred("the sailor said the captain is seasick and cannot be seen")
    and not A._inferred("the gym door turned the run back: the tree blocks it"))
