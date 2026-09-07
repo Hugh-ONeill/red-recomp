@@ -34,3 +34,10 @@ ck("the doorway fallback's own words no longer call every way in a pad",
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok  " if ok else "FAIL"), n)
 sys.exit(1 if bad else 0)
+
+# A FULL BAG'S REFUSAL IS AN ANSWER (2026-09-07): explore pressed Hideout
+# B3F's floor item first three rounds running while the bag was full.
+_src3 = open("planner/executor.py").read()
+assert '''                         and "No more room for items" not in
+                         ((outs.get(c.key) or {}).get("last") or "")''' in _src3, "explore full-bag exclusion"
+print("ok  explore does not press again a thing whose last answer was a full bag")
