@@ -45,7 +45,7 @@ GATES = [
     ("fuji",    r"fuji|pokemon tower|cleanse",
      r"flute", None, r"lavender"),
     ("flute",   r"flute",
-     r"snorlax|soul badge|fuchsia|cycling|route 12|route 16", None,
+     r"snorlax|soul badge|fuchsia|cycling|route 12", None,   # the Route 16 FLY house is reached without waking anything
      r"fuji|pokemon tower|lavender"),
     ("cut",     r"\bcut\b|hm01|captain|s\.?\s?s\.?\s?anne",
      r"thunder badge", None, r"vermilion|cascade badge"),
