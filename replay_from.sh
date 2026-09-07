@@ -39,6 +39,11 @@ if pgrep -f "^bash .*fresh_discovery\.sh" >/dev/null 2>&1 \
 fi
 
 leg=$(python3 -c "import json,sys; print(json.load(open('$src/meta.json'))['leg'])")
+# a checkpoint after a COMPLETED leg resumes at the leg after it; one after
+# a failed attempt resumes ON that leg (its progress counter is the leg before)
+complete=$(python3 -c "import json,sys; print('1' if json.load(open('$src/meta.json')).get('complete', True) else '0')")
+resume_at=$leg
+[ "$complete" = 1 ] || resume_at=$((leg - 1))
 rev=$(python3 -c "import json,sys; print(json.load(open('$src/meta.json')).get('rev','?'))")
 SAVE="${RED_SAVE:-$HOME/.local/share/love/pokemon-love2d/saves/red/slot1.lua}"
 ts=$(date +%Y%m%d-%H%M%S)
@@ -79,7 +84,7 @@ for f in run/outline_skips run/outline_inserts run/outline_void run/outline_word
   [ -f "$src/$(basename "$f")" ] || rm -f "$f"
 done
 rm -f run/last_state.json run/obs.json run/status.txt run/heartbeat run/attempt_yield run/attempt_start.json
-echo "$leg" > run/outline_leg
-echo "run/outline_leg = $leg (the chain resumes at leg $((leg + 1))); checkpoint was taken on harness $rev, this tree is $(git rev-parse --short HEAD 2>/dev/null || echo '?')"
+echo "$resume_at" > run/outline_leg
+echo "run/outline_leg = $resume_at (the chain resumes at leg $((resume_at + 1))$([ "$complete" = 1 ] || echo ' — the checkpointed attempt of that leg had not completed it')); checkpoint was taken on harness $rev, this tree is $(git rev-parse --short HEAD 2>/dev/null || echo '?')"
 echo "next: launch fresh_discovery.sh as usual; compare with"
 echo "  planner/arc.py --legs 60 run/executor_log.$ts.pre-replay.jsonl run/executor_log.jsonl"

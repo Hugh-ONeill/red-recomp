@@ -31,9 +31,9 @@ ck("the harness revision is a short git hash, marked + when the tree differs",
 src = Path("planner/executor.py").read_text()
 ck("the plan_start row carries it", "rev=harness_rev())" in src
    and 'self.log("plan_start", goal=plan.get("goal"), escalate=self.can_escalate,' in src)
-ck("the checkpoint is taken after the save that follows a completed plan",
-   "_cp = checkpoint_leg(plan_path)" in src
-   and src.index("_cp = checkpoint_leg(plan_path)") > src.index('r = (ex._send_safe("save_game") or {}).get("result") or {}\n            print(f"[save] {r.get(\'detail\')'))
+ck("the checkpoint is taken after the saves, before the verdict",
+   src.index("checkpoint_leg(ex.plan_path, complete=") > src.index("(after a failed plan, to keep what it earned)")
+   and src.index("checkpoint_leg(ex.plan_path, complete=") < src.index('_verdict = ("ALL PLANS COMPLETE"'))
 
 # the checkpoint, on a scratch tree
 tmp = Path(tempfile.mkdtemp(dir="/tmp/claude-1000/-home-wiz/"
@@ -54,6 +54,13 @@ ck("meta.json names the leg, the plan and the harness",
 ck("the save, the memory, the footprint, the outline and the state files are copied",
    d is not None and all((d / f).exists() for f in ("slot1.lua", "explored.json", "seen.json", "outline.txt", "outline_skips")))
 ck("a file that did not exist is simply not there", d is not None and not (d / "seen_walk.json").exists())
+d2 = E.checkpoint_leg(tmp / "plans" / "leg_08_x.json", root=tmp, save_path=tmp / "saves" / "slot1.lua",
+                      out_dir=tmp / "run" / "saves", complete=False)
+ck("a checkpoint after a failed attempt says the leg was not completed",
+   d2 is not None and json.loads((d2 / "meta.json").read_text()).get("complete") is False)
+ck("...and one after a completed leg says it was", meta.get("complete") is True)
+ck("the checkpoint is taken at every attempt's end, not only after a completed plan",
+   "checkpoint_leg(ex.plan_path, complete=bool(ok and not _carried))" in src)
 ck("a plan that is not a leg makes no checkpoint",
    E.checkpoint_leg(tmp / "plans" / "brock.json", root=tmp, save_path=tmp / "saves" / "slot1.lua",
                     out_dir=tmp / "run" / "saves") is None)

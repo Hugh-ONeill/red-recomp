@@ -578,7 +578,8 @@ CHECKPOINT_FILES = ["run/explored.json", "run/seen.json", "run/seen_walk.json",
                     "run/outline_rewordings", "run/leg_unconfirmed"]
 
 
-def checkpoint_leg(plan_path, root=None, save_path=None, out_dir=None) -> "Path | None":
+def checkpoint_leg(plan_path, root=None, save_path=None, out_dir=None,
+                   complete=True) -> "Path | None":
     """A LEG BOUNDARY IS A PLACE THE RUN CAN BE PUT BACK TO. After a plan
     completes and the game is saved, copy the save, the run's memory, the
     footprint and the chain's state files into run/saves/<leg>.<time>/,
@@ -610,6 +611,7 @@ def checkpoint_leg(plan_path, root=None, save_path=None, out_dir=None) -> "Path 
                 shutil.copy2(src, d / src.name); copied.append(rel)
         (d / "meta.json").write_text(json.dumps({
             "leg": leg, "plan": stem, "rev": harness_rev(),
+            "complete": bool(complete),
             "t": round(time.time(), 1),
             "when": time.strftime("%Y-%m-%d %H:%M:%S"), "files": copied},
             indent=1))
@@ -18308,11 +18310,6 @@ def main():
         if args.save_after_each:
             r = (ex._send_safe("save_game") or {}).get("result") or {}
             print(f"[save] {r.get('detail') or 'save failed'}")
-            _cp = checkpoint_leg(plan_path)
-            if _cp:
-                ex.log("checkpoint", plan=plan_path.name, dir=str(_cp),
-                       rev=harness_rev())
-                print(f"[checkpoint] {_cp}")
     o = b.obs() or {}
     # Durable snapshot of where the run ENDED. obs.json belongs to the live
     # bridge and is gone once the game process dies, so the campaign's
@@ -18347,6 +18344,19 @@ def main():
         print(f"[save] (after a failed plan, to keep what it earned) "
               f"{r.get('detail') or 'save failed'}")
     _carried = getattr(ex, "_carried_ids", [])
+    # A CHECKPOINT AT EVERY ATTEMPT'S END, complete or not. Taken only after
+    # a completed plan, the first eight legs of run 16 left none: the leg
+    # the harness needed replaying (the Brock stretch) never completed a
+    # plan, and the legs the ladder crossed off as already done never ran
+    # one (2026-09-07). meta.json says whether the leg was completed, and
+    # replay_from.sh resumes AT the leg after a complete one and ON the leg
+    # after an incomplete one.
+    if args.save_after_each and getattr(ex, "plan_path", None):
+        _cp = checkpoint_leg(ex.plan_path, complete=bool(ok and not _carried))
+        if _cp:
+            ex.log("checkpoint", plan=ex.plan_path.name, dir=str(_cp),
+                   rev=harness_rev(), complete=bool(ok and not _carried))
+            print(f"[checkpoint] {_cp}")
     _verdict = ("ALL PLANS COMPLETE" if ok and not _carried else
                 (f"PLANS ENDED WITH UNMET SUBGOALS ({', '.join(_carried)})"
                  if ok else "PLAN FAILED"))
