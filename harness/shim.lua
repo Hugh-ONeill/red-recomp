@@ -8962,7 +8962,7 @@ function OPS.elevator(G, c)
     end
     return false, "no elevator on this map — there is no lift panel where "
       .. "you stand and no door here leads into a car. This op rides a "
-      .. "lift door to door: from outside it walks in, presses the floor "
+      .. "elevator door to door: from outside it walks in, presses the floor "
       .. "and walks out onto that floor, so it only needs a lift to be "
       .. "somewhere on this map"
   end

@@ -38,14 +38,14 @@ if lab is None:
                     lab = out; break
         except Exception:
             continue
-ck("a warp whose look is lift renders as a lift door", isinstance(lab, str) and lab.startswith("lift door (24"), lab)
+ck("a warp whose look is lift renders as a lift door", isinstance(lab, str) and lab.startswith("elevator door (24"), lab)
 ck("...as one door two tiles wide, its other tile unnamed (a coordinate on the page is a place to go, 2026-09-07)",
-   isinstance(lab, str) and "lift door (24,19), two tiles wide" in lab and "25" not in lab, lab)
+   isinstance(lab, str) and "elevator door (24,19), two tiles wide" in lab and "25" not in lab, lab)
 lua = (ROOT / "harness" / "shim.lua").read_text()
 ck("the shim marks the look from the tile drawn on an elevator warp",
    'if _look == "door" and type(dest) == "string"\n             and dest:match("_ELEVATOR$") then\n            _look = "lift"' in lua)
 src = (ROOT / "planner" / "ledger.py").read_text()
-ck("...and the page has a word for it", 'if _l == "lift":\n                return f"lift door ({_key}){_tw}"' in src)
+ck("...and the page has the game's word for it", 'if _l == "lift":' in src and 'return f"elevator door ({_key}){_tw}"' in src)
 ck("the destination is not said by the look", "ELEVATOR" not in (lab or ""))
 bad = [x for x in checks if not x[1]]
 for n, ok, d in checks:

@@ -167,7 +167,9 @@ class Candidate:
             if _l == "hole":
                 return f"hole ({_key}){_tw}"
             if _l == "lift":
-                return f"lift door ({_key}){_tw}"
+                # the game's own word (the maps are *_ELEVATOR, the signs say
+                # ELEVATOR, the plan steps say elevator); "lift" was ours
+                return f"elevator door ({_key}){_tw}"
             # A STAIRCASE SAYS WHICH WAY IT IS DRAWN (shim WARP_LOOKS,
             # 2026-09-07): "stairs up", "stairs down", "ladder up", "ladder
             # down"; plain "stairs/ladder" when the drawing does not settle it.

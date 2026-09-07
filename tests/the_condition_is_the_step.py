@@ -40,7 +40,7 @@ ck("a non-map condition says nothing", e._words_vs_condition("Get the Scope on B
 ck("junk is tolerated", e._words_vs_condition(None, None) == "" and e._words_vs_condition("x", {"map": 7}) == "")
 src = (ROOT / "planner" / "executor.py").read_text()
 ck("it rides the step statement at the top of the prompt",
-   'user = (f"SUBGOAL: {goal}\\nDONE_WHEN: {json.dumps(done)}"\n                    f"{self._words_vs_condition(goal, done)}"' in src)
+   'user = (f"SUBGOAL: {goal}\\nDONE_WHEN: {json.dumps(done)}"\n                    f"{self._words_vs_condition(goal, done, obs)}"' in src)   # obs: the flag translation counts what has fired
 bad = [x for x in checks if not x[1]]
 for n, ok, d in checks:
     print(("ok   " if ok else "FAIL ") + n + ("" if ok else f"\n      {str(d)[:300]}"))
