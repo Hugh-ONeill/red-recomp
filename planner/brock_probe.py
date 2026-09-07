@@ -112,6 +112,23 @@ NUM_CTX = int(os.environ.get("RED_NUM_CTX") or 24576)
 NUM_PREDICT = int(os.environ.get("RED_NUM_PREDICT") or 3072)
 
 
+LAST: dict = {}
+
+
+def stats_of(d) -> dict:
+    """Ollama's own accounting of one call, in tokens and seconds: how many
+    prompt tokens were evaluated (ptok) and how long that took (p_s), how
+    many tokens were generated (gtok) and how long (g_s), and the whole
+    call (tot_s). Nanoseconds in the reply; seconds here, one decimal."""
+    def _s(k):
+        v = (d or {}).get(k)
+        return round(v / 1e9, 1) if isinstance(v, (int, float)) else None
+    return {"ptok": (d or {}).get("prompt_eval_count"),
+            "gtok": (d or {}).get("eval_count"),
+            "p_s": _s("prompt_eval_duration"), "g_s": _s("eval_duration"),
+            "tot_s": _s("total_duration")}
+
+
 def chat(msgs, model, retries=2):
     """Ask the model, and do not lose a whole round to one bad second.
 
@@ -183,6 +200,12 @@ def _chat_once(msgs, model):
     # truncation is a narrow WINDOW at that value, not "large". A prompt
     # bigger than the window simply fit and was evaluated in full — reading
     # that as truncation cries wolf on every healthy long prompt.
+    # WHAT THE CALL COST, kept for the caller's journal. Run 16's rounds
+    # took 30 s where run 14's took 16 (2026-09-07, user: "this is taking
+    # longer than the last runthrough in this area") and nothing recorded
+    # whether the prompt or the reply was the cost. Ollama says both.
+    global LAST
+    LAST = stats_of(d)
     n = d.get("prompt_eval_count") or 0
     if (NUM_CTX // 2) <= n <= (NUM_CTX // 2) + 8:
         print(f"[prompt] TRUNCATED: {n} tokens evaluated at the "

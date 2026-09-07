@@ -15902,8 +15902,14 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if _rep > 2:
                     spent += 1
                 continue
+            # ...WITH WHAT THE ROUND'S CALL COST (brock_probe.LAST): prompt
+            # tokens and seconds, generated tokens and seconds. The meter
+            # measures a leg in rounds and minutes; this says what a round
+            # is made of.
             self.log("escalate_proposal", subgoal=sg["id"], round=rnd,
-                     macro=macro, plan=self._plan_said)
+                     macro=macro, plan=self._plan_said,
+                     **{k: v for k, v in (getattr(brock_probe, "LAST", None) or {}).items()
+                        if v is not None})
             self.status(subgoal=sg["id"], goal_text=goal, done_when=done,
                         obs=self.settle(),
                         phase=("REDO " if redo else "") + f"escalation {rnd}",
