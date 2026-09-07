@@ -35,7 +35,7 @@ def _flat(t): return re.sub(r'"\s*\n\s*f?"', "", t)
 i = src.find("A BUSH IS NOT SWEPT EITHER")
 ck("the sweep says why it no longer fells", i > 0)
 # the window spans the collection, the press loop and the trace
-blk = src[i:i + 8200]
+blk = src[i:i + 9800]   # widened 2026-09-07: the sweep loop grew a presser record and a people-who-asked note
 flat = _flat(blk)
 ck("...a reachable bush is collected, not swept",
    "_bushes = [" in blk and 'o.get("kind") == "cut_tree"' in blk

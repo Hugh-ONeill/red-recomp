@@ -2348,20 +2348,37 @@ class Executor:
             # explore cannot get out of either.
             _fr_here = int((getattr(self, "map_seen", {}) or {})
                            .get(str(want), 0) or 0)
-            _choice_note = (
-                f"go: {best[0]} is the ONLY part of {want} you have walked, "
-                f"and every way out of it that you have recorded leads back "
-                + (f"to {', '.join(_outs)}" if _outs else "nowhere")
-                + f". The rest of {want} is ground you have SEEN but never "
-                  f"STOOD ON"
-                + (", and from the part you have walked the seen ground "
-                   "ends nowhere you can reach, so explore finds no way on "
-                   "from inside it either" if _fr_here == 0 else
-                   f", and {_fr_here} spot(s) where that seen ground ends "
-                   f"can be reached from the part you have walked")
-                + f". How the rest of {want} is entered is not recorded — it "
-                  f"may be another cell of the edge you crossed to get here, "
-                  f"and it may be another map entirely.")
+            # A ROOM YOU HAVE WALKED THE WHOLE OF HAS NO "REST". With the
+            # gym's one part fully seen this said "the rest of PEWTER_GYM
+            # is ground you have SEEN but never STOOD ON ... explore finds
+            # no way on from inside it", and the model read it as having
+            # been turned away at the door (run 16, 2026-09-07; user: "whats
+            # making it think its blocked?"). When no seen ground ends
+            # anywhere, the part you walked is all there is to reach.
+            if _fr_here == 0:
+                _choice_note = (
+                    f"go: {best[0]} is the ONLY part of {want} you have "
+                    f"walked, and every way out of it that you have recorded "
+                    f"leads back "
+                    + (f"to {', '.join(_outs)}" if _outs else "nowhere")
+                    + f". Nothing you have seen of {want} lies outside that "
+                      f"part: from it the seen ground ends nowhere, so there "
+                      f"is no further ground in {want} to walk to from here. "
+                      f"Whatever is in {want} is in the part you are "
+                      f"standing in.")
+            else:
+                _choice_note = (
+                    f"go: {best[0]} is the ONLY part of {want} you have "
+                    f"walked, and every way out of it that you have recorded "
+                    f"leads back "
+                    + (f"to {', '.join(_outs)}" if _outs else "nowhere")
+                    + f". The rest of {want} is ground you have SEEN but "
+                      f"never STOOD ON, and {_fr_here} spot(s) where that "
+                      f"seen ground ends can be reached from the part you "
+                      f"have walked. How the rest of {want} is entered is "
+                      f"not recorded — it may be another cell of the edge "
+                      f"you crossed to get here, and it may be another map "
+                      f"entirely.")
         if not best:
             _rc = self._ride_chance(here, targets)
             if _rc:
@@ -14040,6 +14057,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if (not step.get("name") and step.get("x") is not None
                         and step.get("y") is not None):
                     who = f"{op} ({step.get('x')},{step.get('y')})"
+                if (not step.get("name") and op in ("sweep", "explore")
+                        and getattr(self, "_last_press_name", None)):
+                    who = self._last_press_name      # the sweep's presser
                 reg = self._where(pre_obs)
                 # The harness's own noise is not a hint: saving, using an
                 # item and buying all print a line the game addressed to
@@ -16872,8 +16892,21 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                              standing=[f"{n}@{x},{y}" + ("*" if _op else "")
                                        for n, x, y, _op in _bushes[:4]])
                     asked_back, listed_back, asked_people = [], [], []
+                    # WHO SAID IT. The hint recorder below the macro loop
+                    # names the op when the step has no name, so everything
+                    # a sweep's presses heard was filed as "sweep: ..." —
+                    # and Pewter's gym trainer's "Stop right there, kid!
+                    # You're still light years from facing BROCK!" read on
+                    # the page as the gym itself turning the party away
+                    # (run 16, 2026-09-07). Keep the last presser whose
+                    # press put new words on the screen.
+                    self._last_press_name = None
+                    _prev_text = (cur or {}).get("last_text")
                     for name in loose[:8]:
                         o2 = self._send_safe("interact", name=name)
+                        if o2 and (o2.get("last_text") or "") not in ("", _prev_text):
+                            self._last_press_name = name
+                            _prev_text = o2.get("last_text")
                         if o2 and o2.get("mode") == "battle":
                             o2 = self.handle_battle(sg, o2)
                             o2 = self.settle()
