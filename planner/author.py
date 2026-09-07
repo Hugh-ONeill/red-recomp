@@ -371,6 +371,20 @@ for _row in _engine_names("engine_machines.txt"):
     _parts = _row.split()
     if len(_parts) == 2:
         MACHINE_MOVES[_parts[0].upper()] = _parts[1].upper()
+# Which place each trainer-beaten event belongs to: gen1recomp
+# data/generated/trainer_headers.lua lists trainers map by map with the
+# event each fight sets; the map's CamelCase name is folded to the engine's
+# id and checked against engine_maps.txt (323 events, none unmatched).
+# Regenerate the same way. Same tier as engine_machines: the harness's own
+# vocabulary, explained. "Defeat all trainers on the S.S. Anne" was authored
+# with four floor subgoals that ALL ended on EVENT_BEAT_SS_ANNE_10_TRAINER_*
+# — the B1F cabins — because the hint listed the first six of sixteen ids in
+# sort order, where "10" comes before "5" (run 16, 2026-09-07).
+TRAINER_EVENT_MAP = {}
+for _row in _engine_names("engine_trainer_events.txt"):
+    _parts = _row.split()
+    if len(_parts) == 2:
+        TRAINER_EVENT_MAP[_parts[0].upper()] = _parts[1].upper()
 # Every species and every type the engine defines. Same tier as the rest:
 # the Pokedex names species, the status screen prints types. These exist so
 # that "catch a WATER type before the next gym" is a condition a plan can
@@ -1401,6 +1415,52 @@ def validate(plan: dict) -> list:
     return probs
 
 
+def _series_hint(mem: list, fired=()) -> str:
+    """The 'did you mean' clause for a flag guessed as a placeholder in a
+    series the plan itself named: every real member, said in full.
+
+    ONE series, few members: the list as before. Many members: the list
+    grouped by the place each group's trainers stand in (TRAINER_EVENT_MAP)
+    with how many of each are already beaten, so a subgoal about one
+    floor's trainers can end on that floor's events. Cutting the list at
+    six sorted ids gave the S.S. Anne leg only the B1F cabins' events for
+    all four floors (2026-09-07). Every id is printed verbatim — the retry
+    prompt asks for exact ids — and nothing is suggested that is not a
+    member of the series the model named."""
+    mem = sorted(set(mem or []))
+    if not mem:
+        return ""
+    if len(mem) == 1:
+        return (f" Did you mean {mem[0]}? That is the ONLY event of that "
+                f"series this game defines, so it is what 'all of them' "
+                f"comes to here; use that exact id verbatim.")
+    fired = set(fired or ())
+    groups: dict = {}
+    for f in mem:
+        groups.setdefault(re.sub(r"_\d+$", "", f), []).append(f)
+    if len(groups) == 1 and len(mem) <= 6:
+        return (f" Did you mean one of {', '.join(mem)}? Those are every "
+                f"event of that series this game defines; use one of those "
+                f"exact ids verbatim.")
+    parts = []
+    for ser, ms in sorted(groups.items(),
+                          key=lambda kv: (TRAINER_EVENT_MAP.get(kv[1][0], ""), kv[0])):
+        where = TRAINER_EVENT_MAP.get(ms[0])
+        n_f = sum(1 for m in ms if m in fired)
+        desc = ", ".join(ms)
+        if where:
+            desc += f" — the {len(ms)} trainer(s) of {where}"
+        if n_f == len(ms):
+            desc += " (all already beaten)"
+        elif n_f:
+            desc += f" ({n_f} of them already beaten)"
+        parts.append(desc)
+    return (f" Did you mean one of these? The game defines {len(mem)} events "
+            f"of that series, in {len(groups)} group(s): " + "; ".join(parts)
+            + ". Use one of those exact ids verbatim; an event fires only "
+              "for a trainer in its own group's place.")
+
+
 def _check_pred(dw: dict, tag: str, sid, probs: list):
     """Validate one predicate — recursively, so an any_of branch gets the
     same item/map/flag scrutiny as a top-level one. Without the recursion an
@@ -1521,17 +1581,8 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                 # wanted a name meaning "all of them", and Route 4 defines
                 # exactly ONE such event, which is the answer to the
                 # question it was really asking.
-                _hint = ("" if not _mem else
-                         (f" Did you mean {_mem[0]}? That is the ONLY "
-                          f"event of that series this game defines, so it "
-                          f"is what 'all of them' comes to here; use that "
-                          f"exact id verbatim."
-                          if len(_mem) == 1 else
-                          f" Did you mean one of {', '.join(_mem[:6])}"
-                          + (" (and more)" if len(_mem) > 6 else "")
-                          + "? Those are every event of that series this "
-                            "game defines; use one of those exact ids "
-                            "verbatim."))
+                _hint = _series_hint(
+                    _mem, set((_obs_now() or {}).get("flags") or []))
                 probs.append(
                     f"{tag} ({sid}) flag '{v}' is not an event this game "
                     f"defines. You cannot look event names up and another "
