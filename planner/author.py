@@ -734,6 +734,24 @@ _SIDE = re.compile(r"\b(through|other side|far side|opposite|beyond|past|"
                    r"east|west|north|south|eastern|western|northern|southern)\b", re.I)
 
 
+def _printed_entrances(interior: str) -> "tuple[str, set] | None":
+    """(landmark label, roads) for a named place the Town Map pins to a
+    road: which outdoor maps have a doorway into `interior` (any floor of
+    it), by planner/map_doors.json — the printed map's own labelling. None
+    when the map is not a labelled landmark, or the run does not hold the
+    Town Map. Says where a place's doors are; nothing about its inside."""
+    if not interior or not MAP_DOORS or not holding_town_map():
+        return None
+    root = re.sub(r"_B?\d{1,2}F$", "", str(interior).upper())
+    label, roads = None, set()
+    for road, places in MAP_DOORS.items():
+        for lbl, ids in (places or {}).items():
+            if any(re.sub(r"_B?\d{1,2}F$", "", str(i).upper()) == root for i in ids or []):
+                label = label or lbl
+                roads.add(str(road).upper())
+    return (label, roads) if roads else None
+
+
 def _map_has_more(map_id: str) -> bool:
     """Does the run's own record show more of this map than the party has
     stood on — so that "a part never stood on" is a thing that exists?
@@ -1311,16 +1329,50 @@ def validate(plan: dict) -> list:
         # _came_from: the step means "back outside", and its words name no
         # far side.
         _w5 = _words5.replace("_", " ")
+        # COMING OUT OF A PINNED PLACE LANDS WHERE THE PRINTED MAP PINS IT.
+        # "Exit Rock Tunnel" was written ending on ROUTE_11, then on
+        # ROUTE_12: the objective-met-early rule finished the first plan the
+        # moment the run stepped east out of Vermilion, and the leg was not
+        # done (run 16, 2026-09-07). The Town Map the run holds draws ROCK
+        # TUNNEL on ROUTE 10 and Diglett's Cave on Routes 2 and 11
+        # (map_doors.json, the file written for exactly this swap). A step
+        # that comes OUT of such a place onto a road with no doorway into
+        # it is refused, and the road with the doorway named. What lies
+        # beyond that road stays the model's to find.
+        _pe = (_printed_entrances(_from5) if (_from5 and _OUT.search(_w5)
+                                            and _m5 in MAP_EDGES) else None)
+        if _pe and _m5 not in _pe[1] and _m5 != _from5:
+            _roads = sorted(_pe[1])
+            probs.append(
+                f"subgoal[{_i5}] ({_s5.get('id')}) comes OUT of {_from5} onto "
+                f"{_m5}, but the printed map pins {_pe[0]} to "
+                f"{' and '.join(_roads)}: its doorway is there, and no doorway "
+                f"on {_m5} leads into it, so coming out of it cannot land on "
+                f"{_m5}. Coming out lands on {' or '.join(_roads)}; if that is a "
+                f"part of {_roads[0]} you have never stood on, write "
+                f"{{\"new_part\": \"{_roads[0]}\"}}.")
+            continue
         if (_m5 in _walked_now and _map_has_more(_m5)
                 and not _walked_door_from_into(_from5, _m5, _vr5)
                 and not (_came_from(_from5, _m5) and not _SIDE.search(_w5))
                 and _OUT.search(_w5)):
             _parts5 = sorted(r for r in _vr5 if str(r).split("|")[0] == _m5)
+            # SAY WHICH IT IS: stood on, or merely reached by an earlier step
+            # of this plan. "already stood on ROUTE_10 ()" — empty brackets —
+            # was the plan's own first step, not the run's feet (2026-09-07).
+            if _parts5:
+                _how5 = (f"this run has already stood on {_m5} "
+                         f"({', '.join(_parts5[:4])})")
+            else:
+                _earlier = next((str(_x.get("id")) for _x in subs[:_i5]
+                                 if isinstance(_x, dict)
+                                 and str(((_x.get("done_when") or {}) if isinstance(_x.get("done_when"), dict) else {}).get("map") or "") == _m5), "an earlier step")
+                _how5 = (f"an earlier step of this plan ({_earlier}) already "
+                         f"ends on {_m5}, so by then you will have stood on it")
             probs.append(
                 f"subgoal[{_i5}] ({_s5.get('id')}) ends on "
                 f"{{\"map\": \"{_m5}\"}} and its words say it comes OUT "
-                f"somewhere — but this run has already stood on {_m5} "
-                f"({', '.join(_parts5[:4])}), so that condition is TRUE the "
+                f"somewhere — but {_how5}, so that condition is TRUE the "
                 f"moment you stand on any part you already know: walking "
                 f"back out the door you came in by satisfies it, and the "
                 f"step would count as done with nothing crossed. If this "
@@ -1464,7 +1516,18 @@ def validate(plan: dict) -> list:
     # hint is only true where a place ending is legal, which is exactly
     # where the deed rule does not apply.
     _deedy = bool(goal) and goal.split()[0].lower().rstrip(",:") in DEED
-    if probs and len(subs) >= 2 and not _deedy:
+    # ...BUT A LEG THAT GOES THROUGH SOMEWHERE IS NOT WITNESSED BY GOING IN.
+    # "Travel through Rock Tunnel from the north side of Route 10 to its
+    # south side": the exit rule refused the last step (ending on ROUTE_10,
+    # which an earlier step already reaches) and asked for new_part; this
+    # advice, in the same round, said the step before — ROCK_TUNNEL_1F,
+    # never reached — "already witnesses this objective. DELETE this last
+    # subgoal". The author obeyed the wrong one, the plan ended on entering
+    # the tunnel, and the run stood on Route 11 with the leg unmet (run 16,
+    # 2026-09-07). When the objective's own words name the far side, the
+    # inside is not the witness, and this advice stays silent.
+    _through = bool(goal) and bool(_SIDE.search(goal))
+    if probs and len(subs) >= 2 and not _deedy and not _through:
         _lastn = len(subs) - 1
         if all(f"subgoal[{_lastn}]" in p0 for p0 in probs):
             _prev = subs[-2] if isinstance(subs[-2], dict) else {}
