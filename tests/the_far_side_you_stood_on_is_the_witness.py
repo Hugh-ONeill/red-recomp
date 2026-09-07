@@ -22,15 +22,22 @@ checks = []
 def ck(n, ok, d=""): checks.append((n, bool(ok), d))
 
 explored = {"ROCK_TUNNEL_1F|24,16": {"15,33": {"to": "ROUTE_10|14,52", "n": 2}, "37,17": {"to": "ROCK_TUNNEL_B1F|2,2", "n": 3}},
-            "ROCK_TUNNEL_1F|14,2": {"15,3": {"to": "ROUTE_10|0,4", "n": 0}},
+            "ROCK_TUNNEL_1F|14,2": {"15,3": {"to": "ROUTE_10|0,4", "n": 1}},      # walked back out the entrance too
+            "ROUTE_10|0,4": {"8,17": {"to": "ROCK_TUNNEL_1F|14,2", "n": 3}},       # ...which is the side it went IN from
             "ROUTE_9|50,6": {"east": {"to": "ROUTE_10|0,4", "n": 1}}}
 A._load_explored = lambda: explored
 A.holding_town_map = lambda: True
 A.visited_regions = lambda *a, **k: {"ROUTE_10|0,4", "ROUTE_10|14,52", "ROCK_TUNNEL_1F|24,16", "ROCK_TUNNEL_B1F|2,2"}
 A._map_now = lambda *a, **k: "ROCK_TUNNEL_B1F"
 co = A._came_out_onto("ROCK_TUNNEL_B1F", "ROUTE_10", explored)
-ck("the record knows the far side was reached from inside, by which door, from which floor",
+ck("the record knows the far side was reached from inside, by which door, from which floor — and the side it went in from is not it",
    co == [("ROUTE_10|14,52", "15,33", 2, "ROCK_TUNNEL_1F")], co)
+p0 = [p for p in A.validate({"goal": g if 'g' in dir() else "Travel through Rock Tunnel to its south side", "subgoals": [
+    {"id": "enter_rock_tunnel", "goal_text": "Enter the Rock Tunnel from Route 10", "done_when": {"map": "ROCK_TUNNEL_1F"}},
+    {"id": "traverse_rock_tunnel", "goal_text": "Navigate through the Rock Tunnel to the south exit", "done_when": {"map": "ROUTE_10"}},
+    {"id": "reach_south_side", "goal_text": "Be on the south side of Route 10", "done_when": {"map": "ROUTE_10", "not_area": ["ROUTE_10|0,4", "ROUTE_10|14,52"]}}]}) if "reach_south_side" in p]
+ck("an exclusion two steps past the tunnel is still caught, and names the far side only",
+   len(p0) == 1 and "excludes ROUTE_10|14,52" in p0[0] and "ROUTE_10|0,4, which" not in p0[0], p0)
 g = "Travel through Rock Tunnel from the north side of Route 10 to its south side"
 def plan(last):
     return {"goal": g, "subgoals": [{"id": "descend_to_b1f", "goal_text": "Go down to B1F", "done_when": {"map": "ROCK_TUNNEL_B1F"}},

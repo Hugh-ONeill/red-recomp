@@ -769,13 +769,28 @@ def _came_out_onto(from_map: str, to_map: str, explored=None) -> list:
         return []
     ex = _load_explored() if explored is None else explored
     root = re.sub(r"_B?\d{1,2}F$", "", str(from_map).upper())
+    def _root(m):
+        return re.sub(r"_B?\d{1,2}F$", "", str(m).split("|")[0].upper())
+    # THE NEAR SIDE IS NOT THE FAR SIDE. Walking back out the door you came
+    # in by also "comes out onto" the map — Rock Tunnel's north ladder put
+    # the run back on ROUTE_10|0,4 in attempt 3, and this then named THAT
+    # part as the far side (2026-09-07). A part the run has entered the
+    # place FROM is the near side, and is left out.
+    near = set()
+    for reg, edges in (ex or {}).items():
+        if str(reg).split("|")[0].upper() != str(to_map).upper():
+            continue
+        for _door, e in (edges or {}).items():
+            if _root((e or {}).get("to") or "") == root and int((e or {}).get("n") or 0) > 0:
+                near.add(str(reg))
     out = []
     for reg, edges in (ex or {}).items():
-        if re.sub(r"_B?\d{1,2}F$", "", str(reg).split("|")[0].upper()) != root:
+        if _root(reg) != root:
             continue
         for door, e in (edges or {}).items():
             to = str((e or {}).get("to") or "")
-            if to.split("|")[0].upper() == str(to_map).upper() and int((e or {}).get("n") or 0) > 0:
+            if (to.split("|")[0].upper() == str(to_map).upper() and int((e or {}).get("n") or 0) > 0
+                    and to not in near):
                 out.append((to, str(door), int(e.get("n") or 0), str(reg).split("|")[0]))
     return sorted(set(out))
 
@@ -1357,12 +1372,23 @@ def validate(plan: dict) -> list:
             # had come out of the tunnel onto, twice. The condition asked
             # for a third part of Route 10 (2026-09-07).
             _na = _alt.get("not_area") if isinstance(_alt.get("not_area"), list) else []
-            if _am and _na and _from5:
-                _co_a = _came_out_onto(_from5, _am)
+            if _am and _na:
+                # the place come out of may be two steps back: "traverse the
+                # tunnel -> ROUTE_10" then "reach the south side -> ROUTE_10
+                # not_area [...]" (2026-09-07). Every indoor map an earlier
+                # step ends on, and the one stood in now, is asked.
+                _ins = [m for m in ([_from5] + [str((x.get("done_when") or {}).get("map") or "")
+                                                for x in subs[:_i5] if isinstance(x, dict)
+                                                and isinstance(x.get("done_when"), dict)]
+                                    + [_map_now()])
+                        if m and m not in MAP_EDGES]
+                _co_a = []
+                for _m_in in dict.fromkeys(_ins):
+                    _co_a += _came_out_onto(_m_in, _am)
                 _bad_ex = sorted(set(str(x) for x in _na) & {pt for pt, _d, _n, _f in _co_a})
                 if _bad_ex:
                     _pt = _bad_ex[0]
-                    _door, _flr = next(((d, f) for pt, d, n, f in _co_a if pt == _pt), ("?", _from5))
+                    _door, _flr = next(((d, f) for pt, d, n, f in _co_a if pt == _pt), ("?", _from5 or "inside"))
                     probs.append(
                         f"subgoal[{_i5}] ({_s5.get('id')}) excludes {_pt}, which is the part of "
                         f"{_am} you have ALREADY come out of {_flr} onto (its door at {_door}). "
