@@ -1137,7 +1137,18 @@ def validate(plan: dict) -> list:
             continue
         _m5 = str(_dw5.get("map") or "")
         _words5 = f"{_s5.get('goal_text') or ''} {_s5.get('id') or ''}"
-        if _m5 in _walked_now and _OUT.search(_words5.replace("_", " ")):
+        # ...AND ONLY FOR A MAP THAT HAS SIDES. "Find the exit of the cave
+        # and enter the Mt. Moon Pokemon Center" ends on the Center; the
+        # word "exit" is about the cave, and the rule turned the step into
+        # {"new_part": "MT_MOON_POKECENTER"} — a part of a one-room
+        # building the party had never stood on, which does not exist. The
+        # party stood in the only Center there is and the step could never
+        # come true (run 16, 2026-09-07; user: "it thinks it needs to go
+        # to a different mt moon pokecenter than the one its in"). Coming
+        # out somewhere is a thing that happens on the printed map's roads
+        # and towns; a building is entered, not come out on.
+        if (_m5 in _walked_now and _m5 in (MAP_EDGES or {})
+                and _OUT.search(_words5.replace("_", " "))):
             _parts5 = sorted(r for r in _vr5 if str(r).split("|")[0] == _m5)
             probs.append(
                 f"subgoal[{_i5}] ({_s5.get('id')}) ends on "

@@ -11187,17 +11187,34 @@ class Executor:
         shut = self._unopened_doors(obs)
         shut_line = ""
         if shut:
-            shut_line = (
-                "\nDOORWAYS ON THIS MAP YOU HAVE NEVER OPENED AND CANNOT "
-                "WALK TO FROM HERE: "
-                + ", ".join(
-                    f"({k})" + (f", nearest person {who}" if who else "")
-                    for k, _d, who in shut[:4])
-                + ". A doorway does not move, so something between you and "
-                "it does not want you through yet — a person to talk to or "
-                "fight, a thing to shift, a way round. WHAT is not recorded. "
-                "Doing whatever there is to do nearby, and then trying the "
-                "doorway again, is how that is found out.")
+            # ...AND ONLY A FLOOR SEARCHED TO ITS EDGE HAS "SOMETHING IN THE
+            # WAY". With ground never on screen left on the floor, a door
+            # you cannot walk to may simply be past it (Mt Moon B2F's exit
+            # ladder, run 16, 2026-09-07).
+            _fmap = int((((obs or {}).get("map") or {}).get("seen") or {})
+                        .get("frontier_map_n") or 0)
+            _names = ", ".join(
+                f"({k})" + (f", nearest person {who}" if who else "")
+                for k, _d, who in shut[:4])
+            if _fmap > 0:
+                shut_line = (
+                    "\nDOORWAYS ON THIS MAP YOU HAVE NEVER OPENED AND CANNOT "
+                    "WALK TO FROM HERE: " + _names + ". This floor still has "
+                    f"ground never on screen ({_fmap} spot(s) where the seen "
+                    "ground ends); a doorway does not move, and the way to "
+                    "these may run through that ground. Standing where the "
+                    "seen ground ends brings it into view.")
+            else:
+                shut_line = (
+                    "\nDOORWAYS ON THIS MAP YOU HAVE NEVER OPENED AND CANNOT "
+                    "WALK TO FROM HERE: " + _names
+                    + ". A doorway does not move, and every cell of this "
+                    "floor that has been on screen is searched to its edge, "
+                    "so something between you and it does not want you "
+                    "through yet — a person to talk to or fight, a thing to "
+                    "shift, a way round. WHAT is not recorded. Doing whatever "
+                    "there is to do nearby, and then trying the doorway "
+                    "again, is how that is found out.")
         # WHAT YOU HAVE BEEN TOLD HERE. Grouped as hints and shown when the
         # room is not yielding — the answer to "why can I not get past" is
         # usually a sentence somebody already said out loud.

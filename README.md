@@ -116,7 +116,7 @@ off and moves them.
 for t in tests/*.py; do python3 "$t"; done
 ```
 
-294 of them, and they are named as sentences, because each one is a claim
+295 of them, and they are named as sentences, because each one is a claim
 about what the harness owes the model:
 
 ```

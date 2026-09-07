@@ -40,6 +40,18 @@ try:
     ck("...and told to write new_part", any('{"new_part": "ROUTE_2"}' in p for p in hit))
     ck("the first Route 2 step, which only arrives, is not refused",
        not any("reach_route_2" in p and "comes OUT" in p for p in probs))
+    # a BUILDING is entered, not come out on: "exit the cave and enter the
+    # Center" must not become a part of the Center never stood on (run 16)
+    plan3 = {"goal": "Exit Mt. Moon and reach Cerulean City", "subgoals": [
+        {"id": "reach_route_4", "goal_text": "Reach Route 4", "done_when": {"map": "ROUTE_4"}},
+        {"id": "reach_mt_moon_exit_center",
+         "goal_text": "Find the exit of the cave and enter the Mt. Moon Pokemon Center",
+         "done_when": {"map": "MT_MOON_POKECENTER"}}]}
+    A.visited_regions = lambda *a, **k: {"MT_MOON_POKECENTER|0,3", "ROUTE_4|4,4"}
+    probs3 = A.validate(plan3) or []
+    ck("a step that ENTERS a building is not asked for a new part of it",
+       not any("reach_mt_moon_exit_center" in p and "comes OUT" in p for p in probs3))
+    A.visited_regions = lambda *a, **k: set()
     plan2 = {"goal": "g", "subgoals": [
         {"id": "exit_forest", "goal_text": "Exit the forest onto Route 2",
          "done_when": {"map": "ROUTE_2"}}]}

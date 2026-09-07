@@ -724,18 +724,39 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                 # walked out to Cinnabar to look for the door it promised,
                 # found none, came back, and did it again (2026-08-23).
                 # Say the shape of the fact and stop at the edge of it.
-                _pass += ("\nTHIS MAP HOLDS MORE THAN ONE ROOM: the door(s) "
-                          + _others + " are on it but not reachable from "
-                          "where you stand — walls, not obstacles. HOW that "
-                          "other room is entered is NOT RECORDED. Some are "
-                          "entered by their own door from OUTSIDE the "
-                          "building; some are only entered from ANOTHER "
-                          "FLOOR, by stairs that land inside them, by a "
-                          "hole that drops you in, or by a WARP PAD whose "
-                          "twin stands inside them — a pad is one of the "
-                          "things this page names when it is on screen. "
-                          "Which of those this is, this ledger does not "
-                          "know.")
+                # UNSEEN GROUND IS NOT A WALL. Mt Moon B2F's exit ladder
+                # (5,7) sat behind ground never on screen; this called it
+                # "walls, not obstacles" on the same page whose own door
+                # line said "its way in is ground you have not stood on:
+                # unseen ground on this floor", and the model gave up on
+                # the floor and climbed back out (run 16, 2026-09-07; user:
+                # "where else can it even go?"). The shim counts the cells
+                # where this floor's seen ground ends (frontier_map_n);
+                # while that is above zero the doors may lie past them.
+                _fmap = int(((m.get("seen") or {}).get("frontier_map_n")) or 0)
+                if _fmap > 0:
+                    _pass += ("\nDOORS ON THIS FLOOR YOU CANNOT WALK TO FROM "
+                              "HERE: " + _others + ". This floor still has "
+                              f"ground never on screen ({_fmap} spot(s) where "
+                              "the seen ground ends), and the way to them may "
+                              "run through it: standing where the seen ground "
+                              "ends is how it comes into view. Whether that "
+                              "is the way, or they belong to a room entered "
+                              "from another floor, is not known.")
+                else:
+                    _pass += ("\nTHIS MAP HOLDS MORE THAN ONE ROOM: the door(s) "
+                              + _others + " are on it but not reachable from "
+                              "where you stand — walls, not obstacles: every "
+                              "cell of this floor that has been on screen has "
+                              "been searched to its edge. HOW that other room "
+                              "is entered is NOT RECORDED. Some are entered by "
+                              "their own door from OUTSIDE the building; some "
+                              "are only entered from ANOTHER FLOOR, by stairs "
+                              "that land inside them, by a hole that drops you "
+                              "in, or by a WARP PAD whose twin stands inside "
+                              "them — a pad is one of the things this page "
+                              "names when it is on screen. Which of those this "
+                              "is, this ledger does not know.")
     except (TypeError, ValueError):
         _pass = ""
     LAST_PASS_NOTE = _pass
