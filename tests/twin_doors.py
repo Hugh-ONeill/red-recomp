@@ -99,8 +99,8 @@ def main():
     d = doors[0]
     check("the most-walked tile speaks for it", d.key == "3,7", d.key)
     check("the counts combine", d.n == 8, d.n)
-    check("the label shows every tile it spans",
-          d.label() == "door (2+3,7)", d.label())
+    check("the label names one tile and says the width in words",
+          d.label() == "door (3,7), two tiles wide", d.label())
     check("it is the door you came in by", d.status == "came_in_by",
           d.status)
     check("a use_warp at EITHER tile is on-ledger",
@@ -131,7 +131,7 @@ def main():
 
     print("the blocked-doorways reader:")
     # two unreachable, untaken twin tiles with a person near: ONE entry,
-    # keyed by the joined span the renderer prints as "(3,7+4,7)"
+    # keyed by the FIRST tile: one doorway, one coordinate (2026-09-07)
     ex = make(frontier={U.HERE: []})
     o = U.obs_for(ex, [])
     o["map"]["warps"] = [
@@ -141,7 +141,7 @@ def main():
                             "reachable": True}]
     got = ex._unopened_doors(o)
     check("a blocked double door is one doorway",
-          [(k, who) for k, _d, who in got] == [("3,7+4,7", "GUARD")], got)
+          [(k, who) for k, _d, who in got] == [("3,7", "GUARD")], got)
     # ...and a doorway with one tile still reachable is not blocked at all
     o["map"]["warps"][1]["reachable"] = True
     got = ex._unopened_doors(o)
