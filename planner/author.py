@@ -1083,7 +1083,30 @@ def validate(plan: dict) -> list:
         if not isinstance(dw, dict) or not dw:
             probs.append(f"{tag} ({sid}) missing/empty done_when")
             continue
+        _n0 = len(probs)
         _check_pred(dw, tag, sid, probs)
+        # A DEED THE GAME KEEPS NO EVENT FOR GETS THE MECHANICAL REPAIR.
+        # "Cut the tree in front of the gym" was written five rounds
+        # running on EVENT_CUT_VERMILION_GYM, then EVENT_CUT_GYM_TREE, then
+        # back — each round told the name was wrong and handed a menu of
+        # abstractions ("a map you could not stand in before, an item, a
+        # badge, a party change"), and each round renamed the event instead
+        # (run 16, 2026-09-07). When the guessed name matches NO series this
+        # game defines, say the two edits that work, with the next step's
+        # condition quoted so it can be copied: the tree is gone when you
+        # stand where it stood, and the step after already says where.
+        if (isinstance(dw.get("flag"), str) and len(probs) > _n0
+                and "is not an event this game defines" in probs[-1]
+                and "Did you mean" not in probs[-1]):
+            _nxt = subs[i + 1] if i + 1 < len(subs) and isinstance(subs[i + 1], dict) else None
+            _ndw = (_nxt or {}).get("done_when")
+            _stem = "_".join(str(dw["flag"]).split("_")[:3])
+            probs[-1] += (f" The game keeps NO event for this: nothing in its list "
+                          f"begins with {_stem}. Two edits work, nothing else will: "
+                          f"REMOVE {tag} ({sid}) and let the step after it stand, or "
+                          f"give {tag} exactly the condition of the step after it"
+                          + (f": {json.dumps(_ndw)}" if isinstance(_ndw, dict) and _ndw else "")
+                          + ". Do not spell another event name.")
     # A PLACE IS NOT THE DEED. Leg 11 of run 13 ("Chase the Team Rocket
     # thief out of the burgled house") ended on confront_thief:
     # {"map":"CERULEAN_CITY"} — walking out of the house satisfied it, the
