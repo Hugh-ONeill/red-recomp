@@ -38,7 +38,8 @@ ck("a tile whose warps lead both ways is not labelled (Saffron's pads, Seafoam's
 ck("a single warp is not a drawing settled (plain floor under a landing)",
    ("FACILITY", 1) not in table)
 ck("the survey's evidence is one-way for every labelled tile",
-   all((by[k]["up"] == 0) != (by[k]["down"] == 0) for k in table if k in by and k not in W.HAND))
+   all((by[k]["up"] == 0) != (by[k]["down"] == 0)
+       for k in table if k in by and k not in W.HAND and table[k] != "lift"))   # lifts have no floor to lead to
 txt = (ROOT / "planner" / "engine_warp_looks.txt").read_text()
 ck("the text table matches the generator",
    all(f"{ts}\t{t}\t{look}\n" in txt for (ts, t), look in table.items()) and len(txt.splitlines()) == len(table))
