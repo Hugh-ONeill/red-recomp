@@ -653,6 +653,26 @@ def visited_maps() -> set:
     return {str(r).split("|")[0] for r in (d.get("visits") or {})}
 
 
+def _walked_door_from_into(from_map, to_map, stood) -> bool:
+    """Has the run walked a DOOR from any part of `from_map` into a part of
+    `to_map` it has stood on? Then stepping out lands on known ground."""
+    if not from_map or not to_map:
+        return False
+    try:
+        d = json.loads(Path("run/explored.json").read_text() or "{}")
+    except (OSError, ValueError, json.JSONDecodeError):
+        return False
+    stood = {str(r) for r in (stood or ())}
+    for reg, edges in (d.get("explored") or {}).items():
+        if str(reg).split("|")[0] != str(from_map):
+            continue
+        for k, e in (edges or {}).items():
+            to = str((e or {}).get("to") or "")
+            if to.split("|")[0] == str(to_map) and (not stood or to in stood):
+                return True
+    return False
+
+
 def _map_has_more(map_id: str) -> bool:
     """Does the run's own record show more of this map than the party has
     stood on — so that "a part never stood on" is a thing that exists?
@@ -1184,7 +1204,28 @@ def validate(plan: dict) -> list:
         # to a different mt moon pokecenter than the one its in"). Coming
         # out somewhere is a thing that happens on the printed map's roads
         # and towns; a building is entered, not come out on.
+        # ...AND NOT WHEN THE STEP IS SIMPLY STEPPING OUT OF A DOOR ONTO THE
+        # GROUND IT CAME IN FROM. "exit_bills_house" -> {"map": "ROUTE_25"}
+        # was refused five rounds running — the house's one door opens onto
+        # the very part of Route 25 the run walked in from, so the bare map
+        # is exactly the step's meaning — and the author gave up, and the
+        # chain PUSHED Misty's leg and the thief's leg later (run 16,
+        # 2026-09-07). The record knows which doors go where: when the map
+        # this step leaves FROM has a walked door into a part of M the run
+        # has stood on, coming out lands on known ground and the rule stays
+        # quiet. The forest's doors lead to its gates, not to Route 2, so
+        # the far-side case still fires.
+        _from5 = None
+        if _i5 > 0 and isinstance(subs[_i5 - 1], dict):
+            _pdw = subs[_i5 - 1].get("done_when") or {}
+            if isinstance(_pdw, dict):
+                _from5 = (_pdw.get("map") or _pdw.get("new_part")
+                          or str(_pdw.get("area") or "").split("|")[0] or None)
+        if not _from5:
+            _from5 = ((_obs_now().get("map") or {}).get("id")
+                      if callable(globals().get("_obs_now")) else None)
         if (_m5 in _walked_now and _map_has_more(_m5)
+                and not _walked_door_from_into(_from5, _m5, _vr5)
                 and _OUT.search(_words5.replace("_", " "))):
             _parts5 = sorted(r for r in _vr5 if str(r).split("|")[0] == _m5)
             probs.append(

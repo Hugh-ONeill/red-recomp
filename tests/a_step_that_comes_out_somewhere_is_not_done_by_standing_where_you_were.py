@@ -66,6 +66,30 @@ try:
         probs4 = A.validate(plan4) or []
         ck("a building with more to it than the party has stood on still gets the rule",
            any("out_the_back" in p and "comes OUT" in p for p in probs4))
+        # stepping OUT OF A DOOR onto the ground you came in from is not
+        # coming out somewhere new: Bill's house's one door opens onto the
+        # part of Route 25 the run walked in from (refused five rounds and
+        # two legs pushed, run 16)
+        A.visited_regions = lambda *a, **k: {"BILLS_HOUSE|2,1", "ROUTE_25|10,2"}
+        _real_door = A._walked_door_from_into
+        A._walked_door_from_into = lambda f, m, stood: (f, m) == ("BILLS_HOUSE", "ROUTE_25")
+        try:
+            plan5 = {"goal": "Defeat Misty for the Cascade Badge", "subgoals": [
+                {"id": "exit_bills_house", "goal_text": "Exit Bill's house onto Route 25",
+                 "done_when": {"map": "ROUTE_25"}},
+                {"id": "go_to_cerulean", "goal_text": "Walk south to Cerulean City",
+                 "done_when": {"map": "CERULEAN_CITY"}}]}
+            # the current position stands in for the step before the first
+            _real_obs = A._obs_now
+            A._obs_now = lambda *a, **k: {"map": {"id": "BILLS_HOUSE"}}
+            try:
+                probs5 = A.validate(plan5) or []
+            finally:
+                A._obs_now = _real_obs
+            ck("leaving a house onto the route its door opens on is not refused",
+               not any("exit_bills_house" in p and "comes OUT" in p for p in probs5))
+        finally:
+            A._walked_door_from_into = _real_door
     finally:
         A._map_has_more = _real_more
     A.visited_regions = lambda *a, **k: set()
