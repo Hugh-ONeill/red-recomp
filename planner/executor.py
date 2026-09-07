@@ -10338,8 +10338,18 @@ class Executor:
         for reg2, fr2 in (self.frontier or {}).items():
             if reg2.split("|")[0] == mid and reg2 in (self.visits or {}):
                 _stood_keys |= {k for k in fr2 if "," in str(k)}
+        # ...AND A DOORWAY IS ONE DOOR HERE TOO. (4,0) of the forest gate's
+        # north door read "on part of it you have never stood on" while
+        # its other tile (5,0) was the door the party was about to take
+        # (run 16, 2026-09-07). A tile whose doorway has a tile you have
+        # stood at, taken or stood beside is that doorway, not more floor.
+        _grp = self._door_groups(m.get("warps") or [])
+        _known = here_keys | ever | _stood_keys
+        _known_wide = {t for k in _known for t in _grp.get(k, (k,))}
         open_here = (allw & _stood_keys) - here_keys - ever
-        unseen = allw - here_keys - ever - _stood_keys
+        open_here = {k for k in open_here
+                     if not any(t in (here_keys | ever) for t in _grp.get(k, (k,)))}
+        unseen = allw - _known_wide
         floor_note = ""
         if open_here:
             floor_note += (

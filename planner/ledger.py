@@ -670,8 +670,21 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             # them: doors listed here as unreachable are not "blocked", they
             # are in the OTHER room, entered by its own door from outside
             # (user, 2026-08-19: "specify that they're two separate rooms").
+            # A TILE OF A DOORWAY YOU CAN REACH IS NOT ANOTHER ROOM. The
+            # Viridian Forest south gate's north door is (4,0)+(5,0); the
+            # BFS reached (5,0) and not (4,0), and this line called (4,0)
+            # "another room ... walls, not obstacles" on the same page that
+            # called it the SAME door as (5,0) (run 16, 2026-09-07). One
+            # relation (_door_groups) decides what is one door.
+            _groups = (ex._door_groups(m.get("warps") or [])
+                       if hasattr(ex, "_door_groups") else {})
+            _reach = {f"{w0.get('x')},{w0.get('y')}"
+                      for w0 in (m.get("warps") or []) if w0.get("reachable")}
             _unreach = [w0 for w0 in (m.get("warps") or [])
-                        if not w0.get("reachable")]
+                        if not w0.get("reachable")
+                        and not any(t in _reach for t in _groups.get(
+                            f"{w0.get('x')},{w0.get('y')}",
+                            (f"{w0.get('x')},{w0.get('y')}",)))]
             if _unreach and (m.get("warps") or []):
                 _others = ", ".join(f"({w0.get('x')},{w0.get('y')})"
                                     for w0 in _unreach[:6])
