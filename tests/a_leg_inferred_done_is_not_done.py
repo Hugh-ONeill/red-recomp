@@ -53,3 +53,11 @@ for n, ok in checks:
 print(("FAIL %d/%d" % (len(bad), len(checks))) if bad
       else "ok %d checks" % len(checks))
 sys.exit(1 if bad else 0)
+
+# A VOID WHOSE REASON SAYS "ALREADY DONE" IS A DONE VERDICT (2026-09-07): the
+# wording rung voided "Find the entrance to the Rocket Hideout" because the
+# event had fired; the record now says DONE when check-done agrees.
+_src2 = open("planner/author.py").read()
+assert "_done_claim = bool(re.search(" in _src2 and "crossing off as DONE, not void" in _src2 \
+    and "fh.write(f\"{goal}\\t{'DONE: ' if _as_done else ''}{why}\\n\")" in _src2, "void-as-done wiring"
+print("ok  a void whose reason claims the deed is done is recorded as done when check-done agrees")

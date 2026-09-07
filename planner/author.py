@@ -7997,12 +7997,33 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
         if _no:
             print(f"[wording] VOID refused ({why}): {_no}", file=sys.stderr)
             return ""
-        print(f"[wording] VOID, by the model's own account: {why}",
-              file=sys.stderr)
+        # A VOID WHOSE REASON IS "ALREADY DONE" IS A DONE VERDICT. "Find the
+        # entrance to the Rocket Hideout" was voided because "EVENT_FOUND_
+        # ROCKET_HIDEOUT has already fired, meaning the entrance has been
+        # found" (run 16, 2026-09-07) — the leg was accomplished, not
+        # impossible. The chain crosses both off the same way; the record
+        # should not. When the reason claims the deed is done and check-done
+        # agrees on the evidence, the crossing is written as DONE.
+        _done_claim = bool(re.search(
+            r"already (?:fired|done|found|obtained|opened|been|has|have|completed|"
+            r"achieved|reached|defeated)|has been (?:found|done|obtained|opened|"
+            r"reached|achieved)|is already", why, re.I))
+        _as_done = False
+        if _done_claim:
+            try:
+                _as_done = bool(check_already_done(goal, start, model, observed=observed))
+            except Exception:
+                _as_done = False
+        if _as_done:
+            print(f"[wording] the reason is a DONE verdict, and check-done agrees on "
+                  f"the evidence — crossing off as DONE, not void: {why}", file=sys.stderr)
+        else:
+            print(f"[wording] VOID, by the model's own account: {why}",
+                  file=sys.stderr)
         WORDING_SAYS_VOID[0] = True
         try:
             with open("run/outline_void", "a") as fh:
-                fh.write(f"{goal}\t{why}\n")
+                fh.write(f"{goal}\t{'DONE: ' if _as_done else ''}{why}\n")
         except OSError:
             pass
         try:
