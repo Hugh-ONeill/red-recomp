@@ -39,7 +39,7 @@ try:
     ck("the exit step is refused although the run has never stood on Route 2", bool(hit))
     ck("...and told to write new_part", any('{"new_part": "ROUTE_2"}' in p for p in hit))
     ck("the first Route 2 step, which only arrives, is not refused",
-       not any("reach_route_2" in p and "comes OUT" in p for p in probs))
+       not any(p.startswith("subgoal[0]") and "comes OUT" in p for p in probs))   # the exit step's refusal may NAME step 0 as the earlier arrival
     # a BUILDING is entered, not come out on: "exit the cave and enter the
     # Center" must not become a part of the Center never stood on (run 16)
     plan3 = {"goal": "Exit Mt. Moon and reach Cerulean City", "subgoals": [
