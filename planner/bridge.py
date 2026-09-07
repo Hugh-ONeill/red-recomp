@@ -51,6 +51,21 @@ def _lua(v) -> str:
     return repr(str(v))
 
 
+def normalize_obs(o):
+    """AN EMPTY LUA TABLE IS A LIST TO THE ENCODER. The shim's bag and PC
+    item list are tables keyed by item name; with nothing in them they have
+    no keys to say they were maps, and they arrive as []. Every Python
+    reader that asked "is the bag a dict?" then read an EMPTY bag as NO
+    bag — and lacks_item, written for the deed that empties a bag, could
+    not witness run 16's parcel delivery (2026-09-07). Fold the empty
+    list to the empty map at the one place observations enter."""
+    if isinstance(o, dict):
+        for k in ("bag", "pc_items"):
+            if isinstance(o.get(k), list) and not o[k]:
+                o[k] = {}
+    return o
+
+
 class Bridge:
     def __init__(self, run_dir: Path = RUN, timeout: float = 120.0):
         self.run = Path(run_dir)
@@ -65,7 +80,8 @@ class Bridge:
 
     def obs(self) -> dict | None:
         try:
-            return json.loads((self.run / "obs.json").read_text())
+            return normalize_obs(
+                json.loads((self.run / "obs.json").read_text()))
         except Exception:
             return None
 

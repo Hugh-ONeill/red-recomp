@@ -808,6 +808,17 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
             # empty read must not pass for an empty bag (the same round's
             # status line read "BAG 0/20 {}" with twenty kinds held).
             bag = obs.get("bag")
+            # AN EMPTY BAG ARRIVES AS A LIST. The shim's bag is a Lua table
+            # keyed by item name, and an EMPTY Lua table has no keys to
+            # tell the encoder it was a map, so it lands here as [] — and
+            # this line then read "no readable bag" and refused. Run 16's
+            # parcel delivery (2026-09-07) emptied the bag: the deed was
+            # done, the flags fired, and {"lacks_item":["OAKS_PARCEL"]}
+            # stayed false for two attempts. A thing gone from an empty
+            # bag is gone. Only a MISSING bag, or a screen that is not the
+            # overworld, is unreadable.
+            if isinstance(bag, list) and not bag:
+                bag = {}
             if not isinstance(bag, dict) or obs.get("mode", "overworld") != "overworld":
                 return False
             if key == "bag_kinds_below":

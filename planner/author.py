@@ -1639,9 +1639,14 @@ def _check_pred_shapes(dw: dict, tag: str, sid, probs: list):
 
 def _obs_now(path="run/obs.json") -> dict:
     try:
-        return json.loads(Path(path).read_text() or "{}")
+        o = json.loads(Path(path).read_text() or "{}")
     except (OSError, ValueError, TypeError):
         return {}
+    try:
+        from bridge import normalize_obs          # an empty bag is a bag
+        return normalize_obs(o)
+    except Exception:
+        return o
 
 
 def witness_holds_now(dw, obs) -> "bool | None":
