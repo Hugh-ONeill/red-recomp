@@ -7467,7 +7467,54 @@ class Executor:
         n = self._seen_cell_count(str(region).split("|")[0])
         return f"{n} cells ever on screen, " if n else ""
 
-    def _words_vs_condition(self, goal_text, done) -> str:
+    @staticmethod
+    def _trainer_event_map() -> dict:
+        try:
+            import author as _a
+            return getattr(_a, "TRAINER_EVENT_MAP", {}) or {}
+        except Exception:
+            return {}
+
+    def _condition_place_words(self, goal_text, done, obs=None) -> str:
+        """WHAT A TRAINER FLAG MEANS, said where the condition is printed.
+        The inserted S.S. Anne leg's first step was named
+        clear_ss_anne_2f_rooms and waited on EVENT_BEAT_SS_ANNE_10_TRAINER_2
+        — a B1F cabin sailor's flag. All four 2F cabin trainers were beaten,
+        the rival was beaten, the run stood in the captain's cabin and
+        walked out, and then circled the 2F cabins for 26 door-takes
+        because the flag never fired and its words said 2F (run 16,
+        2026-09-07; user: "can we tell how often its visiting the same
+        doors"). The harness wrote the condition's vocabulary; it can say
+        what the vocabulary means: which place sets the flag, how many of
+        that place's trainer events are set, and that the words and the
+        condition disagree when they do. Which trainer, and how to reach
+        the place, stay the model's."""
+        if not (isinstance(done, dict) and isinstance(done.get("flag"), str)):
+            return ""
+        tem = self._trainer_event_map()
+        f = done["flag"].upper()
+        where = tem.get(f)
+        if not where:
+            return ""
+        fired = set((obs or {}).get("flags") or [])
+        sib = [e for e, m in tem.items() if m == where]
+        n_f = sum(1 for e in sib if e in fired)
+        out = (f"\nWHAT THE CONDITION MEANS: {f} is set by beating one "
+               f"particular trainer in {where} — that place has {len(sib)} "
+               f"trainer event(s), {n_f} already set, and this one "
+               f"{'is' if f in fired else 'is not'}.")
+        _tok = r"(?<![A-Z0-9])(B?\d{1,2}F)(?![A-Z0-9])"
+        wtok = set(_re.findall(_tok, str(goal_text or "").upper()))
+        ftok = set(_re.findall(_tok, where.upper()))
+        if wtok and ftok and not (wtok & ftok):
+            out += (f" This step's words say {', '.join(sorted(wtok))}; the "
+                    f"condition is set in {where}. THE CONDITION IS THE STEP: "
+                    f"what the words call the place is the plan-writer's "
+                    f"guess, and no fight on {', '.join(sorted(wtok))} moves "
+                    f"this flag.")
+        return out
+
+    def _words_vs_condition(self, goal_text, done, obs=None) -> str:
         """THE CONDITION IS THE STEP. The rewrite wrote the step "Use the
         elevator to leave the Rocket Hideout B4F" over the condition
         {"map":"ROCKET_HIDEOUT_ELEVATOR"}. Standing on B2F beside a lift
@@ -7480,11 +7527,12 @@ class Executor:
         Nothing here says where any door leads."""
         if not isinstance(done, dict):
             return ""
+        place = self._condition_place_words(goal_text, done, obs)
         target = done.get("map")
         if not isinstance(target, str) and isinstance(done.get("area"), str):
             target = done["area"].split("|")[0]
         if not isinstance(target, str) or not target.strip():
-            return ""
+            return place
         T = target.strip().upper()
         # ...AND AN AREA IS A GUESS THE SAME WAY A FLOOR IS. "Locate and
         # enter the Secret House in the north area of the Safari Zone" over
@@ -7501,8 +7549,8 @@ class Executor:
             r"\b(NORTH|SOUTH|EAST|WEST|CENTER|CENTRE)\s+AREA\b", up)]
         stray = sorted({t for t in toks if not T.endswith("_" + t)})
         if not stray:
-            return ""
-        return (f"\nTHE CONDITION IS THE STEP: {json.dumps(done)} holds "
+            return place
+        return place + (f"\nTHE CONDITION IS THE STEP: {json.dumps(done)} holds "
                 f"wherever you stand in {T}, whichever floor's door you take "
                 f"into it. The floor named in this step's words "
                 f"({', '.join(stray)}) is the plan-writer's guess at where, "
@@ -15570,7 +15618,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self.log("escalate_echo", subgoal=sg["id"], round=rnd,
                          echo=plan_echo[:2000])
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
-                    f"{self._words_vs_condition(goal, done)}"
+                    f"{self._words_vs_condition(goal, done, obs)}"
                     f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
                     f"{atlas or 'nothing yet'}\n"

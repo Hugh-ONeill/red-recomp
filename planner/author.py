@@ -1609,6 +1609,42 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                     f"something you can SEE instead: a map you could not "
                     f"stand in before, an item the act leaves you holding, "
                     f"a badge, or a party change.")
+            elif k == "flag" and str(v).upper() in TRAINER_EVENT_MAP:
+                # A TRAINER FLAG IS SET IN ONE PLACE, AND THE STEP'S OWN NAME
+                # SAYS WHERE IT THINKS THAT IS. clear_ss_anne_2f_rooms ended
+                # on EVENT_BEAT_SS_ANNE_10_TRAINER_2 — a B1F cabin sailor —
+                # and the run circled the 2F cabins, every trainer there
+                # already beaten, until the attempt died (run 16,
+                # 2026-09-07). The two halves are both the plan's words;
+                # when they name different floors, say so, and list the
+                # trainer events of the place the name means, if the
+                # building has one by that floor.
+                _tok = r"(?<![A-Z0-9])(B?\d{1,2}F)(?![A-Z0-9])"
+                _where = TRAINER_EVENT_MAP[str(v).upper()]
+                _ftok = set(_re.findall(_tok, _where.upper()))
+                _stok = set(_re.findall(_tok, str(sid).upper()))
+                if _stok and _ftok and not (_stok & _ftok):
+                    _pre = _re.split(_tok, _where.upper())[0]
+                    _meant = sorted({m for m in TRAINER_EVENT_MAP.values()
+                                     if m.startswith(_pre)
+                                     and set(_re.findall(_tok, m)) & _stok})
+                    _ev = sorted(e for e, m in TRAINER_EVENT_MAP.items()
+                                 if m in _meant)
+                    _fired = set((_obs_now() or {}).get("flags") or [])
+                    _alt = ""
+                    if _ev:
+                        _nf = sum(1 for e in _ev if e in _fired)
+                        _alt = (f" The place this step is named for, "
+                                f"{', '.join(_meant)}, has {len(_ev)} trainer "
+                                f"event(s): {', '.join(_ev)} ({_nf} already "
+                                f"set); use one of those exact ids verbatim "
+                                f"if that is the place you mean.")
+                    probs.append(
+                        f"{tag} ({sid}) flag '{v}' is set by beating a "
+                        f"trainer in {_where}, and this step's own name says "
+                        f"{'/'.join(sorted(_stok))}. One of the two is wrong: "
+                        f"name the step for {_where}, or end it on an event "
+                        f"of the place it means.{_alt}")
             elif k == "badge" and v not in BADGES:
                 probs.append(f"{tag} ({sid}) badge '{v}' unknown")
             elif k == "has_species" and ENGINE_SPECIES:
