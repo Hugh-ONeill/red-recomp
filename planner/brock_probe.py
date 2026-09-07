@@ -107,6 +107,9 @@ rather than repeating it. Output only the JSON object."""
 # RED_NUM_CTX instead of editing this line — a run then records which window
 # it actually had, rather than leaving it to whatever the file said that week.
 NUM_CTX = int(os.environ.get("RED_NUM_CTX") or 24576)
+# the most tokens one reply may run to (see _chat_once); RED_NUM_PREDICT
+# overrides, the same way RED_NUM_CTX does
+NUM_PREDICT = int(os.environ.get("RED_NUM_PREDICT") or 3072)
 
 
 def chat(msgs, model, retries=2):
@@ -155,10 +158,22 @@ def _is_timeout(e) -> bool:
 
 
 def _chat_once(msgs, model):
+    # A REPLY HAS A CEILING. Nothing capped the generation, so a reply that
+    # fell into a repetition loop ran on at 22 tok/s until the client's
+    # 300 s timeout, was retried once, and ran on again: run 16 sat on the
+    # Route 24 / Cerulean boundary for ten minutes while the GPU generated
+    # 6500+ tokens of a reply that should have been a forty-token JSON
+    # macro (2026-09-07; user: "it seems like its been stuck in the same
+    # place for a while"). Every reply this harness asks for is bounded —
+    # a macro, a verdict, a plan, an outline draft — and the longest of
+    # them (a plan with a dozen subgoals, an outline of forty lines) fits
+    # in well under this. A reply cut here fails JSON parsing and costs the
+    # caller one round, not a quarter of an hour.
     body = json.dumps({"model": model, "messages": msgs, "stream": False,
                        "think": False, "keep_alive": "30m",
                        "options": {"temperature": 0.3,
-                                   "num_ctx": NUM_CTX}}).encode()
+                                   "num_ctx": NUM_CTX,
+                                   "num_predict": NUM_PREDICT}}).encode()
     req = urllib.request.Request(OLLAMA, body,
                                  {"Content-Type": "application/json"})
     with urllib.request.urlopen(req, timeout=300) as r:
