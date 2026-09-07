@@ -48,9 +48,26 @@ try:
          "goal_text": "Find the exit of the cave and enter the Mt. Moon Pokemon Center",
          "done_when": {"map": "MT_MOON_POKECENTER"}}]}
     A.visited_regions = lambda *a, **k: {"MT_MOON_POKECENTER|0,3", "ROUTE_4|4,4"}
-    probs3 = A.validate(plan3) or []
-    ck("a step that ENTERS a building is not asked for a new part of it",
-       not any("reach_mt_moon_exit_center" in p and "comes OUT" in p for p in probs3))
+    _real_more = A._map_has_more
+    A._map_has_more = lambda m: m in A.MAP_EDGES       # the record shows one room, fully seen
+    try:
+        probs3 = A.validate(plan3) or []
+        ck("a one-room building the run has seen whole is not asked for a new part",
+           not any("reach_mt_moon_exit_center" in p and "comes OUT" in p for p in probs3))
+        # ...but a building the record shows MORE of (two parts stood on, or
+        # ground of it never reached) can be come out on: the trashed house's
+        # back yard, the far half of a cave floor (user: "there are legitimate
+        # circumstances to want a different area of a building")
+        A._map_has_more = lambda m: True
+        A.visited_regions = lambda *a, **k: {"CERULEAN_TRASHED_HOUSE|2,1"}
+        plan4 = {"goal": "g", "subgoals": [
+            {"id": "out_the_back", "goal_text": "Leave the trashed house by its back door into the yard",
+             "done_when": {"map": "CERULEAN_TRASHED_HOUSE"}}]}
+        probs4 = A.validate(plan4) or []
+        ck("a building with more to it than the party has stood on still gets the rule",
+           any("out_the_back" in p and "comes OUT" in p for p in probs4))
+    finally:
+        A._map_has_more = _real_more
     A.visited_regions = lambda *a, **k: set()
     plan2 = {"goal": "g", "subgoals": [
         {"id": "exit_forest", "goal_text": "Exit the forest onto Route 2",

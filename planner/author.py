@@ -653,6 +653,43 @@ def visited_maps() -> set:
     return {str(r).split("|")[0] for r in (d.get("visits") or {})}
 
 
+def _map_has_more(map_id: str) -> bool:
+    """Does the run's own record show more of this map than the party has
+    stood on — so that "a part never stood on" is a thing that exists?
+
+    The exit rule turned "find the exit of the cave and enter the Mt. Moon
+    Pokemon Center" into a part of the CENTER never stood on, which a
+    one-room building does not have (run 16, 2026-09-07). Restricting the
+    rule to the printed map's roads and towns was too narrow: a different
+    part of a BUILDING is sometimes exactly what is wanted — the far half
+    of a cave floor, the trashed house's back yard, a floor of Silph Co.
+    (user: "there are legitimate circumstances to want a different area of
+    a building, its rare but its happened"). So the record decides: a road
+    or town has sides; otherwise the map has more of it when the run has
+    stood on two or more parts of it, when ground of it has been on screen
+    that the party never reached, or when a way out of it was seen that no
+    walk reached. A one-room Center fully seen has none of those."""
+    if not map_id:
+        return False
+    if map_id in (MAP_EDGES or {}):
+        return True
+    try:
+        d = json.loads(Path("run/explored.json").read_text() or "{}")
+    except (OSError, ValueError, json.JSONDecodeError):
+        return False
+    parts = {str(r) for r in (d.get("visits") or {})
+             if str(r).split("|")[0] == map_id}
+    parts |= {str(r) for r in ((d.get("parts_by_map") or {}).get(map_id) or [])}
+    if len(parts) >= 2:
+        return True
+    if int((d.get("map_seen") or {}).get(map_id, 0) or 0) > 0:
+        return True
+    if any(str(r).split("|")[0] == map_id and v
+           for r, v in (d.get("unreached_at") or {}).items()):
+        return True
+    return False
+
+
 def visited_regions() -> set:
     """Every REGION this run has stood in, MAP|x,y as the ledger names them.
 
@@ -1147,7 +1184,7 @@ def validate(plan: dict) -> list:
         # to a different mt moon pokecenter than the one its in"). Coming
         # out somewhere is a thing that happens on the printed map's roads
         # and towns; a building is entered, not come out on.
-        if (_m5 in _walked_now and _m5 in (MAP_EDGES or {})
+        if (_m5 in _walked_now and _map_has_more(_m5)
                 and _OUT.search(_words5.replace("_", " "))):
             _parts5 = sorted(r for r in _vr5 if str(r).split("|")[0] == _m5)
             probs.append(

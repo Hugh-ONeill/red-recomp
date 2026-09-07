@@ -17,11 +17,16 @@ ROOT = Path(__file__).resolve().parents[1]
 src = (ROOT / "planner" / "ledger.py").read_text()
 checks = []
 def ck(n, ok): checks.append((n, bool(ok)))
+# the block's literals are wrapped differently as it changes (2026-09-07: it
+# grew an unseen-ground branch); join adjacent literals and read the words
+import re
+flat = re.sub(r'"\s*\n\s*"', "", src)
 ck("a warp pad is named among the ways into a floor's other room",
-   'or by a WARP PAD whose "\n                          "twin stands inside them' in src)
-ck("...as a thing the page names when it is on screen", "a pad is one of the \"\n                          \"things this page names when it is on screen" in src)
-ck("...without naming any building's mechanism", "Silph" not in src[src.index("THIS MAP HOLDS MORE THAN ONE ROOM"): src.index("THIS MAP HOLDS MORE THAN ONE ROOM") + 900])
-ck("the shrug at the end stays", "Which of those this is, this ledger does not" in src)
+   "or by a WARP PAD whose twin stands inside them" in flat)
+ck("...as a thing the page names when it is on screen",
+   "a pad is one of the things this page names when it is on screen" in flat)
+ck("...without naming any building's mechanism", "Silph" not in src[src.index("THIS MAP HOLDS MORE THAN ONE ROOM"): src.index("THIS MAP HOLDS MORE THAN ONE ROOM") + 1200])
+ck("the shrug at the end stays", "Which of those this is, this ledger does not know" in flat)
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks: print(("ok   " if ok else "FAIL ") + n)
 print(f"{len(checks) - len(bad)}/{len(checks)} checks pass")
