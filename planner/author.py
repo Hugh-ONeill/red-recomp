@@ -7406,7 +7406,43 @@ _DEED_KEYS = {"flag", "badge", "has_item", "lacks_item", "bag_kinds_below",
               "dex_owned"}
 
 
-def held_step_problems(plan: dict, observed="run/explored.json") -> list:
+# terrain that stands on a door and the move that clears it (the shim names
+# a bush CUT_TREE and a boulder by its sprite)
+_TERRAIN_MOVE = (("CUT_TREE", "CUT"), ("BOULDER", "STRENGTH"))
+
+
+def _party_knows(move: str, party=None) -> bool:
+    """Does a party Pokemon know `move`, by the last state the run wrote
+    (run/last_state.json, else run/obs.json)? Party moves are what the
+    status screen shows; nothing here says what a move does."""
+    if party is None:
+        party = []
+        for src in ("run/last_state.json", "run/obs.json"):
+            try:
+                party = json.loads(Path(src).read_text() or "{}").get("party") or []
+            except (OSError, ValueError, TypeError):
+                party = []
+            if party:
+                break
+    want = str(move).upper()
+    for mon in party or []:
+        for mv in (mon or {}).get("moves") or []:
+            mid = mv.get("id") if isinstance(mv, dict) else mv
+            if str(mid or "").upper() == want:
+                return True
+    return False
+
+
+def _terrain_on_door(h: str) -> "tuple | None":
+    """(holder, move) when what stands on the held door is terrain a move
+    clears, else None."""
+    for holder, move in _TERRAIN_MOVE:
+        if re.search(r"\(" + holder + r"[A-Z0-9_]* is standing there\)", str(h or "")):
+            return holder, move
+    return None
+
+
+def held_step_problems(plan: dict, observed="run/explored.json", party=None) -> list:
     """A STEP INTO A HELD BUILDING, WITH NO DEED BEFORE IT, IS REFUSED.
 
     The Scope leg's rewrite — "Obtain the Silph Scope from Celadon City",
@@ -7443,6 +7479,26 @@ def held_step_problems(plan: dict, observed="run/explored.json") -> list:
         targets -= stood
         if targets and not deed_before:
             h = held_doors_into(targets, o)
+            # A BUSH ON THE DOOR IS NOT A GUARD. Vermilion Gym's door had
+            # "CUT_TREE is standing there", and every Surge plan was refused
+            # ten rounds running for lacking "the deed that moves them" —
+            # while Oddish knew CUT, the one deed there is, whose only
+            # witness is walking through (run 16, 2026-09-07). Terrain the
+            # party's own move clears is not somebody to be moved by an
+            # event: with the move known, the step stands; without it, the
+            # deed is knowing the move, said as such.
+            _terr = _terrain_on_door(h) if h else None
+            if h and _terr and _party_knows(_terr[1], party):
+                h = None
+            elif h and _terr:
+                probs.append(
+                    f"step ({sg.get('id')}) stands in {sorted(targets)[0]}, "
+                    f"a building you have never stood in, and a {_terr[0]} "
+                    f"stands on its door — {h}. What clears it is the move "
+                    f"{_terr[1]}, which no party Pokemon knows: put a step "
+                    f"before this one ending on {{\"knows_move\": \"{_terr[1]}\"}} "
+                    f"(teach the machine if you hold it), or find another way in.")
+                h = None
             if h:
                 probs.append(
                     f"step ({sg.get('id')}) stands in {sorted(targets)[0]}, "
