@@ -752,6 +752,34 @@ def _printed_entrances(interior: str) -> "tuple[str, set] | None":
     return (label, roads) if roads else None
 
 
+def _load_explored() -> dict:
+    try:
+        return json.loads(Path("run/explored.json").read_text() or "{}").get("explored") or {}
+    except (OSError, ValueError, json.JSONDecodeError):
+        return {}
+
+
+def _came_out_onto(from_map: str, to_map: str, explored=None) -> list:
+    """Parts of `to_map` the run has reached by a door FROM inside the place
+    `from_map` belongs to (any floor of it), with the door and how often:
+    [(part, door, n)]. The run's own record. Rock Tunnel's far ladder
+    (1F 15,33) had put the run on ROUTE_10|14,52 twice before the exit step
+    was written to EXCLUDE that part (2026-09-07)."""
+    if not from_map or not to_map:
+        return []
+    ex = _load_explored() if explored is None else explored
+    root = re.sub(r"_B?\d{1,2}F$", "", str(from_map).upper())
+    out = []
+    for reg, edges in (ex or {}).items():
+        if re.sub(r"_B?\d{1,2}F$", "", str(reg).split("|")[0].upper()) != root:
+            continue
+        for door, e in (edges or {}).items():
+            to = str((e or {}).get("to") or "")
+            if to.split("|")[0].upper() == str(to_map).upper() and int((e or {}).get("n") or 0) > 0:
+                out.append((to, str(door), int(e.get("n") or 0), str(reg).split("|")[0]))
+    return sorted(set(out))
+
+
 def _map_has_more(map_id: str) -> bool:
     """Does the run's own record show more of this map than the party has
     stood on — so that "a part never stood on" is a thing that exists?
@@ -1292,31 +1320,9 @@ def validate(plan: dict) -> list:
                 _ahead5.add(_dw5[_dwk])
         if isinstance(_dw5, dict) and isinstance(_dw5.get("area"), str):
             _ahead5.add(_dw5["area"].split("|")[0])
-        if not isinstance(_dw5, dict) or set(_dw5) != {"map"}:
+        if not isinstance(_dw5, dict):
             continue
-        _m5 = str(_dw5.get("map") or "")
         _words5 = f"{_s5.get('goal_text') or ''} {_s5.get('id') or ''}"
-        # ...AND ONLY FOR A MAP THAT HAS SIDES. "Find the exit of the cave
-        # and enter the Mt. Moon Pokemon Center" ends on the Center; the
-        # word "exit" is about the cave, and the rule turned the step into
-        # {"new_part": "MT_MOON_POKECENTER"} — a part of a one-room
-        # building the party had never stood on, which does not exist. The
-        # party stood in the only Center there is and the step could never
-        # come true (run 16, 2026-09-07; user: "it thinks it needs to go
-        # to a different mt moon pokecenter than the one its in"). Coming
-        # out somewhere is a thing that happens on the printed map's roads
-        # and towns; a building is entered, not come out on.
-        # ...AND NOT WHEN THE STEP IS SIMPLY STEPPING OUT OF A DOOR ONTO THE
-        # GROUND IT CAME IN FROM. "exit_bills_house" -> {"map": "ROUTE_25"}
-        # was refused five rounds running — the house's one door opens onto
-        # the very part of Route 25 the run walked in from, so the bare map
-        # is exactly the step's meaning — and the author gave up, and the
-        # chain PUSHED Misty's leg and the thief's leg later (run 16,
-        # 2026-09-07). The record knows which doors go where: when the map
-        # this step leaves FROM has a walked door into a part of M the run
-        # has stood on, coming out lands on known ground and the rule stays
-        # quiet. The forest's doors lead to its gates, not to Route 2, so
-        # the far-side case still fires.
         _from5 = None
         if _i5 > 0 and isinstance(subs[_i5 - 1], dict):
             _pdw = subs[_i5 - 1].get("done_when") or {}
@@ -1325,6 +1331,48 @@ def validate(plan: dict) -> list:
                           or str(_pdw.get("area") or "").split("|")[0] or None)
         if not _from5:
             _from5 = _map_now()          # obs.json has no map; last_state.json does
+        # THE ALTERNATIVES OF AN any_of ARE CONDITIONS TOO. The refused
+        # "exit onto ROUTE_12" came back inside {"any_of": [{"map":
+        # "ROUTE_12"}, ...]} and passed untouched (2026-09-07). Every
+        # alternative naming a map is read by the pin rule below; the
+        # already-walked rule keeps to the plain {"map"} form.
+        _alts5 = [a for a in (_dw5.get("any_of") or []) if isinstance(a, dict)] if "any_of" in _dw5 else [_dw5]
+        _wa5 = _words5.replace("_", " ")
+        for _alt in _alts5:
+            _am = str(_alt.get("map") or "") if isinstance(_alt.get("map"), str) else ""
+            if not _am or (_alt is _dw5 and set(_dw5) == {"map"}):
+                continue          # the plain form is handled below, in full
+            _pe_a = (_printed_entrances(_from5) if (_from5 and _OUT.search(_wa5)
+                                                  and _am in MAP_EDGES) else None)
+            if _pe_a and _am not in _pe_a[1] and _am != _from5:
+                _ra = sorted(_pe_a[1])
+                probs.append(
+                    f"subgoal[{_i5}] ({_s5.get('id')}) has an alternative that comes OUT of "
+                    f"{_from5} onto {_am}, but the printed map pins {_pe_a[0]} to "
+                    f"{' and '.join(_ra)}: no doorway on {_am} leads into it, so that "
+                    f"alternative can never hold. Drop it.")
+            # ...AND THE FAR SIDE YOU STOOD ON IS NOT TO BE EXCLUDED. The exit
+            # step was rewritten as ROUTE_10 with not_area excluding BOTH
+            # parts stood on — including ROUTE_10|14,52, the part the run
+            # had come out of the tunnel onto, twice. The condition asked
+            # for a third part of Route 10 (2026-09-07).
+            _na = _alt.get("not_area") if isinstance(_alt.get("not_area"), list) else []
+            if _am and _na and _from5:
+                _co_a = _came_out_onto(_from5, _am)
+                _bad_ex = sorted(set(str(x) for x in _na) & {pt for pt, _d, _n, _f in _co_a})
+                if _bad_ex:
+                    _pt = _bad_ex[0]
+                    _door, _flr = next(((d, f) for pt, d, n, f in _co_a if pt == _pt), ("?", _from5))
+                    probs.append(
+                        f"subgoal[{_i5}] ({_s5.get('id')}) excludes {_pt}, which is the part of "
+                        f"{_am} you have ALREADY come out of {_flr} onto (its door at {_door}). "
+                        f"If this step means the far side, that part IS it: end on "
+                        + '{"area": "' + _pt + '"}' +
+                        f". Excluding it asks for a part of {_am} you have never stood on, "
+                        f"and there may be none.")
+        if set(_dw5) != {"map"}:
+            continue
+        _m5 = str(_dw5.get("map") or "")
         # ...AND LEAVING TO WHERE YOU CAME IN FROM IS NOT THE LOOPHOLE. See
         # _came_from: the step means "back outside", and its words name no
         # far side.
@@ -1369,6 +1417,20 @@ def validate(plan: dict) -> list:
                                  and str(((_x.get("done_when") or {}) if isinstance(_x.get("done_when"), dict) else {}).get("map") or "") == _m5), "an earlier step")
                 _how5 = (f"an earlier step of this plan ({_earlier}) already "
                          f"ends on {_m5}, so by then you will have stood on it")
+            # ...AND IF YOU HAVE ALREADY COME OUT THERE, SAY WHICH PART. The
+            # advice "write new_part" is wrong once the run has stood on the
+            # far side: the witness is that part, by name.
+            _co5 = _came_out_onto(_from5, _m5) if _from5 else []
+            if _co5:
+                _pt, _door, _n, _flr = _co5[0]
+                probs.append(
+                    f"subgoal[{_i5}] ({_s5.get('id')}) ends on " + '{"map": "' + _m5 + '"}'
+                    + f" and its words say it comes OUT somewhere — and you have ALREADY "
+                    f"come out of {_flr} onto {_pt} (its door at {_door}, {_n}x). "
+                    + '{"map": "' + _m5 + '"}' + f" is true on any part of {_m5}, including "
+                    f"the one you started from; if this step means the far side, that "
+                    f"part IS it: end on " + '{"area": "' + _pt + '"}' + ".")
+                continue
             probs.append(
                 f"subgoal[{_i5}] ({_s5.get('id')}) ends on "
                 f"{{\"map\": \"{_m5}\"}} and its words say it comes OUT "
