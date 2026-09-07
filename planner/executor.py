@@ -2200,6 +2200,12 @@ class Executor:
         here = self._where(pre_obs)
         if not here or "None" in str(here):
             return
+        # A BALL THE GAME SAYS IS GONE LEAVES THE SIGHTINGS. The shim's reply
+        # "the ball you saw there has been taken" (see its interact op) is
+        # the fact; recorded here so the never-pressed count stops naming
+        # it (ROCKET_HIDEOUT_B4F's Lift Key ball, run 16, 2026-09-07).
+        if op == "interact" and "has been taken, and a ball taken is gone" in note:
+            self._gone.setdefault(here, set()).add(key)
         book = self._outcomes.setdefault(f"{self._cur_target}|{here}", {})
         rec = book.setdefault(key, {"n": 0, "last": ""})
         rec["n"] = int(rec.get("n") or 0) + 1

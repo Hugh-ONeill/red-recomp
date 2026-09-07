@@ -349,7 +349,11 @@ def untouched_in(ex, region: str) -> list:
     'rooms you have seen things in that you have never touched'."""
     names = (getattr(ex, "sightings", {}) or {}).get(region) or []
     got = (getattr(ex, "_tried_objs", {}) or {}).get(region, set()) or set()
-    return sorted(n for n in names if n not in got)
+    # ...MINUS WHAT IS GONE: a ball taken, a person who left (the gone
+    # ledger). Counting the Lift Key's empty spot as "1 thing never pressed"
+    # sent the run back to B4F for it (2026-09-07).
+    gone = (getattr(ex, "_gone", {}) or {}).get(region, set()) or set()
+    return sorted(n for n in names if n not in got and n not in gone)
 
 
 def shelf_of(ex, region_or_map: str) -> list:

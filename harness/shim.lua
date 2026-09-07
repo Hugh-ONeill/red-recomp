@@ -9898,6 +9898,19 @@ function OPS.interact(G, c)
         end
       end
       if not here_item then
+        -- ...AND A BALL THAT WAS HERE AND IS NOT IS GONE, NOT ELSEWHERE.
+        -- ITEM_ROCKET_HIDEOUT_B4F_10_2 was the Lift Key the Rocket
+        -- dropped; taken, it stayed in the sightings as "never pressed",
+        -- was pressed four times, and this reply sent the model to "go to
+        -- that map first" while it stood on it (run 16, 2026-09-07). The
+        -- name carries its map: when that is THIS map, the ball is gone.
+        local named_map = tostring(c.name or ""):match("^ITEM_(.-)_%d+_%d+$")
+        if named_map and named_map == tostring((ow.map or {}).id) then
+          return false, ("nothing lies at (%d,%d) on %s any more — the ball "
+            .. "you saw there has been taken, and a ball taken is gone for "
+            .. "good; %s is not a thing to press again.")
+            :format(tx, ty, tostring((ow.map or {}).id), tostring(c.name))
+        end
         return false, ("no item lies at (%d,%d) on %s — an ITEM_x_y name "
           .. "means \"the ball at those coordinates on THAT map\", so it "
           .. "only means something on the map you saw it. Go to that map "
