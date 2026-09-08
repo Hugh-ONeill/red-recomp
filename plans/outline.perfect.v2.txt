@@ -45,6 +45,7 @@ Retrieve the Secret Key from the Pokemon Mansion
 Defeat Blaine for the Volcano Badge
 Defeat Giovanni for the Earth Badge
 every party member is at least level 50
+every party member is fully evolved
 Navigate the Victory Road
 Reach the Indigo Plateau
 every party member is at least level 55
