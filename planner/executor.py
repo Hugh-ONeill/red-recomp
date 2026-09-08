@@ -18747,7 +18747,34 @@ def main():
         ex.plan, ex.plan_path = plan, plan_path
         ex.status(plan=plan_path.name)
         print(f"\n===== PLAN: {plan_path.name} =====")
-        ok = ex.run_plan(plan)
+        # A CRASH MUST NOT THROW THE WALK AWAY. The memory file is written
+        # as the run goes; the GAME is saved only at the end of an attempt.
+        # So an exception inside a round left the two apart: run 16
+        # (2026-09-08) died in _goods_delta on the Route 12 gate's upper
+        # floor, TM39 in hand after a 25-minute walk from Celadon, and the
+        # next attempt booted the game from the leg's opening save — back in
+        # Celadon, TM39 gone — while the memory still said the girl upstairs
+        # had been pressed and had handed it over. Save the game and take
+        # the (incomplete) checkpoint before dying, exactly as a stop signal
+        # does between ops; the crash itself still ends the attempt.
+        try:
+            ok = ex.run_plan(plan)
+        except Exception:
+            import traceback
+            _tb = traceback.format_exc()
+            ex.log("attempt_crashed", plan=plan_path.name, error=_tb[-2000:])
+            print(_tb, file=sys.stderr, flush=True)
+            if args.save_after_each:
+                r = (ex._send_safe("save_game") or {}).get("result") or {}
+                print(f"[save] (after a crash, so the game keeps what the memory "
+                      f"already holds) {r.get('detail') or 'save failed'}", flush=True)
+                _cp = checkpoint_leg(plan_path, complete=False,
+                                     carried=list(getattr(ex, "_carried_ids", [])))
+                if _cp:
+                    ex.log("checkpoint", plan=plan_path.name, dir=str(_cp),
+                           rev=harness_rev(), complete=False, crashed=True)
+                    print(f"[checkpoint] (crashed) {_cp}", flush=True)
+            raise
         # A leg that walked to the end of its subgoal list has not
         # necessarily ACHIEVED anything: continue-past-failure lets it reach
         # the end with the objective unmet, and the chain then started the
