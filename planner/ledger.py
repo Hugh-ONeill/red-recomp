@@ -795,6 +795,39 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                               "them — a pad is one of the things this page "
                               "names when it is on screen. Which of those this "
                               "is, this ledger does not know.")
+        # THIS FLOOR HAS SHOWN ALL IT WILL FROM WHERE YOU CAN STAND. Rocket
+        # Hideout B3F: every part fully worked, both doorways taken, no seen
+        # ground ending at unseen ground — and the model, holding the Lift
+        # Key, walked its parts for two attempts looking for an elevator
+        # door it had inferred onto this floor from a Rocket's line (run 16,
+        # 2026-09-07; user: "still convinced itself theres an elevator
+        # there"). Each part said it was fully worked; nothing said it of
+        # the floor. The record can: a door not listed has never been on
+        # screen here. Where it is instead stays the model's to find.
+        _fmap0 = int(((m.get("seen") or {}).get("frontier_map_n")) or 0)
+        _mid0 = str(m.get("id") or "")
+        _warps0 = [w0 for w0 in (m.get("warps") or []) if w0.get("x") is not None]
+        _known0 = list((getattr(ex, "map_doors", {}) or {}).get(_mid0) or [])
+        _grp0 = ex._door_groups(_warps0) if hasattr(ex, "_door_groups") else {}
+        _reach0 = {f"{w0.get('x')},{w0.get('y')}" for w0 in _warps0 if w0.get("reachable")}
+        _unr0 = [w0 for w0 in _warps0 if not w0.get("reachable")
+                 and not any(t in _reach0 for t in _grp0.get(f"{w0.get('x')},{w0.get('y')}",
+                                                              (f"{w0.get('x')},{w0.get('y')}",)))]
+        _taken0, _arr0 = set(), set()
+        for _r0, _e0 in (getattr(ex, "explored", {}) or {}).items():
+            if str(_r0).split("|")[0] == _mid0:
+                _taken0 |= {str(k) for k, e in (_e0 or {}).items()
+                            if "," in str(k) and int((e or {}).get("n") or 0) > 0}
+                if "|" in str(_r0):
+                    _arr0.add(str(_r0).split("|", 1)[1])
+        _unused0 = [k for k in _known0
+                    if not any(t in _taken0 or t in _arr0 for t in _grp0.get(k, (k,)))]
+        if _fmap0 == 0 and _known0 and not _unused0 and not _unr0 and not _mid0.endswith("_ELEVATOR"):
+            _pass += ("\nTHIS FLOOR HAS SHOWN ALL IT WILL FROM WHERE YOU CAN STAND: "
+                      + (ex._seen_cells_words(here) if hasattr(ex, "_seen_cells_words") else "")
+                      + "no seen ground on it ends at unseen ground, and every doorway it "
+                      f"has shown ({len(_known0)}) has been taken. A door that is not listed "
+                      "above has never been on screen on this floor.")
     except (TypeError, ValueError):
         _pass = ""
     LAST_PASS_NOTE = _pass
