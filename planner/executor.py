@@ -2599,10 +2599,15 @@ class Executor:
                            + ' then {"op":"walk_to","x":' + str(_bx) + ',"y":' + str(_by) + '}'
                            + f" toward {_gb}, or explore on {_gm}, is how they join, if the "
                            f"ground between can be walked that way.")
+            _note_m = ""
+            try:
+                _note_m = self._printed_road_note(here, want, _gap)
+            except Exception:
+                _note_m = ""
             return False, [f"go: no walked way from {here} to {want} is "
                            f"known — you have never walked a connected "
                            f"chain of exits between them (or a hop on it "
-                           f"has failed in this world state)" + _note_b + _note_g], []
+                           f"has failed in this world state)" + _note_b + _note_g + _note_m], []
         region, path = best
         self.log("go_step", subgoal=sg.get("id"), to=region, legs=len(path))
         arrived = self._walk_route(sg, path)
@@ -6884,6 +6889,121 @@ class Executor:
                              key=lambda t: abs(_xy(t[0])[0] - _xy(t[1])[0]) + abs(_xy(t[0])[1] - _xy(t[1])[1]))
                 return m, pa, pb
         return None
+
+    def _printed_road_note(self, here: str, want: str, gap=None) -> str:
+        """THE MAP'S ROAD BESIDE THE RECORD'S BREAK. The break note names
+        the one map where the walked chain breaks and hands over the ops
+        that join it — and from Lavender that was Route 9, fifteen legs back
+        the way the run had come, while the printed map in the bag drew
+        Vermilion three legs south. The refusal was true and the model did
+        as it was told: to Route 9, east again, back to Lavender, the same
+        refusal (run 16, 2026-09-08; user: "once it gets to lavender town
+        it tries to 'go' to vermillion city which brings it right back to
+        rt 9 again"). One way named is a pointer; two ways named with their
+        lengths is a choice. This says what the printed map draws from here
+        to there, how long the walked way round is, and which leg of the
+        map's road the record has never seen crossed. Nothing here is
+        inferred: the map is the one the run is carrying, and every 'never
+        crossed' is the record's own silence."""
+        if not PRINTED_MAP_HELD:
+            return ""
+        hm = str(here).split("|")[0]
+        wm = str(want).split("|")[0]
+        def _road_of(mid):
+            """The road an interior opens off: the printed map's own
+            labelling first, else the run's own record of walking out of
+            it (a gate is on no road's door list; its doors are)."""
+            if mid in MAP_EDGES:
+                return mid
+            r = INTERIOR_ROAD.get(mid) or INTERIOR_ROAD.get(map_family(mid))
+            if r:
+                return r
+            for reg, es in (self.explored or {}).items():
+                if str(reg).split("|")[0] != mid:
+                    continue
+                for _k, e in (es or {}).items():
+                    to = str((e or {}).get("to") or "").split("|")[0]
+                    if to in MAP_EDGES:
+                        return to
+            return mid
+        hm = _road_of(hm)
+        wm = _road_of(wm)
+        if not hm or not wm or hm == wm or hm not in MAP_EDGES:
+            return ""
+        from collections import deque
+        prev = {hm: None}
+        q = deque([hm])
+        while q and wm not in prev:
+            m = q.popleft()
+            for d, m2 in sorted((MAP_EDGES.get(m) or {}).items()):
+                if m2 not in prev:
+                    prev[m2] = (m, d)
+                    q.append(m2)
+        if wm not in prev:
+            return ""
+        legs = []
+        m = wm
+        while prev[m] is not None:
+            pm, d = prev[m]
+            legs.append((pm, d, m))
+            m = pm
+        legs.reverse()
+
+        def walked(a, d, b):
+            for r, es in (self.explored or {}).items():
+                if str(r).split("|")[0] != a:
+                    continue
+                for k, e in (es or {}).items():
+                    if ((k == d or str(k).startswith(d + "#"))
+                            and str((e or {}).get("to") or "").split("|")[0] == b
+                            and not (e or {}).get("shut")):
+                        return True
+            return False
+
+        road = hm + "".join(f" --{d}--> {b}" for _a, d, b in legs)
+        out = (f" The printed map you hold also draws a road from here: {road} "
+               f"({len(legs)} leg(s)).")
+        if gap:
+            try:
+                _gm, _ga, _gb = gap
+                _p1 = self._route(here, _ga)
+                _p2s = [self._route(_gb, r) for r in list(self.explored or {}) + [want]
+                        if r == want or str(r).split("|")[0] == str(want).split("|")[0]]
+                _p2s = [p for p in _p2s if p is not None]
+                if _p1 is not None and _p2s:
+                    out += (f" The walked way round through {_gm} is "
+                            f"{len(_p1) + 1 + min(len(p) for p in _p2s)} leg(s) from here.")
+            except Exception:
+                pass
+        first = next(((a, d, b) for a, d, b in legs if not walked(a, d, b)), None)
+        if first is None:
+            out += (" Every leg of that road has been crossed at some time, but not as "
+                    "one chain from the parts of each map you would stand on — a map's "
+                    "parts are joined only by walks you have made between them.")
+            return out
+        a, d, b = first
+        if a != hm:
+            out += (f" Its leg {a} --{d}--> {b} has never been crossed; the legs before "
+                    f"it are walked ground. go walks only walked ground, so a printed road "
+                    f"is crossed one seam at a time from {a}.")
+            return out
+        sealed = d in (self._sealed(here) or set())
+        unseen = int((getattr(self, "region_seen", None) or {}).get(here, 0) or 0)
+        if sealed:
+            out += (f" Its first leg, this map's {d} edge to {b}, is proven uncrossable "
+                    f"from THIS part of {hm} as things stand — the connection is on the far "
+                    f"side of a barrier; another part of {hm} may reach it.")
+        elif unseen:
+            out += (f" Its first leg, this map's {d} edge to {b}, has never been crossed "
+                    f"from here, and this floor still has ground never on screen "
+                    f"({unseen} spot(s)) — the way to that edge may run through it. "
+                    + '{"op":"explore"} walks toward it; {"op":"cross","dir":"' + d
+                    + '"} tries it over the ground you have seen.')
+        else:
+            out += (f" Its first leg, this map's {d} edge to {b}, has never been crossed "
+                    f"from here. go walks only walked ground; " + '{"op":"cross","dir":"'
+                    + d + '"} is how a printed road is taken, one seam at a time.')
+        return out
 
     def _route(self, frm: str, to: str, avoid: set | None = None,
                ignore_blocked: bool = False):
