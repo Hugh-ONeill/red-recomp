@@ -15454,6 +15454,32 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 chg = []
                 if before[0] != after[0]:
                     chg.append(f"map->{after[0]}")
+                    # A SCRIPT THAT MOVES YOU IS AN ARRIVAL TOO. Doors and
+                    # seams go through note_transition, which remembers the
+                    # door you came in by and where you came from; the Safari
+                    # gate's attendant warps you into the Center after you pay,
+                    # by way of an interact, and nothing was remembered — so
+                    # the Center's south door, the one the party was standing
+                    # in front of, read "never taken from here" and was tried
+                    # (run 16, 2026-09-08; user: "should the door be
+                    # 'untried' if its the door we came in from?"). The facts
+                    # a door arrival sets, set here too; no edge is written,
+                    # since nothing a walk can replay was taken.
+                    if op not in ("use_warp", "cross", "go", "explore", "sweep",
+                                  "field_move", "elevator", "fly"):
+                        _ap = (obs or {}).get("player") or {}
+                        if _ap.get("x") is not None and after[0]:
+                            self._came_from = self._where(pre_obs)
+                            self._arrived = (self._where(obs), (_ap["x"], _ap["y"]))
+                            self._reversals = 0
+                            try:
+                                self._count_visit(self._arrived[0])
+                            except Exception:
+                                pass
+                            self.log("script_transition", frm=self._came_from,
+                                     to=self._arrived[0], op=op,
+                                     name=str(step.get("name") or step.get("item")
+                                              or step.get("index") or ""))
                 if before[4] != after[4]:
                     chg.append("party changed")
                 if (before[1], before[2]) != (after[1], after[2]):
