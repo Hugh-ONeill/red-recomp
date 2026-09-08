@@ -11517,6 +11517,15 @@ function OPS.sweep(G, c)
             (mask.n or 0) - nbefore,
             #parts > 0 and ("came into view: " .. table.concat(parts, "; "))
                         or "nothing new came into view", tostring(why))
+  -- A SWEEP IS STEPS, AND IN THE SAFARI ZONE STEPS ARE THE CLOCK. The page
+  -- shows the clock each round; the sweep that just spent 143 of its 500
+  -- steps said nothing about it (run 16, 2026-09-08). Said, not decided:
+  -- how many to spend on looking is the model's.
+  if safari_running(G) then
+    local _sf = (G.save or {}).safari or {}
+    detail = detail .. (" — SAFARI clock now: %d step(s) left, %d SAFARI BALL(s)")
+      :format(tonumber(_sf.steps) or 0, tonumber(_sf.balls) or 0)
+  end
   seen_save(true)
   return true, detail
 end

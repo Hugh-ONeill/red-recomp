@@ -2228,6 +2228,17 @@ class Executor:
         here = self._where(pre_obs)
         if not here or "None" in str(here):
             return
+        # THE CLOCK'S WORD IS NOT THE DOOR'S. A walk to a Safari door that
+        # the step clock ended on the way was booked as that door's outcome,
+        # and the row then read "door (35,3) -> UNKNOWN — trying it said:
+        # 'PA: Ding-dong! Time's up!'" — a door that says time's up, i.e. a
+        # shut one — on three doors at once (run 16, 2026-09-08). What the
+        # world did to the walk says nothing about the door (the same rule
+        # _walk_cut_by_the_world already applies to stamps and seams).
+        if self._walk_cut_by_the_world(note) or "time's up" in str(note).lower() \
+                or "safari game is over" in str(note).lower():
+            self.log("outcome_not_the_doors", at=here, key=key, why=str(note)[:120])
+            return
         # A BALL THE GAME SAYS IS GONE LEAVES THE SIGHTINGS. The shim's reply
         # "the ball you saw there has been taken" (see its interact op) is
         # the fact; recorded here so the never-pressed count stops naming
