@@ -2159,7 +2159,7 @@ def _map_now(obs=None, last=None) -> "str | None":
     return str(m) if isinstance(m, str) and m else None
 
 
-def witness_holds_now(dw, obs) -> "bool | None":
+def witness_holds_now(dw, obs, trust_bag: bool = False) -> "bool | None":
     """Whether a done_when is ALREADY true on the current observation, when
     the harness can read it off: True/False, or None when it cannot (an
     unknown key, a bag hidden behind a menu, no map on screen). Bookkeeping
@@ -2176,7 +2176,14 @@ def witness_holds_now(dw, obs) -> "bool | None":
     # readable only in the overworld: with a box up the observation may
     # carry an empty or missing bag (the status line once read "BAG 0/20 {}"
     # at map=None with twenty kinds held)
-    bag_ok = isinstance(bag, dict) and obs.get("mode", "overworld") == "overworld"
+    # THE SNAPSHOT'S BAG IS THE BAG. The mode gate is for a live observation
+    # taken mid-menu, whose bag may be stale; run/obs.json is a state
+    # snapshot, and the drink leg's plan — last step {"lacks_item":
+    # ["FRESH_WATER"]}, true before the water was bought — passed this check
+    # twice because the snapshot had been written with a menu open, and the
+    # chain then crossed the leg off on two plan runs that did nothing (run
+    # 16, 2026-09-07). The author asks with trust_bag=True.
+    bag_ok = isinstance(bag, dict) and (trust_bag or obs.get("mode", "overworld") == "overworld")
     flags = set(obs.get("flags") or [])
     badges = set(obs.get("badges") or [])
     out = []
@@ -2273,12 +2280,13 @@ def witness_already_true_problems(plan: dict, obs: dict | None = None) -> list:
         return []
     last = subs[-1] or {}
     dw = last.get("done_when")
-    if witness_holds_now(dw, obs) is True:
+    if witness_holds_now(dw, obs, trust_bag=True) is True:
         return [f"the OBJECTIVE ({last.get('id')}) done_when "
                 f"{json.dumps(dw)} ALREADY HOLDS where the run stands — a "
                 f"plan whose objective is true before it starts completes "
                 f"without doing the deed. Write a condition that only the "
-                f"deed makes true: a thing GONE (lacks_item), FEWER kinds in "
+                f"deed makes true: a thing GONE that you hold NOW (lacks_item "
+                f"of something not in the bag is true already), FEWER kinds in "
                 f"the bag (bag_kinds_below), a flag that fires, a place not "
                 f"yet stood in." + _unreached_step_words(plan)]
     return []

@@ -18068,7 +18068,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # ever checked. Transient conditions (a map) must be caught at
             # the moment; durable ones were already caught at attempt start.
             _fin = (subgoals[-1] or {}).get("done_when")
-            if idx < len(subgoals) - 1 and _fin \
+            # ...BUT NOT BEFORE THE FIRST STEP. An objective true before any
+            # step has run witnessed nothing: {"lacks_item": ["FRESH_WATER"]}
+            # held with no water ever bought, the plan "completed" in zero
+            # rounds, twice, and the chain crossed the leg off (run 16,
+            # 2026-09-07). The plan runs; the validator says why the witness
+            # was wrong at the next authoring.
+            if idx == 0 and _fin and pred_holds(_fin, self.settle()):
+                print(f"== the plan's OBJECTIVE ({json.dumps(_fin)}) already holds "
+                      f"before its first step — a witness true before the deed "
+                      f"witnesses nothing; running the plan anyway")
+                self.log("plan_objective_true_at_start", objective=_fin)
+            if idx > 0 and idx < len(subgoals) - 1 and _fin \
                     and pred_holds(_fin, self.settle()):
                 print(f"== the plan's OBJECTIVE ({json.dumps(_fin)}) holds "
                       f"from where the party stands — the leg's aim is "
