@@ -12492,6 +12492,15 @@ class Executor:
         # unconditionally. Nothing here says who to take out or why.
         _boxed = [m for m in ((obs or {}).get("pc_mons") or [])
                   if isinstance(m, dict) and m.get("species")]
+        # AN EMPTY BOX IS A FACT TOO. The roster was printed only when there
+        # was one, so with nothing deposited the page said nothing about the
+        # PC, and a party that could not learn FLY set off for the Center "to
+        # check the PC for a compatible Pokemon" (run 16, 2026-09-08; user:
+        # "shouldnt it know that theres nobody in the pc?"). The player put
+        # nothing in; the player knows the box is empty.
+        if not _boxed and "pc_mons" in (obs or {}):
+            _rs_line = ("IN PC STORAGE: no Pokemon — you have deposited none, and a "
+                        "Center's PC holds only what you put in it.\n") + _rs_line
         if _boxed:
             _rs_line = (
                 "IN PC STORAGE (yours, not in the party — a boxed Pokemon "
