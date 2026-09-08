@@ -92,6 +92,12 @@ DEFAULT_SPEC = {
 _SPEC_KEYS = set(DEFAULT_SPEC) | {"name", "provenance"}   # provenance = metadata
 
 
+# Moves that put a wild Pokemon to sleep or paralyse it: the two statuses the
+# catch formula rewards most, and neither hurts the foe. Poison, burn and
+# confusion are left out on purpose.
+CATCH_STATUS_MOVES = {"SLEEP_POWDER", "STUN_SPORE", "THUNDER_WAVE", "HYPNOSIS",
+                      "SING", "SPORE", "LOVELY_KISS", "GLARE"}
+
 def validate_spec(spec) -> list:
     """Return a list of problems (empty = valid)."""
     probs = []
@@ -507,23 +513,43 @@ def choose(obs: dict, spec: dict | None = None,
         bag = obs.get("bag") or {}
         have_ball = bag and bag.get(ca.get("ball"), 0) > 0
         if have_ball and balls < ca.get("max_balls", 3):
-            safe = [s for s in damaging if not s["kos"]]
+            # A BALL LANDS ON A WEAKENED, SLEEPING OR PARALYSED POKEMON FAR
+            # MORE OFTEN THAN ON A FRESH ONE. With a target named, this used
+            # to clear every weakening move ("a wasted ball is recoverable
+            # and a corpse is not" — the KO prediction was a guess) and threw
+            # at full health: five Poke Balls at a 100% Doduo, none landed,
+            # and the Spearows after it met an empty bag (run 16, 2026-09-08;
+            # user: "i would be suprised if it weakened before throwing").
+            # The corpse worry stands, so weakening is allowed only with a
+            # move whose damage has been SEEN and is under half the foe's
+            # current HP (a critical hit doubles, so still short of a KO); a
+            # sleep or paralysis move comes first when the foe carries no
+            # status (poison and burn are left alone: they chip toward a
+            # faint). Nothing safe, or low enough already: throw.
+            cur_hp = foe.get("hp") or 0
+            if not foe.get("status") and not ctx.get("status_tried"):
+                st = [mv for mv in moves
+                      if str(mv.get("id") or "").upper() in CATCH_STATUS_MOVES]
+                if st:
+                    ctx["status_tried"] = True
+                    return {"op": "battle_move", "index": st[0]["index"],
+                            "_why": f"{st[0]['id']} first — a sleeping or "
+                                    f"paralysed Pokemon is far easier to catch"}
+            safe = [s for s in damaging
+                    if not s["kos"] and s.get("damage") is not None
+                    and s["damage"] <= 0.45 * max(1, cur_hp)]
             safe.sort(key=lambda s: s["score"])
-            # A NAMED TARGET IS NOT WORTH SOFTENING UP. Weakening pays only
-            # if the damage can be controlled, and it cannot: this is a
-            # PREDICTION that a move will not KO, made for a L32 starter
-            # swinging at a L7 wild, and it is wrong exactly once before the
-            # thing the subgoal was authored to catch is dead. The trade is
-            # not close — a wasted ball is recoverable and a corpse is not —
-            # so when we know what we came for, throw at whatever hp it has.
+            throw_at = ca.get("throw_at_hp_frac", 0.7)
             if ctx.get("want"):
-                safe = []
-            if frac <= ca.get("throw_at_hp_frac", 0.7) or not safe:
+                throw_at = min(throw_at, ca.get("throw_at_hp_frac_wanted", 0.4))
+            if frac <= throw_at or not safe:
                 ctx["balls"] = balls + 1
                 return {"op": "throw_ball", "ball": ca["ball"],
-                        "_why": f"throw (foe at {frac:.0%})"}
+                        "_why": f"throw (foe at {frac:.0%}"
+                                + (", nothing safe to weaken it with"
+                                   if frac > throw_at else "") + ")"}
             return {"op": "battle_move", "index": safe[0]["index"],
-                    "_why": f"weaken with {safe[0]['id']}"}
+                    "_why": f"weaken with {safe[0]['id']} (foe at {frac:.0%})"}
         # THE BALLS FOR THIS BATTLE ARE SPENT — AND KILLING IT IS THE ONE
         # OUTCOME THAT HELPS NOTHING. Falling through to normal move
         # selection meant a L32 CHARMELEON knocking out the very ODDISH the
