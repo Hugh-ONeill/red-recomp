@@ -11125,16 +11125,44 @@ function OPS.sweep(G, c)
         end
       end
     end
+    -- SEEN IS NOT REACHED. From Route 16's north-west pocket the sweep saw
+    -- the gate's south-west doors and four Bikers across the tree line,
+    -- reported "a doorway at (17,10)" like any other, and stopped for it:
+    -- the model took that doorway for the house it was after, walked at it
+    -- twice, and was told a Biker stood by it (run 16, 2026-09-08; user:
+    -- "it only ever occasionally gets to the west side then doesnt
+    -- explore"). A thing on screen that no walk from here reaches is said
+    -- so, and a door-hunting sweep does not stop for one.
+    local far = 0
+    for _, t in ipairs(out) do
+      if t.x and t.kind ~= "way" then far = far + 1 end
+    end
+    if far > 0 then
+      local rc = seen_reach(G)
+      local function near(x, y)
+        if rc[x .. "," .. y] then return true end
+        for _, d in pairs(DIRS) do
+          if rc[(x + d[1]) .. "," .. (y + d[2])] then return true end
+        end
+        return false
+      end
+      for _, t in ipairs(out) do
+        if t.x and t.kind ~= "way" and not near(t.x, t.y) then
+          t.far = true
+          t.text = t.text .. " — across ground no walk from here reaches"
+        end
+      end
+    end
     return out
   end
   local function fired(things)
     if #things == 0 then return false end
     if wants.anything_new then return true end
     for _, t in ipairs(things) do
-      if wants[t.kind] then return true end
-      if wants.person and t.kind == "trainer" then return true end
+      if wants[t.kind] and not t.far then return true end
+      if wants.person and t.kind == "trainer" and not t.far then return true end
       if wants.door and t.kind == "way" then return true end
-      if wants.door and t.kind == "hole" then return true end   -- a way down
+      if wants.door and t.kind == "hole" and not t.far then return true end   -- a way down
     end
     return false
   end
