@@ -97,12 +97,13 @@ UI_SCREENS = _engine_screens()
 # so the model can name done_when conditions exactly.
 PREDICATES = {
     "map": "current map id equals VALUE (e.g. {\"map\":\"PEWTER_CITY\"})",
-    "screen": "a particular UI screen is open (e.g. {\"screen\":\"BoxMenu\"} "
-              "for the Pokemon storage in a PC, {\"screen\":\"PlayerPC\"} "
-              "for its item storage). This is the one that can name a "
-              "SPECIFIC machine or menu, which \"mode\" cannot — every menu "
-              "in the game reports mode \"ui\". The screens that exist are: "
-              + ", ".join(UI_SCREENS),
+    "screen": "a particular UI screen is open. RARELY RIGHT: the ops that "
+              "work a PC or a shop (pc_deposit, pc_withdraw, store_item, "
+              "retrieve_item, buy, sell) drive the screen and CLOSE it, so a "
+              "condition on BoxMenu, PlayerPC or a shop screen is never true "
+              "when it is tested — condition on what the deed changed "
+              "(pc_holds, party_size, has_species, has_item, lacks_item). "
+              "The screens that exist are: " + ", ".join(UI_SCREENS),
     "mode": "obs mode equals VALUE, and the ONLY values that exist are "
             + ", ".join(f'"{m}"' for m in OBS_MODES)
             + " (usually \"overworld\"). A mode says WHAT KIND of screen is "
@@ -171,6 +172,9 @@ PREDICATES = {
     "party_size": "party has at least N Pokemon (e.g. {\"party_size\":2}); "
                   "set battle_policy \"catch\" on such a subgoal so wild "
                   "battles throw balls instead of knocking the target out",
+    "pc_holds": "the PC box holds at least N Pokemon (e.g. {\"pc_holds\":1}) "
+                "— the witness for a DEPOSIT (pc_deposit), which party_size "
+                "cannot say; obs.pc_mons is what the PC holds",
     "knows_move": "a party Pokemon knows a MOVE (e.g. "
         "{\"knows_move\":\"MEGA_PUNCH\"}, or {\"knows_move\":{\"move\":"
         "\"MEGA_PUNCH\",\"slot\":1}} for one particular member). A TM in the "
@@ -2014,7 +2018,7 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
 # reach the executor by routes that never pass through this validator.
 _SHAPES = {
     "lead_level": "int", "party_min_level": "int", "party_size": "int",
-    "dex_owned": "int",
+    "dex_owned": "int", "pc_holds": "int",
     "party_nonempty": "bool", "party_alive": "bool",
     "party_healthy": "bool", "no_battle": "bool",
 }
@@ -2040,6 +2044,28 @@ def _check_pred_shapes(dw: dict, tag: str, sid, probs: list):
             probs.append(
                 f"{tag} ({sid}) screen {v!r} is not a screen this game has "
                 f"— the ones that exist are " + ", ".join(UI_SCREENS))
+        elif k == "screen" and v in ("BoxMenu", "PlayerPC", "ShopMenu",
+                                     "PCMenu", "PlayerPCMenu"):
+            # A STORAGE SCREEN IS NOT A DEED EITHER. The comment below said
+            # the PC's screens were the ones an op leaves open; that was
+            # true before pc_deposit / pc_withdraw / store_item existed.
+            # Every one of those drives the box itself and BACKS OUT, and
+            # `menu` refuses to enter storage by index — so no op leaves a
+            # BoxMenu on screen, and a condition on it is never true when
+            # it is tested. Run 16, leg 32 (2026-09-08): "deposit_pokemon"
+            # with {"screen":"BoxMenu"} deposited DODUO in round 3, and the
+            # step stayed open, so the run kept depositing — NIDORINA,
+            # then EEVEE — down to a party of two, ten rounds chasing a
+            # screen. Condition on what the deed CHANGES.
+            probs.append(
+                f"{tag} ({sid}) screen {v!r} is the inside of one op, not a "
+                f"step: pc_deposit / pc_withdraw / store_item / retrieve_item "
+                f"/ buy / sell each drive that screen and close it, so it is "
+                f"never open when a condition is tested. Condition on what "
+                f"the deed CHANGES: {{\"pc_holds\":N}} (the PC holds at "
+                f"least N Pokemon) for a deposit, party_size or has_species "
+                f"for a withdrawal, has_item / lacks_item / bag_kinds_below "
+                f"for items bought, sold or stored.")
         elif k == "screen" and v in ("BagMenu", "MoveLearnMenu", "PartyMenu",
                                      "StartMenu", "OptionsMenu",
                                      "TrainerCard", "PokedexMenu",

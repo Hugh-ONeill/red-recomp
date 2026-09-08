@@ -16,6 +16,7 @@ Predicate DSL (all listed keys must hold):
   {"mode": "overworld"}        obs mode
   {"screen": "BoxMenu"}        WHICH ui screen is open (obs.ui.screenId, or
                                anywhere on obs.ui.stack)
+  {"pc_holds": 1}              the PC box holds at least N Pokemon (obs.pc_mons)
   {"hall_of_fame": true}       the party has been entered into the Hall of
                                Fame (obs.hall_of_fame, the save's count)
   {"party_nonempty": true}     at least one party mon
@@ -1025,6 +1026,15 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
         elif key == "party_size":
             need = _as_int(key, want)
             if need is None or len(obs.get("party") or []) < need:
+                return False
+        elif key == "pc_holds":
+            # THE WITNESS FOR A DEPOSIT. party_size is a floor, so nothing
+            # could say "one went into the box" — the author reached for
+            # {"screen":"BoxMenu"} instead, which no op leaves open, and
+            # the run emptied its party into the PC chasing it (run 16,
+            # 2026-09-08). obs.pc_mons is the box's own list.
+            need = _as_int(key, want)
+            if need is None or len(obs.get("pc_mons") or []) < need:
                 return False
         elif key == "badge":
             if want not in (obs.get("badges") or []):
