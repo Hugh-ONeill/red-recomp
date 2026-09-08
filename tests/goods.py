@@ -96,9 +96,12 @@ CASES = [
 
 
 def main():
+    # a bare instance: the method reads the bag through _disp_item, so it
+    # needs a self (it was a staticmethod once, and crashed the round)
+    _ex = E.Executor.__new__(E.Executor)
     fails = []
     for name, pre, post, want in CASES:
-        got = E.Executor._goods_delta(pre, post)
+        got = _ex._goods_delta(pre, post)
         ok = got == want
         print(f"  {'ok  ' if ok else 'FAIL'}  {name}")
         if not ok:
@@ -111,7 +114,7 @@ def main():
     # world did not change" is flatly false about a wallet down 200. The
     # executor appends this outside the ok/no-effect/failed split; this
     # pins the property the placement exists for.
-    got = E.Executor._goods_delta(o({"POTION": 1}, 3175),
+    got = _ex._goods_delta(o({"POTION": 1}, 3175),
                                   o({"POTION": 1, "POKE_BALL": 1}, 2975))
     ok = bool(got)
     print(f"  {'ok  ' if ok else 'FAIL'}  the bill does not depend on the op "

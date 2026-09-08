@@ -13208,8 +13208,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             idx = text.find("[", idx + 1)
         return None
 
-    @staticmethod
-    def _goods_delta(pre_obs: dict, obs: dict) -> str:
+    def _goods_delta(self, pre_obs: dict, obs: dict) -> str:
         """What this op did to the bag and the wallet, in words.
 
         THE RUN BOUGHT FIFTEEN POKE BALLS WITHOUT MEANING TO, and was
