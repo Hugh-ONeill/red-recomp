@@ -5,6 +5,7 @@ describe the world with the same words. Mechanical save-reading only —
 manual-tier under CLAIM_RULES.
 """
 import json
+from pathlib import Path
 
 # last_state.json is written by the executor as it exits, so it OUTLIVES the
 # game process; obs.json belongs to the live bridge and is gone by the time
@@ -72,8 +73,32 @@ def party_text(mons):
     return txt
 
 
+def _machine_numbers():
+    """id -> number for the HMs (HM_FLY -> HM02), from the engine's own list.
+    An HM is handed over by a person who names both ("HM02 ... FLY"), so
+    both names are the player's; the judge read "Retrieve the HM02" against
+    a bag saying HM_FLY and twice refused a leg that was done (run 16,
+    2026-09-08). TMs are left as they are: the page reads them by number
+    until booted, and this text is not where that rule lives."""
+    out = {}
+    try:
+        for row in (Path(__file__).with_name("engine_tm_numbers.txt")
+                    .read_text().splitlines()):
+            parts = row.split()
+            if len(parts) >= 2 and parts[0].startswith("HM_"):
+                out[parts[0]] = parts[1]
+    except OSError:
+        pass
+    return out
+
+
+def _item_word(k, nums):
+    return f"{k} ({nums[k]})" if k in nums else str(k)
+
+
 def bag_text(bagd):
-    txt = (", ".join(f"{k} x{v}" for k, v in (bagd or {}).items())
+    nums = _machine_numbers()
+    txt = (", ".join(f"{_item_word(k, nums)} x{v}" for k, v in (bagd or {}).items())
            or "an empty bag")
     n = len(bagd or {})
     # the 20-kind cap is a wall the plan must plan around: a full bag
