@@ -43,7 +43,7 @@ ck("cells on another map are not compared (the map change is its own rule)",
    "cell" not in ex._round_news(before, {"map": {"id": "B", "seen": {"n": 900}}}))
 
 src = (ROOT / "planner" / "executor.py").read_text()
-ck("the round loop snapshots the start of every round", "_news0 = self._news_snapshot(obs)" in src)
+ck("the round loop snapshots the start of every round", "_news0 = self._news_snapshot(start)" in src)
 ck("the cap moves out for news", "rnd < rounds * 3 + _fresh_bonus + _news_bonus" in src)
 ck("a same-map round with news is not charged", 'if _news and _news_bonus < rounds:\n                    _news_bonus += 1' in src)
 ck("...nor a circling round with news", "if visits[sig1[0]] >= 2 and _news_c and _news_bonus < rounds:" in src)

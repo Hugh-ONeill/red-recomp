@@ -15775,7 +15775,6 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         _visit_marks: dict = {}   # ...and the world mark on the FIRST visit,
                                   # so a shuttle can be told it bought nothing
         while spent < rounds and rnd < rounds * 3 + _fresh_bonus + _news_bonus:
-            _news0 = self._news_snapshot(obs)
             if getattr(self, "finished", False):
                 self.log("escalate_finished", subgoal=sg.get("id"))
                 return True, []
@@ -15795,6 +15794,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             self._stop_if_asked()
             rnd += 1
             start = self.settle()
+            _news0 = self._news_snapshot(start)   # where this round begins (the loop's first round has no obs yet)
             self._note_map(start)
             # NEVER ASK THE MODEL FROM INSIDE A FIGHT. settle() resolves
             # dialogue but not battles, so a wild that jumped the party at
