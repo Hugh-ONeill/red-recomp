@@ -8940,6 +8940,35 @@ class Executor:
             self._save_memory()
         return n
 
+    def _news_snapshot(self, obs):
+        """Where the round starts: the map, how much of it has been on screen,
+        how many things have ever been pressed, how many ways ever taken."""
+        m = (obs or {}).get("map") or {}
+        return (str(m.get("id") or ""),
+                int(((m.get("seen") or {}).get("n")) or 0),
+                sum(len(v or ()) for v in (getattr(self, "_tried_objs", {}) or {}).values()),
+                sum(len(v or {}) for v in (self.explored or {}).values()))
+
+    def _round_news(self, before, cur) -> str:
+        """What this round found that the run had never had: cells newly on
+        screen (same map), things pressed for the first time, ways taken for
+        the first time. Empty when nothing. Counts, in words; the ledger and
+        the record are the sources, nothing is inferred."""
+        mid0, seen0, touched0, edges0 = before
+        m = (cur or {}).get("map") or {}
+        parts = []
+        if str(m.get("id") or "") == mid0:
+            n1 = int(((m.get("seen") or {}).get("n")) or 0)
+            if n1 > seen0:
+                parts.append(f"{n1 - seen0} cell(s) newly on screen")
+        t1 = sum(len(v or ()) for v in (getattr(self, "_tried_objs", {}) or {}).values())
+        if t1 > touched0:
+            parts.append(f"{t1 - touched0} thing(s) pressed for the first time")
+        e1 = sum(len(v or {}) for v in (self.explored or {}).values())
+        if e1 > edges0:
+            parts.append(f"{e1 - edges0} way(s) taken for the first time")
+        return ", ".join(parts)
+
     def _walk_route(self, sg, path, _replans=0):
         """Replay a fully-walked route hop by hop (the escort's pattern):
         send the edge, settle, fight through interruptions, record the
@@ -10978,6 +11007,21 @@ class Executor:
             return MACHINE_NUMBERS[k]
         return k
 
+    def _able_note(self, item: str, obs) -> str:
+        """Who in the party a machine's own screen marks ABLE. The ITEM
+        screen shows it for every member at once the moment a TM or HM is
+        picked; the run spent a round per Pokemon finding out the hard way
+        (run 16, 2026-09-08; user: "shouldnt it be showing whos compatible
+        with the hm even before that?"). Read from the observation the shim
+        computes off the party and the machine's move; empty for a non-machine."""
+        m = ((obs or {}).get("machines") or {}).get(item)
+        if not isinstance(m, dict):
+            return ""
+        able = [str(x) for x in (m.get("able") or [])]
+        if able:
+            return f" [ABLE: {', '.join(able)}]"
+        return " [NOT ABLE: anyone in this party]"
+
     def _gift_note(self, item: str) -> str:
         """Who handed this item over, and what they said as they did — the
         run's own record, riding the bag line where the item already sits.
@@ -12429,7 +12473,7 @@ class Executor:
         if _bagall:
             _rs_line = (
                 "WHAT YOU ARE CARRYING: "
-                + ", ".join(f"{self._disp_item(k)} x{v}{self._gift_note(k)}"
+                + ", ".join(f"{self._disp_item(k)} x{v}{self._gift_note(k)}{self._able_note(k, obs)}"
                             for k, v in sorted(_bagall.items()))
                 + f" ({len(_bagall)} of {self.BAG_SLOTS} kinds). Some are "
                   "used ON a party member and some WHERE YOU STAND; "
@@ -15726,10 +15770,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         redo_from = self._pos(self.settle()) if redo else None
         pardon = False        # one free revisit after a blackout (recovery)
         _fresh_bonus = 0      # rounds the cap moves out for new ground (see below)
+        _news_bonus = 0       # ...and for rounds that SAW, PRESSED or TOOK something new (_round_news)
         visits: dict = {}     # round-end maps: re-entering one = circling
         _visit_marks: dict = {}   # ...and the world mark on the FIRST visit,
                                   # so a shuttle can be told it bought nothing
-        while spent < rounds and rnd < rounds * 3 + _fresh_bonus:
+        while spent < rounds and rnd < rounds * 3 + _fresh_bonus + _news_bonus:
+            _news0 = self._news_snapshot(obs)
             if getattr(self, "finished", False):
                 self.log("escalate_finished", subgoal=sg.get("id"))
                 return True, []
@@ -17392,7 +17438,24 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         f"took an untried way out of the area: {key} led "
                         f"to {self._where(o2)})")
             elif (sig1[0], sig1[4], sig1[5]) == (sig0[0], sig0[4], sig0[5]):
-                spent += 1   # round went nowhere (same map/party/flags)
+                # A ROUND THAT FOUND SOMETHING NEW IS NOT A ROUND THAT WENT
+                # NOWHERE. Only a new MAP was free; a sweep that brought forty
+                # cells on screen, a first press, a door never taken — all on
+                # the same map — were charged like a round spent bumping a
+                # wall, so exploration burned the budget, the step failed, and
+                # the re-run redid the steps before it (the gate's second floor
+                # again; run 16, 2026-09-08; user: "escalations are meant to
+                # spur on that behavior in the first place so why force it to
+                # go back and redo things it already did"). A find is free and
+                # moves the cap out by one, up to the step's own budget.
+                _news = self._round_news(_news0, cur)
+                if _news and _news_bonus < rounds:
+                    _news_bonus += 1
+                    self.log("round_for_news", subgoal=sg["id"], round=rnd, news=_news)
+                    trace.append(f"(this round found something new — {_news} — "
+                                 f"and does not count against the step's rounds)")
+                else:
+                    spent += 1   # round went nowhere (same map/party/flags, nothing new)
             elif had_blackout or pardon:
                 # a blackout's map-jump wasn't chosen, and the NEXT round's
                 # walk back to where the party fainted isn't circling either
@@ -17442,7 +17505,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         f"(this round put you on ground you had never stood "
                         f"on — {here_now}; this step gets one more round "
                         f"for it)")
-                if visits[sig1[0]] >= 2:
+                _news_c = self._round_news(_news0, cur)
+                if visits[sig1[0]] >= 2 and _news_c and _news_bonus < rounds:
+                    _news_bonus += 1
+                    self.log("round_for_news", subgoal=sg["id"], round=rnd, news=_news_c)
+                    trace.append(f"(back on {sig1[0]}, but this round found something new — "
+                                 f"{_news_c} — and does not count against the step's rounds)")
+                elif visits[sig1[0]] >= 2:
                     spent += 1   # back on a map already visited: circling
                     mover = next((s for s in reversed(clean)
                                   if s.get("op") in ("cross", "use_warp")),
