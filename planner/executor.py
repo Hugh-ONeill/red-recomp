@@ -2583,10 +2583,26 @@ class Executor:
                           "\"to_x\":N,\"to_y\":N} does, and where a boulder "
                           "should end up is yours — a boulder that has cut you "
                           "off from ground is one you moved")
+            _gap = None
+            try:
+                _gap = self._route_gap(here, want)
+            except Exception:
+                _gap = None
+            _note_g = ""
+            if _gap:
+                _gm, _ga, _gb = _gap
+                _bx, _by = (_gb.split("|")[1].split(",") + ["?", "?"])[:2]
+                _note_g = (f" The chain breaks inside {_gm}: from here you can reach its "
+                           f"part {_ga}, and from its part {_gb} the rest of the way to "
+                           f"{want} is walked ground — but you have never walked from "
+                           f"{_ga} to {_gb}. " + '{"op":"go","to":"' + _ga + '"}'
+                           + ' then {"op":"walk_to","x":' + str(_bx) + ',"y":' + str(_by) + '}'
+                           + f" toward {_gb}, or explore on {_gm}, is how they join, if the "
+                           f"ground between can be walked that way.")
             return False, [f"go: no walked way from {here} to {want} is "
                            f"known — you have never walked a connected "
                            f"chain of exits between them (or a hop on it "
-                           f"has failed in this world state)" + _note_b], []
+                           f"has failed in this world state)" + _note_b + _note_g], []
         region, path = best
         self.log("go_step", subgoal=sg.get("id"), to=region, legs=len(path))
         arrived = self._walk_route(sg, path)
@@ -6785,6 +6801,90 @@ class Executor:
         except Exception:
             return ""
 
+    def _edges_of(self, region: str) -> dict:
+        """The router's edge rule, as one method: every edge walked out of
+        `region`, its area aliases, and the REVERSE of any compass seam
+        walked INTO it (a road crossed east can be crossed back west unless
+        a walk refuted it). A walk INSIDE a map ("walk:" edges) is not
+        reversed: a ledge hopped down is not hopped up."""
+        _OPP = {"north": "south", "south": "north", "east": "west", "west": "east"}
+        out = dict(self.explored.get(region) or {})
+        for alias in AREA_ALIASES.get(region, ()):
+            for k, v in (self.explored.get(alias) or {}).items():
+                out.setdefault(k, v)
+        for _r2, _es in (self.explored or {}).items():
+            for _k2, _e2 in (_es or {}).items():
+                if _k2 not in _OPP or (_e2 or {}).get("to") != region:
+                    continue
+                _back = _OPP[_k2]
+                if (region, _back, _r2) in getattr(self, "_bad_seam", ()):
+                    continue
+                if _back not in out:
+                    out[_back] = {"n": 0, "to": _r2, "inferred": True}
+                elif (out[_back] or {}).get("to") != _r2:
+                    _alt = f"{_back}#alt"
+                    while _alt in out and (out[_alt] or {}).get("to") != _r2:
+                        _alt += "x"
+                    out.setdefault(_alt, {"n": 0, "to": _r2, "inferred": True})
+        return out
+
+    def _route_gap(self, here: str, want: str):
+        """WHERE A CHAIN THAT EXISTS ON THE GROUND BREAKS IN THE RECORD. From
+        Celadon the run had walked every road to Vermilion the long way round
+        — Lavender, Rock Tunnel, Route 9, Cerulean, the underground path —
+        and `go VERMILION_CITY` still said "no walked way", eight rounds
+        running (run 16, 2026-09-08; user: "how would there not be a walked
+        path"). Route 9 was three walked parts, walked once eastward over
+        its ledges; the record held west-to-middle and middle-to-east, never
+        middle-to-west, and a walk inside a map is not reversed. Returns
+        (map, part reached from here, part that reaches the goal) for the
+        first map that has one of each, else None. Says where the record
+        breaks; whether the ground between can be walked is for a walk to
+        find out."""
+        from collections import deque
+        fwd = {here}; q = deque([here])
+        while q:
+            x = q.popleft()
+            for _k, e in self._edges_of(x).items():
+                y = str((e or {}).get("to") or "")
+                if y and y not in fwd and not (e or {}).get("shut"):
+                    fwd.add(y); q.append(y)
+        rev = {}
+        for r in list(self.explored or {}) + [want]:
+            for _k, e in self._edges_of(r).items():
+                y = str((e or {}).get("to") or "")
+                if y and not (e or {}).get("shut"):
+                    rev.setdefault(y, set()).add(r)
+        goals = {r for r in list(self.explored or {}) + [want]
+                 if r == want or r.split("|")[0] == str(want).split("|")[0]
+                 or r in AREA_ALIASES.get(want, ())}
+        back = set(goals); q = deque(goals)
+        while q:
+            y = q.popleft()
+            for r in rev.get(y, ()):
+                if r not in back:
+                    back.add(r); q.append(r)
+        if fwd & back:
+            return None                      # the chain is whole; the break is elsewhere
+        by_map = {}
+        for r in fwd:
+            by_map.setdefault(r.split("|")[0], [set(), set()])[0].add(r)
+        for r in back:
+            by_map.setdefault(r.split("|")[0], [set(), set()])[1].add(r)
+        def _xy(r):
+            try:
+                x, y = r.split("|")[1].split(",")
+                return int(x), int(y)
+            except (IndexError, ValueError):
+                return (0, 0)
+        for m, (a, b) in sorted(by_map.items()):
+            if a and b and not (a & b):
+                # the two parts nearest each other: that is where the unwalked hop lies
+                pa, pb = min(((x, y) for x in a for y in b),
+                             key=lambda t: abs(_xy(t[0])[0] - _xy(t[1])[0]) + abs(_xy(t[0])[1] - _xy(t[1])[1]))
+                return m, pa, pb
+        return None
+
     def _route(self, frm: str, to: str, avoid: set | None = None,
                ignore_blocked: bool = False):
         """Shortest path over the LEARNED region graph, as (exit_key, dest)
@@ -6793,57 +6893,7 @@ class Executor:
         from collections import deque
         if frm == to:
             return []
-        _OPP = {"north": "south", "south": "north",
-                "east": "west", "west": "east"}
-
-        def edges(region):
-            # An area's walked edges are split across its fingerprints: the
-            # same Mt Moon 1F room is 2,2 before a blocker moves and 3,2
-            # after, and the descent was only ever walked from one of them.
-            # Routing that ignores the aliases cannot get back into the
-            # mountain at all — the blackout walk-back reported "no route"
-            # from a Pokemon Center that plainly connects.
-            out = dict(self.explored.get(region) or {})
-            for alias in AREA_ALIASES.get(region, ()):
-                for k, v in (self.explored.get(alias) or {}).items():
-                    out.setdefault(k, v)
-            # A SEAM CROSSED ONE WAY IS THE SAME SEAM. The graph records a
-            # crossing from the side it was walked, so a run that travelled
-            # Fuchsia -> east all the way had no westward edge anywhere and
-            # `go` refused to take it home — while "I walked east from A
-            # into B" plainly means B's west side touches A, which is what
-            # the printed map says too. Offered as a hop only; if the way
-            # back is blocked (a ledge, a slope), the crossing fails and
-            # _walk_route records that like any other.
-            for _r2, _es in (self.explored or {}).items():
-                for _k2, _e2 in (_es or {}).items():
-                    if _k2 not in _OPP or (_e2 or {}).get("to") != region:
-                        continue
-                    _back = _OPP[_k2]
-                    # A SEAM CAN LAND IN TWO DIFFERENT PLACES. Route 13's
-                    # west edge is recorded as landing in ROUTE_14|16,6 (a
-                    # four-cell nook), while the run also walked east OUT of
-                    # ROUTE_14|5,4 — the pocket that connects on to Route 15
-                    # and Fuchsia. Keyed by direction alone, the second
-                    # landing was dropped and `go` refused a road the run
-                    # had walked. Keep both; the alternative rides under a
-                    # suffixed key that _walk_route strips before crossing.
-                    if (region, _back, _r2) in getattr(self, "_bad_seam",
-                                                        ()):
-                        continue           # the walk refuted this one
-                    if _back not in out:
-                        out[_back] = {"n": 0, "to": _r2, "inferred": True}
-                    elif (out[_back] or {}).get("to") != _r2:
-                        # NO COMMA IN THE KEY: a door key is "x,y" and half
-                        # the executor tests for a comma to tell doors from
-                        # seams — "west#ROUTE_14|5,4" tripped int() and
-                        # killed the leg. The destination lives in the edge.
-                        _alt = f"{_back}#alt"
-                        while _alt in out and (out[_alt] or {}).get("to") != _r2:
-                            _alt += "x"
-                        out.setdefault(_alt, {"n": 0, "to": _r2,
-                                              "inferred": True})
-            return out
+        edges = self._edges_of
 
         _now = getattr(self, "_mark_now", None)
         seen, q = {frm} | set(avoid or ()), deque([(frm, [])])
