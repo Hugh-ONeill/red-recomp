@@ -20,6 +20,9 @@ Predicate DSL (all listed keys must hold):
   {"hall_of_fame": true}       the party has been entered into the Hall of
                                Fame (obs.hall_of_fame, the save's count)
   {"party_nonempty": true}     at least one party mon
+  {"party_fully_evolved": true} every party member is a species with no
+                               evolution left to it here (trade evolutions
+                               do not count; engine_evolutions.txt)
   {"badge": "BOULDERBADGE"}    badge earned
   {"flag": "EVENT_..."}        save event flag set (executor instrumentation)
   {"no_battle": true}          not in battle
@@ -744,6 +747,37 @@ try:
 except OSError:
     pass
 
+# WHAT EVOLVES INTO WHAT, from the engine's own species table
+# (planner/engine_evolutions.txt, tools/gen_engine_evolutions.py): species ->
+# [(method, into, detail)]. It exists so "every party member is fully
+# evolved" is a condition a plan can be held to (user, 2026-09-08: "it would
+# be neat if towards the end it would have something along the lines of
+# 'all pokemon on the team are fully evolved'"). The harness judges the
+# state and names the members that still have a way to go; WHICH way — a
+# level, which stone — is never said, the same line the knows-move page
+# draws. A TRADE evolution does not count against a member: no trade is
+# available to this run, so that member is as evolved as it can be here.
+EVOLUTIONS: dict = {}
+try:
+    for _row in Path(__file__).with_name("engine_evolutions.txt").read_text().splitlines():
+        _pp = _row.split("\t")
+        if len(_pp) >= 3:
+            EVOLUTIONS.setdefault(_pp[0].upper(), []).append(
+                (_pp[1].upper(), _pp[2].upper(), _pp[3] if len(_pp) > 3 else ""))
+except OSError:
+    pass
+
+
+def fully_evolved(species) -> bool:
+    """No further evolution this run can perform: none listed, or only by trade."""
+    return all(m == "TRADE" for m, _, _ in EVOLUTIONS.get(str(species or "").upper(), []))
+
+
+def not_fully_evolved(obs) -> list:
+    """Party members with an evolution still open to them, in party order."""
+    return [str(m.get("species")) for m in ((obs or {}).get("party") or [])
+            if isinstance(m, dict) and not fully_evolved(m.get("species"))]
+
 
 def canon_item(name) -> str:
     """The engine id for an item the model named: "TM02", "tm 02", "TM_RAZOR_WIND"
@@ -1043,6 +1077,14 @@ def pred_holds(pred: dict | None, obs: dict) -> bool:
         elif key == "party_size":
             need = _as_int(key, want)
             if need is None or len(obs.get("party") or []) < need:
+                return False
+        elif key == "party_fully_evolved":
+            # every member a species with no evolution left to it here
+            # (trade evolutions do not count: no trade is available)
+            want = _as_bool(want)
+            if want is None:
+                return False
+            if bool(not_fully_evolved(obs)) == bool(want):
                 return False
         elif key == "pc_holds":
             # THE WITNESS FOR A DEPOSIT. party_size is a floor, so nothing
@@ -1372,7 +1414,8 @@ def choose_battle_policy(subgoal: dict) -> tuple:
                 "handed over is not a Pokemon hunted, and a false success "
                 "on the counter cannot be taken back")
         return "catch", "predicate"
-    if keys & {"lead_level", "party_min_level", "slot_level"}:
+    if keys & {"lead_level", "party_min_level", "slot_level",
+               "party_fully_evolved"}:
         return "default", "predicate"
     return "traversal", "default"
 
@@ -5541,7 +5584,8 @@ class Executor:
             return "item:" + ",".join(sorted(dw["has_item"]))
         for k in ("party_size", "lead_level", "party_min_level",
                   "slot_level", "party_healthy", "knows_move",
-                  "party_type", "has_species", "dex_owned"):
+                  "party_type", "has_species", "dex_owned",
+                  "party_fully_evolved"):
             if k in dw:
                 return f"{k}:{dw[k]}"
         # AN any_of OF PARTY PREDICATES IS A PARTY GOAL. "the party holds a
@@ -11189,6 +11233,33 @@ class Executor:
                 f"does not suit is kept, \"It won't have any effect\", so the "
                 f"stones in your bag can be tried on every member for free). "
                 f"Which way is yours to judge; the party now: {_party}.\n")
+        if str(target or "").startswith("party_fully_evolved:"):
+            # THE CONDITION IS THE WHOLE PARTY FULLY EVOLVED. The judge
+            # reads the engine's own table, so it can say WHO still has a
+            # way to go — that is its verdict explained, not a pointer.
+            # HOW each one evolves (a level, which stone) stays the
+            # model's; the stones it holds are on the bag line already.
+            _left = not_fully_evolved(obs)
+            _stones = sorted(k for k in ((obs.get("bag") or {}).keys())
+                             if str(k).endswith("_STONE"))
+            move_head += (
+                "THE CONDITION IS EVERY PARTY MEMBER FULLY EVOLVED — a "
+                "species with no evolution left to it in this game (an "
+                "evolution that needs a TRADE does not count: no trade is "
+                "available to you). "
+                + (f"NOT YET THERE: {', '.join(_left)}. " if _left else
+                   "Everyone in the party already is. ")
+                + "A Pokemon evolves two ways here: by reaching a LEVEL "
+                "(fight — {\"op\":\"grind\",\"intent\":\"train\"}, "
+                "and slot_level names who earns), or by a STONE used on it "
+                "({\"op\":\"use_item\",\"item\":\"..._STONE\","
+                "\"slot\":N}, or \"slot\":\"any\" to try every member; "
+                "a wrong try costs nothing). Which member takes which is "
+                "yours to judge"
+                + (f"; stones in your bag: {', '.join(_stones)}" if _stones
+                   else "; the bag holds no stone")
+                + ". A member that evolves by level and is not yet there is "
+                "raised the way any level is.\n")
         # THE LEDGER (EXPLORE_DESIGN §3): one ranked block for everything
         # LOCAL — exits, things, people, each with its status and what
         # happened last time this subgoal did it. It replaces the exits

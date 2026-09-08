@@ -172,6 +172,12 @@ PREDICATES = {
     "party_size": "party has at least N Pokemon (e.g. {\"party_size\":2}); "
                   "set battle_policy \"catch\" on such a subgoal so wild "
                   "battles throw balls instead of knocking the target out",
+    "party_fully_evolved": "true = every party member is a species with no "
+        "evolution left to it in this game (e.g. {\"party_fully_evolved\":"
+        "true}); an evolution that needs a TRADE does not count, since no "
+        "trade is available. A late-run state: it is met by levels for the "
+        "species that evolve by level and by stones for the ones that evolve "
+        "by stone",
     "pc_holds": "the PC box holds at least N Pokemon (e.g. {\"pc_holds\":1}) "
                 "— the witness for a DEPOSIT (pc_deposit), which party_size "
                 "cannot say; obs.pc_mons is what the PC holds",
@@ -2030,6 +2036,7 @@ _SHAPES = {
     "dex_owned": "int", "pc_holds": "int",
     "party_nonempty": "bool", "party_alive": "bool",
     "party_healthy": "bool", "no_battle": "bool",
+    "party_fully_evolved": "bool",
 }
 
 
@@ -5419,8 +5426,8 @@ Read it back and answer: WHAT SHOULD BE TRUE OF YOUR PARTY, AND WHEN, that
 this list never makes true?
 
 A trainer who only ever walks the story arrives at the end with one
-exhausted starter. The catching, the training and the type coverage happen
-along the way — but only if they are written down, because this list is
+exhausted starter. The catching, the training, the evolving and the type
+coverage happen along the way — but only if they are written down, because this list is
 worked through IN ORDER, one objective at a time, and nothing is pursued
 outside its own turn. There is no quietly levelling up in the background.
 
@@ -5428,10 +5435,13 @@ SAY IT AS A STATE THAT BECOMES TRUE, NOT AS A CAPABILITY. These are the
 kinds of thing a plan can be held to, and they are the only kinds:
   - every party member is at least level N
   - the party has at least N Pokemon
-  - a NAMED species is in the party (or any one of several)
+  - a NAMED species is in the party (or any one of several) — including
+    the EVOLVED form of one you already have; evolution is a state change,
+    by level or by a stone used on it
   - the party holds a TYPE: WATER, FLYING, GHOST, GROUND and the rest
   - N species are owned in the Pokedex
   - a party Pokemon knows a particular MOVE
+  - every party member is fully evolved (a state for late in the run)
 
 "Obtain a Pokemon capable of defeating Brock" is not one of these. Nobody
 can tell whether it has been done, so nothing can act on it. "Every party
