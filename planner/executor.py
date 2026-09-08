@@ -13985,6 +13985,40 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         self._record_outcome(_pre, op, step,
                                              f"field_move: FAILED — {_d0}")
                     continue
+                if "did not arrive" in _d0:
+                    # A WILD FIGHT ON THE WAY TO THE BUSH IS NOT A FAILED CUT.
+                    # The approach walk stops when a battle starts or a
+                    # wanderer steps into the path, and the op came back
+                    # "the walk to the tile beside it did not arrive" twice
+                    # in a row on Route 16 with the bush's neighbour plainly
+                    # walkable (run 16, 2026-09-08). Fight what interrupted
+                    # it, then send the same move once more.
+                    _o2 = self.settle() or _pre
+                    _fought = False
+                    while _o2 and _o2.get("mode") == "battle":
+                        _fought = True
+                        _o2 = self.handle_battle(sg, _o2)
+                        _o2 = self.settle()
+                    _r2 = (self._send_safe("field_move", **step) or {})
+                    _res2 = (_r2.get("result") or {})
+                    _d2 = str(_res2.get("detail") or "")
+                    self.log("field_move_retried", subgoal=sg.get("id"),
+                             fought=_fought, ok=bool(_res2.get("ok")))
+                    if _res2.get("ok"):
+                        obs = self.settle() or _o2
+                        trace.append(f"field_move(move={step.get('move')},"
+                                     f"x={step.get('x')},y={step.get('y')}): ok — "
+                                     + ("a wild fight interrupted the walk to it; "
+                                        if _fought else
+                                        "the first walk to it did not arrive; ")
+                                     + "done on the second try"
+                                     + (f" — {_d2}" if _d2 else "")
+                                     + self._cut_aftermath(step, obs, _pre))
+                        self._record_outcome(_pre, op, step, f"field_move: {_d2}")
+                        self._note_cut(_pre, step)
+                        continue
+                    _d0 = (_d2 or _d0) + (" (tried twice; a wild fight came between)"
+                                          if _fought else " (tried twice)")
                 obs = self.settle() or _pre
                 trace.append(f"field_move(move={step.get('move')}): FAILED "
                              f"— {_d0}")
@@ -14904,11 +14938,31 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _nb = getattr(self, "_op_battles", 0)
                 if _nb:
                     note += f" over {_nb} wild encounter(s)"
+                # THE BALLS IT THREW ARE PART OF THE STORY. Five Poke Balls
+                # went at a Doduo inside one grind, and the summary said only
+                # "NO POKé BALLS of any kind in the bag, so nothing could be
+                # caught" — true at the end, and read as "I never had any"
+                # (run 16, 2026-09-08: the model went to buy more instead
+                # of asking why five had missed).
+                _b0 = (pre_obs or {}).get("bag") or {}
+                _b1 = (obs or {}).get("bag") or {}
+                _thrown = sum(max(0, int(_b0.get(k) or 0) - int(_b1.get(k) or 0))
+                              for k in ("POKE_BALL", "GREAT_BALL", "ULTRA_BALL",
+                                        "SAFARI_BALL", "MASTER_BALL"))
+                _caught = (len((obs or {}).get("party") or [])
+                           > len((pre_obs or {}).get("party") or []))
+                if _thrown:
+                    note += (f" — {_thrown} ball(s) thrown, "
+                             + ("one of them landed" if _caught else "none of them landed"))
                 if getattr(self, "_no_balls_note", False):
                     self._no_balls_note = False
-                    note += (" — NO POKé BALLS of any kind in the bag, so "
-                             "nothing could be caught (fought or fled as the "
-                             "policy chose)")
+                    note += ((" — after that the bag held NO POKé BALLS of any "
+                              "kind, so the later encounters could not be caught "
+                              "(fought or fled as the policy chose)")
+                             if _thrown else
+                             (" — NO POKé BALLS of any kind in the bag, so "
+                              "nothing could be caught (fought or fled as the "
+                              "policy chose)"))
                 # WHO EARNED IT. The total hid that the one Pokemon the
                 # model meant to train — ODDISH, in slot 4 — earned nothing
                 # while the lead took every point, three grinds running
