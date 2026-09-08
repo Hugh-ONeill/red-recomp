@@ -8243,7 +8243,19 @@ class Executor:
         said = str(plan_said or "")
         out = []
         for mv in self.FIELD_MOVE_WORDS:
-            if not _re.search(r"\b" + mv + r"\b", said):
+            # ...AND A MOVE NAMED AS A THING TO TEACH IS NOT A DEED. On the
+            # Fly leg every plan said "teach FLY to ..." and every round was
+            # told "Your words named FLY and no FLY happened: nobody flew"
+            # (run 16, 2026-09-08). A mention within a few words of teach,
+            # learn, know, compatible, forget, or the machine's own name is
+            # about the move as a thing, not the deed.
+            _ment = [m.start() for m in _re.finditer(r"\b" + mv + r"\b", said)]
+            if not _ment:
+                continue
+            if all(_re.search(r"teach|taught|learn|know|compatib|forget|"
+                              r"\bHM_|\bTM_|\bmove\b|able to",
+                              said[max(0, i - 28): i + len(mv) + 20], _re.I)
+                   for i in _ment):
                 continue
             sent = False
             for st in (macro or []):
