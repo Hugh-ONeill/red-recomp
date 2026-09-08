@@ -47,4 +47,6 @@ c = c[:c.index("\nfunction OPS.", 10)]
 ck("cross keeps walk_to's own words when the gap walk fails", "local _wok, _w = OPS.walk_to(G, { x = ex, y = ey, surf = c.surf," in c and 'if not _wok and _w then _wwhy = tostring(_w) end' in c)
 ck("...and says them in the stuck message", '_wwhy and (" — the walk itself said: " .. _wwhy) or ""' in c)
 ck("the probe that measured it is kept", (ROOT / "tools" / "cycling_road_probe.py").exists())
+ck("a landing on a slope waits for the roll to stop before it is reported", "A SLOPE IS NOT SETTLED UNTIL THE ROLL STOPS" in c and "_patience = 1500" in c)
+ck("a crossing says where it began and which gap it took", '(" (from %s (%s,%s)%s)"):format(tostring(startMap), tostring(sx0),' in c and "via the gap at (" in c)
 sys.exit(1 if fails else 0)

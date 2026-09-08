@@ -5960,6 +5960,7 @@ function OPS.cross(G, c)
   local ow = G.overworld
   local startMap = ow.map and ow.map.id
   local p = ow.player
+  local sx0, sy0 = p and p.cellX, p and p.cellY     -- where the crossing began
   -- A map with no connection that way (indoor maps have none at all) has no
   -- edge to cross: fail fast with the real reason. "no reachable north edge"
   -- reads like a pathing problem and sent the model chasing phantom paths
@@ -6469,7 +6470,20 @@ function OPS.cross(G, c)
     local p2 = ow.player or p
     local W2, H2 = seen_dims(G, ow.map)
     local lx, ly, still = nil, nil, 0
-    for _ = 1, 300 do
+    -- A SLOPE IS NOT SETTLED UNTIL THE ROLL STOPS. Landing on Route 17
+    -- from the north, the bike rolls south until something blocks it —
+    -- ~120 rows, ~1000 frames — and 300 frames of patience reported
+    -- "crossed — now on ROUTE_17 at (3,36)" while the party came to rest
+    -- at (3,122) (probe, 2026-09-08). Say where you STOPPED.
+    local _patience = 300
+    for _, mm in ipairs(((G.data and G.data.field
+                          and G.data.field.forcedMovement) or {}).slopeMaps
+                        or {}) do
+      if mm == (ow.map and ow.map.id) and (G.save or {}).onBike then
+        _patience = 1500
+      end
+    end
+    for _ = 1, _patience do
       p2 = ow.player or p
       local x, y = p2 and p2.cellX, p2 and p2.cellY
       local inb = x and y and x >= 0 and y >= 0
@@ -6492,6 +6506,14 @@ function OPS.cross(G, c)
       tostring(p2 and p2.cellX), tostring(p2 and p2.cellY))
       -- a found seam carries no why; a fallback landing says which cell
       .. ((ex and bfs_why) and (" — " .. tostring(bfs_why)) or "")
+      -- WHERE IT BEGAN AND WHICH GAP IT TOOK. A go leg on Cycling Road came
+      -- back "crossed — now on ROUTE_17 at (4,17)" for a leg meant to leave
+      -- Route 17 southward, and nothing in the words said which map the
+      -- crossing had started on (2026-09-08). Now it does.
+      .. (" (from %s (%s,%s)%s)"):format(tostring(startMap), tostring(sx0),
+                                        tostring(sy0),
+                                        ex and (", via the gap at (" .. tostring(ex)
+                                                .. "," .. tostring(ey) .. ")") or "")
   end
   -- step off the seam repeatedly until the map changes
   for _ = 1, 8 do
