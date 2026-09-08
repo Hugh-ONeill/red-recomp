@@ -7599,6 +7599,48 @@ class Executor:
                     f"this flag.")
         return out
 
+    def _carried_premise_note(self, sg, obs) -> str:
+        """AN EARLIER STEP CARRIED UNMET IS A PREMISE THIS STEP LACKS. The
+        Bike Voucher plan's first step, travel_to_vermilion, failed and was
+        carried; the steps after it — enter the Fan Club, ask the chairman
+        — were written for someone standing in Vermilion, and the run hunted
+        the Fan Club through Lavender and Celadon for thirteen rounds, then
+        cleared Route 16's Snorlax with the Flute on its way to nowhere (run
+        16, 2026-09-07). The carry is deliberate (a missed map hop must not
+        forfeit the plan); the silence about it was not. Say which step was
+        carried, what it asked for, and where the party actually stands."""
+        subs = (self.plan or {}).get("subgoals") or []
+        carried = [c for c in (getattr(self, "_carried_ids", None) or [])]
+        if not carried or not subs:
+            return ""
+        here_map = str((((obs or {}).get("map") or {}).get("id")) or self._where(obs).split("|")[0] or "")
+        ids_before = []
+        for x in subs:
+            if not isinstance(x, dict):
+                continue
+            if x.get("id") == sg.get("id"):
+                break
+            ids_before.append(x)
+        lines = []
+        for x in ids_before:
+            if x.get("id") not in carried:
+                continue
+            dw = x.get("done_when") if isinstance(x.get("done_when"), dict) else {}
+            place = (dw.get("map") or dw.get("new_part")
+                     or (str(dw.get("area") or "").split("|")[0] or None))
+            if place:
+                if str(place).upper() != here_map.upper():
+                    lines.append(f"step {x.get('id')} asked to be in {place} and was NOT "
+                                 f"achieved — it was carried past; you stand in {here_map}. "
+                                 f"The steps after it, this one included, were written for "
+                                 f"someone standing in {place}.")
+            else:
+                lines.append(f"step {x.get('id')} ({json.dumps(dw)[:80]}) was NOT achieved and "
+                             f"was carried past; this step's words may assume it was.")
+        if not lines:
+            return ""
+        return "\nPREMISE UNMET: " + " ".join(lines)
+
     def _words_vs_condition(self, goal_text, done, obs=None) -> str:
         """THE CONDITION IS THE STEP. The rewrite wrote the step "Use the
         elevator to leave the Rocket Hideout B4F" over the condition
@@ -15740,6 +15782,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                          echo=plan_echo[:2000])
             user = (f"SUBGOAL: {goal}\nDONE_WHEN: {json.dumps(done)}"
                     f"{self._words_vs_condition(goal, done, obs)}"
+                    f"{self._carried_premise_note(sg, obs)}"
                     f"{redo_note}\n{memory}\n"
                     f"ATLAS (map edges and doors you have observed so far): "
                     f"{atlas or 'nothing yet'}\n"
