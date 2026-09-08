@@ -100,7 +100,7 @@ led = (ROOT / "planner" / "ledger.py").read_text()
 ck("a regrown bush across the only way out is a way on again",
    'if _again and o.get("opens"):' in led and "_again = False" in led)
 ck("...and says so in its own words",
-   "it is across the only way out of the " in led)
+   "the ground past it is ground no walk from " in led)   # reworded 2026-09-08: "only way out" was never checked
 ck("an ordinary regrown bush is still a recut",
    '"recut" if _again else "cuttable"' in led)
 ck("the sweep's line marks the one that is in the way",

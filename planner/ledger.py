@@ -960,11 +960,40 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
                 c.note = _join(c.note, "the ground you stood on in "
                                + ", ".join(_fr[:2]) + " DOES reach it")
             elif _sp:
-                c.note = _join(c.note,
-                               f"nor does any of the {_sp} other part(s) of "
-                               f"this floor you have stood in — its way in "
-                               f"is ground you have not stood on: unseen "
-                               f"ground on this floor, or another floor")
+                # ...UNLESS THE RECORD SAYS A PART OF THIS FLOOR TOOK IT. The
+                # reach test is the ground as it stands now; the door on
+                # Route 16's north strip had been taken four times from the
+                # other part, with the bush cut, and this row still said its
+                # way in was ground never stood on (run 16, 2026-09-08). What
+                # was open then and is not now is said as far as it is known:
+                # a bush cut on this floor before, standing again.
+                _took = [(str(_r2), int((_e2 or {}).get("n") or 0))
+                         for _r2, _es2 in (getattr(ex, "explored", {}) or {}).items()
+                         if str(_r2).split("|")[0] == str(mid) and _r2 != here
+                         for _k2, _e2 in (_es2 or {}).items()
+                         if _k2 == key and (_e2 or {}).get("to")]
+                if _took:
+                    _r0, _n0 = max(_took, key=lambda t: t[1])
+                    _cut0 = (getattr(ex, "_cut_bushes", {}) or {}).get(mid) or []
+                    _regrown = [f"({_o2.get('x')},{_o2.get('y')})"
+                                for _o2 in (m.get("objects") or [])
+                                if str(_o2.get("name") or "").startswith("CUT_TREE")
+                                and f"{_o2.get('x')},{_o2.get('y')}" in _cut0]
+                    c.note = _join(c.note,
+                                   f"and as things stand no other part of this "
+                                   f"floor you have stood in reaches it either — "
+                                   f"though from {_r0} you took this door "
+                                   f"{_n0} time(s) before, so something open "
+                                   f"then is shut now"
+                                   + (": a bush you cut on this floor has grown "
+                                      "back, CUT_TREE at " + ", ".join(_regrown[:2])
+                                      if _regrown else ""))
+                else:
+                    c.note = _join(c.note,
+                                   f"nor does any of the {_sp} other part(s) of "
+                                   f"this floor you have stood in — its way in "
+                                   f"is ground you have not stood on: unseen "
+                                   f"ground on this floor, or another floor")
         elif key in spent:
             c.status = "spent"
             c.n = spent[key]
@@ -1188,10 +1217,25 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             # before.
             if _again and o.get("opens"):
                 _again = False
-                c.note = _join(c.note,
-                               "you cut this one before and it grew back — "
-                               "and it is across the only way out of the "
-                               "ground you can reach from here now")
+                # "ACROSS THE ONLY WAY OUT" WAS NEVER CHECKED. `opens` says
+                # only that walkable ground lies past this bush that no walk
+                # from here reaches; the row said "across the only way out of
+                # the ground you can reach" about a bush the same row called
+                # unreachable, standing on the OTHER part of Route 16 — and
+                # the model walked back through the gate to cut it, three
+                # times, with the house it wanted on the part it was leaving
+                # (run 16, 2026-09-08; user: "the tree is nowhere near
+                # blocking it"). Say what `opens` means, and where the bush is.
+                if o.get("reachable"):
+                    c.note = _join(c.note,
+                                   "you cut this one before and it grew back — "
+                                   "the ground past it is ground no walk from "
+                                   "here reaches until it is cut again")
+                else:
+                    c.note = _join(c.note,
+                                   "you cut this one before and it grew back — "
+                                   "it stands in a part of this floor no walk "
+                                   "from here reaches, so it is not in your way")
             c.status = ("unreachable" if not o.get("reachable")
                         else ("recut" if _again else "cuttable")
                         if knows_cut else "bush")
