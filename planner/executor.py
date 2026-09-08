@@ -2427,6 +2427,7 @@ class Executor:
                                  "to this way"], []
         if here in targets:
             return False, [f"go: you are already in {here}"], []
+        self._lift_bush_stamps(here, obs)      # a felled bush voids the stamp that blamed it
         best = None
         _reachable = []
         for t in targets:
@@ -8888,6 +8889,57 @@ class Executor:
                 or "a fight started" in _wd
                 or "safari game ended" in _wd)
 
+    def _blamed_bush(self, det, obs):
+        """The bush a walk's own refusal BLAMES, as (x,y), when the party
+        can cut it; else None. Only the list the shim says stopped the walk
+        counts — the one headed "Also near that edge, though not what
+        stopped you" is the shim ruling those bushes out."""
+        _blame = str(det or "").split(
+            "Also near that edge, though not what stopped you")[0]
+        m = _re.search(r"CUT_TREE \(a bush CUT clears\) at \((\d+),(\d+)\)", _blame)
+        if not m or not self._knows_move(obs or {}, "CUT"):
+            return None
+        return int(m.group(1)), int(m.group(2))
+
+    def _lift_bush_stamps(self, here, obs) -> int:
+        """A HOP STAMP THAT BLAMES A BUSH IS VOID WHILE THAT BUSH IS DOWN.
+        The stamp says "this leg would not land in THIS world state", and
+        the world state it compares is badges, flags and bag kinds — a cut
+        bush changes none of them. So the model cut the Route 9 bush by
+        hand, and `go` still refused: "one leg of it would not land the
+        last time it was tried in this world state ... CUT_TREE (a bush
+        CUT clears) at (5,8)" — the very bush lying felled beside it (run
+        16, 2026-09-08; user: "go should just route through the bush
+        no?"). A felled bush is not on the map's object list; when the
+        stamp's own reason names one that no longer stands, the stamp goes.
+        Returns how many were lifted."""
+        mid = str(here or "").split("|")[0]
+        om = (obs or {}).get("map") or {}
+        if not mid or str(om.get("id") or "") != mid:
+            return 0
+        standing = set()
+        for ob in om.get("objects") or []:
+            if str(ob.get("name") or "").upper().startswith("CUT_TREE") \
+                    and ob.get("x") is not None:
+                standing.add((int(ob.get("x")), int(ob.get("y"))))
+        n = 0
+        for reg, es in (self.explored or {}).items():
+            if str(reg).split("|")[0] != mid:
+                continue
+            for _k, e in (es or {}).items():
+                if not isinstance(e, dict) or e.get("blocked_at") is None:
+                    continue
+                m = _re.search(r"CUT_TREE \(a bush CUT clears\) at \((\d+),(\d+)\)",
+                               str(e.get("blocked_why") or "").split(
+                                   "Also near that edge, though not what stopped you")[0])
+                if m and (int(m.group(1)), int(m.group(2))) not in standing:
+                    e.pop("blocked_at", None)
+                    n += 1
+        if n:
+            self.log("bush_stamps_lifted", frm=str(here), n=n)
+            self._save_memory()
+        return n
+
     def _walk_route(self, sg, path, _replans=0):
         """Replay a fully-walked route hop by hop (the escort's pattern):
         send the edge, settle, fight through interruptions, record the
@@ -9088,6 +9140,37 @@ class Executor:
                         if _chg:
                             self._save_memory()
                     continue
+                # A REGROWN BUSH ON A WALK HOP IS CUT AND THE HOP RE-WALKED.
+                # The door hop below has had this rule since 08-26 (a cut
+                # bush regrows on every re-entry, so a road walked with it
+                # down is walled again on arrival); the walk hop stamped the
+                # leg and returned before ever reaching it. `go ROUTE_16`
+                # from Cerulean stopped at ROUTE_9|0,8 on the (5,8) bush,
+                # blamed it in its own words, and did not cut (run 16,
+                # 2026-09-08; user: "go should just route through the bush
+                # no?"). Same rule, same blame test, once per hop.
+                if self._where(o) != nxt:
+                    _bx = self._blamed_bush(_wdet, o)
+                    if _bx:
+                        _cr = self._send_safe("field_move", move="CUT",
+                                              x=_bx[0], y=_bx[1])
+                        _cok = ((_cr or {}).get("result") or {}).get("ok")
+                        self.log("route_cut_regrowth", subgoal=sg.get("id"),
+                                 at=f"{_bx[0]},{_bx[1]}", ok=bool(_cok), hop="walk")
+                        if _cok:
+                            o = self.settle() or o
+                            _wres = self._send_safe("walk_to", x=_ax, y=_ay)
+                            _wdet = (((_wres or {}).get("result") or {}).get("detail")
+                                     or "")
+                            o = self.settle() or o
+                            while o and o.get("mode") == "battle":
+                                o = self.handle_battle(sg, o)
+                                o = self.settle()
+                            if self._same_area(self._where(o), nxt):
+                                if _wrec is not None and \
+                                        _wrec.pop("blocked_at", None) is not None:
+                                    self._save_memory()
+                                continue
                 if self._where(o) != nxt:
                     # ...AND A WALK THAT DID NOT ARRIVE MUST STOP BEING
                     # THE SHORTEST ROUTE — the lift's own rule, never
