@@ -7165,6 +7165,15 @@ function OPS.use_item(G, c)
   if bag_count(G, c.item) < 1 then
     return false, "no " .. c.item .. " in the bag"
   end
+  -- A ROD IS CAST, NOT USED. use_item's text loop would tap A into the
+  -- battle a bite starts; grind owns battles. Same op, said so.
+  if c.item == "OLD_ROD" or c.item == "GOOD_ROD" or c.item == "SUPER_ROD" then
+    local ok, why = OPS.grind(G, { rod = c.item, casts = c.casts,
+                                   intent = c.intent, want = c.want })
+    return ok, "fishing is a grind ({\"op\":\"grind\",\"rod\":\""
+      .. c.item .. "\"} — add intent= and want= to say what a bite is "
+      .. "for): " .. tostring(why)
+  end
   local _from0 = (G.overworld and G.overworld.map or {}).id
   if c.item == "ESCAPE_ROPE" then
     local _dok, _, _dwhy = escape_gate(G)
@@ -9633,10 +9642,189 @@ end
 -- battle-retry machinery as traversal — until the plan's done_when (a
 -- level gate) holds. Decision-free: the model decides WHERE (which map)
 -- and the plan decides UNTIL; walking onto wild ground is mechanics.
+-- OPEN THE BAG AND PRESS USE ON ONE ITEM. The first thirty lines of
+-- use_item, lifted out so a rod can be cast more than once without riding
+-- the party picker that a machine needs and a rod never shows.
+local function bag_use(G, item)
+  U.tap(G, "start"); U.wait(8)
+  local menu = ui_top(G)
+  if not (menu and menu.screenId == "StartMenu") then
+    ui_back_out(G); return false, "start menu never opened"
+  end
+  local itemRow
+  for i, it in ipairs(menu.items or {}) do
+    if it.label == "ITEM" then itemRow = i break end
+  end
+  if not itemRow or not ui_cursor_to(G, "index", itemRow) then
+    ui_back_out(G); return false, "no ITEM row"
+  end
+  U.tap(G, "a"); U.wait(10)
+  local bag = ui_top(G)
+  if not (bag and bag.screenId == "BagMenu") then
+    ui_back_out(G); return false, "bag never opened"
+  end
+  local bagRow
+  for i, r in ipairs(bag.items or {}) do
+    if r.value == item then bagRow = i break end
+  end
+  if not bagRow or not ui_cursor_to(G, "index", bagRow) then
+    ui_back_out(G); return false, item .. " not in the bag list"
+  end
+  U.tap(G, "a"); U.wait(8)
+  if ui_is_menu(G) or ui_is_choice(G) then         -- USE/TOSS -> USE
+    ui_cursor_to(G, "index", 1)
+    U.tap(G, "a"); U.wait(8)
+  end
+  return true
+end
+
+-- FISHING IS GRINDING FROM THE SHORE. The game's rods hook wild Pokemon
+-- out of water the party cannot pace: OLD_ROD, GOOD_ROD and SUPER_ROD are
+-- cast from the bag while standing beside water and facing it, the bobber
+-- waits, and the verdict is "Not even a nibble!" or "Oh! It's a bite!" and
+-- a battle (engine/items/item_effects.asm FishingInit; OverworldState:
+-- goFishing). The run reached the Good Rod on leg 32 (2026-09-08) with no
+-- verb for it: it tried interact(name=GOOD_ROD), then use_item, whose text
+-- loop rides a no-nibble out cleanly but would have tapped A INTO the
+-- battle a bite starts — the flute's fight began the same way, under the
+-- item's own menu. So a rod goes through grind, where a battle is what the
+-- op is for: the same intent= and want= decide what is thrown at, the same
+-- re-send keeps casting, and the executor fights every bite as it fights
+-- every wild. WHICH rod, WHETHER to fish and WHAT to keep stay the
+-- model's; the harness finds the shore, faces the water and works the bag.
+local RODS = { OLD_ROD = true, GOOD_ROD = true, SUPER_ROD = true }
+local function fish_from_shore(G, c)
+  local ow = G.overworld
+  local p, map = ow.player, ow.map
+  local rod = tostring(c.rod or ""):upper()
+  local held = {}
+  for _, r in ipairs({ "SUPER_ROD", "GOOD_ROD", "OLD_ROD" }) do
+    if bag_count(G, r) > 0 then held[#held + 1] = r end
+  end
+  if rod == "TRUE" or rod == "1" or rod == "" then rod = held[1] or "" end
+  if not RODS[rod] then
+    return false, tostring(c.rod) .. " is not a fishing rod — the rods this "
+      .. "game has are OLD_ROD, GOOD_ROD and SUPER_ROD"
+      .. (#held > 0 and (", and you hold " .. table.concat(held, ", ")) or
+          ", and the bag holds none of them")
+  end
+  if bag_count(G, rod) < 1 then
+    return false, "no " .. rod .. " in the bag"
+      .. (#held > 0 and (" — you hold " .. table.concat(held, ", ")
+                         .. "; name that one") or "")
+  end
+  if p.surfing then
+    return false, "a rod is refused from the water — the game answers "
+      .. "\"OAK: This isn't the time to use that!\" while you are surfing. "
+      .. "Casting is done from the SHORE, standing beside water"
+  end
+  -- WHAT THIS ROD HOOKS HERE is the game's own table, and it is the
+  -- mechanics-tier fact that "no wild Pokemon live in this water" already
+  -- is for surfing: a SUPER_ROD on a map with no group of its own gets
+  -- "Not even a nibble!" on every cast, for ever. Say so before the walk.
+  -- Never WHICH species: that is what the bite is for.
+  do
+    local okfd, FD = pcall(require, "src.world.FieldDefaults")
+    local fdef = okfd and FD and FD.field and FD.field(G.data, "fishing")
+    local rdef = fdef and fdef[rod]
+    if rdef and rdef.perMap then
+      local groups = (G.data.field or {})[rdef.perMap]
+      if not (groups and groups[map.id] and #groups[map.id] > 0) then
+        return false, ("the water on this map gives the %s nothing — the "
+          .. "game answers \"Not even a nibble!\" to every cast here, "
+          .. "however many. A different rod, or different water"):format(rod)
+      end
+    end
+  end
+  -- THE SHORE: the nearest cell you can walk to that has water you have
+  -- seen beside it. The reach set is the same one grind's surf branch reads.
+  local reach = seen_reach(G) or {}
+  local _gm = SEEN[map.id] or {}
+  local bx, by, bland, bd
+  for k in pairs(reach) do
+    local sx, sy = k:match("^(-?%d+),(-?%d+)$")
+    sx, sy = tonumber(sx), tonumber(sy)
+    if sx then
+      for dn, d in pairs(DIRS) do
+        local wx, wy = sx + d[1], sy + d[2]
+        if map:inBounds(wx, wy) and _gm[wx .. "," .. wy]
+           and real_water(G, map, wx, wy) then
+          local dd = math.abs(sx - p.cellX) + math.abs(sy - p.cellY)
+          if not bd or dd < bd then
+            bd, bx, by, bland = dd, wx, wy, { sx, sy, dn }
+          end
+        end
+      end
+    end
+  end
+  if not bx then
+    local _sw, _sh = seen_dims(G, map)
+    local _all = (seen_of(map.id).n or 0) >= _sw * _sh
+    return false, "no water beside any ground you can walk to on this map"
+      .. (_all and "" or " — ground you have not looked at may border "
+                         .. "some; explore shows more")
+  end
+  if p.cellX ~= bland[1] or p.cellY ~= bland[2] then
+    OPS.walk_to(G, { x = bland[1], y = bland[2], max_steps = c.max_steps or 200 })
+    if G.stack:top() ~= ow then return true, "battle en route to the shore" end
+    if p.cellX ~= bland[1] or p.cellY ~= bland[2] then
+      return false, ("couldn't reach the shore at (%d,%d) — stopped at (%d,%d)")
+        :format(bland[1], bland[2], p.cellX, p.cellY)
+    end
+  end
+  if p.facing ~= bland[3] then U.tap(G, bland[3]); U.wait(4) end
+  local okbt, BT = pcall(require, "src.render.BattleTransition")
+  local casts = 0
+  for _ = 1, (c.casts or 6) do
+    local ok, why = bag_use(G, rod)
+    if not ok then return false, why end
+    casts = casts + 1
+    local said, last = {}, nil
+    for _ = 1, 400 do
+      local t = G.stack:top()
+      if t == ow then break end
+      if t and (t.enemy or t.kind) then break end
+      if okbt and BT and getmetatable(t) == BT then break end
+      if t and t.pages and t.pageIndex then
+        local pg = t.pages[t.pageIndex]
+        local txt = type(pg) == "table" and table.concat(pg, " ") or tostring(pg or "")
+        if txt ~= "" and txt ~= last then said[#said + 1] = txt; last = txt end
+        U.tap(G, "a"); U.wait(6)
+      else
+        ui_back_out(G)                      -- a menu is not the verdict
+        break
+      end
+    end
+    local t = G.stack:top()
+    if t ~= ow then
+      return true, ("cast the %s from (%d,%d) — cast %d: \"Oh! It's a "
+        .. "bite!\" — a battle began"):format(rod, p.cellX, p.cellY, casts)
+    end
+    local all = table.concat(said, " ")
+    if all:find("not even near water") or all:find("not\neven near water") then
+      return false, ("the game refused the cast — \"No good! It's not even "
+        .. "near water.\" — standing at (%d,%d) facing %s; the cell in front "
+        .. "of you is not water"):format(p.cellX, p.cellY, tostring(p.facing))
+    end
+    if all:find("isn't the time") then
+      return false, "the game refused the rod — \"OAK: This isn't the time "
+        .. "to use that!\""
+    end
+    U.wait(12)                              -- the rod pose tail
+  end
+  return true, ("cast the %s %d time(s) from (%d,%d) facing %s — \"Not even "
+    .. "a nibble!\" every time; nothing bit. A bite is chance, not a wall: "
+    .. "re-send to keep casting"):format(rod, casts, p.cellX, p.cellY,
+                                         tostring(p.facing))
+end
+
 function OPS.grind(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close: "
       .. _screen_name(G) .. ")"
+  end
+  if c.rod ~= nil or c.fish then
+    return fish_from_shore(G, c)
   end
   local Collision = require("src.world.Collision")
   local ow = G.overworld
@@ -9725,8 +9913,24 @@ function OPS.grind(G, c)
     return map:isGrassCell(x, y)
   end
   if not encDef then
-    return false, "no wild Pokemon live on this map (no grass, and not a "
-      .. "cave or tower floor that spawns them)"
+    local _rods = {}
+    for _, r in ipairs({ "SUPER_ROD", "GOOD_ROD", "OLD_ROD" }) do
+      if bag_count(G, r) > 0 then _rods[#_rods + 1] = r end
+    end
+    local _wet = false
+    if #_rods > 0 and tileset_has_water(G, map) then
+      for k in pairs(SEEN[map.id] or {}) do
+        local sx, sy = k:match("^(-?%d+),(-?%d+)$")
+        if sx and real_water(G, map, tonumber(sx), tonumber(sy)) then
+          _wet = true break
+        end
+      end
+    end
+    return false, "no wild Pokemon live on this map's GROUND (no grass, and "
+      .. "not a cave or tower floor that spawns them)"
+      .. (_wet and (" — but it has WATER and you hold a " .. _rods[1]
+                    .. ": {\"op\":\"grind\",\"rod\":\"" .. _rods[1]
+                    .. "\"} casts it from the shore") or "")
   end
   local ground = anywhere and "floor to pace" or (afloat and "water" or "grass")
   local function dirname_of(d)

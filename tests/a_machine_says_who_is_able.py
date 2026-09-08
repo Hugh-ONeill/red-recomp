@@ -37,7 +37,7 @@ ck("an ordinary item says nothing", ex._able_note("POTION", obs) == "")
 ck("no machines in the observation, nothing said", ex._able_note("HM_FLY", {}) == "")
 
 src = (ROOT / "planner" / "executor.py").read_text()
-ck("the bag line carries it", 'f"{self._disp_item(k)} x{v}{self._gift_note(k)}{self._able_note(k, obs)}"' in src)
+ck("the bag line carries it", '{self._gift_note(k)}{self._able_note(k, obs)}' in src)
 
 sh = (ROOT / "harness" / "shim.lua").read_text()
 ck("the shim exports ABLE / NOT ABLE per machine in the bag",

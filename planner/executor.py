@@ -11040,6 +11040,19 @@ class Executor:
             return MACHINE_NUMBERS[k]
         return k
 
+    @staticmethod
+    def _rod_note(item: str) -> str:
+        """A rod in the bag names the verb that casts it. The run held a
+        GOOD_ROD on leg 32 (2026-09-08) and tried interact(name=GOOD_ROD),
+        then use_item, which would have tapped A into the battle a bite
+        starts. Mechanics, like the escape rope's line: what to fish for
+        and whether to is the model's."""
+        if item in ("OLD_ROD", "GOOD_ROD", "SUPER_ROD"):
+            return (" [a fishing rod — cast from ground beside water with "
+                    "{\"op\":\"grind\",\"rod\":\"" + item + "\"}; add "
+                    "intent= and want= for what a bite is for]")
+        return ""
+
     def _able_note(self, item: str, obs) -> str:
         """Who in the party a machine's own screen marks ABLE. The ITEM
         screen shows it for every member at once the moment a TM or HM is
@@ -11108,7 +11121,10 @@ class Executor:
                 f"it; (2) a LEVEL, by fighting "
                 f"({{\"op\":\"grind\",\"intent\":\"train\"}}); (3) a "
                 f"DIFFERENT POKEMON that can — caught ({{\"op\":\"grind\","
-                f"\"intent\":\"catch\",\"want\":...}}), traded, given, or "
+                f"\"intent\":\"catch\",\"want\":...}}; with a rod in the "
+                f"bag, FISHED — the same op with \"rod\":\"GOOD_ROD\", cast "
+                f"from any shore, and what bites is not what the grass "
+                f"holds), traded, given, or "
                 f"MADE by evolving one you already have (levelling, or a "
                 f"stone used on a Pokemon it suits). "
                 f"Which way is yours to judge; the party now: {_party}.\n")
@@ -12506,7 +12522,7 @@ class Executor:
         if _bagall:
             _rs_line = (
                 "WHAT YOU ARE CARRYING: "
-                + ", ".join(f"{self._disp_item(k)} x{v}{self._gift_note(k)}{self._able_note(k, obs)}"
+                + ", ".join(f"{self._disp_item(k)} x{v}{self._gift_note(k)}{self._able_note(k, obs)}{self._rod_note(k)}"
                             for k, v in sorted(_bagall.items()))
                 + f" ({len(_bagall)} of {self.BAG_SLOTS} kinds). Some are "
                   "used ON a party member and some WHERE YOU STAND; "
@@ -13252,7 +13268,13 @@ ground — tall grass outdoors, ANY floor tile in a cave or tower; each battle
 is fought and the op repeats until the subgoal's DONE_WHEN is met, whatever
 it is — levels, or party size. Add "surf":true to pace the WATER instead of
 the land — water has its own encounter table and its own species, and the
-harness gets you onto it (SURF must be known).
+harness gets you onto it (SURF must be known). Add "rod":"GOOD_ROD" (or
+OLD_ROD / SUPER_ROD — whichever the bag holds) to FISH instead: the harness
+walks you to ground beside water you have seen, faces it and casts, several
+times per op; a bite is a wild battle like any other, fought under the same
+intent, and the op repeats. What a rod hooks is its own table again —
+neither the grass's nor the surfed water's — and a cast that gets "Not even a
+nibble!" is chance, not a wall.
 What the battles are FOR follows the step's
 condition (a level → fight; a catch → balls; anything else → wilds are
 fled) unless the op says otherwise: "intent":"catch" with "want":"ODDISH"
