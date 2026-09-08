@@ -7241,6 +7241,35 @@ function OPS.use_item(G, c)
   if bag_count(G, c.item) < 1 then
     return false, "no " .. c.item .. " in the bag"
   end
+  -- A STONE TRIED ON EVERYONE. Using a stone on a member it does not suit
+  -- costs nothing ("It won't have any effect", stone kept), so "use it on
+  -- whoever takes it" is one decision the model can make in one op — the
+  -- decision to SPEND the stone is its; finding the taker is the party
+  -- menu's own answer, member by member (user, 2026-09-08: "an evolution
+  -- policy that seeks out alternative evolution methods"). WHICH species
+  -- a stone suits is never said here; the game says it by evolving them.
+  if c.item:match("_STONE$") and tostring(c.slot or ""):lower() == "any" then
+    local party = (G.save and G.save.party) or {}
+    local refused = {}
+    for i = 1, #party do
+      local sp = party[i] and party[i].species or ("slot " .. i)
+      local ok, why = OPS.use_item(G, { item = c.item, slot = i })
+      if ok and tostring(why):find("EVOLVED") then
+        return true, tostring(why)
+          .. (#refused > 0 and (" — it had no effect on " .. table.concat(refused, ", ")) or "")
+      end
+      if not ok then
+        return false, ("tried %s on slot %d (%s) and the op failed: %s")
+          :format(c.item, i, tostring(sp), tostring(why))
+      end
+      refused[#refused + 1] = tostring(sp)
+      if bag_count(G, c.item) < 1 then break end
+    end
+    return true, ("%s tried on every party member — the game said \"It won't "
+      .. "have any effect\" for each of %s; the stone is still in the bag. "
+      .. "No one in this party is one it suits as they stand"):format(
+        c.item, table.concat(refused, ", "))
+  end
   -- A ROD IS CAST, NOT USED. use_item's text loop would tap A into the
   -- battle a bite starts; grind owns battles. Same op, said so.
   if c.item == "OLD_ROD" or c.item == "GOOD_ROD" or c.item == "SUPER_ROD" then
@@ -7412,6 +7441,7 @@ function OPS.use_item(G, c)
   local HM_MOVES = { CUT = true, FLY = true, SURF = true,
                      STRENGTH = true, FLASH = true }
   local mon = party[slot]
+  local _sp0 = mon and mon.species          -- a stone may change this
   local monmoves = {}
   for j, mv in ipairs((mon and mon.moves) or {}) do
     monmoves[j] = tostring(type(mv) == "table" and mv.id or mv)
@@ -7542,6 +7572,17 @@ function OPS.use_item(G, c)
     local old = false
     for _, o in ipairs(monmoves) do if o == name then old = true end end
     if not old then gained = name end
+  end
+  -- AN EVOLUTION IS THE WHOLE OF WHAT A STONE DOES, and the op reported
+  -- a flat "used MOON_STONE" for it (the executor's "party changed" was
+  -- the only word). Say it: which member, into what.
+  do
+    local _p2 = (G.save and G.save.party) or {}
+    local _sp1 = _p2[slot] and _p2[slot].species
+    if _sp0 and _sp1 and _sp0 ~= _sp1 then
+      return true, ("used %s on %s — it EVOLVED into %s"):format(
+        c.item, tostring(_sp0), tostring(_sp1))
+    end
   end
   if gained then
     -- BOOTING A MACHINE IS WHEN THE MOVE IS SHOWN: "Booted up a TM! It

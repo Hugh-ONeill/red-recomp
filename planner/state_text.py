@@ -96,9 +96,20 @@ def _item_word(k, nums):
     return f"{k} ({nums[k]})" if k in nums else str(k)
 
 
+def _stone_word(k):
+    """A stone in the author's bag line says what a wrong try costs:
+    nothing (2026-09-08; the executor's page says the same)."""
+    if str(k).endswith("_STONE"):
+        return (" (an evolution stone — used on a party member it suits it "
+                "evolves them at once; on one it does not suit the game says "
+                "\"It won't have any effect\" and keeps the stone)")
+    return ""
+
+
 def bag_text(bagd):
     nums = _machine_numbers()
-    txt = (", ".join(f"{_item_word(k, nums)} x{v}" for k, v in (bagd or {}).items())
+    txt = (", ".join(f"{_item_word(k, nums)} x{v}{_stone_word(k)}"
+                     for k, v in (bagd or {}).items())
            or "an empty bag")
     n = len(bagd or {})
     # the 20-kind cap is a wall the plan must plan around: a full bag

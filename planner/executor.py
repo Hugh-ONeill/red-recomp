@@ -13334,7 +13334,9 @@ IS USED ON A POKEMON: some are used WHERE YOU STAND and act on whatever
 you are standing next to — send them with no slot and the reply says what
 happened, including when the answer is that nothing did. Holding such a
 thing does nothing; pressing A at the obstacle does nothing; USING it is
-the whole of it. This is ALSO
+the whole of it. An evolution STONE may be sent with "slot":"any": it is
+tried on each party member in turn, stops at the one it evolves, and names
+the ones it had no effect on — a wrong try costs nothing. This is ALSO
 how a TM or HM is TAUGHT: the item
 boots and the chosen slot learns the move. A mon that already knows four
 moves needs {"op":"use_item","item":"TM_...","slot":N,"forget":"MOVE"}
