@@ -84,4 +84,13 @@ ck("...and names the taken door of the same building and where it led",
 ck("the house door says house", d7 is not None and "in a small house" in d7.label(), getattr(d7, "label", lambda: None)())
 ck("a house with no taken door names nothing beyond itself", d7 is not None and "same building" not in (d7.note or ""), getattr(d7, "note", None))
 ck("a taken door does not repeat its own building's story", d24 is not None and "same building" not in (d24.note or ""), getattr(d24, "note", None))
+
+# a door whose frontage names the building keeps the name, not the size words
+ex = C.make(frontier={U.HERE: ["19,27"]})
+o = C.obs(ex, ["19,27"], dests={"19,27": "FUCHSIA_POKECENTER"})
+o["map"]["buildings"] = [{"x0": 18, "y0": 24, "x1": 21, "y1": 27, "look": "small flat-roofed building", "doors": ["19,27"]}]
+o["map"]["warps"][0]["bld"] = 1
+c19 = next((c for c in L.build(ex, o, target="map:X") if c.key == "19,27"), None)
+ck("a Center's door says Center, not 'small flat-roofed building'",
+   c19 is not None and "flat-roofed" not in c19.label() and "POKEMON CENTER" in (c19.note or ""), (getattr(c19, "label", lambda: None)(), getattr(c19, "note", None)))
 sys.exit(1 if fails else 0)

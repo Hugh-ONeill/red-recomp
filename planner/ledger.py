@@ -1080,6 +1080,10 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             face = ex._frontage(dest_map)
             if face:
                 c.note = face
+                # the frontage names the building; the size words would only
+                # read as a second, vaguer claim beside it ("in a small
+                # flat-roofed building ... a POKEMON CENTER", Fuchsia 2026-09-08)
+                c.bld_look = ""
         # a door's twin tile that is the arrival door is the same door
         if c.status == "untried" and _came_in_by(ex, obs, here, key, dest_map):
             c.status = "came_in_by"
