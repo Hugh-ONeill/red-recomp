@@ -38,7 +38,7 @@ ck("an objective on a flag already set is a problem", A.witness_already_true_pro
 ck("...a flag not set passes", A.witness_already_true_problems({"subgoals": [{"id": "x", "done_when": {"flag": "EVENT_BEAT_ROCKET_HIDEOUT_GIOVANNI"}}]}, OBS) == [])
 ck("a map the run stands on is a problem", A.witness_already_true_problems({"subgoals": [{"id": "x", "done_when": {"map": "ROCKET_HIDEOUT_B4F"}}]}, OBS) != [])
 hidden = dict(OBS); hidden["mode"] = "dialog"; hidden["map"] = None
-ck("a bag behind a box is unreadable: silent", A.witness_already_true_problems(plan, hidden) == [])
+ck("a bag behind a box is still read: the bag does not close with a menu (trust_bag, 2026-09-07)", A.witness_already_true_problems(plan, hidden) != [])
 ck("a map behind a box is unreadable: silent", A.witness_already_true_problems({"subgoals": [{"id": "x", "done_when": {"map": "SAFFRON_MART"}}]}, hidden) == [])
 ck("an unknown key is left to the model", A.witness_already_true_problems({"subgoals": [{"id": "x", "done_when": {"party_healthy": True}}]}, OBS) == [])
 ck("no observation, no verdict", A.witness_already_true_problems(plan, {}) == [])

@@ -40,7 +40,7 @@ src = (ROOT / "planner" / "executor.py").read_text()
 ck("explore's deed skips it too, at home and on arrival",
    src.count("and ASKING not in") == 2)
 ck("the retract rule is untouched (an unanswered question is still not a press)",
-   "if (ASKING in str(r.get(\"detail\") or \"\")\n                    and op == \"interact\" and step.get(\"name\")\n                    and not self._asks_as_talk(obs, step[\"name\"])):" in src)   # a PERSON who asked is spoken to (2026-09-07)
+   "if (ASKING in str(r.get(\"detail\") or \"\")\n                    and op == \"interact\" and step.get(\"name\")\n                    and not self._asks_as_talk(obs, step[\"name\"],\n                                               self._kinds_for(self._where(pre_obs)))):" in src)   # asks with the floor's object kinds (2026-09-07)   # a PERSON who asked is spoken to (2026-09-07)
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:
     print(("ok  " if ok else "FAIL"), n)

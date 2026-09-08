@@ -37,14 +37,15 @@ ck("...the landing honors the freeze too",
    "not hidden_open(lx2, ly2, lk2)" in sr)
 ck("...an UNSEEN landing files the arrow as a slide frontier spot",
    "front[#front + 1] = { x = nx, y = ny, d = dist[ck] + 1,\n"
-   "                                    slide = true }" in sr)
+   "                                    slide = true,\n"
+   "                                    dir = spinner_dir(G, ow.map, nx, ny) }" in sr)   # the way it points rides along (2026-09-07)
 ck("the observation carries the slide flag",
-   "fl[i] = { x = f.x, y = f.y, d = f.d, slide = f.slide or nil }" in sh)
+   "fl[i] = { x = f.x, y = f.y, d = f.d, slide = f.slide or nil,\n              dir = f.dir or nil }" in sh)
 ck("the walker may aim AT an arrow (stepping on is the act)",
    "if nx == tx and ny == ty then return first end\n"
    "            if sx == tx and sy == ty then return first end" in sh)
 ck("walk_to reports where the slide put you, once, instead of re-pathing",
-   "stepped onto the arrow tile at (%d,%d) and were " in sh
+   "stepped onto the arrow tile at (%d,%d)%s and were " in sh   # %s = the way it points
    and "local _arrow = spinner_landing(G, ow.map, c.x, c.y) ~= nil" in sh)
 ck("sweep and walk_to let a slide finish (position held still) before reading the world",
    "local function settle_slide(G)" in sh and "if still >= 12 then return end" in sh
@@ -60,7 +61,7 @@ cands = L.build(ex, o, target="flag:X")
 fr = [c for c in cands if c.kind == "frontier"]
 ck("an arrow frontier row is minted with look=arrow and says ARROW",
    fr and fr[0].key == "9,4" and getattr(fr[0], "look", "") == "arrow"
-   and "ARROW" in fr[0].note and "carries you" in fr[0].note)
+   and "ARROW" in fr[0].note and "slides you" in fr[0].note)
 page = L.render(cands, ex, o, target="flag:X")
 ck("...its row label names the arrow",
    "arrow tile (9,4) slides onto unseen ground" in page)

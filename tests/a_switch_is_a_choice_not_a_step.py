@@ -27,13 +27,13 @@ ck("the thing on a cell is named", E.Executor._name_at(obs, 2, 11) == "SWITCH_PO
 ck("...and an empty cell is not", E.Executor._name_at(obs, 5, 5) is None)
 ck("...and bad coordinates are not an error", E.Executor._name_at(obs, "x", None) is None)
 src = (ROOT / "planner/executor.py").read_text()
-i = src.index('if op == "interact":')
-blk = src[i:i + 1400]
+i = src.index('_nm_xy = self._name_at')          # the op runner's interact block, wherever it sits
+blk = src[i - 400:i + 1400]
 ck("an interact by coordinates is filed under the thing's name",
    "_nm_xy = self._name_at(obs, step.get(\"x\"), step.get(\"y\"))" in blk and "step = dict(step, name=_nm_xy)" in blk)
 ck("...and the journal says so", 'self.log("touch_by_coords"' in blk)
 j = src.index("things = sorted((c for c in cands")
-ck("explore never presses a switch statue first", '"SWITCH" not in str(c.key).upper()' in src[j:j + 2400])
+ck("explore never presses a switch statue first", '"SWITCH" not in str(c.key).upper()' in src[j:j + 6000])   # the chooser grew (full-bag exclusion, 2026-09-07)
 k = src.index("_ss = self.shut_settings.setdefault(here, {})")
 ck("shut settings are keyed by region", k > 0 and "_rs = self.reach_settings.setdefault(here, {})" in src)
 ck("...and never stamped from a seen-ground downgrade", '"you have seen" in str(_w.get("why") or "")' in src[k:k + 500])
