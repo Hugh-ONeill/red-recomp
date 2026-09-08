@@ -9488,9 +9488,16 @@ class Executor:
                 # side. Same eye-fact as the through-building note, made
                 # into legs.
                 o = self._passage_retry(sg, key, o)
-            if (self._where(o) != nxt and _final and _replans < 2
-                    and str(nxt).split("|")[0]
-                    == str(self._where(o)).split("|")[0]):
+            # REPLAN FROM WHEREVER THE LEG PUT YOU. This asked that the leg
+            # at least land on the right MAP before re-routing, so a leg
+            # that crossed Route 16 into Route 17 while it was meant to
+            # leave Route 17 for Route 18 abandoned the whole walk to
+            # Fuchsia with the rest of the way still walked ground under
+            # its feet (run 16, 2026-09-08). The route is built from
+            # walked edges only, so re-planning from any landing is as
+            # safe as the first plan was; the one thing guarded against is
+            # re-sending the identical leg from the identical spot.
+            if self._where(o) != nxt and _final and _replans < 2:
                 # ...ONCE, AND NEVER BACK INTO THE SAME HOP. The budget
                 # has to travel with the recursion or the walk ping-pongs
                 # (983 re-plans in one leg: mislanded, re-planned, drew the
