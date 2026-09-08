@@ -6199,9 +6199,16 @@ def _item_not_held(goal: str, start: str) -> str | None:
     it did not — "Give a FRESH WATER to the thirsty guard" is done exactly
     when there is no FRESH WATER. Those are left to the model.
     """
+    # ...and EXCHANGE, REDEEM, SWAP, TURN IN, PAY, CASH IN are the same deed
+    # under other names: "Exchange the BIKE_VOUCHER for a BICYCLE" was
+    # refused as done with the BICYCLE in the bag because the VOUCHER it was
+    # spent on was not (run 16, 2026-09-08).
     if re.search(r"\b(give|gives|giving|deliver|delivers|delivering|trade|"
                  r"trades|trading|sell|sells|selling|use|uses|using|hand|"
-                 r"hands|handing|spend|spends|spending)\b", goal, re.I):
+                 r"hands|handing|spend|spends|spending|exchange|exchanges|"
+                 r"exchanging|redeem|redeems|redeeming|swap|swaps|swapping|"
+                 r"turn in|turns in|turning in|pay|pays|paying|cash in|"
+                 r"cashes in|cashing in)\b", goal, re.I):
         return None
     g = re.sub(r"[^A-Z]+", "", goal.upper())
     have = re.sub(r"[^A-Z]+", "", (start or "").upper())

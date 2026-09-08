@@ -136,6 +136,9 @@ def main():
     check("...and so does trading one away",
           A._item_not_held("Trade the SPEAROW for a FARFETCHD", held)
           is None)
+    check("...and EXCHANGING one, which is spent on the thing you then hold (run 16, the Bicycle)",
+          A._item_not_held("Exchange the BIKE_VOUCHER for a BICYCLE at the "
+                           "bike shop in Cerulean City", held) is None)
     check("an objective naming no item at all is left alone",
           A._item_not_held("Reach Cerulean City", held) is None)
     check("a TM leg is left to the model",
