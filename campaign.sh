@@ -206,6 +206,14 @@ from executor import pred_holds
 plan = json.load(open(sys.argv[1]))
 obs = json.load(open(sys.argv[2]))
 last = (plan.get("subgoals") or [{}])[-1].get("done_when") or {}
+# AN ABSENCE IS NOT A DEED. lacks_item / bag_kinds_below are true before
+# the thing was ever held: a reused drink plan ending on lacks_item
+# FRESH_WATER read "already met" with no drink ever bought, and the leg
+# was counted while Saffron's guards were still thirsty (2026-09-08).
+ABSENT = {"lacks_item", "bag_kinds_below"}
+keys = set(last) if isinstance(last, dict) else set()
+if keys and keys <= ABSENT:
+    sys.exit(1)
 sys.exit(0 if (last and pred_holds(last, obs)) else 1)
 PY
   then

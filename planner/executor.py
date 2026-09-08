@@ -523,6 +523,23 @@ def _is_door_key(k) -> bool:
 _building = ledger._building
 
 
+# AN ABSENCE IS NOT A DEED. lacks_item and bag_kinds_below are true before
+# the thing was ever held, so a plan whose LAST witness is one of them reads
+# "objective met" the moment it starts: the reused drink plan ended on
+# lacks_item FRESH_WATER, its first step was declared a success because
+# "the plan's OBJECTIVE holds here", the rest were skipped, and the leg was
+# counted with no drink ever bought and Saffron's guards still thirsty
+# (run 16, 2026-09-08). Such a witness still ends its OWN subgoal, in
+# sequence, after the has_item step before it; it cannot vouch for the leg.
+ABSENCE_KEYS = frozenset({"lacks_item", "bag_kinds_below"})
+
+
+def objective_vouches(final) -> bool:
+    """Can this final predicate, holding, mean the leg's aim is achieved?"""
+    ks = pred_keys(final)
+    return bool(ks) and not ks <= ABSENCE_KEYS
+
+
 def pred_keys(pred: dict | None) -> set:
     """Every predicate key in play, INCLUDING inside any_of branches.
 
@@ -15972,6 +15989,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             _fin2 = (((self.plan or {}).get("subgoals") or [{}])[-1]
                      or {}).get("done_when")
             if (not redo and _fin2 and _fin2 is not done
+                    and objective_vouches(_fin2)
                     and sg.get("id") != (((self.plan or {}).get("subgoals")
                                           or [{}])[-1] or {}).get("id")
                     and pred_holds(_fin2, start)):
@@ -18682,6 +18700,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                       f"witnesses nothing; running the plan anyway")
                 self.log("plan_objective_true_at_start", objective=_fin)
             if idx > 0 and idx < len(subgoals) - 1 and _fin \
+                    and objective_vouches(_fin) \
                     and pred_holds(_fin, self.settle()):
                 print(f"== the plan's OBJECTIVE ({json.dumps(_fin)}) holds "
                       f"from where the party stands — the leg's aim is "
