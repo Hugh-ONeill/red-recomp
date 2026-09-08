@@ -52,6 +52,7 @@ k = sh.index("function OPS.grind(G, c)")
 grind = sh[k:k + 12000]
 ck("a grassless map with water and a rod names the verb", "but it has WATER and you hold a " in grind and "casts it from the shore" in grind)
 ck("...and the bare refusal now says GROUND", "no wild Pokemon live on this map's GROUND" in grind)
+ck("water with nothing to surf into still names the rod you hold", "holds no wild Pokemon to SURF into" in grind and "but a ROD hooks from a table of its own" in grind)
 # the executor's pages
 ck("the op catalogue names the rod option beside surf", 'Add "rod":"GOOD_ROD" (or\nOLD_ROD / SUPER_ROD' in ex and "a bite is a wild battle like any other" in ex)
 ck("the knows-move page names fishing as a way to a different Pokemon", 'with a rod in the "\n                f"bag, FISHED' in ex)

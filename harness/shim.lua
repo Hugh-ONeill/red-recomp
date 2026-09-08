@@ -9900,8 +9900,20 @@ function OPS.grind(G, c)
   -- spot the map does not have (watched live, 2026-08-22). Say the water
   -- fact when the water was the question.
   if c.surf and encDef and not encDef.water then
-    return false, "the water on this map holds no wild Pokemon — surfing "
-      .. "it starts no battles here. This map's wilds live in its grass."
+    -- ...BUT A ROD IS NOT SURFING. Water that no wild swims in can still
+    -- be fished: the rods have their own tables (run 16, 2026-09-08, the
+    -- model asked to surf-grind Cerulean's water holding a GOOD_ROD and
+    -- was told the water holds nothing — true of surfing, not of the rod).
+    local _rod
+    for _, r in ipairs({ "SUPER_ROD", "GOOD_ROD", "OLD_ROD" }) do
+      if not _rod and bag_count(G, r) > 0 then _rod = r end
+    end
+    return false, "the water on this map holds no wild Pokemon to SURF into "
+      .. "— surfing it starts no battles here. This map's wilds live in its "
+      .. "grass"
+      .. (_rod and (" — but a ROD hooks from a table of its own: {\"op\":"
+                    .. "\"grind\",\"rod\":\"" .. _rod .. "\"} casts your "
+                    .. _rod .. " from the shore") or ".")
   end
   if c.surf and not p.surfing and encDef and encDef.water then
     local knows = false
