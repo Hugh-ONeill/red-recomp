@@ -1463,7 +1463,15 @@ def validate(plan: dict) -> list:
                 f"part of {_roads[0]} you have never stood on, write "
                 f"{{\"new_part\": \"{_roads[0]}\"}}.")
             continue
-        if (_m5 in _walked_now and _map_has_more(_m5)
+        # A TOWN IS NEVER A "NEW PART" CLAIM. The rule below was written for
+        # split routes and cave mouths, where "exit onto ROUTE_4" can be met
+        # by stepping back out the door you came in by. "Exit the Safari
+        # Zone to Fuchsia City" was refused fifteen rounds running for the
+        # same words, the author never found the rewording, and the Gold
+        # Teeth leg was pushed behind the leg that needs its HM (run 16,
+        # 2026-09-08). Coming out into a town is coming out into the town.
+        _town5 = _m5.endswith(("_CITY", "_TOWN", "_ISLAND"))
+        if (_m5 in _walked_now and _map_has_more(_m5) and not _town5
                 and not _walked_door_from_into(_from5, _m5, _vr5)
                 and not (_came_from(_from5, _m5) and not _SIDE.search(_w5))
                 and _OUT.search(_w5)):

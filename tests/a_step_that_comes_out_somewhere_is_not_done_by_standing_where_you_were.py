@@ -101,6 +101,21 @@ try:
             A._walked_door_from_into = _real_door
     finally:
         A._map_has_more = _real_more
+
+    # a TOWN is never a new-part claim: "exit the Safari Zone to Fuchsia City"
+    # was refused fifteen rounds running (run 16, 2026-09-08)
+    A.visited_regions = lambda *a, **k: {"FUCHSIA_CITY|2,2", "SAFARI_ZONE_CENTER|22,10", "SAFARI_ZONE_WEST|20,0"}
+    _real_more6 = A._map_has_more
+    A._map_has_more = lambda m: True
+    try:
+        plan6 = {"goal": "Retrieve the Gold Teeth", "subgoals": [
+            {"id": "find_teeth", "goal_text": "Pick up the Gold Teeth in the Safari Zone", "done_when": {"map": "SAFARI_ZONE_WEST"}},
+            {"id": "exit_safari_zone", "goal_text": "Exit the Safari Zone and return to Fuchsia City", "done_when": {"map": "FUCHSIA_CITY"}}]}
+        probs6 = A.validate(plan6) or []
+        ck("coming out into a town already stood on is not refused as a new-part claim",
+           not any("exit_safari_zone" in p and "comes OUT" in p for p in probs6))
+    finally:
+        A._map_has_more = _real_more6
     A.visited_regions = lambda *a, **k: set()
     _real_now = A._map_now
     A._map_now = lambda *a, **k: None      # no record of where the run stands either (the live
