@@ -708,6 +708,34 @@ def _as_int(key, want):
         return None
 
 
+# A TM IS "TM49" UNTIL IT IS BOOTED. The engine's item ids name the move
+# (TM_TRI_ATTACK); the game's screen says "RED found TM49!", the bag shows
+# TM49, and the move is shown only when the machine is booted ("It contained
+# TRI ATTACK!") — except a machine a PERSON hands over, where they name the
+# move and say what it does, which is how every HM arrives too (user,
+# 2026-09-07). planner/engine_tm_numbers.txt is the engine's own id -> name
+# table (data/generated/items.lua); gifts are the executor's _item_from.
+MACHINE_NUMBERS: dict = {}
+NUMBER_IDS: dict = {}
+try:
+    for _row in Path(__file__).with_name("engine_tm_numbers.txt").read_text().splitlines():
+        _pp = _row.split()
+        if len(_pp) == 2:
+            MACHINE_NUMBERS[_pp[0].upper()] = _pp[1].upper()
+            NUMBER_IDS[_pp[1].upper()] = _pp[0].upper()
+except OSError:
+    pass
+
+
+def canon_item(name) -> str:
+    """The engine id for an item the model named: "TM02", "tm 02", "TM_RAZOR_WIND"
+    all mean TM_RAZOR_WIND. Anything else comes back as it was."""
+    if not isinstance(name, str):
+        return name
+    k = _re.sub(r"\s+", "", name.strip().upper())
+    return NUMBER_IDS.get(k, name)
+
+
 def pred_holds(pred: dict | None, obs: dict) -> bool:
     if not pred:
         return True
@@ -10684,6 +10712,16 @@ class Executor:
               "joins the party, or goes to the PC box when the party is full "
               "— the bag has nothing to do with whether one can be received.")
 
+    def _disp_item(self, item: str) -> str:
+        """What the page calls an item: a TM by its number unless a person
+        handed it over (they named the move), every other item by its id.
+        HMs always come from people, so they keep their ids."""
+        k = str(item or "")
+        if k.startswith("TM_") and k in MACHINE_NUMBERS \
+                and k not in (getattr(self, "_item_from", None) or {}):
+            return MACHINE_NUMBERS[k]
+        return k
+
     def _gift_note(self, item: str) -> str:
         """Who handed this item over, and what they said as they did — the
         run's own record, riding the bag line where the item already sits.
@@ -12110,7 +12148,7 @@ class Executor:
                            if _sm in _mach else "")
                         + (f", {_h} walked leg(s) away" if _h < 99
                            else ", no walked route from here")
-                        + ": " + ", ".join(_it[:10]) + _seen_note(_sm)
+                        + ": " + ", ".join(self._disp_item(x) for x in _it[:10]) + _seen_note(_sm)
                         for _h, _sm, _it in _shops[:8])
                     + ". A counter takes {\"op\":\"buy\"}; a machine is "
                       "pressed and a row picked. Shops you have never "
@@ -12135,7 +12173,7 @@ class Executor:
         if _bagall:
             _rs_line = (
                 "WHAT YOU ARE CARRYING: "
-                + ", ".join(f"{k} x{v}{self._gift_note(k)}"
+                + ", ".join(f"{self._disp_item(k)} x{v}{self._gift_note(k)}"
                             for k, v in sorted(_bagall.items()))
                 + f" ({len(_bagall)} of {self.BAG_SLOTS} kinds). Some are "
                   "used ON a party member and some WHERE YOU STAND; "
@@ -13153,7 +13191,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             for k in sorted(set(b0) | set(b1)):
                 d = (b1.get(k) or 0) - (b0.get(k) or 0)
                 if d:
-                    parts.append(f"{k} {d:+d} (now {b1.get(k) or 0})")
+                    parts.append(f"{self._disp_item(k)} {d:+d} (now {b1.get(k) or 0})")
         m0 = (pre_obs or {}).get("money")
         m1 = (obs or {}).get("money")
         # money is NOT in the snapshot, so a wallet that moves on its own —
@@ -13517,6 +13555,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         for step in macro:
             self._stop_if_asked()
             step = dict(step)
+            if isinstance(step.get("item"), str):
+                step["item"] = canon_item(step["item"])     # "TM02" -> TM_RAZOR_WIND
             when = step.pop("when", None)
             op = step.pop("op", None)
             self._op_intent = None          # an intent belongs to ONE op

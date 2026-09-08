@@ -7209,6 +7209,15 @@ function OPS.use_item(G, c)
     if not old then gained = name end
   end
   if gained then
+    -- BOOTING A MACHINE IS WHEN THE MOVE IS SHOWN: "Booted up a TM! It
+    -- contained X!" — the page calls a TM by its number until then (user,
+    -- 2026-09-07); the number is the engine's own name for the item.
+    local _idef = G.data and G.data.items and G.data.items[c.item]
+    local _nm = (_idef and _idef.name) or c.item
+    if tostring(c.item):match("^[TH]M_") then
+      return true, "booted up " .. _nm .. " (" .. c.item .. ") — it contained "
+        .. gained .. "; slot " .. slot .. " learned it"
+    end
     return true, "used " .. c.item .. " — slot " .. slot
       .. " learned " .. gained
   end
