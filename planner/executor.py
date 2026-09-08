@@ -6961,6 +6961,9 @@ class Executor:
             return False
 
         road = hm + "".join(f" --{d}--> {b}" for _a, d, b in legs)
+        _held = PRINTED_MAP_HELD          # every sentence below names the map only because it is in the bag
+        if not _held:
+            return ""
         out = (f" The printed map you hold also draws a road from here: {road} "
                f"({len(legs)} leg(s)).")
         if gap:

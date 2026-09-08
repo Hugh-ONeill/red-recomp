@@ -60,10 +60,19 @@ try:
         # circumstances to want a different area of a building")
         A._map_has_more = lambda m: True
         A.visited_regions = lambda *a, **k: {"CERULEAN_TRASHED_HOUSE|2,1"}
+        # the live position is nobody's business here: with the run really
+        # standing in Cerulean, the door it once took INTO this house read as
+        # "the ground you came in from" and the rule stood down (flaky, 2026-09-08)
+        _real_now4, _real_obs4 = A._map_now, A._obs_now
+        A._map_now = lambda *a, **k: None
+        A._obs_now = lambda *a, **k: {}
         plan4 = {"goal": "g", "subgoals": [
             {"id": "out_the_back", "goal_text": "Leave the trashed house by its back door into the yard",
              "done_when": {"map": "CERULEAN_TRASHED_HOUSE"}}]}
-        probs4 = A.validate(plan4) or []
+        try:
+            probs4 = A.validate(plan4) or []
+        finally:
+            A._map_now, A._obs_now = _real_now4, _real_obs4
         ck("a building with more to it than the party has stood on still gets the rule",
            any("out_the_back" in p and "comes OUT" in p for p in probs4))
         # stepping OUT OF A DOOR onto the ground you came in from is not
