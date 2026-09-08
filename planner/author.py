@@ -609,6 +609,13 @@ do any of it in — you know this game. The evidence below is only what THIS
 run has actually walked and what happened when it did. Author the plan you
 think wins, and revise it from that evidence when it does not.
 
+THIS PLAN IS FOR THIS GOAL. The objectives listed as what you planned to do
+AFTER this one are their own legs and get their own plans when their turn
+comes; fold one into this plan only when THIS goal cannot be reached
+without it (an HM this goal's own route needs, a key its door needs). A
+badge is won by beating the leader: no gym in this game needs a field move
+to reach its leader.
+
 AMBIGUOUS MAPS: a {"map": X} done_when is satisfied ANYWHERE on that map,
 and some maps are split into disconnected areas you cannot walk between
 (caves with separate wings, routes divided by a mountain or a ledge). So
@@ -1035,7 +1042,9 @@ def outline_so_far(cap: int = 12) -> str:
                 + ("... " if n > cap else "")
                 + "; ".join(_mark) + ".")
     if n < len(legs):
-        out += ("\n\nWHAT YOU PLANNED TO DO AFTER THIS ONE: "
+        out += ("\n\nWHAT YOU PLANNED TO DO AFTER THIS ONE (their own legs, "
+                "planned when their turn comes — not steps of this plan unless "
+                "this goal cannot be reached without one): "
                 + "; ".join(legs[n + 1:n + 1 + 4]) + ".")
     return out + done_ledger_text()
 
