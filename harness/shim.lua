@@ -3325,6 +3325,31 @@ local function observe(G, seq, result)
       note_key(k)
     end
   end
+  -- WHO CAN LEARN EACH MACHINE IN THE BAG. Player-visible: pick a TM or HM
+  -- on the ITEM screen and the party screen shows ABLE / NOT ABLE beside
+  -- every member at once. The run used HM_FLY on four Pokemon in turn, a
+  -- round each, to learn what that one screen says (run 16, 2026-09-08;
+  -- user: "the usage screen shows ABLE and NOT ABLE for the whole party").
+  o.machines = {}
+  for k, _ in pairs(o.bag) do
+    if k:find("^TM_") or k:find("^HM_") then
+      local idef = G.data and G.data.items and G.data.items[k]
+      local mv = idef and idef.machine and idef.machine.move
+      if mv then
+        local able, notable = {}, {}
+        for _, mon in ipairs((G.save and G.save.party) or {}) do
+          local pdef = G.data and G.data.pokemon and G.data.pokemon[mon.species]
+          local ok = false
+          for _, mvn in ipairs((pdef and pdef.tmhm) or {}) do
+            if mvn == mv then ok = true break end
+          end
+          if ok then able[#able + 1] = tostring(mon.species)
+          else notable[#notable + 1] = tostring(mon.species) end
+        end
+        o.machines[k] = { move = mv, able = able, not_able = notable }
+      end
+    end
+  end
   -- What the PC is holding. Player-visible: it is the WITHDRAW ITEM list,
   -- one A-press away at any Pokemon Center. Without it a withdrawal is a
   -- guess, and anything deposited is gone from the run's knowledge the
@@ -7187,12 +7212,29 @@ function OPS.use_item(G, c)
         if mvn == _mvname then _able = true break end
       end
       if not _able then
+        -- ...AND THE SCREEN THAT SAID SO SAID IT FOR EVERYONE. The party
+        -- screen a machine opens marks every member ABLE or NOT ABLE; the
+        -- refusal named one and the run tried the other three in turn.
+        local _ab, _nab = {}, {}
+        for _, pm in ipairs(_party) do
+          local pd = G.data and G.data.pokemon and G.data.pokemon[pm.species]
+          local okm = false
+          for _, mvn in ipairs((pd and pd.tmhm) or {}) do
+            if mvn == _mvname then okm = true break end
+          end
+          if okm then _ab[#_ab + 1] = tostring(pm.species)
+          else _nab[#_nab + 1] = tostring(pm.species) end
+        end
         return false, tostring(_mon.species) .. " is NOT COMPATIBLE with "
           .. c.item .. " — that species can never learn this move, so no "
-          .. "forget= will help. What a species can learn CHANGES WHEN IT "
-          .. "EVOLVES: an evolved form sometimes takes machines its "
-          .. "earlier form cannot. Try the machine on a different party "
-          .. "member, a different machine, or evolve somebody first."
+          .. "forget= will help. The machine's party screen shows ABLE / NOT "
+          .. "ABLE for the whole party at once: ABLE — "
+          .. (#_ab > 0 and table.concat(_ab, ", ") or "nobody") .. "; NOT ABLE — "
+          .. (#_nab > 0 and table.concat(_nab, ", ") or "nobody")
+          .. ". What a species can learn CHANGES WHEN IT EVOLVES: an evolved "
+          .. "form sometimes takes machines its earlier form cannot."
+          .. (#_ab == 0 and " Nobody in this party can take it as they stand."
+              or "")
       end
     end
   end

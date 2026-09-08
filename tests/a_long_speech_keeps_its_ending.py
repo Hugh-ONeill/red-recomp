@@ -94,7 +94,7 @@ ck("a gift is recorded against the item only for a named thing pressed",
 ck("...and persisted with the rest of the memory",
    '"item_from": getattr(self, "_item_from", {})' in src
    and 'self._item_from = data.get("item_from") or {}' in src)
-ck("the carrying line asks for it", 'f"{self._disp_item(k)} x{v}{self._gift_note(k)}"' in src)   # TMs print by number (2026-09-07)
+ck("the carrying line asks for it", 'f"{self._disp_item(k)} x{v}{self._gift_note(k)}{self._able_note(k, obs)}"' in src)   # TMs print by number (2026-09-07)
 
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, dd in checks:

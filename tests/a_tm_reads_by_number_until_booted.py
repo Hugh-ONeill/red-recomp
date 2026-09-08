@@ -28,7 +28,7 @@ ck("other items are untouched", E.Executor._disp_item(fake, "POTION") == "POTION
 ck("ops accept the number, spaced or not, any case",
    E.canon_item("TM02") == "TM_RAZOR_WIND" and E.canon_item("tm 02") == "TM_RAZOR_WIND" and E.canon_item("POTION") == "POTION" and E.canon_item("TM_RAZOR_WIND") == "TM_RAZOR_WIND")
 ck("the bag, the gains and the shelves print through the display rule",
-   'f"{self._disp_item(k)} x{v}{self._gift_note(k)}"' in src and 'f"{self._disp_item(k)} {d:+d} (now' in src
+   'f"{self._disp_item(k)} x{v}{self._gift_note(k)}{self._able_note(k, obs)}"' in src and 'f"{self._disp_item(k)} {d:+d} (now' in src
    and '", ".join(self._disp_item(x) for x in _it[:10])' in src)
 ck("the op runner canonicalises a step's item first", 'step["item"] = canon_item(step["item"])' in src)
 ck("the shim's boot reply names the move the way the game does", 'return true, "booted up " .. _nm .. " (" .. c.item .. ") — it contained "' in sh)
