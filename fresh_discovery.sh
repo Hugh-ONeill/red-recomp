@@ -974,11 +974,28 @@ while :; do
     if [ "$confirmed" = 1 ]; then
       echo "    (confirmed on the second plan)"
     else
-      echo "    (objective still unconfirmed after a second plan —" \
-           "counting it and moving on)"
-      # the legs the run walked past without proof, in one place, so
-      # "known-bad in the world" is a list and not a memory
+      # AN UNCONFIRMED LEG IS MOVED, NOT COUNTED. This used to count the
+      # leg and move on, so the drink for Saffron's guards was crossed off
+      # with no drink bought (a reused plan ending on lacks_item; 2026-09-08)
+      # and the run reached Silph Co's leg unable to enter the city. A leg
+      # the judge will not confirm after two plans is right but not yet, or
+      # its plans keep missing the point — either way it belongs later, on
+      # a fresh plan, where the deeds between may have done it (the judge
+      # gets another look) or the world has moved. Counting is the fallback
+      # only where there is no later to move it to.
       printf '%s\n' "$leg" >> run/leg_unconfirmed
+      _after=$((i + 2))
+      if [ "$_after" -lt "${#LEGS[@]}" ] \
+          && python planner/push_leg.py "$i" "$_after"; then
+        echo "    (objective still unconfirmed after a second plan —" \
+             "moved to after leg $_after; it will be judged again there)"
+        disposed "unconfirmed after two plans; moved to after leg $_after"
+        archive_plans_of "$leg"
+        sweep_ahead "$i"
+        continue
+      fi
+      echo "    (objective still unconfirmed after a second plan and" \
+           "nowhere later to move it — counting it and moving on)"
     fi
   fi
   echo "$i" > "$PROGRESS"
