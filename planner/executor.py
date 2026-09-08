@@ -11051,6 +11051,26 @@ class Executor:
         return k
 
     @staticmethod
+    def _stone_note(item: str) -> str:
+        """A stone in the bag names how it is used and what a wrong try
+        costs: nothing. Three party members that evolve by stone rode along
+        with two MOON STONEs for a whole day (run 16, 2026-09-08; user: "three
+        pokemon who evolve using stones that its just not taking advantage
+        of"). The knows-move page said a stone evolves "a Pokemon it suits"
+        and left the rest to be inferred; the game's own answer to a wrong
+        try is "It won't have any effect" with the stone kept, so the fact
+        that trying is free belongs on the page. WHICH Pokemon a stone suits
+        stays the model's."""
+        if item.endswith("_STONE"):
+            return (" [an evolution stone: {\"op\":\"use_item\",\"item\":\""
+                    + item + "\",\"slot\":N} on a party member it suits "
+                    "evolves them on the spot, and an evolved form can take "
+                    "machines its earlier form could not; on one it does not "
+                    "suit the game says \"It won't have any effect\" and the "
+                    "stone is kept, so a try costs nothing]")
+        return ""
+
+    @staticmethod
     def _rod_note(item: str) -> str:
         """A rod in the bag names the verb that casts it. The run held a
         GOOD_ROD on leg 32 (2026-09-08) and tried interact(name=GOOD_ROD),
@@ -11136,7 +11156,9 @@ class Executor:
                 f"from any shore, and what bites is not what the grass "
                 f"holds), traded, given, or "
                 f"MADE by evolving one you already have (levelling, or a "
-                f"stone used on a Pokemon it suits). "
+                f"stone used on a Pokemon it suits — a stone tried on one it "
+                f"does not suit is kept, \"It won't have any effect\", so the "
+                f"stones in your bag can be tried on every member for free). "
                 f"Which way is yours to judge; the party now: {_party}.\n")
         # THE LEDGER (EXPLORE_DESIGN §3): one ranked block for everything
         # LOCAL — exits, things, people, each with its status and what
@@ -12532,7 +12554,7 @@ class Executor:
         if _bagall:
             _rs_line = (
                 "WHAT YOU ARE CARRYING: "
-                + ", ".join(f"{self._disp_item(k)} x{v}{self._gift_note(k)}{self._able_note(k, obs)}{self._rod_note(k)}"
+                + ", ".join(f"{self._disp_item(k)} x{v}{self._gift_note(k)}{self._able_note(k, obs)}{self._rod_note(k)}{self._stone_note(k)}"
                             for k, v in sorted(_bagall.items()))
                 + f" ({len(_bagall)} of {self.BAG_SLOTS} kinds). Some are "
                   "used ON a party member and some WHERE YOU STAND; "
