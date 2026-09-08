@@ -69,10 +69,23 @@ for attempt in $(seq 1 "$ATTEMPTS"); do
   cont=()
   [ $first = 1 ] || cont=(--continue)
   set +e
-  ./fresh_run.sh "${PLANS[@]}" "${cont[@]}" --save-after-each \
-      --run-id "campaign${attempt}" --model "$MODEL" "${EXTRA[@]}" \
-      2>&1 | tee -a "$LOG"
-  rc=${PIPESTATUS[0]}
+  # THE GAME DIED MID-ATTEMPT (executor exit 67: the heartbeat went stale
+  # while an op waited). Nothing about the plan is learned from that, and
+  # the executor has already saved what it walked; boot the game again from
+  # the save and run the SAME attempt, up to three times, before it counts.
+  for _boot in 1 2 3; do
+    ./fresh_run.sh "${PLANS[@]}" "${cont[@]}" --save-after-each \
+        --run-id "campaign${attempt}" --model "$MODEL" "${EXTRA[@]}" \
+        2>&1 | tee -a "$LOG"
+    rc=${PIPESTATUS[0]}
+    if [ "$rc" -eq 67 ] && [ "$_boot" -lt 3 ]; then
+      echo "=== attempt $attempt: the game died mid-attempt (rc=67) — booting "\
+           "it again from the save, same attempt (boot $((_boot + 1))/3) ===" | tee -a "$LOG"
+      cont=(--continue)
+      continue
+    fi
+    break
+  done
   set -e
   first=0
 

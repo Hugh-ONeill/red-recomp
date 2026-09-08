@@ -13186,14 +13186,48 @@ class Executor:
                                   slot=pick[1]) or obs
         return obs
 
+    GAME_DEAD_EXIT = 67          # campaign.sh: boot the game again, same attempt
+
+    def _game_heartbeat_age(self) -> float | None:
+        """Seconds since the shim last wrote run/heartbeat (it writes every
+        frame while the game runs); None if there is no heartbeat file."""
+        try:
+            return time.time() - (Path(self.b.run) / "heartbeat").stat().st_mtime
+        except (OSError, AttributeError, TypeError):
+            return None
+
     def _send_safe(self, op, **kw):
         """Bridge send that degrades a timeout to None instead of raising —
         for recovery paths (settle, checkpoints) where an uncaught
-        TimeoutError killed brock19's whole run."""
+        TimeoutError killed brock19's whole run.
+
+        A DEAD GAME IS NOT A SLOW OP. The love window closed at 16:27:28 on
+        2026-09-08 (no traceback, no core, no kernel line — a headed window
+        under a display that churns) and this went on for seventy minutes:
+        every op timed out after two minutes, every round asked the model
+        again, the page filled with empty FAILEDs, and nothing in the chain
+        could tell (user: "i havent seen the game screen in a bit"). The
+        shim writes the heartbeat every frame, so a heartbeat older than a
+        minute at the moment an op times out is the game gone. End the
+        attempt with its own exit code; campaign.sh boots the game again
+        from the save and runs the same attempt, as it does for a game that
+        never came up."""
         try:
             return self.b.send(op, **kw)
         except TimeoutError as e:
             self.log("send_timeout", op=op, err=str(e))
+            age = self._game_heartbeat_age()
+            if age is not None and age > 60:
+                self.log("game_dead", op=op, heartbeat_age=round(age, 1))
+                print(f"!! the game stopped answering: its heartbeat is "
+                      f"{age:.0f}s old and {op} got no observation — ending "
+                      f"this attempt as NO RESULT (exit {self.GAME_DEAD_EXIT}) "
+                      f"so the campaign boots the game again")
+                try:
+                    self._save_memory()
+                except Exception:
+                    pass
+                sys.exit(self.GAME_DEAD_EXIT)
             return None
 
     def seed_regions(self):
