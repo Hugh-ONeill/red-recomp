@@ -2631,7 +2631,11 @@ class Executor:
                            f"chain of exits between them (or a hop on it "
                            f"has failed in this world state)" + _note_b + _note_g + _note_m], []
         region, path = best
-        self.log("go_step", subgoal=sg.get("id"), to=region, legs=len(path))
+        # THE PATH AND THE START, so a lost leg can be read back. A go from
+        # Route 17's foot to Fuchsia lost its first leg with the party on
+        # ROUTE_16, and the row said only "legs 4" (2026-09-08).
+        self.log("go_step", subgoal=sg.get("id"), to=region, legs=len(path),
+                 here=here, path=[str(k) for k, _ in path])
         arrived = self._walk_route(sg, path)
         # _walk_route hands back a region name from most of its exits and a
         # whole observation from the ones that give up, so "now at" printed
@@ -9654,7 +9658,8 @@ class Executor:
                        f"{str(_last_det)[:self.WHY_BUDGET]}"
                        if _last_det else ""))
                 self.log("route_walk_lost", subgoal=sg["id"], wanted=nxt,
-                         got=self._where(o), why=_last_det[:200])
+                         got=self._where(o), why=_last_det[:200],
+                         standing=self._where(pre), step=str(key))
                 return self._where(o)
         self.log("route_walked", subgoal=sg["id"], to=self._where(o),
                  hops=len(path))
