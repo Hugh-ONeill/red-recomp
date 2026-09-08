@@ -586,6 +586,164 @@ local last_frontier = {}        -- the last observation's frontier, for the over
 local seen_dirty, seen_wrote = false, 0
 local seen_lmap, seen_lx, seen_ly = nil, nil, nil
 local seen_reach                -- assigned after warp_reach (shares its helpers)
+
+-- WHAT BUILDING A DOORWAY IS SET IN (planner/engine_buildings.py, from the
+-- engine's block grids: a cell is wall if it cannot be walked on and is not
+-- the map border's trees, water or a ledge; the building around a door is
+-- the wall rectangle read off its roof row, split where one roof's corner
+-- tiles meet the next). A player sees a house with a door in it, and sees
+-- that two doorways sit in one long building; the harness reported every
+-- doorway as a bare coordinate, so on Route 16 the gate's south-west door
+-- was taken for the Fly house (run 16, 2026-09-08; user: "should we have it
+-- recognize 'building' from the sprites or something?"). Sizes are in cells,
+-- the page's own units. Nothing here says where a door leads.
+local BUILDINGS = {
+  CELADON_CITY = {
+    { x0 = 6, y0 = 6, x1 = 13, y1 = 13, look = "large flat-roofed building", doors = { "8,13", "10,13" } },
+    { x0 = 6, y0 = 24, x1 = 13, y1 = 27, look = "house", doors = { "12,27" } },
+    { x0 = 22, y0 = 4, x1 = 27, y1 = 9, look = "large flat-roofed building", doors = { "24,3", "24,9", "25,3" } },
+    { x0 = 26, y0 = 16, x1 = 31, y1 = 19, look = "large flat-roofed building", doors = { "28,19" } },
+    { x0 = 30, y0 = 24, x1 = 33, y1 = 27, look = "small flat-roofed building", doors = { "31,27" } },
+    { x0 = 32, y0 = 16, x1 = 35, y1 = 19, look = "small flat-roofed building", doors = { "33,19" } },
+    { x0 = 34, y0 = 24, x1 = 37, y1 = 27, look = "small flat-roofed building", doors = { "35,27" } },
+    { x0 = 38, y0 = 16, x1 = 41, y1 = 19, look = "small flat-roofed building", doors = { "39,19" } },
+    { x0 = 40, y0 = 6, x1 = 43, y1 = 9, look = "small flat-roofed building", doors = { "41,9" } },
+    { x0 = 42, y0 = 24, x1 = 45, y1 = 27, look = "small flat-roofed building", doors = { "43,27" } },
+  },
+  CERULEAN_CITY = {
+    { x0 = 8, y0 = 10, x1 = 13, y1 = 11, look = "small house", doors = { "9,9", "9,11" } },
+    { x0 = 12, y0 = 14, x1 = 17, y1 = 15, look = "small house", doors = { "13,15" } },
+    { x0 = 12, y0 = 22, x1 = 15, y1 = 25, look = "small flat-roofed building", doors = { "13,25" } },
+    { x0 = 18, y0 = 14, x1 = 21, y1 = 17, look = "small flat-roofed building", doors = { "19,17" } },
+    { x0 = 24, y0 = 16, x1 = 31, y1 = 19, look = "house", doors = { "30,19" } },
+    { x0 = 24, y0 = 22, x1 = 27, y1 = 25, look = "small flat-roofed building", doors = { "25,25" } },
+    { x0 = 26, y0 = 10, x1 = 31, y1 = 11, look = "small house", doors = { "27,9", "27,11" } },
+  },
+  CINNABAR_ISLAND = {
+    { x0 = 4, y0 = 0, x1 = 9, y1 = 3, look = "large flat-roofed building", doors = { "6,3" } },
+    { x0 = 4, y0 = 6, x1 = 9, y1 = 9, look = "large flat-roofed building", doors = { "6,9" } },
+    { x0 = 10, y0 = 8, x1 = 13, y1 = 11, look = "small flat-roofed building", doors = { "11,11" } },
+    { x0 = 14, y0 = 0, x1 = 19, y1 = 3, look = "house", doors = { "18,3" } },
+    { x0 = 14, y0 = 8, x1 = 17, y1 = 11, look = "small flat-roofed building", doors = { "15,11" } },
+  },
+  FUCHSIA_CITY = {
+    { x0 = 4, y0 = 10, x1 = 7, y1 = 13, look = "small flat-roofed building", doors = { "5,13" } },
+    { x0 = 4, y0 = 24, x1 = 9, y1 = 27, look = "large flat-roofed building", doors = { "5,27" } },
+    { x0 = 10, y0 = 26, x1 = 13, y1 = 27, look = "small house", doors = { "11,27" } },
+    { x0 = 16, y0 = 0, x1 = 21, y1 = 3, look = "large flat-roofed building", doors = { "18,3" } },
+    { x0 = 18, y0 = 24, x1 = 21, y1 = 27, look = "small flat-roofed building", doors = { "19,27" } },
+    { x0 = 20, y0 = 10, x1 = 25, y1 = 13, look = "large flat-roofed building", doors = { "22,13" } },
+    { x0 = 26, y0 = 25, x1 = 29, y1 = 27, look = "small house", doors = { "27,27" } },
+    { x0 = 30, y0 = 25, x1 = 33, y1 = 27, look = "small house", doors = { "31,24", "31,27" } },
+  },
+  INDIGO_PLATEAU = {
+    { x0 = 6, y0 = 0, x1 = 13, y1 = 5, look = "large house", doors = { "9,5", "10,5" } },
+  },
+  LAVENDER_TOWN = {
+    { x0 = 2, y0 = 2, x1 = 5, y1 = 5, look = "small flat-roofed building", doors = { "3,5" } },
+    { x0 = 2, y0 = 12, x1 = 5, y1 = 13, look = "small house", doors = { "3,13" } },
+    { x0 = 6, y0 = 8, x1 = 9, y1 = 9, look = "small house", doors = { "7,9" } },
+    { x0 = 6, y0 = 12, x1 = 9, y1 = 13, look = "small house", doors = { "7,13" } },
+    { x0 = 14, y0 = 10, x1 = 17, y1 = 13, look = "small flat-roofed building", doors = { "15,13" } },
+  },
+  PALLET_TOWN = {
+    { x0 = 4, y0 = 3, x1 = 7, y1 = 5, look = "small house", doors = { "5,5" } },
+    { x0 = 10, y0 = 8, x1 = 15, y1 = 11, look = "house", doors = { "12,11" } },
+    { x0 = 12, y0 = 3, x1 = 15, y1 = 5, look = "small house", doors = { "13,5" } },
+  },
+  PEWTER_CITY = {
+    { x0 = 6, y0 = 28, x1 = 9, y1 = 29, look = "small house", doors = { "7,29" } },
+    { x0 = 10, y0 = 2, x1 = 17, y1 = 7, look = "large house", doors = { "14,7" } },
+    { x0 = 12, y0 = 14, x1 = 17, y1 = 17, look = "house", doors = { "16,17" } },
+    { x0 = 12, y0 = 22, x1 = 15, y1 = 25, look = "small flat-roofed building", doors = { "13,25" } },
+    { x0 = 18, y0 = 2, x1 = 23, y1 = 5, look = "large flat-roofed building", doors = { "19,5" } },
+    { x0 = 22, y0 = 14, x1 = 25, y1 = 17, look = "small flat-roofed building", doors = { "23,17" } },
+    { x0 = 28, y0 = 12, x1 = 31, y1 = 13, look = "small house", doors = { "29,13" } },
+  },
+  ROUTE_10 = {
+    { x0 = 2, y0 = 34, x1 = 9, y1 = 39, look = "large flat-roofed building", doors = { "6,39" } },
+    { x0 = 10, y0 = 16, x1 = 13, y1 = 19, look = "small flat-roofed building", doors = { "11,19" } },
+  },
+  ROUTE_11 = {
+    { x0 = 50, y0 = 6, x1 = 57, y1 = 9, look = "large flat-roofed building", doors = { "49,8", "49,9", "58,8", "58,9" } },
+  },
+  ROUTE_12 = {
+    { x0 = 8, y0 = 16, x1 = 13, y1 = 21, look = "large flat-roofed building", doors = { "10,15", "10,21", "11,15" } },
+    { x0 = 10, y0 = 76, x1 = 13, y1 = 77, look = "small house", doors = { "11,77" } },
+  },
+  ROUTE_15 = {
+    { x0 = 8, y0 = 6, x1 = 13, y1 = 9, look = "large flat-roofed building", doors = { "7,8", "7,9", "14,8", "14,9" } },
+  },
+  ROUTE_16 = {
+    { x0 = 6, y0 = 4, x1 = 9, y1 = 5, look = "small house", doors = { "7,5" } },
+    { x0 = 18, y0 = 2, x1 = 23, y1 = 11, look = "large flat-roofed building", doors = { "17,4", "17,5", "17,10", "17,11", "24,4", "24,5", "24,10", "24,11" } },
+  },
+  ROUTE_18 = {
+    { x0 = 34, y0 = 4, x1 = 39, y1 = 9, look = "large flat-roofed building", doors = { "33,8", "33,9", "40,8", "40,9" } },
+  },
+  ROUTE_2 = {
+    { x0 = 2, y0 = 40, x1 = 5, y1 = 43, look = "small flat-roofed building", doors = { "3,43" } },
+    { x0 = 3, y0 = 11, x1 = 3, y1 = 14, look = "small house", doors = { "3,11" } },
+    { x0 = 14, y0 = 18, x1 = 17, y1 = 19, look = "small house", doors = { "15,19" } },
+    { x0 = 14, y0 = 36, x1 = 19, y1 = 39, look = "large flat-roofed building", doors = { "15,39", "16,35" } },
+  },
+  ROUTE_22 = {
+    { x0 = 2, y0 = 0, x1 = 13, y1 = 5, look = "large flat-roofed building", doors = { "8,5" } },
+  },
+  ROUTE_23 = {
+    { x0 = 0, y0 = 24, x1 = 17, y1 = 31, look = "large house", doors = { "4,31", "14,31" } },
+    { x0 = 7, y0 = 139, x1 = 8, y1 = 143, look = "small house", doors = { "7,139", "8,139" } },
+  },
+  ROUTE_25 = {
+    { x0 = 44, y0 = 1, x1 = 47, y1 = 3, look = "small house", doors = { "45,3" } },
+  },
+  ROUTE_4 = {
+    { x0 = 10, y0 = 2, x1 = 13, y1 = 5, look = "small flat-roofed building", doors = { "11,5" } },
+  },
+  ROUTE_5 = {
+    { x0 = 6, y0 = 30, x1 = 13, y1 = 33, look = "large flat-roofed building", doors = { "9,29", "10,29", "10,33" } },
+    { x0 = 8, y0 = 18, x1 = 11, y1 = 21, look = "small house", doors = { "10,21" } },
+    { x0 = 16, y0 = 24, x1 = 19, y1 = 27, look = "small flat-roofed building", doors = { "17,27" } },
+  },
+  ROUTE_6 = {
+    { x0 = 8, y0 = 2, x1 = 13, y1 = 7, look = "large flat-roofed building", doors = { "9,1", "10,1", "10,7" } },
+    { x0 = 16, y0 = 10, x1 = 19, y1 = 13, look = "small flat-roofed building", doors = { "17,13" } },
+  },
+  ROUTE_7 = {
+    { x0 = 4, y0 = 10, x1 = 7, y1 = 13, look = "small flat-roofed building", doors = { "5,13" } },
+    { x0 = 12, y0 = 8, x1 = 17, y1 = 11, look = "large flat-roofed building", doors = { "11,9", "11,10", "18,9", "18,10" } },
+  },
+  ROUTE_8 = {
+    { x0 = 2, y0 = 8, x1 = 7, y1 = 11, look = "large flat-roofed building", doors = { "1,9", "1,10", "8,9", "8,10" } },
+    { x0 = 12, y0 = 2, x1 = 15, y1 = 3, look = "small house", doors = { "13,3" } },
+  },
+  SAFFRON_CITY = {
+    { x0 = 6, y0 = 3, x1 = 9, y1 = 5, look = "small house", doors = { "7,5" } },
+    { x0 = 8, y0 = 26, x1 = 11, y1 = 29, look = "small flat-roofed building", doors = { "9,29" } },
+    { x0 = 12, y0 = 9, x1 = 15, y1 = 11, look = "small house", doors = { "13,11" } },
+    { x0 = 16, y0 = 10, x1 = 23, y1 = 21, look = "large flat-roofed building", doors = { "18,21" } },
+    { x0 = 22, y0 = 0, x1 = 27, y1 = 3, look = "house", doors = { "26,3" } },
+    { x0 = 24, y0 = 8, x1 = 27, y1 = 11, look = "small flat-roofed building", doors = { "25,11" } },
+    { x0 = 28, y0 = 0, x1 = 35, y1 = 3, look = "house", doors = { "34,3" } },
+    { x0 = 28, y0 = 26, x1 = 31, y1 = 29, look = "small flat-roofed building", doors = { "29,29" } },
+  },
+  VERMILION_CITY = {
+    { x0 = 6, y0 = 0, x1 = 9, y1 = 3, look = "small flat-roofed building", doors = { "7,3" } },
+    { x0 = 8, y0 = 10, x1 = 11, y1 = 13, look = "small flat-roofed building", doors = { "9,13" } },
+    { x0 = 8, y0 = 16, x1 = 13, y1 = 19, look = "house", doors = { "12,19" } },
+    { x0 = 10, y0 = 0, x1 = 13, y1 = 3, look = "small flat-roofed building", doors = { "11,3" } },
+    { x0 = 14, y0 = 10, x1 = 17, y1 = 13, look = "small flat-roofed building", doors = { "15,13" } },
+    { x0 = 22, y0 = 10, x1 = 25, y1 = 13, look = "small flat-roofed building", doors = { "23,13" } },
+    { x0 = 22, y0 = 16, x1 = 25, y1 = 19, look = "small flat-roofed building", doors = { "23,19" } },
+  },
+  VIRIDIAN_CITY = {
+    { x0 = 20, y0 = 8, x1 = 23, y1 = 9, look = "small house", doors = { "21,9" } },
+    { x0 = 20, y0 = 14, x1 = 23, y1 = 15, look = "small house", doors = { "21,15" } },
+    { x0 = 22, y0 = 22, x1 = 25, y1 = 25, look = "small flat-roofed building", doors = { "23,25" } },
+    { x0 = 28, y0 = 4, x1 = 33, y1 = 7, look = "house", doors = { "32,7" } },
+    { x0 = 28, y0 = 16, x1 = 31, y1 = 19, look = "small flat-roofed building", doors = { "29,19" } },
+  },
+}
 local seen_wall_since_view      -- pure freeze decision (defined below, before seen_reach)
 local SEEN_FILE = BRIDGE .. "/seen.json"
 local WALK_FILE = BRIDGE .. "/seen_walk.json"
@@ -844,6 +1002,20 @@ local function seen_filter(G, o)
   local dark = ow and ow.dark and not (G.save and G.save.flashLit)
   m.dark = dark and true or nil
   m.warps = keep_xy(m.warps)
+  do
+    local _bl = BUILDINGS[m.id]
+    if _bl then
+      m.buildings = _bl
+      for _, w in ipairs(m.warps or {}) do
+        local wk = tostring(w.x) .. "," .. tostring(w.y)
+        for i, b in ipairs(_bl) do
+          for _, d in ipairs(b.doors or {}) do
+            if d == wk then w.bld = i end
+          end
+        end
+      end
+    end
+  end
   if dark then m.objects = {} else m.objects = keep_xy(m.objects) end
   for _, key in ipairs({ "holes", "boulder_holes", "boulder_switches",
                          "switch_statues", "quiz_machines" }) do
@@ -11070,8 +11242,26 @@ function OPS.sweep(G, c)
             out[#out + 1] = { kind = "door", x = x, y = y,
                               text = ("a warp pad at (%d,%d)"):format(x, y) }
           else
-            out[#out + 1] = { kind = "door", x = x, y = y,
-                              text = ("a doorway at (%d,%d)"):format(x, y) }
+            local text = ("a doorway at (%d,%d)"):format(x, y)
+            local _bl = BUILDINGS[map0]
+            if _bl then
+              for _, b in ipairs(_bl) do
+                for _, d in ipairs(b.doors or {}) do
+                  if d == k then
+                    text = text .. " in a " .. b.look
+                    -- ...and, when another door of it has been on screen,
+                    -- say it is the same building (the gate's four faces)
+                    for _, d2 in ipairs(b.doors or {}) do
+                      if d2 ~= k and mask[d2] then
+                        text = text .. (" — the same building as the doorway at (%s)"):format(d2)
+                        break
+                      end
+                    end
+                  end
+                end
+              end
+            end
+            out[#out + 1] = { kind = "door", x = x, y = y, text = text }
           end
         end
         if y == 0 then edge.north = true end

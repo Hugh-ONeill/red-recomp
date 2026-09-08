@@ -178,9 +178,14 @@ class Candidate:
                             "ladder_up": "ladder up", "ladder_down": "ladder down"}
             if _l in _STAIR_WORDS:
                 return f"{_STAIR_WORDS[_l]} ({_key}){_tw}"
-            if _l == "threshold":        # an older shim's word for a door
-                return f"door ({_key}){_tw}"
-            return f"door ({_key}){_tw}"
+            # ...AND WHAT IT IS SET IN. A player sees a house with a door in
+            # it, and sees two doorways in one long building; every doorway
+            # here read as a bare coordinate, and on Route 16 the gate's
+            # south-west door was taken for the Fly house (run 16,
+            # 2026-09-08). The building comes from the engine's block grid
+            # (planner/engine_buildings.py), sized in the page's own units.
+            _in = (f", in a {self.bld_look}" if getattr(self, "bld_look", "") else "")
+            return f"door ({_key}){_tw}{_in}"
         if self.kind == "frontier":
             if getattr(self, "look", "") == "arrow":
                 _ad = getattr(self, "arrow_dir", "") or ""
@@ -839,6 +844,24 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         walked = ex._walked_dest(mid, key)
         dest_map = w.get("dest")
         c = Candidate(key=key, kind="door", dest=walked)
+        # the building it is set in, and whether another door of that same
+        # building has been taken — recognition, not a peek: an untaken door
+        # on a building never entered stays unnamed
+        _bi = w.get("bld")
+        _bld = ((m.get("buildings") or [])[_bi - 1]
+                if isinstance(_bi, int) and 0 < _bi <= len(m.get("buildings") or []) else None)
+        if _bld:
+            c.bld_look = str(_bld.get("look") or "")
+            _sib = []
+            for _d2 in (_bld.get("doors") or []):
+                if str(_d2) == key:
+                    continue
+                _wd = ex._walked_dest(mid, str(_d2))
+                if _wd:
+                    _sib.append((str(_d2), str(_wd).split("|")[0]))
+            if _sib and not walked:
+                c.note = _join(c.note, f"the same building as door ({_sib[0][0]}), which you "
+                                       f"have taken — it is {_sib[0][1]}")
         # what it is DRAWN as, straight from the tile under it (shim
         # warp_look): a door, a stairway, a teleport pad, a hole. A player
         # tells these apart at a glance and the ledger called them all
