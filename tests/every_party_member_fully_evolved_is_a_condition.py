@@ -53,7 +53,7 @@ ck("the author may write it", not any("party_fully_evolved" in p for p in A.vali
 ck("...typed as a bool", A._SHAPES.get("party_fully_evolved") == "bool")
 ck("the upkeep prompt lists the kind", "every party member is fully evolved (a state for late in the run)" in A.OUTLINE_UPKEEP_SYS)
 ck("...says an evolved form is a named species too", "including\n    the EVOLVED form of one you already have" in A.OUTLINE_UPKEEP_SYS)
-ck("...and names evolving beside catching and training", "the catching, the training, the evolving and the type\ncoverage" in A.OUTLINE_UPKEEP_SYS)
+ck("...and names evolving beside catching and training", "The catching, the training, the evolving and the type\ncoverage" in A.OUTLINE_UPKEEP_SYS)
 ex = (ROOT / "planner" / "executor.py").read_text()
 ck("the page head names who is not yet there and never which way", 'NOT YET THERE: {\', \'.join(_left)}' in ex and "Which member takes which is " in ex)
 ck("the leg sits before Victory Road in the hand outline", (ROOT / "plans" / "outline.perfect.txt").read_text().index("every party member is fully evolved") < (ROOT / "plans" / "outline.perfect.txt").read_text().index("Navigate the Victory Road"))
