@@ -1383,10 +1383,16 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         c = Candidate(key=f"{f['x']},{f['y']}", kind="frontier",
                       x=f["x"], y=f["y"], status="unlooked", by_water=True)
         c.n = int(f.get("d") or 0)
-        c.note = ("across the WATER — no walk reaches it, but a party "
-                  "Pokemon knows SURF: {\"op\":\"walk_to\",\"x\":%d,"
-                  "\"y\":%d,\"surf\":true} rides there, and explore "
-                  "rides and sweeps it for you" % (f["x"], f["y"]))
+        if (m.get("seen") or {}).get("surf_badge_missing"):
+            c.note = ("across the WATER — no walk reaches it; a party "
+                      "Pokemon knows SURF, but the menu offers SURF outside "
+                      "battle only once the SOULBADGE is in your case, and "
+                      "it is not there yet")
+        else:
+            c.note = ("across the WATER — no walk reaches it, but a party "
+                      "Pokemon knows SURF: {\"op\":\"walk_to\",\"x\":%d,"
+                      "\"y\":%d,\"surf\":true} rides there, and explore "
+                      "rides and sweeps it for you" % (f["x"], f["y"]))
         out.append(c)
 
     # ---- rank ---------------------------------------------------------
@@ -1549,7 +1555,8 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
     # ...THEN THE FRONTIER ACROSS THE WATER, when someone can ride it (the
     # deed rides there and sweeps; see executor _explore_step, 2026-08-28)
     _fw0 = _m0.get("frontier_water") or []
-    if _fw0 and any(str(mv.get("id") if isinstance(mv, dict) else mv) == "SURF"
+    if _fw0 and not (_m0.get("seen") or {}).get("surf_badge_missing") \
+            and any(str(mv.get("id") if isinstance(mv, dict) else mv) == "SURF"
                     for mon in (obs.get("party") or [])
                     for mv in (mon.get("moves") or [])):
         _f = _fw0[0]
@@ -2403,13 +2410,17 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     _knows_surf = any(str(mv.get("id") if isinstance(mv, dict) else mv) == "SURF"
                       for mon in (obs.get("party") or [])
                       for mv in (mon.get("moves") or []))
+    _surf_shut = bool((m.get("seen") or {}).get("surf_badge_missing"))
+    _ride_words = ("explore rides to the nearest and sweeps from there"
+                   if not _surf_shut else
+                   "the menu offers SURF outside battle only once the "
+                   "SOULBADGE is in your case, so the ride waits on that")
     _done_lead = (". EVERYTHING YOU CAN REACH HERE IS DONE — but " if not _fr and not (_fw and _knows_surf)
                   else (f". Everything you can reach ON FOOT here is done, but the "
                         f"WATER you can ride from here has "
                         f"{int((m.get('seen') or {}).get('frontier_water_n') or len(_fw))} "
                         f"spot(s) where its seen ground ends, the nearest at "
-                        f"({_fw[0].get('x')},{_fw[0].get('y')}) — explore rides "
-                        f"to the nearest and sweeps from there — and ")
+                        f"({_fw[0].get('x')},{_fw[0].get('y')}) — {_ride_words} — and ")
                   if not _fr else ". Everything ON SCREEN here has been worked, and "
                        "ground you can walk to from here has NEVER BEEN ON "
                        "SCREEN (the spot(s) above; explore walks to the "
@@ -2599,8 +2610,7 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                      "the WATER you can ride from here has "
                      f"{int((m.get('seen') or {}).get('frontier_water_n') or len(_fw))} "
                      f"spot(s) where its seen ground ends, the nearest at "
-                     f"({_fw[0].get('x')},{_fw[0].get('y')}) — explore rides "
-                     "to the nearest and sweeps from there")
+                     f"({_fw[0].get('x')},{_fw[0].get('y')}) — {_ride_words}")
         head += ((". NOTHING HERE IS UNTRIED OR UNPRESSED" if not (_fw and _knows_surf) else "")
                  + (" — and this is a CORNER of "
                     + str((m.get("id") or "this map")) + ": "

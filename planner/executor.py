@@ -2728,9 +2728,19 @@ class Executor:
         # Pokemon knows SURF and the shim lists spots where seen ground
         # ends across the water, ride to the nearest and sweep from there.
         _fw = _m.get("frontier_water") or []
+        # ...AND THE BADGE THAT LETS YOU. The party menu offers SURF outside
+        # battle only with the SOULBADGE in the case; a POLIWAG learned it
+        # in Cerulean with four badges (2026-09-08), and without this gate
+        # every explore round on a map with water would have ridden into
+        # the game's refusal and swept nothing. The ledger says why.
+        _surf_shut = ((_m.get("seen") or {}).get("surf_badge_missing")
+                      or ("SOULBADGE" not in (obs.get("badges") or [])))
+        if _fw and self._knows_move(obs, "SURF") and _surf_shut:
+            self.log("explore_step", subgoal=sg.get("id"), step="ride_shut",
+                     badge="SOULBADGE", frontier_water=len(_fw))
         if (_fw and not _params.get("no_sweep")
                 and _params.get("until") != "doors_only"
-                and self._knows_move(obs, "SURF")):
+                and self._knows_move(obs, "SURF") and not _surf_shut):
             _f0 = _fw[0]
             self.log("explore_step", subgoal=sg.get("id"), step="ride",
                      to=f"{_f0.get('x')},{_f0.get('y')}",
@@ -13411,7 +13421,12 @@ A map-changing op, so it must be the LAST op of your macro),
 {"op":"go","to":AREA} (add "surf":true — like "intent" on grind — to say
 "if the way on is water, get on it"; the harness then finds the water beside
 ground it can reach and uses SURF, and water becomes walkable. Without it,
-water is a wall. walk_to and cross take "surf" the same way.
+water is a wall. walk_to and cross take "surf" the same way, and so does
+sweep: {"op":"sweep","surf":true} mounts the water at the nearest shore
+first and sweeps over water and land alike — explore does this for you,
+riding to where seen ground ends across the water, once a party Pokemon
+knows SURF and the SOULBADGE is in your case; the game's menu offers SURF
+outside battle only then.
 IF YOU HAVE BEEN SOMEWHERE BEFORE, ONE OP TAKES YOU BACK: it walks the whole route — every door, seam and lift ride you actually
 used — in a single action, however many legs it is. AREA as the ledger names
 it, e.g. "POKEMON_TOWER_6F|10,2", or a bare map id like "LAVENDER_TOWN" for

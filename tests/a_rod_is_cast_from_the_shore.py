@@ -37,7 +37,8 @@ ck("the rod is checked against the bag, naming what is held", 'return false, "no
 ck("a rod from the water is refused in the game's own words", "OAK: This isn't the time to use that!" in fish and "p.surfing" in fish)
 ck("a SUPER_ROD on a map with no group of its own is refused before the walk", 'rdef.perMap' in fish and 'gives the %s nothing' in fish)
 ck("...and never names a species", "GOLDEEN" not in fish and "POLIWAG" not in fish and "MAGIKARP" not in fish)
-ck("the shore is the nearest reachable cell beside seen water", "seen_reach(G)" in fish and "real_water(G, map, wx, wy)" in fish and "_gm[wx" in fish)
+shore = sh[sh.index("local function nearest_shore(G)"):sh.index("local function fish_from_shore(G, c)")]
+ck("the shore is the nearest reachable cell beside seen water", "local bx, by, bland = nearest_shore(G)" in fish and "seen_reach(G)" in shore and "real_water(G, map, wx, wy)" in shore and "_gm[wx" in shore)
 ck("it walks there and faces the water", "OPS.walk_to(G, { x = bland[1], y = bland[2]" in fish and "if p.facing ~= bland[3] then U.tap(G, bland[3])" in fish)
 ck("a cast is the bag's own USE, not a party picker", "bag_use(G, rod)" in fish and "PartyMenu" not in fish)
 ck("a bite stops at the battle and says so", "(t.enemy or t.kind) then break" in fish and "a battle began" in fish)

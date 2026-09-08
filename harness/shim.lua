@@ -1093,6 +1093,15 @@ local function seen_filter(G, o)
       for _, f in ipairs(fw) do
         if not onfoot[f.x .. "," .. f.y] then front_water[#front_water + 1] = f end
       end
+      -- KNOWING SURF IS NOT BEING ALLOWED TO. The party menu lists SURF
+      -- outside battle only with the SOULBADGE in the case (PartyMenu
+      -- .surf gate), and the run met that order backwards: a POLIWAG
+      -- learned SURF in Cerulean with four badges (2026-09-08). Listing
+      -- the water frontier is still right — the ground is there — but
+      -- the page and the picker must know the ride is shut for now.
+      if not ((G.save or {}).inventory or {}).SOULBADGE then
+        m.seen.surf_badge_missing = "SOULBADGE"
+      end
     end
   end
   local function near(x, y)
@@ -9738,6 +9747,42 @@ end
 -- every wild. WHICH rod, WHETHER to fish and WHAT to keep stay the
 -- model's; the harness finds the shore, faces the water and works the bag.
 local RODS = { OLD_ROD = true, GOOD_ROD = true, SUPER_ROD = true }
+
+-- THE SHORE: the nearest cell you can walk to with seen water beside it.
+-- Returns the water cell, then { land_x, land_y, facing }, or nil and a
+-- reason. Shared by the rod (cast from here) and sweep's surf= (mount here).
+local function nearest_shore(G)
+  local ow = G.overworld
+  local p, map = ow.player, ow.map
+  local reach = seen_reach(G) or {}
+  local _gm = SEEN[map.id] or {}
+  local bx, by, bland, bd
+  for k in pairs(reach) do
+    local sx, sy = k:match("^(-?%d+),(-?%d+)$")
+    sx, sy = tonumber(sx), tonumber(sy)
+    if sx then
+      for dn, d in pairs(DIRS) do
+        local wx, wy = sx + d[1], sy + d[2]
+        if map:inBounds(wx, wy) and _gm[wx .. "," .. wy]
+           and real_water(G, map, wx, wy) then
+          local dd = math.abs(sx - p.cellX) + math.abs(sy - p.cellY)
+          if not bd or dd < bd then
+            bd, bx, by, bland = dd, wx, wy, { sx, sy, dn }
+          end
+        end
+      end
+    end
+  end
+  if not bx then
+    local _sw, _sh = seen_dims(G, map)
+    local _all = (seen_of(map.id).n or 0) >= _sw * _sh
+    return nil, nil, "no water beside any ground you can walk to on this map"
+      .. (_all and "" or " — ground you have not looked at may border "
+                         .. "some; explore shows more")
+  end
+  return bx, by, bland
+end
+
 local function fish_from_shore(G, c)
   local ow = G.overworld
   local p, map = ow.player, ow.map
@@ -9781,34 +9826,8 @@ local function fish_from_shore(G, c)
       end
     end
   end
-  -- THE SHORE: the nearest cell you can walk to that has water you have
-  -- seen beside it. The reach set is the same one grind's surf branch reads.
-  local reach = seen_reach(G) or {}
-  local _gm = SEEN[map.id] or {}
-  local bx, by, bland, bd
-  for k in pairs(reach) do
-    local sx, sy = k:match("^(-?%d+),(-?%d+)$")
-    sx, sy = tonumber(sx), tonumber(sy)
-    if sx then
-      for dn, d in pairs(DIRS) do
-        local wx, wy = sx + d[1], sy + d[2]
-        if map:inBounds(wx, wy) and _gm[wx .. "," .. wy]
-           and real_water(G, map, wx, wy) then
-          local dd = math.abs(sx - p.cellX) + math.abs(sy - p.cellY)
-          if not bd or dd < bd then
-            bd, bx, by, bland = dd, wx, wy, { sx, sy, dn }
-          end
-        end
-      end
-    end
-  end
-  if not bx then
-    local _sw, _sh = seen_dims(G, map)
-    local _all = (seen_of(map.id).n or 0) >= _sw * _sh
-    return false, "no water beside any ground you can walk to on this map"
-      .. (_all and "" or " — ground you have not looked at may border "
-                         .. "some; explore shows more")
-  end
+  local bx, by, bland = nearest_shore(G)
+  if not bx then return false, bland end
   if p.cellX ~= bland[1] or p.cellY ~= bland[2] then
     OPS.walk_to(G, { x = bland[1], y = bland[2], max_steps = c.max_steps or 200 })
     if G.stack:top() ~= ow then return true, "battle en route to the shore" end
@@ -11467,6 +11486,42 @@ function OPS.sweep(G, c)
   end
   if next(wants) == nil then wants.anything_new = true end
   local budget = tonumber(c.steps) or tonumber(c.max_steps) or 300
+  -- SWEEP THE WATER. While the player is afloat the reach set already
+  -- includes water (seen_reach reads p.surfing), so a sweep begun on the
+  -- water follows it; what was missing was a way to BEGIN one there
+  -- (user, 2026-09-08: "can sweep be run with surf?"). surf=true mounts
+  -- first: the game's own gate answers (SURF known, SOULBADGE held), the
+  -- nearest shore is where fish_from_shore casts from, and the ride onto
+  -- the water is field_move's — then the ordinary sweep runs, over water
+  -- and land alike, and stepping ashore dismounts as it does for you.
+  if c.surf and not p.surfing then
+    local knows = false
+    for _, mon in ipairs((G.save or {}).party or {}) do
+      for _, mv in ipairs(mon.moves or {}) do
+        if tostring(type(mv) == "table" and mv.id or mv) == "SURF" then
+          knows = true
+        end
+      end
+    end
+    if not knows then
+      return false, "no party Pokemon knows SURF, so the water here cannot "
+        .. "be swept"
+    end
+    local bx, by, bland = nearest_shore(G)
+    if not bx then return false, bland end
+    if p.cellX ~= bland[1] or p.cellY ~= bland[2] then
+      OPS.walk_to(G, { x = bland[1], y = bland[2], max_steps = 200 })
+      if G.stack:top() ~= ow then return true, "battle en route to the shore" end
+      if p.cellX ~= bland[1] or p.cellY ~= bland[2] then
+        return false, ("couldn't reach the shore at (%d,%d) — stopped at (%d,%d)")
+          :format(bland[1], bland[2], p.cellX, p.cellY)
+      end
+    end
+    local ok2, why2 = OPS.field_move(G, { move = "SURF", x = bx, y = by })
+    if not ok2 or not p.surfing then
+      return false, "could not get onto the water: " .. tostring(why2)
+    end
+  end
   seen_paint(G)
   local mask = seen_of(map0)
   local before, nbefore = {}, 0
