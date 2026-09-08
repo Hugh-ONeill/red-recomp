@@ -9798,12 +9798,23 @@ function OPS.grind(G, c)
           .. "Pokemon knows SURF."
       end
       if any_ground then
+        -- ...AND WHAT STANDS BETWEEN. "The walking to do is toward there"
+        -- with a regrown bush across the only way sent the run walking at
+        -- a wall (Route 16, the north strip's grass behind the (34,9) bush;
+        -- run 16, 2026-09-08). Same list the walk refusals give: what
+        -- stands at the edge of the ground you can reach, nearest first.
+        local _rc2 = seen_reach(G) or {}
+        local _bb = bushes_blocking(G, ngx, ngy, _rc2)
         return false, ("this map HAS " .. ground .. ", but none of it is "
           .. "reachable from where you stand — the nearest lies at ("
           .. tostring(ngx) .. "," .. tostring(ngy) .. "), "
           .. tostring(ngd) .. " tile(s) from you in a straight line. The "
           .. "part of the map you are in has none, so the walking to do "
-          .. "is toward there." .. extra)
+          .. "is toward there."
+          .. (#_bb > 0 and (" Standing between the ground you can reach and "
+                            .. "the rest of this map: " .. table.concat(_bb, ", ")
+                            .. ".") or "")
+          .. extra)
       end
       local _sw, _sh = seen_dims(G, map)
       local _all = (seen_of(map.id).n or 0) >= _sw * _sh
