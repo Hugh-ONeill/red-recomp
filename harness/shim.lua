@@ -5294,7 +5294,7 @@ function OPS.walk(G, c)
   return walk(G, c.dir, c.steps or 1)
 end
 
-function OPS.walk_to(G, c)
+local function walk_to_body(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close: "
       .. _screen_name(G) .. ")"
@@ -5376,6 +5376,9 @@ function OPS.walk_to(G, c)
   -- the slide put you instead of re-pathing back onto it for ever.
   local _arrow = spinner_landing(G, ow.map, c.x, c.y) ~= nil
   for _ = 1, (c.max_steps or 200) do
+    if _slope_map and (G.save or {}).onBike then
+      G.input.state["b"] = true       -- the brake, re-held (see OPS.walk_to)
+    end
     settle_slide(G)                   -- let a slide or hop finish first
     if G.stack:top() ~= ow then
       return true, "interrupted (battle or script)"
@@ -5477,6 +5480,37 @@ function OPS.walk_to(G, c)
     end
   end
   return false, "step budget exhausted"
+end
+
+-- A SLOPE IS CLIMBED WITH THE BRAKE ON. Route 17 rolls the bike one cell
+-- south on every poll that finds no d-pad held (OverworldState: the
+-- simulated PAD_DOWN of JoypadOverworld) — and walk_to RELEASES the d-pad
+-- between cells: settle_slide waits for the player to stand still for 12
+-- frames, and on the slope the player is never still with nothing held,
+-- so every cell the held step gained rolled straight back down while the
+-- walk "settled". Run 16 (2026-09-08): three walks to the north gap from
+-- the bottom of the road, "stuck at (10,143)" — the start cell — and the
+-- run took the long way round Kanto. The Route 17 sign says what stops the
+-- roll: "Press the A or B Button to stay in place" — the game's own mask
+-- treats a held A or B exactly like a held direction. B is the one that
+-- does nothing else in the overworld, so hold it (input.state only: no
+-- press edge, so no box is ever closed by it) for the whole walk and let
+-- go on the way out. WHERE to walk stays the model's; this is the pedal.
+function OPS.walk_to(G, c)
+  local _brake = false
+  do
+    local ow = G.overworld
+    local mid = ow and ow.map and ow.map.id
+    for _, mm in ipairs(((G.data and G.data.field
+                          and G.data.field.forcedMovement) or {}).slopeMaps
+                        or {}) do
+      if mm == mid and (G.save or {}).onBike then _brake = true end
+    end
+  end
+  if _brake then G.input.state["b"] = true end
+  local ok, why = walk_to_body(G, c)
+  if _brake then G.input.state["b"] = false end
+  return ok, why
 end
 
 -- Give the ground back. An NPC standing where you want to be is a DEADLOCK,
@@ -6301,6 +6335,7 @@ function OPS.cross(G, c)
       .. (bfs_why and (" " .. bfs_why .. ".") or "") .. said
   end
   if p.cellX ~= ex or p.cellY ~= ey then
+    local _wwhy
     for round = 1, 3 do
       -- A STEP BUDGET MUST FIT THE MAP. 200 was fine for a town and is
       -- nothing on Cycling Road: Route 17 is 144 cells tall, so a climb
@@ -6308,8 +6343,17 @@ function OPS.cross(G, c)
       -- walk reported "stuck" having barely moved. Scale it to the
       -- distance actually being walked (and keep a floor for short hops).
       local _need = math.abs((ex or 0) - p.cellX) + math.abs((ey or 0) - p.cellY)
-      OPS.walk_to(G, { x = ex, y = ey, surf = c.surf, blind = c.blind,
-                       max_steps = c.max_steps or math.max(200, _need * 3) })
+      -- KEEP THE WALK'S OWN WORDS. Three walks to the Route 17 gap came
+      -- back and this reported only "stuck at (10,143) — 150 cell(s) of
+      -- walking still to do" (run 16, 2026-09-08): where the player stood
+      -- and how far the gap was, nothing about WHY the walk did not move
+      -- — no path over seen ground, a blocked heading, a step budget.
+      -- walk_to says which; say it too.
+      local _wok, _w = OPS.walk_to(G, { x = ex, y = ey, surf = c.surf,
+                                        blind = c.blind,
+                                        max_steps = c.max_steps
+                                          or math.max(200, _need * 3) })
+      if not _wok and _w then _wwhy = tostring(_w) end
       if (ow.map and ow.map.id) ~= startMap then
         return true, "crossed (mid-walk)"
       end
@@ -6389,9 +6433,10 @@ function OPS.cross(G, c)
         end
       end
       return false, ("couldn't reach %s edge gap (%d,%d), stuck at (%d,%d) "
-        .. "— %d cell(s) of walking still to do%s")
+        .. "— %d cell(s) of walking still to do%s%s")
         :format(tostring(c.dir), ex, ey, p.cellX, p.cellY,
-                math.abs(ex - p.cellX) + math.abs(ey - p.cellY), why2)
+                math.abs(ex - p.cellX) + math.abs(ey - p.cellY), why2,
+                _wwhy and (" — the walk itself said: " .. _wwhy) or "")
     end
   end
   -- WHERE A CROSSING PUT YOU DOWN. `go` reports "now at ROUTE_7|0,2" and
