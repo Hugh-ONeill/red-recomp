@@ -6810,9 +6810,27 @@ function OPS.buy(G, c)
       return false, "no shop clerk here, and no door to a shop counter "
         .. "on this map." .. shop_door_hint(G)
     end
-    if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY,
-                             stop_at_menu = true }) then
-      return false, "couldn't reach the clerk"
+    local _oki, _deti = OPS.interact(G, { x = clerk.cellX, y = clerk.cellY,
+                                          stop_at_menu = true })
+    if not _oki then
+      -- REACHED IS NOT THE SAME AS SELLING. Clerks are picked by name, and
+      -- the Celadon store's 1F desk is staffed by a CLERK who sells nothing:
+      -- the walk arrived, she spoke, no shop opened, and the op said
+      -- "couldn't reach the clerk" — a pathing story, so the model went
+      -- upstairs believing the Poke Ball counter was down here (run 16,
+      -- 2026-09-08). Say which it was, in the interact's own words.
+      local _nm = ((clerk.def or {}).name or "the clerk")
+      local _others = other_counters(all_clerks, clerk)
+      local _d = tostring(_deti or "")
+      if _d:find("said") or _d:find("SPOKE") or _d:find("dialog") then
+        ui_back_out(G)
+        return false, (_nm .. " was reached and spoke, but opened no shop — this "
+          .. "counter sells nothing (" .. _d .. ")"
+          .. (#_others > 0 and ("; other counters on this floor: "
+                                .. table.concat(_others, ", ")) or "")
+          .. shop_door_hint(G))
+      end
+      return false, ("couldn't reach " .. _nm .. (_d ~= "" and (" — " .. _d) or ""))
     end
     if not ui_press_until(G, ui_is_menu, "a", 60) then
       ui_back_out(G)
@@ -6928,9 +6946,27 @@ function OPS.sell(G, c)
       return false, "no shop clerk here, and no door to a shop counter "
         .. "on this map." .. shop_door_hint(G)
     end
-    if not OPS.interact(G, { x = clerk.cellX, y = clerk.cellY,
-                             stop_at_menu = true }) then
-      return false, "couldn't reach the clerk"
+    local _oki, _deti = OPS.interact(G, { x = clerk.cellX, y = clerk.cellY,
+                                          stop_at_menu = true })
+    if not _oki then
+      -- REACHED IS NOT THE SAME AS SELLING. Clerks are picked by name, and
+      -- the Celadon store's 1F desk is staffed by a CLERK who sells nothing:
+      -- the walk arrived, she spoke, no shop opened, and the op said
+      -- "couldn't reach the clerk" — a pathing story, so the model went
+      -- upstairs believing the Poke Ball counter was down here (run 16,
+      -- 2026-09-08). Say which it was, in the interact's own words.
+      local _nm = ((clerk.def or {}).name or "the clerk")
+      local _others = other_counters(all_clerks, clerk)
+      local _d = tostring(_deti or "")
+      if _d:find("said") or _d:find("SPOKE") or _d:find("dialog") then
+        ui_back_out(G)
+        return false, (_nm .. " was reached and spoke, but opened no shop — this "
+          .. "counter sells nothing (" .. _d .. ")"
+          .. (#_others > 0 and ("; other counters on this floor: "
+                                .. table.concat(_others, ", ")) or "")
+          .. shop_door_hint(G))
+      end
+      return false, ("couldn't reach " .. _nm .. (_d ~= "" and (" — " .. _d) or ""))
     end
     if not ui_press_until(G, ui_is_menu, "a", 60) then
       ui_back_out(G)
