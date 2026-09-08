@@ -24,7 +24,8 @@ Defeat Erika for the Rainbow Badge
 Find the Rocket Hideout under the Celadon Game Corner
 Retrieve the Lift Key in the Rocket Hideout
 Defeat Giovanni in the Rocket Hideout for the Silph Scope
-Give a FRESH WATER from the Celadon Department Store roof to the thirsty guard at a Saffron City gate
+Buy a FRESH WATER from the vending machine on the Celadon Department Store roof
+Give the FRESH WATER to the thirsty guard at the Saffron City gate on Route 7
 Rescue Mr. Fuji at the top of the Pokemon Tower and receive the Poke Flute
 Receive the BIKE_VOUCHER from the Pokemon Fan Club chairman in Vermilion City
 Exchange the BIKE_VOUCHER for a BICYCLE at the bike shop in Cerulean City
@@ -41,6 +42,7 @@ Retrieve the Card Key inside Silph Co.
 Rescue the Silph Co. president from Team Rocket
 every party member is at least level 40
 Defeat Sabrina for the Marsh Badge
+Travel through Seafoam Islands from the east side of Route 20 to its west side
 Reach Cinnabar Island
 Retrieve the Secret Key from the Pokemon Mansion
 Defeat Blaine for the Volcano Badge
