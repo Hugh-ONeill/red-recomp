@@ -360,6 +360,7 @@ class Watcher:
             self.emit("info", "leg_start", one_line(r.get("goal")),
                       rev=r.get("rev"))
         elif k == "escalate_start":
+            self.won = 0                 # battles won inside THIS subgoal
             self.emit("info", "subgoal_start", one_line(r.get("goal")),
                       subgoal=sub)
         elif k == "escalate_success":
@@ -376,9 +377,26 @@ class Watcher:
                           f"leg is not converging",
                           subgoal=sub, fails=n)
             else:
-                self.emit("warn", "subgoal_failed",
-                          f"{sub} gave up without reaching its done_when",
-                          subgoal=sub, fails=n)
+                # A LEVEL CURVE IS NOT A STALL. A training step gains what
+                # it can and runs out of rounds, over and over, for as long
+                # as the curve takes: train_gyarados fought 109 wild
+                # battles, took Gyarados from 22 to 33, and was reported
+                # "gave up without reaching its done_when" like a step
+                # standing at a locked door (2026-09-09). A step whose own
+                # battles were WON moved the world in the direction it was
+                # asked to; say so at the level that means "carry on". The
+                # third failure still trips the stalemate alarm above, so a
+                # grind that really is going nowhere stays loud.
+                _won = int(getattr(self, "won", 0) or 0)
+                if _won:
+                    self.emit("info", "subgoal_progress",
+                              f"{sub} ran out of rounds, having won {_won} "
+                              f"battle(s) — it is closer, not stuck",
+                              subgoal=sub, fails=n, won=_won)
+                else:
+                    self.emit("warn", "subgoal_failed",
+                              f"{sub} gave up without reaching its done_when",
+                              subgoal=sub, fails=n)
         elif k == "subgoal_attempt" and int(r.get("attempt") or 1) > 1:
             self.emit("warn", "subgoal_retry",
                       f"{sub} retry {r.get('attempt')}", subgoal=sub)
@@ -418,6 +436,8 @@ class Watcher:
                       f"{r.get('region')}", subgoal=sub)
 
         # battle turns that will not resolve
+        if k == "battle_done" and str(r.get("mode") or "") == "overworld":
+            self.won = int(getattr(self, "won", 0) or 0) + 1
         if k in ("battle_start", "battle_done"):
             self.battle_fails = 0
             self.clear("battle_stuck")
