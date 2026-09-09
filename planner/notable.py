@@ -271,6 +271,9 @@ SIDECARS = {
     "outline_pullbacks":    side_text("plan", "pulled_back"),
     "outline_replays":      side_text("plan", "replayed"),
     "leg_unconfirmed":      side_text("plan", "counted_unconfirmed"),
+    # authoring failed AND the push was refused: the chain steps over the
+    # leg. Found by the ledger-coverage test the day it was written.
+    "outline_unauthored":   side_text("plan", "stepped_over"),
     "outline_pulls_failed": side_text("warn", "pull_failed"),
     "outline_upkeep_missed": side_text("warn", "upkeep_missed"),
     "leg_audit_redo":       side_text("warn", "audit_redo"),
