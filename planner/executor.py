@@ -17195,13 +17195,42 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             if redo or retryable:
                 pass
             elif unreachable and cur and live:
-                trace.append(
-                    f"Do NOT conclude this area is a dead end yet: you can "
-                    f"reach {len(live)} thing(s) here you have never "
-                    f"interacted with ({', '.join(live[:6])}). Something you "
-                    f"can reach but have not touched may BE the obstacle — "
-                    f"picking an item up or moving it can open a way that is "
-                    f"shut. Interact with all of them before leaving.")
+                # A COMPUTER IS NOT A LEVER. This says an untouched thing
+                # "may BE the obstacle — picking an item up or moving it
+                # can open a way that is shut", which is true of items,
+                # people and switches and false of the two fixtures a
+                # player can tell apart at a glance: a PC stores, a sign
+                # reads. Silph 11F could not walk back to its lift, this
+                # fired, and the run dutifully pressed the beauty and the
+                # PC before leaving (user, 2026-09-09: "the elevator op
+                # led it to the computer for some reason ... it can't do
+                # anything there"). Still SAY they are here — a PC is the
+                # answer to a full bag — but never as a way out.
+                _talk = [n for n in live
+                         if str(n) == "PC" or str(n).endswith("_PC")
+                         or str(n).startswith("TEXT_")]
+                _open = [n for n in live if n not in _talk]
+                if _open:
+                    trace.append(
+                        f"Do NOT conclude this area is a dead end yet: you "
+                        f"can reach {len(_open)} thing(s) here you have "
+                        f"never interacted with "
+                        f"({', '.join(str(x) for x in _open[:6])}). "
+                        f"Something you can reach but have not touched may "
+                        f"BE the obstacle — picking an item up or moving it "
+                        f"can open a way that is shut. Interact with all of "
+                        f"them before leaving."
+                        + (f" ({', '.join(str(x) for x in _talk[:4])} "
+                           f"{'is' if len(_talk) == 1 else 'are'} here too, "
+                           f"but a computer stores and a sign reads: neither "
+                           f"opens ground.)" if _talk else ""))
+                else:
+                    trace.append(
+                        f"Everything here that presses has now been tried "
+                        f"except {', '.join(str(x) for x in _talk[:4])}, and "
+                        f"a computer stores while a sign reads — neither "
+                        f"opens ground, so neither is what is stopping you. "
+                        f"The way on is not in this room.")
             elif cur and (unreachable
                           or (not self._untried_exits(cur) and not live
                               and not self._unopened_doors(cur))):
