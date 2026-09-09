@@ -1,3 +1,14 @@
 run/
 run/contract/
 luac.out
+# What the chain writes against a world is not history. A leg plan is
+# authored in front of a party, a bag and a walked graph, and the chain
+# archives every one at its next start; the drafts rung's history and the
+# archive are the same writing, kept on disk to be read, not in git.
+# The outline, the policy and the hand plans stay tracked: banked luck.
+plans/leg_*.json
+plans/drafts/
+plans/archive/
+plans/stale.*/
+plans/shelved/
+__pycache__/
