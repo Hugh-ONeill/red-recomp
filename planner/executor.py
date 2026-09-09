@@ -6560,6 +6560,41 @@ class Executor:
                  times=node[key]["n"])
         self._save_memory()
 
+    def _shut_asked_for_held(self, region, obs) -> str:
+        """A shut way THERE once asked for a thing the bag holds NOW.
+
+        A locked door's refusal is remembered per region ("Darn! It needs a
+        CARD KEY!"), and the LOCAL page reads it back with the conclusion
+        attached: pressed when you held no CARD_KEY, you hold it now, the
+        same press is a different press. From any OTHER floor the same
+        door is only "a way never taken, blocked by nobody", which reads
+        as scenery. Silph 3F's two-tile shutter held 83 cells of that
+        floor, the run carried the Card Key for an hour, and it began ONE
+        round standing on 3F in all that time (user, 2026-09-09: "the
+        thing it needs to do now is take care of the shutters on 3F").
+        Nothing here names a route or a destination: it says which floor
+        holds a lock, and that the key is already in the bag."""
+        bag = (obs or {}).get("bag") or {}
+        if not isinstance(bag, dict) or not bag:
+            return ""
+        said = " ".join(str(x) for x in (self.hints.get(region) or []))
+        if not said:
+            return ""
+        _up = said.upper().replace("é", "E")
+        held = []
+        for item in bag:
+            if int(bag.get(item) or 0) < 1:
+                continue
+            words = str(item).replace("_", " ").upper()
+            if words in _up and item not in held:
+                held.append(item)
+        if not held:
+            return ""
+        return (" — something shut there refused for want of "
+                + ", ".join(held[:2])
+                + ", which your bag holds NOW: that press is a different "
+                  "press than the one the record remembers")
+
     def _unopened_doors(self, obs) -> list:
         """Doors never walked through that a PERSON is standing on.
 
@@ -12213,12 +12248,14 @@ class Executor:
                 elsewhere.append(
                     (rank,
                      f"{region} ({', '.join(sorted(left))} — {len(path)} "
-                     f"leg(s) away, first: {leg} to {fd})"))
+                     f"leg(s) away, first: {leg} to {fd})"
+                     + self._shut_asked_for_held(region, obs)))
             else:
                 elsewhere.append(
                     (rank,
                      f"{region} ({', '.join(sorted(left))} — no walked "
-                     f"route from here)"))
+                     f"route from here)"
+                     + self._shut_asked_for_held(region, obs)))
         # FIELD ITEMS within reach. Computed BEFORE the early return: a
         # dead-end room with no listed exits is exactly where a blocking
         # item sits. pure30 beat the Mt Moon nerd beside two reachable
