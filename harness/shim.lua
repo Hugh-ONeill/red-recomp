@@ -9523,6 +9523,22 @@ function OPS.elevator(G, c)
       U.tap(G, "b"); U.wait(10)          -- a menu closes with B
     end
   end
+  -- A TIMED STATE IS NOT A STUCK BOX: SIT IT OUT. The ride ends in
+  -- ElevatorShake's "pa" phase, which holds while the arrival chime plays
+  -- and then pops ITSELF (src/world/ElevatorShake.lua .musicLoop). The
+  -- loop above budgets from the object's own numbers and can still come
+  -- out the far side while that phase is running, and then the step-out
+  -- below is skipped — it is gated on the overworld being on top — so the
+  -- op answered "you are still IN the car; a screen is STILL up that
+  -- would not close (phase=pa)". The model dutifully spent the next round
+  -- tapping B at a clock, which reported no visible effect every time,
+  -- and the round after that walked out (user, 2026-09-09: "is it still
+  -- actually having the b-press elevator issue or are we just still
+  -- telling it that"). Nothing to press. Wait for the clock, then leave.
+  for _ = 1, 900 do
+    if not _is_fade(G.stack:top()) then break end
+    coroutine.yield()
+  end
   -- ...AND THEN WALK OUT, BECAUSE THAT IS THE SAME INTENT. "Rode to 3F —
   -- you are still IN the car; walk out of its door" made a lift a
   -- THREE-op sequence (ride, close the panel, warp out), and a macro may
@@ -9562,15 +9578,19 @@ function OPS.elevator(G, c)
       :format(tostring(offer[idx] or want), tostring(_here),
               table.concat(offer, ", "))
   end
+  -- ...AND IF IT IS STILL UP, SAY WHAT IT IS. "Would not close" invites a
+  -- keypress; a clock invites patience, and the next op lands on its own.
   return true, ("rode to %s — you are still IN the car; walk out of %s to "
     .. "arrive. This panel offers %s%s")
     :format(tostring(offer[idx] or want),
             #_mine > 0 and ("its door " .. table.concat(_mine, " or "))
               or "its door",
             table.concat(offer, ", "),
-            _stuck and (". A screen is STILL up that would not close ("
-              .. _screen_name(G) .. ") — {\"op\":\"tap\",\"btn\":\"b\"} "
-              .. "before walking out")
+            _stuck and (". A screen is still up ("
+              .. _screen_name(G) .. ") — if it names a phase and a frame "
+              .. "count it is a CLOCK, not a box: nothing answers to a "
+              .. "keypress and it clears itself, so the next op lands. "
+              .. "Send the walk out")
               or "")
 end
 
