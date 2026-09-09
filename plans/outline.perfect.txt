@@ -37,7 +37,6 @@ Retrieve the HM03 from the Secret House in the Safari Zone
 Retrieve the Gold Teeth from the Safari Zone and return them to the Warden for HM04
 a party Pokemon knows SURF
 a party Pokemon knows STRENGTH
-Retrieve the Card Key inside Silph Co.
 Rescue the Silph Co. president from Team Rocket
 every party member is at least level 40
 Defeat Sabrina for the Marsh Badge
