@@ -15647,6 +15647,49 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                 f"without finding a stand "
                                 f"({step['x']},{step['y']}) could be "
                                 f"reached from")
+                # ...AND THE SAME RIDE FOR A DOORWAY. The recross had
+                # three ways in — a walk that found no path, a press by
+                # name, a press by coordinates — and none for the op a
+                # model actually sends at a pad it can SEE and cannot walk
+                # to: use_warp. Silph 7F's unused pads sit in a band the
+                # run cannot reach on foot, so the request was refused for
+                # want of a path and the machinery that had just solved
+                # the Card Key never ran (user, 2026-09-09: "it recognizes
+                # the unused pads on 7F it just needs to get to them a
+                # different way"). The probe is the warp itself, exactly
+                # as the item's probe is the press itself; which doorway
+                # is wanted stays the model's, and standing there is ours.
+                if (op == "use_warp" and step.get("x") is not None
+                        and step.get("y") is not None
+                        and "couldn't reach the warp tile" in det):
+                    def _probe_warp(_st=dict(step)):
+                        _st.pop("op", None)
+                        _r = ((self._send_safe("use_warp", **_st)
+                               or {}).get("result") or {})
+                        return (bool(_r.get("ok")),
+                                self.settle() or None,
+                                str(_r.get("detail") or ""))
+                    _pw = self._pad_recross_for_target(
+                        obs, sg, step["x"], step["y"], probe=_probe_warp)
+                    if _pw is not None:
+                        obs = self.settle() or _pw
+                        _pd2 = str(getattr(self, "_last_pad_detail", "") or "")
+                        trace.append(
+                            f"the doorway at ({step['x']},{step['y']}) could "
+                            f"not be walked to from where you stood, so a way "
+                            f"in you have used before (a door or a pad) was "
+                            f"used again — and from the cell it set you down "
+                            f"on, it could"
+                            + (f": {_pd2[:200]}" if _pd2 else "."))
+                    else:
+                        _rr2 = int(getattr(self, "_last_pad_rides", 0) or 0)
+                        if _rr2:
+                            trace.append(
+                                f"the doorway at ({step['x']},{step['y']}) "
+                                f"could not be walked to, and {_rr2} way(s) "
+                                f"in you have used before were ridden again "
+                                f"to try from where each sets you down; none "
+                                f"of them reached it either")
                 if "cannot afford" in det:
                     trace.append(
                         "That is a MONEY problem, not a route problem — "
