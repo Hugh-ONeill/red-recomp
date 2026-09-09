@@ -3686,6 +3686,55 @@ class Executor:
             return out
         return left
 
+    def _note_warp_looks(self, obs) -> None:
+        """WHAT EACH WAY OUT IS DRAWN AS, kept per map so a floor can be
+        described from somewhere else.
+
+        The shim reads the tile under every warp (warp_look) and the LOCAL
+        ledger says "stairs up (12,1)" — but the REMOTE block, the one that
+        lists floors with ways never taken, had no look to read and called
+        every one of them a doorway. Standing in the lift, the model was
+        told "CELADON_MART_5F has 3 doorway(s): 2 never taken (12,1, 16,1)
+        — plain untried doors", went up, found no door to the roof, and
+        concluded the roof must be a floor the LIFT_KEY unlocks on the
+        panel (run 16, 2026-09-08; user: "previously the sweep listed the
+        two staircases as doorways, maybe thats why it thought there was
+        no obvious way to the roof"). A staircase UP is exactly the fact
+        that answers "how do I get to the roof", and it is on screen.
+        """
+        m = (obs or {}).get("map") or {}
+        mid = m.get("id")
+        if not mid or mid == "None":
+            return
+        looks = getattr(self, "warp_looks", None)
+        if looks is None:
+            looks = self.warp_looks = {}
+        here = looks.setdefault(mid, {})
+        for w in (m.get("warps") or []):
+            x, y, lk = w.get("x"), w.get("y"), str(w.get("look") or "")
+            if x is None or y is None or not lk or lk == "door":
+                continue
+            here[f"{x},{y}"] = lk
+
+    LOOK_WORDS = {"stairs": "stairs/ladder", "ladder": "a ladder",
+                  "stairs_up": "stairs UP", "stairs_down": "stairs DOWN",
+                  "ladder_up": "a ladder UP", "ladder_down": "a ladder DOWN",
+                  "lift": "the lift door", "pad": "a warp pad",
+                  "hole": "a hole"}
+
+    def _look_word(self, mid, key) -> str:
+        """The remembered drawing of one way out, as a phrase, or ""."""
+        lk = (getattr(self, "warp_looks", {}) or {}).get(mid, {}).get(str(key))
+        return self.LOOK_WORDS.get(str(lk or ""), "")
+
+    def _keys_with_looks(self, mid, keys) -> str:
+        """A list of cells, each carrying what it is drawn as."""
+        out = []
+        for k in keys:
+            w = self._look_word(mid, k)
+            out.append(f"{k} ({w})" if w else str(k))
+        return ", ".join(out)
+
     def _note_map(self, obs) -> None:
         """The maps the party has entered, in order — its own path, kept so
         the page can say "since then you have entered ..." about a thing
@@ -3988,6 +4037,7 @@ class Executor:
             self._dry_walks = data.get("dry_walks", {}) or {}
             self.unreached_at = data.get("unreached_at", {}) or {}
             self.switch_seen = data.get("switch_seen", {}) or {}
+            self.warp_looks = data.get("warp_looks", {}) or {}
             self._map_trail = [list(e) for e in (data.get("map_trail", []) or [])
                                if isinstance(e, (list, tuple)) and len(e) == 2]
             self._map_seq = int(data.get("map_seq", 0) or 0)
@@ -4561,6 +4611,7 @@ class Executor:
 
     def _blank_memory(self):
         self.explored, self.dead_ends = {}, {}
+        self.warp_looks = {}          # map -> "x,y" -> what it is drawn as
         self.visits, self.frontier, self.sightings = {}, {}, {}
         self.region_anchors = {}
         self.searched = {}
@@ -4619,6 +4670,7 @@ class Executor:
                  "dry_walks": getattr(self, "_dry_walks", {}),
                  "unreached_at": getattr(self, "unreached_at", {}),
                  "switch_seen": getattr(self, "switch_seen", {}),
+                 "warp_looks": getattr(self, "warp_looks", {}),
                  "map_trail": list(getattr(self, "_map_trail", []) or [])[-40:],
                  "map_seq": int(getattr(self, "_map_seq", 0) or 0),
                  "no_cross": {r: sorted(s)
@@ -11529,19 +11581,21 @@ class Executor:
                     else:
                         parts.append(
                             f"{len(_open)} never taken and on ground you "
-                            f"have stood on ({', '.join(_open[:4])}) — "
-                            f"plain untried doors, {_legs}")
+                            f"have stood on "
+                            f"({self._keys_with_looks(_m, _open[:4])}) — "
+                            f"untried, {_legs}")
                 if _barred:
                     parts.append(
                         f"{len(_barred)} seen from ground you have stood on "
                         f"and never taken, and no walk from there reached "
-                        f"them ({', '.join(_barred[:4])}) — something in "
+                        f"them ({self._keys_with_looks(_m, _barred[:4])}) "
+                        f"— something in "
                         f"between that a walk could not pass; that floor's "
                         f"own page says what"
                         + ("" if _open else f", {_legs}"))
                 if _far:
                     parts.append(f"{len(_far)} on parts you have never stood "
-                                 f"on ({', '.join(_far[:4])})")
+                                 f"on ({self._keys_with_looks(_m, _far[:4])})")
                 return f"{_m} has {_t} doorway(s): " + "; ".join(parts)
             # ...AND THE CUT WAS THE LIE HERE TOO. Three rows, sorted by
             # distance, and no word that there were more: from Vermilion
@@ -14666,6 +14720,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             _arr_snap = (getattr(self, "_arrived", None),
                          getattr(self, "_came_from", None))
             self._note_map(obs)
+            self._note_warp_looks(obs)
             before = self._snapshot(obs)
             traversal = op in ("cross", "walk_to", "use_warp", "grind", "sweep")
             blackout = None
