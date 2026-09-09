@@ -1,42 +1,60 @@
-Retrieve the Town Map from Daisy in Pallet Town	
-Obtain the POTION_SAMPLE	healing a Pokemon outside of a Center
-Battle the Rival in Oak's Lab	leaving Pallet Town
-Collect the OAKS_PARCEL from the clerk at the Viridian City Poke Mart and deliver it to Professor Oak in his lab in Pallet Town	
-Obtain the POKEDEX	tracking caught Pokemon
-Battle the Rival on Route 22	proving strength early in the journey
-Catch a NIDORAN_F	adding a Poison-type to the party
-Defeat trainers in Viridian Forest	access to the path toward Pewter City
-Raise all party members to level 12	the ability to challenge Brock on equal footing
-Obtain TM_BIDE	teaching a Pokemon the move Bide
-Obtain the BOULDERBADGE	stopping wild Pokemon and trainers from fleeing
-Defeat trainers on Route N	further exploration of the area beyond Pewter City
-Obtain the MOON_STONE	evolving certain Pokemon
-Obtain HP_UP	increasing a Pokemon's maximum health
-Obtain TM_MEGA_PUNCH	teaching a Pokemon the move Mega Punch
-Reach Route 4	accessing the path to Cerulean City
-Obtain the HELIX_FOSSIL	the ability to revive an ancient Pokemon
-Defeat the Mt. Moon Super Nerd	completion of the Mt. Moon exploration
-Obtain TM_WATER_GUN	teaching a Pokemon the move Water Gun
-Obtain TOWN_MAP	viewing the current location on a map
-Obtain TM_WHIRLWIND	teaching a Pokemon the move Whirlwind
-Obtain RARE_CANDY	increasing a Pokemon's level instantly
-Obtain TM_THUNDER_WAVE	teaching a Pokemon the move Thunder Wave
-Obtain NUGGET	selling it for a large sum of money
-Obtain the S.S. Ticket	boarding the S.S. Anne
-Obtain ESCAPE_ROPE	exiting caves or dungeons instantly
-Obtain TM_BUBBLEBEAM	teaching a Pokemon the move BubbleBeam
-Obtain MOON_STONE	evolving a Pokemon that requires a Moon Stone
-Chase the Team Rocket thief out of the burgled house in Cerulean City	
-Obtain HELIX_FOSSIL	reviving a prehistoric Pokemon
-Obtain TM_DIG	teaching a Pokemon the move Dig
-Receive the BIKE_VOUCHER from the Pokemon Fan Club chairman in Vermilion City	
-Obtain TM_BODY_SLAM	teaching a Pokemon the move Body Slam
-Obtain HM_CUT	cutting small trees to access new areas
-Obtain TM_THUNDERBOLT	teaching a Pokemon the move Thunderbolt
-Obtain TM_TELEPORT	teaching a Pokemon the move Teleport
-Obtain EEVEE	evolving it into various forms
-Obtain TM_MEGA_DRAIN	teaching a Pokemon the move MegaDrain
-Obtain S_S_TICKET	boarding the S.S. Anne
-Talk to the Game Corner owner to reveal the Rocket Hideout	
-Obtain LIFT_KEY	accessing the elevator in the Rocket Hideout
-Obtain IRON	increasing a Pokemon's Defense stat
+Obtain the POKEDEX	the ability to track caught Pokemon
+Obtain the TOWN_MAP	the ability to view the region map
+Defeat the Rival on Route 22	the path toward Viridian City and Pewter City
+Catch a NIDORAN_F	the ability to utilize Poison-type attacks
+Defeat Viridian Forest trainers	the path deeper into the forest toward Pewter City
+Obtain a CHARMANDER	the ability to use Fire-type attacks
+Take one of the fossils from the deepest floor of Mt. Moon	
+Defeat Brock for the Boulder Badge	
+every party member is at least level 12	
+Obtain a MOON_STONE	the ability to evolve certain Pokemon
+Obtain a RARE_CANDY	the ability to raise a Pokemon's level instantly
+Obtain TM_WATER_GUN	the ability to teach a Pokemon Water Gun
+Obtain TM_BIDE	the ability to teach a Pokemon Bide
+Obtain HP_UP	the ability to increase a Pokemon's maximum HP
+Reach level 22 with Charmeleon	the path toward the level 25 party milestone
+Obtain TM_MEGA_PUNCH	the ability to teach a Pokemon Mega Punch
+Obtain an ESCAPE_ROPE	the ability to exit certain caves or ruins instantly
+Obtain a NUGGET	the ability to gain a large amount of money
+Obtain the S_S_TICKET	the ability to board the S.S. Anne
+Reach level 27 with Charmeleon	the path toward the level 25 party milestone
+Obtain a TOWN_MAP	the ability to view the region's geography
+Obtain a DOME_FOSSIL	the ability to revive a prehistoric Pokemon
+Obtain TM_THUNDER_WAVE	the ability to teach a Pokemon Thunder Wave
+Obtain TM_BUBBLEBEAM	the ability to teach a Pokemon Bubblebeam
+Reach level 28 with Charmeleon	the path toward the level 25 party milestone
+Obtain HM_CUT	the ability to teach a Pokemon Cut
+Obtain TM_BODY_SLAM	the ability to teach a Pokemon Body Slam
+Obtain TM_DIG	the ability to teach a Pokemon Dig
+Reach level 31 with Charmeleon	the path toward the level 25 party milestone
+Defeat Lt. Surge for the Thunder Badge	
+Obtain TM_THUNDERBOLT	the ability to teach a Pokemon Thunderbolt
+Reach level 26 with Nidorina	the path toward the level 25 party milestone
+Reach level 27 with Gloom	the path toward the level 25 party milestone
+Reach Lavender Town by walking south from the Rock Tunnel's south mouth	
+Obtain TOWN_MAP	the ability to view the region map
+Obtain DOME_FOSSIL	the ability to revive a Pokemon at the Cinnabar lab
+Obtain MOON_STONE	the ability to evolve certain Pokemon
+Obtain NUGGET	the ability to gain a large sum of money
+Obtain S_S_TICKET	the ability to board the S.S. Anne
+Reach level 36 with Charizard	the path toward the level 40 party milestone
+Reach level 25 with Eevee	the completion of the level 25 party milestone
+Obtain BOULDERBADGE	the ability to use Flash
+Obtain TM_MEGA_DRAIN	the ability to teach a Pokemon Mega Drain
+Obtain LIFT_KEY	the ability to use the elevator in the Rocket Hideout
+Obtain THUNDERBADGE	the ability to use Thunderbolt
+Obtain TM_RAZOR_WIND	the ability to teach a Pokemon Razor Wind
+Obtain SILPH_SCOPE	the ability to see the true form of ghosts in Pokemon Tower
+Obtain RAINBOWBADGE	the ability to use certain moves outside of battle
+Obtain CASCADEBADGE	the ability to use certain moves outside of battle
+Obtain POKE_FLUTE	the ability to wake Snorlax
+Wake the Snorlax sleeping on Route 12 with the Poke Flute	
+Wake the Snorlax sleeping on Route 16 with the Poke Flute	the path to Fuchsia City
+Reach level 40 with Charizard	progress toward the level 40 party milestone
+Obtain BICYCLE	the ability to travel faster on land
+Obtain HM_FLY	the ability to teach a Pokemon Fly
+a party Pokemon knows STRENGTH	
+Retrieve the Gold Teeth from the Safari Zone and return them to the Warden for HM04	
+Obtain SOULBADGE	the ability to use certain moves outside of battle
+Obtain TM_TOXIC	the ability to teach a Pokemon Toxic
+Obtain HM_SURF	the ability to teach a Pokemon Surf
