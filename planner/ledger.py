@@ -3214,20 +3214,27 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
             # Two balls on the Mansion's B1F, one of them the Secret Key,
             # were pressed and re-pressed against a 20-of-20 bag
             # (2026-08-23).
+            # THE INVITATION COMES FIRST. This led with "not walkable-to
+            # right now" and put the press-it-anyway clause behind a
+            # semicolon, so the discouragement was read and the offer was
+            # not: the Card Key ball on Silph 5F sat two pad-rides away
+            # through six failed subgoals while the run hunted a walking
+            # route (user, 2026-09-09: "move the invitation first"). Say
+            # what to DO, then why it is not obvious.
             _bagfull = len((obs.get("bag") or {})) >= 20
             words = ("lying on the ground, never picked up — "
                      + ("the BAG IS FULL (20 of 20 kinds), so pressing it "
                         "now takes NOTHING and answers \"No more room for "
                         "items!\" — a slot has to be free FIRST"
                         if _bagfull else
-                        "pressing A takes it and it costs nothing")
-                     + ("" if c.reachable else
-                        _reached_before(obs, ex, c.key)
-                        + "; not walkable-to right now, but pressing it is "
-                        "still WORTH SENDING — if a pad or door you have "
-                        "ridden before arrives on this map, the press "
-                        "rides it again and tries from where it sets "
-                        "you down"))
+                        "PRESS IT: pressing A takes it and it costs nothing"
+                        + ("" if c.reachable else
+                           " — and it is WORTH SENDING even though no walk "
+                           "reaches it right now, because if a pad or door "
+                           "you have ridden before arrives on this map, the "
+                           "press rides it again and tries from where it "
+                           "sets you down"))
+                     + ("" if c.reachable else _reached_before(obs, ex, c.key)))
         # NO COUNT IS NOT ZERO. Until _run_traced writes the outcomes
         # ledger, a pressed thing has no per-subgoal count; "pressed 0x"
         # would be a lie in the other direction.
