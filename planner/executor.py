@@ -7667,15 +7667,23 @@ class Executor:
         key0 = (mymap, int(tx), int(ty))
         if key0 in getattr(self, "_pad_recrossed", set()):
             return None
-        cands = self._pad_arrivals(mymap)
+        _spent = {tuple(x) for x in
+                  (getattr(self, "_pad_spent", {}) or {}).get(key0, ())}
+        cands = [c for c in self._pad_arrivals(mymap)
+                 if (str(c[1]), str(c[2])) not in _spent]
         if not cands:
+            # every arrival this map has, has now been spent on this target
+            self._pad_recrossed = (getattr(self, "_pad_recrossed", set())
+                                   | {key0})
             return None
         self._recrossing = True
         rode = 0
+        tried = []
         try:
             for _n, reg, k in cands:
                 if rode >= 3:
                     break                # three arrivals is a fair try
+                tried.append((reg, k))
                 cur = self.b.obs() or obs
                 here = self._where(cur)
                 if here != reg and reg not in AREA_ALIASES.get(here, ()) \
@@ -7748,11 +7756,24 @@ class Executor:
             self._recrossing = False
             self._last_pad_rides = rode
             if rode:
-                # one shot per target per attempt — but only if a ride
-                # actually happened; "nothing was routable from there"
-                # must stay retryable from other ground.
-                self._pad_recrossed = (getattr(self, "_pad_recrossed",
-                                               set()) | {key0})
+                # WHAT WAS SPENT, so the next press RESUMES instead of
+                # starting over. This retired the target as soon as ANY
+                # ride happened, so one sweep — three arrivals, from 3F, 6F
+                # and 7F — spent Silph 5F's Card Key for the whole run, and
+                # every later press of that ball returned at the guard
+                # above and did nothing: the bot stood on 5F naming the
+                # item and sending no op, which reads as refusing to try
+                # (user, 2026-09-09: "it was on 5F thinking about how it
+                # needed to reach the item twice and never went for it
+                # once"). The arrival this function's own docstring calls
+                # the valuable one, 9F's pad taken once, was never among
+                # the three. The guard retires the target only once every
+                # arrival has been spent on it.
+                _sp = getattr(self, "_pad_spent", None)
+                if _sp is None:
+                    _sp = self._pad_spent = {}
+                _sp[key0] = sorted({tuple(x) for x in _sp.get(key0, ())}
+                                   | {(str(r0), str(k0)) for r0, k0 in tried})
         return None
 
     def _shelf_hops(self, sm: str, obs) -> int | None:

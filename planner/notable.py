@@ -383,8 +383,16 @@ class Watcher:
             self.emit("warn", "subgoal_retry",
                       f"{sub} retry {r.get('attempt')}", subgoal=sub)
         elif k == "subgoal_save_failed":
-            self.emit("warn", "save_failed",
-                      f"{sub}: {one_line(r.get('detail'))}", subgoal=sub)
+            # A SAVE THAT SAYS IT SAVED IS NOT A FAILED SAVE. The commonest
+            # detail here is "a box was up and would not close: text: RED
+            # saved the game!" — the box IS the save's own confirmation, so
+            # the write happened and the checkpoint call merely arrived
+            # while it was still on screen. Six of these in one afternoon,
+            # every one benign (2026-09-09). Report it, at the level that
+            # says nothing is wrong.
+            _d = str(r.get("detail") or "")
+            self.emit("info" if "saved the game" in _d else "warn",
+                      "save_failed", f"{sub}: {one_line(_d)}", subgoal=sub)
         elif k == "send_timeout":
             # One of these is weather: 20 of them across the replayed
             # journal, and the run walked on through all 20. A cluster is
