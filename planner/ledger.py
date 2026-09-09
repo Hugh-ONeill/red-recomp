@@ -3229,11 +3229,14 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                         if _bagfull else
                         "PRESS IT: pressing A takes it and it costs nothing"
                         + ("" if c.reachable else
-                           " — and it is WORTH SENDING even though no walk "
-                           "reaches it right now, because if a pad or door "
-                           "you have ridden before arrives on this map, the "
-                           "press rides it again and tries from where it "
-                           "sets you down"))
+                           " — WALKING TO IT IS NOT THE JOB. No walk reaches "
+                           "it, and it does not have to: send the press and "
+                           "the HARNESS rides a pad or door you have already "
+                           "ridden onto this map and presses again from "
+                           "where that sets you down. \"I cannot reach it\" "
+                           "is not a reason to skip it — it is the reason "
+                           "the press exists. One op, and nothing is spent "
+                           "if it fails"))
                      + ("" if c.reachable else _reached_before(obs, ex, c.key)))
         # NO COUNT IS NOT ZERO. Until _run_traced writes the outcomes
         # ledger, a pressed thing has no per-subgoal count; "pressed 0x"
