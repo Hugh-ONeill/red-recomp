@@ -6960,6 +6960,18 @@ intent, said accurately. Do not make it easier, and do not restate
 something you have already finished — you will be asked, and a
 restatement that turns out to be already done is thrown away.
 
+SAY WHAT IS WANTED, NOT HOW IT IS GOT. A rewording may name the thing,
+the place, or the person the run has actually MET; it may not add a
+MECHANISM — who hands the thing over, which floor holds them, what must
+be beaten first — unless the evidence below shows it. That is the part a
+sentence gets wrong most easily, and a wrong mechanism is worse than a
+vague line: the run hunts the person you named instead of looking for the
+thing. "Retrieve the Card Key inside Silph Co." was rewritten to "Obtain
+the Card Key from the Team Rocket executive inside Silph Co." on the
+strength of a memory, and the key was a ball lying on a floor the run had
+already walked past (2026-09-08). If you know only WHAT is wanted, say
+only that.
+
 If the sentence asks for something that is NOT THERE AT ALL — nothing in
 this game does what the line describes, and no accurate restatement of
 the same intent exists — say that. The line is crossed off your list with
