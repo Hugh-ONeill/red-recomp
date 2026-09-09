@@ -6960,6 +6960,11 @@ intent, said accurately. Do not make it easier, and do not restate
 something you have already finished — you will be asked, and a
 restatement that turns out to be already done is thrown away.
 
+A REWRITE IS NOT EVIDENCE FOR ITSELF. If this objective has been
+reworded before, that earlier sentence is another guess of yours, not
+something the run proved; "a previous rewrite already established it" is
+never a reason. Only what the run WALKED, SAW, or was TOLD counts.
+
 SAY WHAT IS WANTED, NOT HOW IT IS GOT. A rewording may name the thing,
 the place, or the person the run has actually MET; it may not add a
 MECHANISM — who hands the thing over, which floor holds them, what must
@@ -6986,6 +6991,23 @@ Reply with ONLY a JSON object, the reason FIRST:
 {"why": "one sentence", "reword": "the objective, said accurately"}   or
 {"why": "one sentence", "reword": null, "void": true}                 or
 {"why": "one sentence", "reword": null}"""
+
+
+def _reverted_wordings() -> set:
+    """Wordings that were put on an objective and then taken back.
+
+    A person reverting a rewrite is making a decision about the world, and
+    the rung has no way to know it happened: the rewording row goes with
+    the revert, so the next ask sees a clean slate and re-applies the same
+    sentence. This file is the memory of that (run/outline_wordings_reverted,
+    one wording per line).
+    """
+    try:
+        return {_norm_obj(l) for l in
+                Path("run/outline_wordings_reverted").read_text().splitlines()
+                if l.strip()}
+    except OSError:
+        return set()
 
 
 def _reword_chain(goal: str) -> list:
@@ -8124,6 +8146,19 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
     if _norm_obj(new) == _norm_obj(goal):
         print("[wording] refused: that is the same sentence",
               file=sys.stderr)
+        return ""
+    # A WORDING TAKEN BACK IS NOT ON OFFER AGAIN. The Card Key leg was
+    # rewritten into "from the Team Rocket executive" (false: it is a ball
+    # on 5F), the wording was restored by hand, and the rung put the
+    # executive back the moment it was asked again — its whole reason being
+    # "a previous rewrite already established" it (2026-09-08). A rewrite
+    # is not evidence for itself, and a sentence a person took off this
+    # objective is a decision, not a draft. Recorded in
+    # run/outline_wordings_reverted (one per line) by whoever takes it back.
+    if _norm_obj(new) in _reverted_wordings():
+        print(f"[wording] refused: {new!r} was tried on this objective and "
+              f"TAKEN BACK — a rewrite is not evidence for itself; the "
+              f"wording stands", file=sys.stderr)
         return ""
     # NO GOING BACK ROUND. Showing the lineage was not enough on its own:
     # the first live use went "Rocket Hideout" -> "Silph Co. building" ->
