@@ -39,6 +39,7 @@ a party Pokemon knows STRENGTH
 Rescue the Silph Co. president from Team Rocket
 every party member is at least level 40
 Defeat Sabrina for the Marsh Badge
+Travel through Seafoam Islands from the east side of Route 20 to its west side
 Reach Cinnabar Island
 Retrieve the Secret Key from the Pokemon Mansion
 Defeat Blaine for the Volcano Badge
