@@ -1,0 +1,94 @@
+{
+  "name": "Gen1_Optimized_Aggressive",
+  "stab": 1.5,
+  "accuracy_weight": true,
+  "prefer_ko": true,
+  "ko_margin": 1.2,
+  "avoid_status_moves": false,
+  "setup": [
+    {
+      "move": "LEER",
+      "max_uses": 1,
+      "first_turns": 2,
+      "min_hp_frac": 0.7,
+      "vs": "trainer",
+      "only_if_best_physical": true
+    }
+  ],
+  "switch": [
+    {
+      "to": 2,
+      "first_turns": 2,
+      "max_uses": 1,
+      "vs": "any",
+      "hp_below": null,
+      "only_if_lead": 1
+    }
+  ],
+  "flee_wild": {
+    "when_traversal": true,
+    "hp_below": 0.2
+  },
+  "battle_items": [],
+  "field_heal": null,
+  "field_cure": [
+    {
+      "status": "PSN",
+      "item": "ANTIDOTE"
+    },
+    {
+      "status": "PAR",
+      "item": "ANTIDOTE"
+    }
+  ],
+  "catch": {
+    "ball": "POKE_BALL",
+    "throw_at_hp_frac": 0.3,
+    "max_balls": 5
+  },
+  "replacement": {
+    "order": "healthiest"
+  },
+  "provenance": {
+    "authored_by": "gemma4:31b-it-q4_K_M",
+    "run": "policyv3",
+    "via": "policy_author",
+    "rounds": 2,
+    "eval": {
+      "rival_wins": 0,
+      "rival_trials": 0,
+      "pewter": 0,
+      "badge": 0,
+      "gauntlet_trials": 3,
+      "blackouts": 0,
+      "agree": 184,
+      "scored": 218,
+      "dmg_gap": 307.0,
+      "rival_detail": [],
+      "gauntlet_detail": [
+        "cleared 3 room(s), stopped in INDIGO_PLATEAU_LOBBY with 6/6 standing",
+        "cleared 3 room(s), stopped in INDIGO_PLATEAU_LOBBY with 6/6 standing",
+        "cleared 2 room(s), stopped in INDIGO_PLATEAU_LOBBY with 6/6 standing"
+      ],
+      "rooms": 8
+    },
+    "baseline_typed_v0": {
+      "rival_wins": 0,
+      "rival_trials": 0,
+      "pewter": 0,
+      "badge": 0,
+      "gauntlet_trials": 3,
+      "blackouts": 0,
+      "agree": 134,
+      "scored": 175,
+      "dmg_gap": 348.0,
+      "rival_detail": [],
+      "gauntlet_detail": [
+        "cleared 3 room(s), stopped in INDIGO_PLATEAU_LOBBY with 6/6 standing",
+        "cleared 3 room(s), stopped in INDIGO_PLATEAU_LOBBY with 6/6 standing",
+        "cleared 2 room(s), stopped in INDIGO_PLATEAU_LOBBY with 6/6 standing"
+      ],
+      "rooms": 8
+    }
+  }
+}

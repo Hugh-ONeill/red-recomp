@@ -12,3 +12,13 @@ plans/archive/
 plans/stale.*/
 plans/shelved/
 __pycache__/
+# Snapshots the scripts take of the outline before a hand edit or at a
+# chain start, the candidate outlines draw_outlines.sh drafts, and the
+# dated leg and archive dirs a hand move leaves behind. The named
+# snapshots already tracked (prePerfect, retired, the perfect outline)
+# stay tracked; ignore rules do not touch a tracked file.
+plans/outline.[0-9]*
+plans/outline.done.[0-9]*
+plans/candidates/
+plans/archive-*/
+plans/legs.*/
