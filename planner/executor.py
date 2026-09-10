@@ -1582,6 +1582,16 @@ class Executor:
         self._ferried: dict = {}            # target -> {region: untried set}
         self.map_doors: dict = {}           # map id -> every doorway seen
         self.map_holes: dict = {}           # map id -> holes seen in its floor
+        # A PANEL SEEN ONCE IS NEVER UNSEEN. The floors a lift serves exist
+        # only on the menu on screen, so the shim learns them by pressing —
+        # and its table is per GAME PROCESS, so every boot forgets them
+        # while the atlas goes on remembering which floors were ridden.
+        # Celadon Mart's car read "the panel lists the floors this lift
+        # serves" and then listed none, on a run that had ridden it eight
+        # times, with 4F the one floor of that building never walked and
+        # the one that sells the stones two party members were waiting on
+        # (2026-09-10).
+        self.lift_floors: dict = {}         # lift map id -> floors on its panel
         self.map_seen: dict = {}            # map id -> max frontier over its regions
         self.region_seen: dict = {}         # region -> frontier count at last look
         self._dry_walks: dict = {}          # region -> explore walks there that swept nothing new
@@ -4476,6 +4486,8 @@ class Executor:
                                in (data.get("map_forced") or {}).items()}
             self.map_holes = {k: sorted(set(v)) for k, v
                               in (data.get("map_holes") or {}).items()}
+            self.lift_floors = {k: list(v) for k, v
+                                in (data.get("lift_floors") or {}).items()}
             self.shut_settings = {k: {k2: sorted(set(v2))
                                       for k2, v2 in (v or {}).items()}
                                   for k, v
@@ -4727,6 +4739,8 @@ class Executor:
                                for k, v in (self.map_doors or {}).items()},
                  "map_forced": {k: sorted(v)
                                 for k, v in (self.map_forced or {}).items()},
+                 "lift_floors": {k: list(v)
+                                 for k, v in (self.lift_floors or {}).items()},
                  "map_holes": {k: sorted(v)
                                for k, v in (self.map_holes or {}).items()},
                  "shut_settings": {k: {k2: sorted(v2)
@@ -12443,11 +12457,38 @@ class Executor:
         # the floors are known (obs.map.lift_floors, learned from the menu
         # on screen, never read ahead), and a car that says what it serves
         # is not an empty room.
-        lift = (m.get("lift_floors") or [])
+        # ...AND REMEMBERED ACROSS BOOTS, because the shim's copy dies with
+        # the game process while the run's atlas keeps the rides.
+        _lmid = str(m.get("id") or "")
+        lift = list(m.get("lift_floors") or [])
+        if lift and _lmid:
+            if not hasattr(self, "lift_floors"):
+                self.lift_floors = {}
+            if self.lift_floors.get(_lmid) != lift:
+                self.lift_floors[_lmid] = lift
+                self._save_memory()
+        elif _lmid:
+            lift = list((getattr(self, "lift_floors", None) or {}).get(_lmid)
+                        or [])
         lift_line = ""
         if lift:
+            # ...AND WHICH OF THEM THIS CAR HAS ACTUALLY CARRIED YOU TO. The
+            # rides are in the atlas as lift:<MAP> edges and the panel's
+            # labels are floor suffixes, so the two are matched by NAME —
+            # the same reading _building does. A floor never ridden is the
+            # only thing in a car that can still be new, and the line that
+            # exists to say a car is never finished with did not say which
+            # part of it was unfinished.
+            _rode = set()
+            for _k in (self.explored.get(self._where(obs)) or {}):
+                if str(_k).startswith("lift:"):
+                    _rode.add(str(_k).split(":", 1)[1].rsplit("_", 1)[-1])
+            _new = [f for f in lift if str(f).upper() not in _rode]
             lift_line = ("\nThe panel in this car offers: "
                          + ", ".join(str(f) for f in lift)
+                         + (" — and this car has never carried you to "
+                            + ", ".join(str(f) for f in _new)
+                            if _new and len(_new) != len(lift) else "")
                          + ". Riding it is the only way to those floors — "
                            "the doors in here lead back where you got on.")
         loot = [_named(o) for o in (m.get("objects") or [])
