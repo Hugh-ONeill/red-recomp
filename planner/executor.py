@@ -14950,6 +14950,19 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             if self._gated(sig, op, step, trace):
                 continue
             pre_obs = obs
+            # ...AND THE LAST VIEW THAT HAD A MAP IN IT. An observation
+            # taken with a question box up reads map.id None, so the
+            # opened-a-way delta below — which needs a BEFORE and an AFTER
+            # on the same map — could not run for the op that answers the
+            # question. Cinnabar's gym quiz is exactly that op: answering
+            # it opens the door to the next room, the round said nothing
+            # about which door, and the run guessed (17,17) and warped
+            # itself out of the gym (2026-09-10, user: "something shunted
+            # it out"). A statue press gets this sentence; a right answer
+            # deserves the same one.
+            if ((pre_obs or {}).get("map") or {}).get("id"):
+                self._last_mapped_obs = pre_obs
+            _pre_mapped = getattr(self, "_last_mapped_obs", None) or pre_obs
             # the door we came in by, as it stood BEFORE this op runs —
             # note_transition rewrites it the moment a warp lands
             _arr_snap = (getattr(self, "_arrived", None),
@@ -16178,6 +16191,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # let what to do about it stay the model's.
             try:
                 _pm = ((pre_obs or {}).get("map") or {})
+                if not _pm.get("id"):
+                    _pm = ((_pre_mapped or {}).get("map") or {})
                 _nm = (obs or {}).get("map") or {}
                 if _pm.get("id") and _pm.get("id") == _nm.get("id"):
                     _was = {f"{w.get('x')},{w.get('y')}"
