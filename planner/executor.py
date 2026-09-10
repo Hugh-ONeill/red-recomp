@@ -13145,11 +13145,26 @@ class Executor:
         then = ((getattr(self, "hints_at", {}) or {}).get(region) or {}).get(line)
         if then is None:
             return line + _tail
+        # A STAMP WRITTEN BEFORE THIS RULE IS A BARE FLAG COUNT; read both.
+        if isinstance(then, dict):
+            _tf = int(then.get("flags") or 0)
+            _tk = set(then.get("keys") or ())
+        else:
+            _tf, _tk = int(then or 0), None
         now = len((obs or {}).get("flags") or [])
-        if now > then:
-            return (f"{line}  (said before {now - then} event(s) that have "
-                    f"fired since){_tail}")
-        return line + _tail
+        _bits = []
+        if now > _tf:
+            _bits.append(f"{now - _tf} event(s) that have fired since")
+        # WHICH key items are new is a FACT about the bag, not a claim that
+        # any of them opens this. The row already says "nothing named yet
+        # as what lifts it", and that stays true.
+        if _tk is not None:
+            _new = sorted(set((obs or {}).get("key_items") or ()) - _tk)
+            if _new:
+                _bits.append("you picked up " + ", ".join(_new[:3]))
+        if not _bits:
+            return line + _tail
+        return f"{line}  (said before {', and before '.join(_bits)}){_tail}"
 
     def _atlas_text(self, here: str | None = None) -> str:
         parts = []
@@ -15357,8 +15372,19 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                         del lst[:-16]
                         if not hasattr(self, "hints_at"):
                             self.hints_at = {}
-                        self.hints_at.setdefault(reg, {})[line] = len(
-                            (obs or {}).get("flags") or [])
+                        # ...AND WHAT WAS IN THE BAG WHEN IT SAID SO. A
+                        # refusal was dated in EVENTS only, and picking up
+                        # a key item fires none — so the one change that
+                        # most obviously lifts a locked door could not move
+                        # this stamp. Cinnabar's gym door said "The door is
+                        # locked..." at 12:33 and the run held the SECRET
+                        # KEY by 16:50 without going back (2026-09-10,
+                        # user: "wait a sec did it try the lock? because it
+                        # has the key now").
+                        self.hints_at.setdefault(reg, {})[line] = {
+                            "flags": len((obs or {}).get("flags") or []),
+                            "keys": sorted((obs or {}).get("key_items") or []),
+                        }
                         self._save_memory()
             self._said_ready = True
             note = f"{op}({','.join(f'{k}={v}' for k, v in step.items())})"
