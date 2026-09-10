@@ -876,7 +876,27 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         oc = outcomes.get(key) or {}
         c.n = int(oc.get("n") or rec.get("n") or 0)
         if oc.get("last"):
-            c.note = str(oc["last"])
+            # A REFUSAL THE RUN HAS SINCE WALKED THROUGH IS NOT THE LAST
+            # WORD. The outcomes book keeps the last outcome recorded for
+            # this tile, and the op that SATISFIES a subgoal ends the
+            # subgoal before its outcome is written — so Cinnabar's gym
+            # door kept "FAILED — you reached the door and it refused to
+            # open ... walking somewhere else and coming back will not
+            # change the answer" on a row that also said "-> CINNABAR_GYM
+            # |16,7 — the door you came in by; taken 1x". The run read
+            # that and went off to unlock a gym it had been inside
+            # (2026-09-10). The words survive on the spoke line, in the
+            # past tense; what is dropped is the stale VERDICT.
+            _last = str(oc["last"])
+            # NOT `_refused`: that name is a module-level function this
+            # file already uses, and binding it here made every later call
+            # read an unbound local (the a_local_is_bound_before_it_is_read
+            # class, caught the moment the test ran).
+            _was_refusal = ("refused to open" in _last
+                            or "will not change the answer" in _last
+                            or "couldn't reach the" in _last)
+            if not (walked and _was_refusal):
+                c.note = _last
         # A DOOR THE GAME HAS ANSWERED IN WORDS IS NOT AN UNTRIED DOOR.
         # The sentence was already kept — against the region, under the
         # bare op name — so the page could quote "The door is locked..."
@@ -3267,8 +3287,23 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                       "box is still open, and pressing it again only asks "
                       "the same question. Answer it with {\"op\":\"menu\","
                       "\"index\":1} for YES or 2 for NO")
+        # ...UNLESS YOU HAVE BEEN THROUGH IT SINCE. A refusal is evidence
+        # right up until the door opens, and then it is history. Cinnabar's
+        # gym door read "-> CINNABAR_GYM|16,7 — the door you came in by;
+        # taken 1x" and then quoted "The door is locked..." twice, one of
+        # them with "walking somewhere else and coming back will not change
+        # the answer" — which the run had just disproved by doing exactly
+        # that. It read its own page and went back to the fossil scientist
+        # to unlock a gym it had already been inside (2026-09-10, user:
+        # "and now it thinks the door is locked still oof").
+        # The words are KEPT, because a door can shut again and what it
+        # said is the run's own record — they are put in the past, where
+        # the destination and the count already are.
+        _went = bool(c.dest) or (c.kind == "door" and (c.n or 0) > 0)
         if getattr(c, "spoke", ""):
-            words += (" — trying it said: \"" + str(c.spoke)[:120] + "\"")
+            words += ((" — before you got through, trying it said: \""
+                       if _went else " — trying it said: \"")
+                      + str(c.spoke)[:120] + "\"")
         # ONLY A TOGGLE IS "PRESSABLE AGAIN". The line was written for the
         # Mansion's statue switches and it invited re-pressing Blaine's
         # quiz machines, which answer once (2026-08-28).
