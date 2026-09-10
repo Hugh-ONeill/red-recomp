@@ -5386,6 +5386,33 @@ class Executor:
         self._touch_mark.setdefault(region, {})[name] = {
             "then": self._world_mark(obs), "n": 0, "at": None}
 
+    def _lever_already_thrown(self, name: str, region: str) -> bool:
+        """A switch statue you have never pressed is not a thing left undone.
+
+        Every statue in one building is one lever (EVENT_MANSION_SWITCH_ON),
+        so the FIRST press did everything a press anywhere in that building
+        can do. The remote lists do not know that: they difference sightings
+        against the names pressed, and a statue on another floor comes back
+        as a thing never touched with a way in still to be found. Run 16
+        read that as an errand and shuttled Mansion 3F <-> 2F for a subgoal,
+        chasing a statue whose press cell no walk reaches — for a press that
+        would only have undone the one it had already made.
+
+        The lever is still offered: the reachable statue on the floor being
+        stood in is a candidate row like any other, and its row now says
+        which way the lever is set. What is dropped is the claim that the
+        OTHER handles are unfinished business somewhere else.
+        """
+        if not str(name).startswith("SWITCH_"):
+            return False
+        _b = _building(region)
+        for _r, _names in (self._tried_objs or {}).items():
+            if _building(_r) != _b:
+                continue
+            if any(str(n).startswith("SWITCH_") for n in (_names or ())):
+                return True
+        return False
+
     def _worth_another_word(self, region: str, obs, backfill=True) -> list:
         """Things pressed HERE, back when the world was something else.
 
@@ -5411,11 +5438,20 @@ class Executor:
         only TOUCH_REOFFERS times per thing per run.
         """
         now = self._world_mark(obs)
+        # A LEVER IS NOT SOMEBODY. This list exists because this game's
+        # PEOPLE say different things once you carry something else or once
+        # an event has fired. A switch statue says one sentence for ever and
+        # does one thing for ever, so every flag that fired anywhere put the
+        # Mansion's statues back on the page as rooms worth walking to — and
+        # walking to one only undoes the last press (2026-09-10).
+        def _re_offerable(n) -> bool:
+            return not str(n).startswith("SWITCH_")
         if not backfill:
             return sorted(
                 n for n, rec in (self._touch_mark.get(region) or {}).items()
                 if isinstance(rec, dict) and rec.get("then") != now
-                and (rec.get("n") or 0) < self.TOUCH_REOFFERS)
+                and (rec.get("n") or 0) < self.TOUCH_REOFFERS
+                and _re_offerable(n))
         # EVERYTHING ALREADY IN THE LIFETIME LEDGER JOINS FROM HERE. The
         # marks are new and the touches are not: 170 things had been pressed
         # before this existed, Daisy among them, and without a backfill they
@@ -5437,6 +5473,8 @@ class Executor:
                 continue                      # nothing has happened since
             if (rec.get("n") or 0) >= self.TOUCH_REOFFERS:
                 continue                      # it has had its chances
+            if not _re_offerable(name):
+                continue                      # a lever, not somebody
             out.append(name)
         return sorted(out)
 
@@ -12464,7 +12502,8 @@ class Executor:
             if region == here:
                 continue
             got = self._tried_objs.get(region, set())
-            left = [n for n in names if n not in got]
+            left = [n for n in names if n not in got
+                    and not self._lever_already_thrown(n, region)]
             if not left:
                 continue
             # nearest first, by the walked graph: a fresh touched ledger
@@ -12493,7 +12532,8 @@ class Executor:
         _far_rooms = []
         for _r, _names in (getattr(self, "seen_far", {}) or {}).items():
             _left = [n for n in (_names or [])
-                     if n not in self._touched_on_map(_r)]
+                     if n not in self._touched_on_map(_r)
+                     and not self._lever_already_thrown(n, _r)]
             if not _left or _r == here:
                 continue
             _p = self._route(here, _r)

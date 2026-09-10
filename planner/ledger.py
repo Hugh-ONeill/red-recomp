@@ -117,6 +117,11 @@ class Candidate:
                                  # doors: the other tiles of this doorway —
                                  # a doorway spans up to four warp tiles
                                  # and is ONE door (_door_groups)
+    toggle: str = ""             # fixtures: this thing is one end of a
+                                 # SHARED lever, and this is how that lever
+                                 # is set right now ("PRESSED"/"UNPRESSED").
+                                 # The Mansion's statues are one switch with
+                                 # four handles (EVENT_MANSION_SWITCH_ON)
 
     def label(self) -> str:
         if self.kind == "seam":
@@ -1201,6 +1206,7 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
         # the tiles on screen are not read as doors gone missing
         c.twins = [f"{t.get('x')},{t.get('y')}"
                    for t in (o.get("twins") or []) if isinstance(t, dict)]
+        c.toggle = str(o.get("toggle") or "")
         seen_names[name] = c
         oc = outcomes.get(name) or {}
         c.n = int(oc.get("n") or 0)
@@ -1292,6 +1298,16 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             # the status words already say "when the world was different";
             # the note is kept for what it actually SAID, if that is known
             c.status = "worth_a_word" if name in again else "touched"
+            # ...BUT A LEVER DOES NOT ANSWER TO WHAT YOU ARE CARRYING.
+            # "worth another word" is a fact about PEOPLE: this game's
+            # people say different things once you hold something else or
+            # once an event has fired. A switch statue says the same
+            # sentence for ever and does the same thing for ever, so the
+            # re-offer was inviting a walk to another floor to press the
+            # other end of a lever already thrown. Run 16 took that
+            # invitation across the Mansion for a whole subgoal.
+            if c.toggle and c.status == "worth_a_word":
+                c.status = "touched"
         else:
             c.status = "unspoken" if kind in ("npc", "trainer") else "untouched"
             if not o.get("reachable"):
@@ -1503,6 +1519,31 @@ def _building(region: str) -> str:
     return _re.sub(r"_(?:B\d+F|\d+F|ROOF|ELEVATOR)$", "", m)
 
 
+
+def _stuck_things(cands: list) -> list:
+    """Things on this floor no walk from here reaches — the ones where the
+    way in is genuinely what is missing.
+
+    A SPARE HANDLE OF A LEVER IS NOT ONE OF THEM. The Mansion's statues all
+    throw the same switch, so when one of them is reachable from where you
+    stand, the other three are not ground to find a way into: whatever
+    pressing them would do can be done from here, this second. Left in,
+    they made explore's first line read "everything you can REACH here is
+    done, but SWITCH_..._10_5 sits where no walk goes — the way in is what
+    is missing, not the thing", about a floor whose reachable statue was
+    three rows further down, and the run went hunting for the way in
+    (2026-09-10).
+
+    When NO statue here is reachable, they stay: the lever really is out of
+    reach from this floor, and that is the honest report.
+    """
+    _stuck = [c for c in cands if c.status == "unreachable"
+              and c.kind not in ("op", "door", "seam")]
+    if any(getattr(c, "toggle", "") and c.reachable for c in cands):
+        _stuck = [c for c in _stuck if not getattr(c, "toggle", "")]
+    return _stuck
+
+
 def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                  target: str | None = None) -> str:
     """What one `explore` step WOULD do from here, in words. Nothing runs.
@@ -1700,8 +1741,7 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
     # two lines below it, still announced "THIS AREA IS FULLY WORKED —
     # nothing new can be found by staying". Same split as the lift car:
     # header fixed, plan_explore left behind.
-    _stuck = [c for c in cands if c.status == "unreachable"
-              and c.kind not in ("op", "door", "seam")]
+    _stuck = _stuck_things(cands)
     # nearest area with something never taken OR never pressed, over
     # walked ground — leaving worked ground for ground that still has
     # something is the whole idea, so both kinds of "something" count
@@ -2464,9 +2504,7 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  "way to where they stand. WHERE THAT WAY STARTS IS NOT "
                  "RECORDED — it may be a corner of this floor you have not "
                  "walked, and it may be another floor entirely")
-    elif fully_worked(cands) and [c for c in cands
-                                  if c.status == "unreachable"
-                                  and c.kind not in ("op", "door", "seam")]:
+    elif fully_worked(cands) and _stuck_things(cands):
         # NOT FINISHED WHILE SOMETHING SITS HERE YOU CANNOT REACH. "FULLY
         # WORKED: nothing here is untried or unpressed" was printed on
         # Silph 5F with two never-picked-up items on the floor, both marked
@@ -2476,8 +2514,7 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # cannot get to is not finished; it is a floor you have not found
         # the way into, which is a different thing to do next. How to get
         # in stays the model's.
-        _stuck = [c for c in cands if c.status == "unreachable"
-                  and c.kind not in ("op", "door", "seam")]
+        _stuck = _stuck_things(cands)
         head += (_done_lead
                  + str(len(_stuck)) + " thing(s) sit on this floor that no "
                  "walk from here reaches ("
@@ -2628,13 +2665,26 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                                      if c.kind != "op"):
         _sw = switches(cands)
         _shut = [c for c in _sw if c.kind == "shut_door"]
-        head += (". Everything here has been pressed at least once, but "
-                 + ("the closed doors" if _shut and len(_shut) == len(_sw)
-                    else "the fixtures and closed doors" if _shut
-                    else "the fixtures")
-                 + f" ({', '.join(c.key for c in _sw[:6])}) "
-                 "can be pressed AGAIN — a room like this can be a puzzle "
-                 "about which, rather than about finding one more thing")
+        # A PUZZLE ABOUT WHICH IS THE WRONG PUZZLE FOR A LEVER. This line
+        # is right about a trash can and a shut door: press one, press
+        # another, and the room is asking which. On the Mansion's statues
+        # it named four tiles of ONE switch and invited exactly the tour
+        # that undoes itself — press upstairs, press downstairs, press
+        # upstairs — with "rather than about finding one more thing"
+        # sealing off the reading that is actually true here, which is
+        # that the way on is somewhere else with the lever as it stands.
+        # The statues keep their own paragraph and their own rows; they
+        # come out of this sentence (2026-09-10).
+        _sw = [c for c in _sw if not getattr(c, "toggle", "")]
+        _shut = [c for c in _sw if c.kind == "shut_door"]
+        if _sw:
+            head += (". Everything here has been pressed at least once, but "
+                     + ("the closed doors" if _shut and len(_shut) == len(_sw)
+                        else "the fixtures and closed doors" if _shut
+                        else "the fixtures")
+                     + f" ({', '.join(c.key for c in _sw[:6])}) "
+                     "can be pressed AGAIN — a room like this can be a puzzle "
+                     "about which, rather than about finding one more thing")
     _holes = m.get("holes") if isinstance(m.get("holes"), list) else []
     if _holes:
         # A HOLE IS NOT IN THE WARP TABLE, so it was in no doorway list and
@@ -3142,7 +3192,31 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                       + "; ".join('"%s" (%dx)' % (k, n) for k, n in
                                   sorted(_sd.items(), key=lambda kv: -kv[1])[:4])
                       + " — its answer changed between presses")
-        if c.kind == "fixture" and c.status in ("touched", "inert", "worth_a_word") \
+        # ONE LEVER, SEVERAL HANDLES, AND THE ROW HAS TO SAY SO. The
+        # header has said "THEY ALL SHARE ONE SETTING" since 2026-08-24,
+        # and the rows underneath went on keeping a separate book for each
+        # tile: pressed 2x here, pressed 1x on the floor below, never
+        # pressed on the floor above. Read together those are four levers,
+        # three of them with tries left, and the run played them that way —
+        # up to press one, down to press another, each press undoing the
+        # last (user, 2026-09-10: "the thing the model has to understand
+        # about the switches is that they are a connected global toggle, so
+        # we should watch out for whatever kind of language we have that
+        # could imply otherwise"). Say it where the count is, not only in
+        # a paragraph a page above it. "it can be pressed again" is TRUE of
+        # a trash can and a lie about a lever: pressing it again is not
+        # another try, it is the opposite move.
+        if c.toggle:
+            words += (" — ONE HANDLE OF A LEVER EVERY SWITCH STATUE IN THIS "
+                      "BUILDING SHARES, and that lever is set to "
+                      + c.toggle + " right now. Pressing ANY statue, on ANY "
+                      "floor, flips that one setting everywhere — so the "
+                      "count above is how often THIS tile was pressed and "
+                      "says nothing about what stands open: a statue you "
+                      "have never pressed is not an untried thing, and "
+                      "pressing a second one puts the first one back. Which "
+                      "walls each setting opens is drawn on the screen")
+        elif c.kind == "fixture" and c.status in ("touched", "inert", "worth_a_word") \
                 and str(c.key).upper().startswith(("SWITCH", "TRASH_CAN")):
             words += " — a fixture; it can be pressed again"
         if c.kind == "shut_door" and c.status in ("touched", "inert",

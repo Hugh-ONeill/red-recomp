@@ -3214,11 +3214,25 @@ local function observe(G, seq, result)
                                { "QUIZ", o.map.quiz_machines } }) do
         for _, _f in ipairs(_pair[2] or {}) do
           o.map.objects = o.map.objects or {}
+          -- ...AND ONE LEVER'S TILES ARE NOT SEPARATE LEVERS. The header
+          -- says the statues share one setting; the ROWS did not, and a
+          -- row is where the choice is made. Each tile carried its own
+          -- press count, so a statue never pressed read as an untried
+          -- thing and one pressed twice read as a thing that had had its
+          -- chances — of a lever that has neither. The state we already
+          -- hold rides on the object, and the ledger says it in the row
+          -- (user, 2026-09-10: "the thing the model has to understand
+          -- about the switches is that they are a connected global
+          -- toggle, so we should watch out for whatever kind of language
+          -- we have that could imply otherwise").
           o.map.objects[#o.map.objects + 1] = {
             x = _f.x, y = _f.y, kind = "fixture",
             name = ("%s_%s_%d_%d"):format(_pair[1], _mid2, _f.x, _f.y),
             reachable = _f.reachable and true or false,
             gate = _f.gate,
+            toggle = (_pair[1] == "SWITCH" and o.map.switches_on ~= nil)
+                     and (o.map.switches_on and "PRESSED" or "UNPRESSED")
+                     or nil,
           }
         end
       end
