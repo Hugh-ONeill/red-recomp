@@ -1474,10 +1474,20 @@ def validate(plan: dict) -> list:
                 # was sent at the one answer that cannot be right, five
                 # rounds running, twice (2026-09-09). A far side is a part
                 # no walk from the way in reaches.
-                _in_parts = [_map_now()] + [
-                    str((x.get("done_when") or {}).get("area") or "")
-                    for x in subs[:_i5] if isinstance(x, dict)
-                    and isinstance(x.get("done_when"), dict)]
+                # EVERY PART OF THAT MAP THE RUN HAS STOOD IN, not just
+                # where it happens to be now. Gathering only the current
+                # region and earlier `area` steps left the list EMPTY for
+                # Seafoam — the run stands inside the caves and the plan's
+                # earlier steps are island floors — so nothing was filtered
+                # and the refusal fired anyway (2026-09-10). The near side
+                # is "any part of this map already walked", and walks are
+                # what join them.
+                _in_parts = ([_map_now()]
+                             + [str((x.get("done_when") or {}).get("area") or "")
+                                for x in subs[:_i5] if isinstance(x, dict)
+                                and isinstance(x.get("done_when"), dict)]
+                             + sorted(r for r in visited_regions()
+                                      if str(r).split("|")[0] == _am))
                 _bad_ex = [pt for pt in _bad_ex
                            if not any(_walk_joined(pt, w) for w in _in_parts if w)]
                 if _bad_ex:

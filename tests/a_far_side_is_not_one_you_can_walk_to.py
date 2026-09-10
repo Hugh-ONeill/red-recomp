@@ -47,6 +47,8 @@ ck("a door does not join two sides", not A._walk_joined("SEAFOAM_ISLANDS_1F|3,2"
 ck("nothing is joined to nothing", not A._walk_joined("", "ROUTE_20|44,2", EX))
 ck("the rule drops an excluded part that is walk-joined to the way in",
    "_bad_ex = [pt for pt in _bad_ex" in src and "if not any(_walk_joined(pt, w) for w in _in_parts if w)]" in src)
+ck("...and the parts compared against are every one of that map the run has walked",
+   "+ sorted(r for r in visited_regions()" in src and 'if str(r).split("|")[0] == _am)' in src)
 ck("the refusal offers new_part instead of another hand-written list",
    'do not list the parts yourself' in src and '{"new_part": "' in src
    and "filled in from the " in src)
