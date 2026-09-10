@@ -11518,6 +11518,40 @@ class Executor:
                 f"What is certain is that this floor has more to it than "
                 f"you have seen, so every region you know here can report "
                 f"nothing left to try and this still be true.")
+            # ...AND A HOLE IS A THIRD WAY, IN NO DOORWAY LIST. The
+            # sentence above is the only place on the page that asks how a
+            # sealed part of a floor is entered, and it offers two answers:
+            # more walking here, or a doorway somewhere else. A hole is
+            # neither. The Mansion's three are the ONLY way into 1F's
+            # basement-stairs room, they were on the page a screen further
+            # down under a heading that reads as trivia, and run 16 spent
+            # twelve rounds of descend_to_mansion_b1f on statues, stairs
+            # and warps without once stepping on one (2026-09-10).
+            # Say it where the question is asked.
+            # WHERE A HOLE LANDS IS STILL NOT SAID. The shim reads the
+            # destination and drops it on purpose ("unwalked ground is not
+            # ours to name, and the same is true of every untried door"),
+            # and that stands: this names a KIND of way in, not a way into
+            # this room, and whether any of them helps is the model's.
+            _bld = _building(mid)
+            _hf = [(_m, len(_hs)) for _m, _hs in
+                   sorted((self.map_holes or {}).items())
+                   if _hs and _m != mid and _building(_m) == _bld
+                   and any(str(_r).split("|")[0] == _m
+                           for _r in (self.explored or {}))]
+            if _hf:
+                floor_note += (
+                    " A HOLE IS A THIRD WAY AND IT IS IN NO DOORWAY LIST: "
+                    + ", ".join(f"{_m} has {_n}" for _m, _n in _hf[:3])
+                    + " hole(s) in "
+                    + ("its" if len(_hf) == 1 else "their")
+                    + " floor, and you have walked "
+                    + ("it" if len(_hf) == 1 else "them")
+                    + ". Stepping onto a hole drops you through to the "
+                      "floor below it, and where it sets you down is not a "
+                      "doorway of that floor and is in no list here. "
+                      "Whether any of them opens this part of "
+                    + f"{mid} is not known.")
         # ...AND THE FLOOR BELOW YOU. The note above describes only the map
         # under your feet, so standing on MT_MOON_1F — whose five doorways
         # are all walked — it says nothing, while MT_MOON_B1F one ladder
