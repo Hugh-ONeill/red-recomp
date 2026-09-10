@@ -5170,6 +5170,36 @@ class Executor:
         # the observation, not from this ledger.
         keys = [f"{w.get('x')},{w.get('y')}" for w in (m.get("warps") or [])
                 if w.get("reachable")]
+        # ...AND A DROP IS A WAY OUT, so it belongs in these lists too. A
+        # hole is in no warp table, which is why it was in no doorway row
+        # until today — and this dict is the OTHER half of that: every
+        # REMOTE ranking asks the frontier whether a region still has an
+        # exit never taken. POKEMON_MANSION_3F|1,1 held ['25,14','6,1'],
+        # both taken, with three drop cells on the floor and none of them
+        # here, so from anywhere else that floor read as finished and
+        # explore walked the run out to Route 20 instead (user, 2026-09-10:
+        # "it tries to explore but that shunts it out to rt20 because the
+        # mansion is near fully worked until you get to the basement").
+        #
+        # ONE DROP, ONE KEY, at its first tile — the same key the ledger's
+        # row carries, so what the ranking counts and what the page offers
+        # are the same thing. Reachable ones join the frontier; the rest go
+        # where an unreachable doorway goes, which already exists for
+        # exactly this reason.
+        _drop_ok, _drop_no = [], []
+        _dgrp: dict = {}
+        for _h in (m.get("holes") or []):
+            if isinstance(_h, dict) and _h.get("x") is not None:
+                _dgrp.setdefault(_h.get("drop")
+                                 or f"_{_h.get('x')},{_h.get('y')}",
+                                 []).append(_h)
+        for _hs in _dgrp.values():
+            _hs = sorted(_hs, key=lambda h: (h.get("y") or 0,
+                                             h.get("x") or 0))
+            _dk = f"{_hs[0].get('x')},{_hs[0].get('y')}"
+            (_drop_ok if any(h.get("reachable") for h in _hs)
+             else _drop_no).append(_dk)
+        keys += _drop_ok
         # ...AND THE WAYS OUT NO WALK FROM HERE REACHES, kept apart. Only
         # reachable doorways enter the frontier, so an area holding a way
         # out never taken that no walk reaches counts as having NOTHING
@@ -5180,10 +5210,10 @@ class Executor:
         # there"). Unfinished business of the strongest kind: the ledger's
         # own unreached_ways line already says so about the floor you are
         # standing on; this remembers it per region.
-        _unr = sorted(f"{w.get('x')},{w.get('y')}"
-                      for w in (m.get("warps") or [])
-                      if w.get("x") is not None and not w.get("reachable")
-                      and not w.get("by_water"))
+        _unr = sorted({f"{w.get('x')},{w.get('y')}"
+                       for w in (m.get("warps") or [])
+                       if w.get("x") is not None and not w.get("reachable")
+                       and not w.get("by_water")} | set(_drop_no))
         if not hasattr(self, "unreached_at"):
             self.unreached_at = {}
         _taken_now = set(self._taken_here(here) or {})
