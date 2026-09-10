@@ -2710,7 +2710,22 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         _drops.sort(key=lambda d: (d["y"], d["x"]))
         _holes = _drops
         _hr = [h for h in _holes if h.get("reachable")]
-        _hx = ", ".join(h["label"] for h in _holes[:6])
+        # ...AND WHETHER A WALK FROM HERE REACHES ONE. The shim marks each
+        # drop cell reachable or not and this paragraph read that ONLY to
+        # say "N of them you can walk to", a clause written for a MIXED
+        # floor and skipped in both the all-yes and the all-NO case. All-no
+        # is the case that matters: the run stood in POKEMON_MANSION_3F|5,8
+        # thirteen times, was handed the three drop cells and the walk_to
+        # form to take one, and no walk from that part of the floor reaches
+        # any of them — the other part it has walked does. It never took
+        # one, and the leg failed on the basement three subgoals running
+        # (2026-09-10). The statue paragraph learned this on 2026-08-23 and
+        # says "BUT NO WALK FROM WHERE YOU STAND REACHES THAT PRESS CELL
+        # RIGHT NOW" one clause after the op; drops never got the same.
+        _hx = ", ".join(h["label"]
+                        + ("" if h.get("reachable") or not _hr
+                           else " (no walk from here reaches it)")
+                        for h in _holes[:6])
         # ALL ONE-WAY; TWO PLACEMENTS. The Mansion's drops sit where a
         # doorway would and are exits to another floor (3F's go to 1F and
         # 2F, so "the floor below" was an over-claim); Seafoam's and Victory
@@ -2723,7 +2738,9 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                  + (" (a + joins the tiles of ONE drop wider than one cell)"
                     if any(h["wide"] > 1 for h in _holes) else "")
                  + (f" — {len(_hr)} of them you can walk to"
-                    if _hr and len(_hr) != len(_holes) else "")
+                    if _hr and len(_hr) != len(_holes) else
+                    " — BUT NO WALK FROM WHERE YOU STAND REACHES ANY OF "
+                    "THEM RIGHT NOW" if not _hr else "")
                  + ". A drop is not a doorway and takes no use_warp: you "
                  "step ONTO it and are taken to another floor, and there is "
                  "no climbing back up it. {\"op\":\"walk_to\",\"x\":N,"
