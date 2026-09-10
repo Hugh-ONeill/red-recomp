@@ -6109,6 +6109,12 @@ class Executor:
         """Record: from this area, that exit led there."""
         src, dst = self._where(before_obs), self._where(after_obs)
         if "None" in src or "None" in dst:
+            # SAY SO. Every other guard below logs the edge it refuses; this
+            # one dropped a real crossing in silence, and silence is why a
+            # deliberate walk onto a drop taught the atlas nothing and left
+            # no trace of having taught it nothing (2026-09-10).
+            self.log("transition_dropped_no_region", frm=src, to=dst,
+                     via=str((step or {}).get("x", (step or {}).get("dir"))))
             return
         # WHERE THE OP SAYS IT ARRIVED BEATS WHERE WE ENDED UP STANDING.
         # `dst` is read after settling, so anything that moved the party
@@ -13464,7 +13470,26 @@ class Executor:
             return {}
         for _ in range(12):
             if not obs or obs.get("mode") != "dialog":
-                return self._after_settle(obs)
+                break
+            obs = self._send_safe("wait", frames=6)
+        # ...AND A MAP WITH NO NAME IS NOT A SETTLED STATE EITHER. This rode
+        # out dialog and nothing else, so an observation taken while the
+        # screen is mid-warp came back with map.id None. _where then reads
+        # "None|None" and note_transition returns at its first guard, which
+        # is the one guard that says nothing when it drops an edge.
+        #
+        # Only a DROP lands you there: every other way between maps is a
+        # use_warp or a cross, and both of those settle before the executor
+        # reads. Run 16 walked onto the Mansion drop at (17,14) on purpose
+        # at 15:49:53 and came out on 2F, and the atlas learned nothing at
+        # all — no edge, no visit, no log line. The drop rows still read
+        # "never taken from here" afterwards, so the one thing it had just
+        # proved was the way out was still described to it as untried
+        # (2026-09-10, user: "it should know the way out is through the
+        # hole then").
+        for _ in range(8):
+            if not obs or ((obs.get("map") or {}).get("id")):
+                break
             obs = self._send_safe("wait", frames=6)
         return self._after_settle(obs)
 
