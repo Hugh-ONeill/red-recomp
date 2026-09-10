@@ -5385,6 +5385,22 @@ function OPS.walk(G, c)
   return walk(G, c.dir, c.steps or 1)
 end
 
+-- IS THIS CELL A DROP? MapScripts' own holes list, which is where both
+-- kinds live: the Mansion's three (story6.lua MANSION_HOLES) and Seafoam's
+-- (seafoam.lua writes M[mapId].holes from field.seafoam). Map-keyed and
+-- static, so it can be asked about a map you have just fallen off.
+-- An op needs this to tell "the walk fell through the floor", which is the
+-- drop doing its job, from "some other door fired on the way", which is
+-- not. Nothing here says where a drop lands.
+local function drop_cell(mapid, x, y)
+  local okms, MS = pcall(require, "src.script.MapScripts")
+  local _view = okms and MS.get and MS.get(mapid) or nil
+  for _, h in ipairs((_view and _view.holes) or {}) do
+    if (h[1] or h.x) == x and (h[2] or h.y) == y then return true end
+  end
+  return false
+end
+
 local function walk_to_body(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close: "
@@ -5669,6 +5685,20 @@ function OPS.use_warp(G, c)
   local startMap = ow.map and ow.map.id
   local p = ow.player
   if not (c.x and c.y) then return false, "use_warp needs x,y" end
+  -- A DROP IS NOT A DOORWAY AND TAKES NO use_warp. Drops became rows on
+  -- the page today, and every other row on that list is taken with this
+  -- op, so this is the mistake the new rows invite. The engine has no
+  -- warp there to fire and the walk-and-press path is written for a map
+  -- edge, so without this the op would fail in words about a door, which
+  -- is not what is standing there (2026-09-10).
+  if startMap and drop_cell(startMap, c.x, c.y) then
+    return false, ("(%d,%d) is a one-way DROP, not a doorway: there is no "
+      .. "warp there to use. You take it by WALKING ONTO IT — "
+      .. "{\"op\":\"walk_to\",\"x\":%d,\"y\":%d} — and the floor "
+      .. "gives way on the step that reaches it. There is no climbing "
+      .. "back up afterwards.")
+      :format(c.x, c.y, c.x, c.y)
+  end
 
   -- WHICH DOOR ACTUALLY FIRED. note_transition keys its edge on the tile
   -- we AIMED at, so a walk toward the Day Care door that crosses the Route
@@ -5890,6 +5920,21 @@ function OPS.use_warp(G, c)
     end
     local _nowmap = G.overworld and G.overworld.map and G.overworld.map.id
     if _nowmap ~= startMap then
+      -- ...UNLESS THE CELL ASKED FOR IS A DROP, in which case falling
+      -- through IS arriving. A drop is taken by walking onto it, so the
+      -- walk can never end standing on one: the floor gives way on the
+      -- step that reaches it. Read as "some other door fired", the one op
+      -- that takes a drop reported failure every time it worked — and the
+      -- drops became rows the model can choose today, so this would have
+      -- been the first thing it found behind them (2026-09-10).
+      if _nowmap and startMap and drop_cell(startMap, t.x, t.y) then
+        local _pp = (G.overworld and G.overworld.player) or p
+        return true, ("stepped onto the DROP at (%d,%d) and fell through "
+          .. "it: the map is now %s and you stand at (%d,%d). There is no "
+          .. "climbing back up it")
+          :format(t.x, t.y, tostring(_nowmap or "?"),
+                  _pp.cellX or -1, _pp.cellY or -1) .. THAW_LAST
+      end
       -- the map changed under an attempt that did NOT reach its door:
       -- some other door fired (see crossed() and yield_ground). Not a
       -- success of the op that was asked for, whatever moved the party.

@@ -2728,6 +2728,24 @@ class Executor:
             return False, tr, []
         return False, tr, [dict(step)]
 
+    @staticmethod
+    def _take_exit(c) -> dict:
+        """The op that takes this exit. A DROP IS NOT TAKEN WITH use_warp.
+
+        Every door on the page is taken with one, so explore minted one for
+        whatever it picked. A hole is in no warp table -- that is the whole
+        reason it was in no doorway row until 2026-09-10 -- and it is taken
+        by WALKING ONTO IT. Making drops candidates without this would have
+        handed explore a row it could only fail at, which is a worse page
+        than the one that never offered it. Same rule the pressing side has
+        had since August: the kind is the thing that decides which op
+        reaches it.
+        """
+        _x, _y = (int(v) for v in str(c.key).split(",")[:2])
+        if getattr(c, "look", "") == "hole":
+            return {"op": "walk_to", "x": _x, "y": _y}
+        return {"op": "use_warp", "x": _x, "y": _y}
+
     def _explore_step(self, sg, obs, ignore_done=False):
         """One deterministic frontier expansion, because the model asked.
 
@@ -2955,9 +2973,7 @@ class Executor:
             self.log("explore_step", subgoal=sg.get("id"), step="exit",
                      what=c.key, left=len(exits))
             step = ({"op": "cross", "dir": c.key} if c.kind == "seam"
-                    else {"op": "use_warp",
-                          "x": int(c.key.split(",")[0]),
-                          "y": int(c.key.split(",")[1])})
+                    else self._take_exit(c))
             return _run(step, f"{len(exits)} exit(s) here never taken; "
                               f"taking {c.label()}")
 
@@ -3284,9 +3300,7 @@ class Executor:
                   if c.status == "untried" and c.kind in ("door", "seam")]
         def _there(c):
             step = ({"op": "cross", "dir": c.key} if c.kind == "seam"
-                    else {"op": "use_warp",
-                          "x": int(c.key.split(",")[0]),
-                          "y": int(c.key.split(",")[1])})
+                    else self._take_exit(c))
             ok, t2, cl = _run(step, f"taking {c.label()} there")
             return ok, tr + t2, cl
 

@@ -1128,6 +1128,57 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             _folded.append(surv)
         out = _folded
 
+    # ---- exits: drops -------------------------------------------------
+    # A DROP IS A WAY OUT AND IT WAS IN NO LIST OF WAYS OUT. A hole is in
+    # no warp table, so it was in no doorway row, so nothing that ranks
+    # exits could ever pick one: not `unreached_ways`, not "is this area
+    # finished", not explore. Standing on POKEMON_MANSION_3F with two
+    # never-taken drops beside it, explore's first line sent the run to
+    # another floor to press a diary — and those drops are the only way
+    # into the sealed room 1F's basement stairs stand in. Leg 40 failed on
+    # the basement through four subgoals and two replans (2026-09-10;
+    # user: "yeah build it, make the drops real candidates").
+    #
+    # The paragraph in the header stays: it says what a drop IS. This is
+    # the row where the choice is made. Where a drop LANDS is still not
+    # said until one has been taken — the shim reads the destination out
+    # of the engine's table and drops it on purpose, and `dest` here is
+    # the walked atlas, the same source every other exit's is.
+    _hcells = [h for h in (m.get("holes") or []) if isinstance(h, dict)]
+    if _hcells:
+        _have = {c.key for c in out if c.kind == "door"}
+        _hg: dict = {}
+        for h in _hcells:
+            _hg.setdefault(h.get("drop") or f"_{h.get('x')},{h.get('y')}",
+                           []).append(h)
+        for _hs in _hg.values():
+            # ONE DROP CAN BE WIDER THAN ONE CELL, the same as a doorway:
+            # the shim stamps adjacent same-destination cells with one
+            # group id, and the tiles ride along as twins so the screen is
+            # not read as two exits.
+            _hs = sorted(_hs, key=lambda h: (h.get("y") or 0, h.get("x") or 0))
+            _keys = [f"{h.get('x')},{h.get('y')}" for h in _hs]
+            if any(k in _have for k in _keys):
+                continue          # already a doorway in the warp table
+            c = Candidate(key=_keys[0], kind="door",
+                          x=_hs[0].get("x"), y=_hs[0].get("y"))
+            c.look = "hole"
+            c.twins = _keys[1:]
+            c.reachable = any(h.get("reachable") for h in _hs)
+            for k in _keys:
+                _oc = outcomes.get(k) or {}
+                c.n += int(_oc.get("n") or (taken.get(k) or {}).get("n") or 0)
+                c.dest = c.dest or ex._walked_dest(mid, k)
+                if _oc.get("last") and not c.note:
+                    c.note = str(_oc["last"])
+            if not c.reachable:
+                c.status = "unreachable"
+            elif c.dest or c.n:
+                c.status = "taken"
+            else:
+                c.status = "untried"
+            out.append(c)
+
     # ---- exits: seams -------------------------------------------------
     for d in (m.get("connections") or {}):
         rec = taken.get(d) or {}
@@ -3258,9 +3309,18 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                      "party Pokemon knows SURF, and from the water, water "
                      "is walkable")
         if c.kind == "door" and getattr(c, "look", "") == "hole":
-            words = ("a HOLE in the floor: stepping on it DROPS you to the "
-                     "floor below and there is no climbing back up it, so "
-                     "it is a way DOWN and never a way back — " + words)
+            # ...AND IT IS THE ONE EXIT ON THE PAGE THAT TAKES NO use_warp.
+            # Every other door row is taken with one, and explore mints one
+            # for whatever it picks; a drop is taken by WALKING ONTO IT.
+            # Now that a drop is a row like any other, the row has to carry
+            # its own op or the list is a trap (2026-09-10).
+            # "THE FLOOR BELOW" WAS AN OVER-CLAIM and the header stopped
+            # making it: the Mansion's 3F drops land on 1F and on 2F.
+            words = ("a HOLE in the floor, and NOT a doorway — it takes no "
+                     "use_warp: {\"op\":\"walk_to\",\"x\":N,\"y\":N} onto "
+                     "it is how it is taken. Stepping on it DROPS you to "
+                     "another floor and there is no climbing back up it, "
+                     "so it is a way DOWN and never a way back — " + words)
         if c.kind == "shut_door" and getattr(c, "now_held", None):
             _tw = [t for t in (getattr(c, "twins", None) or []) if t]
             words = ("a CLOSED DOOR, drawn shut across the way"
