@@ -985,8 +985,32 @@ def build(ex, obs: dict, target: str = "", outcomes: dict | None = None,
             _fr = [str(x) for x in (w.get("from") or []) if x]
             _sp = int(w.get("stood_parts") or 0)
             if _fr:
+                # ...AND WHETHER ANY WALK GETS YOU BACK THERE. This names a
+                # part of the floor the run has stood in that reaches the
+                # thing, and says nothing about how to return to it — so on
+                # POKEMON_MANSION_1F the row read "the ground you stood on
+                # in POKEMON_MANSION_1F|12,14 DOES reach it" about the
+                # basement stairs, the model asked to go there, and go
+                # answered "no walked way ... is known". Three rounds, the
+                # same proposal (2026-09-10). The only way into that part is
+                # a DROP from the floor above, and a drop taught the atlas
+                # nothing until this morning.
+                #
+                # The run's own graph settles it: if no exit it has ever
+                # taken lands in that region, `go` cannot replay a route to
+                # it, whatever the visit counter says. Say so where the
+                # invitation is. HOW to get in is still the model's.
+                _lands = any(str((_e or {}).get("to")) == _fr[0]
+                             for _es in (getattr(ex, "explored", {})
+                                         or {}).values()
+                             for _e in (_es or {}).values())
                 c.note = _join(c.note, "the ground you stood on in "
-                               + ", ".join(_fr[:2]) + " DOES reach it")
+                               + ", ".join(_fr[:2]) + " DOES reach it"
+                               # SHORT, because the note is bounded and the
+                               # first version was cut mid-clause by render
+                               + ("" if _lands else
+                                  " — but NO exit you have taken LANDS there, "
+                                  "so go cannot get you back to it"))
             elif _sp:
                 # ...UNLESS THE RECORD SAYS A PART OF THIS FLOOR TOOK IT. The
                 # reach test is the ground as it stands now; the door on
