@@ -1474,22 +1474,19 @@ def validate(plan: dict) -> list:
                 # was sent at the one answer that cannot be right, five
                 # rounds running, twice (2026-09-09). A far side is a part
                 # no walk from the way in reaches.
-                # EVERY PART OF THAT MAP THE RUN HAS STOOD IN, not just
-                # where it happens to be now. Gathering only the current
-                # region and earlier `area` steps left the list EMPTY for
-                # Seafoam — the run stands inside the caves and the plan's
-                # earlier steps are island floors — so nothing was filtered
-                # and the refusal fired anyway (2026-09-10). The near side
-                # is "any part of this map already walked", and walks are
-                # what join them.
-                _in_parts = ([_map_now()]
-                             + [str((x.get("done_when") or {}).get("area") or "")
-                                for x in subs[:_i5] if isinstance(x, dict)
-                                and isinstance(x.get("done_when"), dict)]
-                             + sorted(r for r in visited_regions()
-                                      if str(r).split("|")[0] == _am))
+                # WHERE THE RUN WENT IN, and nothing wider. Comparing
+                # against EVERY walked part of the map (tried 2026-09-10)
+                # disabled this rule outright: a part is walk-joined to
+                # ITSELF, so every candidate filtered itself out — and the
+                # far side of Route 20 is walk-joined to the OTHER far
+                # part, so even without the self-join it read as near.
+                _in_parts = [_map_now()] + [
+                    str((x.get("done_when") or {}).get("area") or "")
+                    for x in subs[:_i5] if isinstance(x, dict)
+                    and isinstance(x.get("done_when"), dict)]
                 _bad_ex = [pt for pt in _bad_ex
-                           if not any(_walk_joined(pt, w) for w in _in_parts if w)]
+                           if not any(_walk_joined(pt, w)
+                                      for w in _in_parts if w and w != pt)]
                 if _bad_ex:
                     _pt = _bad_ex[0]
                     _door, _flr = next(((d, f) for pt, d, n, f in _co_a if pt == _pt), ("?", _from5 or "inside"))
@@ -1868,6 +1865,13 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
     # nothing and the run walks straight past it. It came up as the finish
     # line for "defeat the Rocket boss" and for Giovanni: two fights that
     # would have counted as won without being fought.
+    # ...AND A NEW PART THAT EXCLUDES EVERY KNOWN ONE (see
+    # new_part_exhausted): the frozen form is map + not_area, so this is
+    # checked after freeze_new_parts has run.
+    if isinstance(dw.get("not_area"), list) and dw.get("map"):
+        _npe = new_part_exhausted(dw, str(dw.get("map")))
+        if _npe:
+            probs.append(f"{tag} ({sid}) {_npe}")
     if set(dw) == {"no_battle"}:
         probs.append(f"{tag} ({sid}) no_battle alone is true whenever you "
                      f"are not fighting, so it marks nothing — name what "
@@ -7042,6 +7046,36 @@ Reply with ONLY a JSON object, the reason FIRST:
 {"why": "one sentence", "reword": "the objective, said accurately"}   or
 {"why": "one sentence", "reword": null, "void": true}                 or
 {"why": "one sentence", "reword": null}"""
+
+
+def new_part_exhausted(dw, mp: str) -> str:
+    """A NEW PART CANNOT BE DEMANDED WHEN EVERY KNOWN ONE IS EXCLUDED.
+
+    `new_part` freezes into the map plus a not_area of every part the run
+    has stood in, which is right while some part of that map is still
+    unwalked. Once the run has stood on all of them the condition can only
+    be met by ground nobody has seen yet — and the step spends its rounds
+    proving that. Route 20, 2026-09-10: four parts walked, all four
+    excluded, and the leg asked for a fifth (user: "i think its used the
+    'new area rt 20' but theres no new area to find"). This does not claim
+    a fifth cannot exist — unseen ground may hold one — it says what IS
+    known, and names the parts this run reached from inside a place, which
+    is where a far side usually is. It points at nothing: every part named
+    is one the run walked itself.
+    """
+    na = dw.get("not_area") if isinstance(dw.get("not_area"), list) else []
+    if not na or not mp:
+        return ""
+    walked = sorted(r for r in visited_regions() if str(r).split("|")[0] == mp)
+    if not walked or set(walked) - {str(x) for x in na}:
+        return ""                      # some walked part is still allowed
+    return (f"asks for a part of {mp} you have NOT stood on, and you have "
+            f"stood on all {len(walked)} that this run has ever recorded "
+            f"({', '.join(walked)}) — so nothing known can satisfy it and "
+            f"only ground never yet seen could. If you mean one particular "
+            f"side, end on that part by name ({{\"area\": \"<one of "
+            f"those>\"}}); if you mean somewhere genuinely unseen, say so "
+            f"in the goal_text and expect to explore for it.")
 
 
 def _reverted_wordings() -> set:
