@@ -18,7 +18,11 @@ src = (ROOT / "planner" / "executor.py").read_text()
 checks = []
 def ck(n, ok): checks.append((n, bool(ok)))
 
-ck("the cap admits the bonus", "while spent < rounds and rnd < rounds * 3 + _fresh_bonus:" in src)
+# the cap carries a second bonus since 2026-09-08 — rounds that SAW,
+# PRESSED or TOOK something new (_news_bonus) — so ask for both terms
+ck("the cap admits the bonus",
+   "while spent < rounds and rnd < rounds * 3 + _fresh_bonus" in src)
+ck("...and the one for a round that found something new", "+ _news_bonus:" in src)
 ck("the bonus starts at zero per step", "_fresh_bonus = 0      # rounds the cap moves out" in src)
 ck("it is earned only on a first-ever region, only at the cap, at most twice",
    "if (visits[sig1[0]] == 1 and _fresh_bonus < 2\n                        and rnd >= rounds * 3 + _fresh_bonus\n"

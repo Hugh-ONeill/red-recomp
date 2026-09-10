@@ -41,11 +41,27 @@ ck("the trace line carries it on the ok path",
 # behaviour against the live atlas: both known pockets, no false positives
 
 def _atlas():
-    """The richest ledger on disk: the live one is whatever chain is running
-    (a fresh chain starts it empty); the Hall of Fame world's is archived
-    beside it as explored.<ts>.pre-discovery.bak.json."""
-    cands = sorted(Path("run").glob("explored*.json"), key=lambda f: f.stat().st_size)
-    return json.loads(cands[-1].read_text())
+    """An archived ledger that still HOLDS these two pockets.
+
+    This used to take the biggest explored*.json on disk, on the reasoning
+    that the richest ledger is the best fixture. It is not a fixture at
+    all: the LIVE atlas grows past the archives as a run walks, and then
+    the cases are read out of today's world — where Route 13 west may have
+    been mapped further and lands somewhere with more ways out. The test
+    went red for a reason that had nothing to do with the guard
+    (2026-09-10). Pick an archive that actually contains the shapes this
+    file is about, and say so; skip if none does."""
+    for f in sorted(Path("run").glob("explored*.bak.json"),
+                    key=lambda f: -f.stat().st_size):
+        try:
+            ex = json.loads(f.read_text()).get("explored") or {}
+        except (OSError, ValueError):
+            continue
+        if ((ex.get("ROUTE_13|50,0") or {}).get("west") or {}).get("to") \
+                and ((ex.get("SAFFRON_CITY|12,0") or {}).get("west") or {}).get("to"):
+            print(f"  atlas: {f.name}")
+            return {"explored": ex}
+    return {"explored": {}}
 
 ex = _atlas()["explored"]
 def fires(here, dirn):

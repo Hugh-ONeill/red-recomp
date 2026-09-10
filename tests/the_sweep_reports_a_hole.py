@@ -59,8 +59,10 @@ ck("...and folds the two tiles of one drop into one label",
    "(16,14)+(17,14)" in _pg and "ONE drop wider than one cell" in _pg)
 ck("a pad is a pad, a door a doorway",
    "a warp pad at (%d,%d)" in sw and "a doorway at (%d,%d)" in sw)
+# ...and only at one it could actually take: a hole across ground no walk
+# reaches stops nothing (the t.far reach check, 2026-09-08)
 ck("until:door also stops at a hole",
-   'if wants.door and t.kind == "hole" then return true end' in sw)
+   'if wants.door and t.kind == "hole"' in sw and "return true end" in sw)
 ck("the model's vocabulary lists hole among the until kinds",
    '"until":"door"|"person"|"item"|"sign"|"hole"|"map_change"' in ex)
 bad = [n for n, ok in checks if not ok]
