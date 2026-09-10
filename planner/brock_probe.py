@@ -111,6 +111,42 @@ NUM_CTX = int(os.environ.get("RED_NUM_CTX") or 24576)
 # overrides, the same way RED_NUM_CTX does
 NUM_PREDICT = int(os.environ.get("RED_NUM_PREDICT") or 3072)
 
+# THINKING, ON THE ROUNDS THAT ARE GOING NOWHERE (2026-09-10).
+# "think": False was in this file's first commit (b584e43, 2026-08-10) and
+# was never once measured against the alternative — a default, not a
+# finding. Measured on a real 8.5k-token escalation context replayed from
+# run/executor_log.*.jsonl, warm weights, two reps:
+#
+#   gemma4:31b   think off 9.4 s /   66 tokens | think on 100.1 s / 2167
+#   qwen3.8:27b  think off 7.5 s /  103 tokens | think on  12.0 s /  564
+#
+# The two models are not the same trade: gemma pays 10.6x, qwen 1.6x. The
+# 10x in the batch-scoring note is a GEMMA fact, not an ollama fact, and
+# does not carry to qwen.
+#
+# Neither ratio is the one to budget with. A real round carries ~14748
+# prompt tokens and spends 23.5 s of its 29.3 reading them before a single
+# token comes out, so thinking only inflates the 4.2 s tail: a gemma
+# thinking round lands near 118 s, ~4x a round rather than 10x. Cheap
+# enough to spend where a leg is stuck, far too dear to spend everywhere.
+#
+# RED_THINK_ON_STUCK is that gate, in rounds-that-changed-nothing: 0 (the
+# default) keeps every call exactly as it was, N>0 asks the caller to turn
+# thinking on once it has seen N stale rounds in a row. The number lives
+# with the CALLER's stuck signal — this file only carries the flag it is
+# handed. For scale: over 7872 real rounds the existing STALE_CUTOFF of 6
+# fired 12 times (0.15%), which is too rare to ever be there when needed;
+# escalate_repeat_refused fired 510 times (6.5%). At 6.5% a gemma round
+# averages ~35 s against 29.3 — about a fifth dearer overall.
+THINK_ON_STUCK = int(os.environ.get("RED_THINK_ON_STUCK") or 0)
+# A THINKING REPLY NEEDS ITS OWN CEILING. gemma spent 2167 of the 3072
+# budget on the trace alone in the measurement above, leaving the macro
+# ~900 tokens — and on a larger prompt the trace grows while the budget
+# does not. A reply cut mid-JSON fails the parse and costs the round, which
+# is the exact failure NUM_PREDICT exists to bound. This applies ONLY to
+# calls that are actually thinking, so a normal round keeps its tight cap.
+NUM_PREDICT_THINK = int(os.environ.get("RED_NUM_PREDICT_THINK") or 8192)
+
 
 LAST: dict = {}
 
@@ -123,14 +159,26 @@ def stats_of(d) -> dict:
     def _s(k):
         v = (d or {}).get(k)
         return round(v / 1e9, 1) if isinstance(v, (int, float)) else None
+    # WHETHER THIS CALL THOUGHT, AND HOW MUCH OF THE REPLY THAT WAS. A
+    # thinking round costs multiples of a normal one, so a journal that does
+    # not say which rounds thought cannot be read afterwards — the whole
+    # point of gating it is to find out whether the spend bought anything.
+    # ollama returns the trace in message.thinking, separate from content.
+    _think = ((d or {}).get("message") or {}).get("thinking") or ""
     return {"ptok": (d or {}).get("prompt_eval_count"),
             "gtok": (d or {}).get("eval_count"),
             "p_s": _s("prompt_eval_duration"), "g_s": _s("eval_duration"),
-            "tot_s": _s("total_duration")}
+            "tot_s": _s("total_duration"),
+            "think": bool(_think), "think_chars": len(_think)}
 
 
-def chat(msgs, model, retries=2):
+def chat(msgs, model, retries=2, think=False):
     """Ask the model, and do not lose a whole round to one bad second.
+
+    `think` is per-call and defaults to off, so every existing caller keeps
+    the behaviour it has always had. Pass it True only where the caller has
+    a reason to believe the round is stuck (see THINK_ON_STUCK) — it is
+    worth roughly 4x a round on gemma and a fifth of one on qwen.
 
     Every caller wrapped this in `except Exception` and gave up on the spot
     — the escalation loop BROKE OUT with all its remaining rounds unspent,
@@ -145,7 +193,7 @@ def chat(msgs, model, retries=2):
     last, attempt = None, 0
     while True:
         try:
-            return _chat_once(msgs, model)
+            return _chat_once(msgs, model, think)
         except Exception as e:
             last = e
             # a timeout has already spent its full 300s, so it gets one
@@ -174,7 +222,7 @@ def _is_timeout(e) -> bool:
     return False
 
 
-def _chat_once(msgs, model):
+def _chat_once(msgs, model, think=False):
     # A REPLY HAS A CEILING. Nothing capped the generation, so a reply that
     # fell into a repetition loop ran on at 22 tok/s until the client's
     # 300 s timeout, was retried once, and ran on again: run 16 sat on the
@@ -186,14 +234,26 @@ def _chat_once(msgs, model):
     # them (a plan with a dozen subgoals, an outline of forty lines) fits
     # in well under this. A reply cut here fails JSON parsing and costs the
     # caller one round, not a quarter of an hour.
+    # A thinking reply spends most of that ceiling on the trace, so it gets
+    # the larger one — see NUM_PREDICT_THINK. A normal round is unchanged.
     body = json.dumps({"model": model, "messages": msgs, "stream": False,
-                       "think": False, "keep_alive": "30m",
+                       "think": bool(think), "keep_alive": "30m",
                        "options": {"temperature": 0.3,
                                    "num_ctx": NUM_CTX,
-                                   "num_predict": NUM_PREDICT}}).encode()
+                                   "num_predict": (NUM_PREDICT_THINK if think
+                                                   else NUM_PREDICT)}}).encode()
     req = urllib.request.Request(OLLAMA, body,
                                  {"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=300) as r:
+    # THE CLOCK HAS TO GROW WITH THE CEILING. 300 s bounds a 3072-token
+    # reply comfortably, but a thinking reply may run to NUM_PREDICT_THINK,
+    # and at the ~23 tok/s a 31B generates on this card that alone is well
+    # past 300 s before the prompt is read. Timing out here is the dearest
+    # possible failure — the budget above then spends a SECOND full timeout
+    # on the retry — so a thinking call gets a clock sized to what it was
+    # allowed to generate rather than a promise that it will be brief.
+    _timeout = 300 if not think else max(
+        300, int(NUM_PREDICT_THINK / 15) + 120)
+    with urllib.request.urlopen(req, timeout=_timeout) as r:
         d = json.loads(r.read())
     # Never let this go silent again. The signature is exact: an oversized
     # prompt is cut to num_ctx/2 + 3 (measured 4099 / 8195 / 16387), so
@@ -212,6 +272,18 @@ def _chat_once(msgs, model):
               f"{NUM_CTX // 2} cap — the FRONT of the prompt was dropped "
               f"(vocabulary and guidance live there). Shorten the prompt or "
               f"raise NUM_CTX.")
+    # THE OTHER END OF THE SAME FAILURE. A reply that runs INTO its ceiling
+    # is cut wherever it happened to be — mid-JSON, which fails the parse
+    # and costs the round with nothing on the page to say why. The prompt
+    # side has said so since run 16; the reply side never did, and thinking
+    # is what makes it likely: the trace eats the budget the macro needs.
+    _cap = NUM_PREDICT_THINK if think else NUM_PREDICT
+    _g = d.get("eval_count") or 0
+    if _g >= _cap:
+        print(f"[reply] TRUNCATED: generation stopped at the {_cap}-token "
+              f"ceiling{' (thinking)' if think else ''} — the reply is cut "
+              f"where it stood and will likely fail JSON parsing. Raise "
+              f"{'RED_NUM_PREDICT_THINK' if think else 'RED_NUM_PREDICT'}.")
     return d["message"]["content"]
 
 

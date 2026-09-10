@@ -20,12 +20,31 @@ def ck(name, cond): checks.append((name, bool(cond)))
 
 import brock_probe as B
 src = Path("planner/brock_probe.py").read_text()
-ck("the request carries a token ceiling", '"num_predict": NUM_PREDICT' in src)
+ck("the request carries a token ceiling", '"num_predict": (NUM_PREDICT_THINK' in src)
 ck("the ceiling is a few thousand tokens: room for a plan, not for a runaway",
    1024 <= B.NUM_PREDICT <= 8192)
 ck("it can be raised or lowered by environment like the window",
    'os.environ.get("RED_NUM_PREDICT")' in src)
 ck("a timeout is still retried once and no more", "budget = 1 if _is_timeout(e) else retries" in src)
+# A THINKING REPLY IS BOUNDED TOO, AND NOT BY THE SAME NUMBER. gemma spent
+# 2167 of the 3072 budget on the trace alone (2026-09-10), leaving the macro
+# ~900 tokens: the trace eats the ceiling the macro needs, so a round that
+# thinks gets its own, larger one and a normal round keeps the tight cap.
+ck("a thinking reply has a ceiling of its own",
+   1024 <= B.NUM_PREDICT_THINK <= 32768
+   and B.NUM_PREDICT_THINK > B.NUM_PREDICT)
+ck("that one is environment-settable too",
+   'os.environ.get("RED_NUM_PREDICT_THINK")' in src)
+# ...AND THE CLOCK GROWS WITH IT. Bounding the reply at 8192 tokens while
+# still promising the socket 300 s puts the timeout back exactly where run
+# 16 found it, and the retry budget then spends a SECOND full timeout.
+ck("the clock is sized to what the reply may generate",
+   "_timeout = 300 if not think else max(" in src)
+# THE OTHER END OF RUN 16's FAILURE. A reply cut AT its ceiling is cut
+# mid-JSON, fails the parse and costs the round; the prompt side has said
+# so since run 16 and the reply side never did.
+ck("a reply that runs into its ceiling says so",
+   "[reply] TRUNCATED" in src and "_g >= _cap" in src)
 
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:

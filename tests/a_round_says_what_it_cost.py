@@ -21,10 +21,24 @@ def ck(n, ok): checks.append((n, bool(ok)))
 st = B.stats_of({"prompt_eval_count": 9000, "prompt_eval_duration": 11_500_000_000,
                  "eval_count": 420, "eval_duration": 16_200_000_000, "total_duration": 28_000_000_000})
 ck("tokens are counted and durations are seconds",
-   st == {"ptok": 9000, "gtok": 420, "p_s": 11.5, "g_s": 16.2, "tot_s": 28.0})
+   all(st[k] == v for k, v in
+       {"ptok": 9000, "gtok": 420, "p_s": 11.5, "g_s": 16.2, "tot_s": 28.0}.items()))
 ck("a reply without the numbers yields Nones, not a crash",
-   B.stats_of({}) == {"ptok": None, "gtok": None, "p_s": None, "g_s": None, "tot_s": None}
+   all(B.stats_of({})[k] is None
+       for k in ("ptok", "gtok", "p_s", "g_s", "tot_s"))
    and B.stats_of(None)["ptok"] is None)
+# WHETHER THE ROUND THOUGHT IS PART OF WHAT IT COST (2026-09-10). A
+# thinking round is worth ~4x a normal one on gemma, so a journal that does
+# not say which rounds thought cannot answer the only question gating it
+# was for: whether the spend bought anything. ollama returns the trace in
+# message.thinking, apart from the content the macro is parsed out of.
+_t = B.stats_of({"eval_count": 700,
+                 "message": {"content": "{}", "thinking": "because ..."}})
+ck("a round says whether it thought, and how much of the reply that was",
+   _t["think"] is True and _t["think_chars"] == len("because ..."))
+ck("a round that did not think says so rather than going quiet",
+   B.stats_of({"eval_count": 40, "message": {"content": "{}"}})["think"] is False
+   and B.stats_of({})["think"] is False)
 ck("the probe records the last call's accounting", "LAST = stats_of(d)" in B.__doc__ or "LAST = stats_of(d)" in (ROOT / "planner" / "brock_probe.py").read_text())
 ck("the proposal row carries it, Nones left out",
    '**{k: v for k, v in (getattr(brock_probe, "LAST", None) or {}).items()' in ex

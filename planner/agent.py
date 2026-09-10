@@ -56,9 +56,14 @@ of your previous op is in obs.result — if it failed, adapt. Respond with
 only the JSON object, no other text."""
 
 
-def ollama_chat(messages, model):
+def ollama_chat(messages, model, think=False):
+    # `think` is per-call and off by default, matching brock_probe.chat so
+    # the two bodies do not drift on the parameter's existence. This driver
+    # keeps no stale-round count of its own, so nothing here turns it on —
+    # the gate lives in the executor, which has the stuck signal. Kept as an
+    # argument so a probe can spend it deliberately from the outside.
     body = json.dumps({"model": model, "messages": messages, "stream": False,
-                       "think": False, "keep_alive": "30m",
+                       "think": bool(think), "keep_alive": "30m",
                        "options": {"temperature": 0.3,
                                    "num_ctx": NUM_CTX}}).encode()
     req = urllib.request.Request(OLLAMA, body,

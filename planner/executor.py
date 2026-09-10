@@ -16628,10 +16628,38 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     "Author the op-list macro to achieve DONE_WHEN from here. "
                     "If ops in the feedback 'had no visible effect', they did "
                     "NOT do what you intended — try a different approach.")
+            # THINK ONLY WHERE THE ROUND IS GOING NOWHERE (2026-09-10).
+            # Thinking was off on every call this harness has ever made and
+            # was never measured; it is worth about 4x a round on gemma and
+            # a fifth of one on qwen (the numbers, and why the naive 10x is
+            # the wrong one to budget with, are on THINK_ON_STUCK). Too dear
+            # to leave on, so it is spent where deliberation is the thing
+            # actually missing: rounds that changed nothing you carry, know
+            # or are. _stale_rounds is that count and it is already kept per
+            # subgoal for the stale budget — this reads it, and does not
+            # touch it. RED_THINK_ON_STUCK is the threshold in stale rounds;
+            # unset, every call below is byte-for-byte what it was.
+            #
+            # Deliberately BELOW the STALE_CUTOFF of 6: over 7872 real
+            # rounds that cutoff fired 12 times, so gating on it would buy
+            # nothing. 2 or 3 is the range worth testing.
+            #
+            # NOT A FIX FOR A BLANK PAGE. If a leg is stuck because the
+            # ledger never put the deciding fact in front of the model,
+            # this buys a better-argued wrong answer more slowly — the
+            # harness-gap rule still applies first.
+            _think = (brock_probe.THINK_ON_STUCK > 0
+                      and self._stale_rounds >= brock_probe.THINK_ON_STUCK)
+            if _think:
+                self.log("think_on", subgoal=sg["id"], round=rnd,
+                         stale=self._stale_rounds,
+                         threshold=brock_probe.THINK_ON_STUCK,
+                         at=self._where(obs))
             try:
                 reply = brock_probe.chat(
                     [{"role": "system", "content": self.MACRO_AUTHOR_SYS},
-                     {"role": "user", "content": user}], self.model)
+                     {"role": "user", "content": user}], self.model,
+                    think=_think)
             except Exception as e:
                 # ONE BAD SECOND IS NOT THE END OF THE SUBGOAL. This used to
                 # `break`, forfeiting every remaining round: ollama swapping
