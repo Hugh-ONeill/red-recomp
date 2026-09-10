@@ -17325,7 +17325,38 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _talk = [n for n in live
                          if str(n) == "PC" or str(n).endswith("_PC")
                          or str(n).startswith("TEXT_")]
-                _open = [n for n in live if n not in _talk]
+                # ...AND A LEVER IS NOT A THING YOU HAVE NEVER TOUCHED.
+                # Cut off on Mansion 2F|10,1, this line said "you can
+                # reach 1 thing(s) here you have never interacted with
+                # (SWITCH_POKEMON_MANSION_2F_2_11)" about a statue pressed
+                # many times over, from the other part of the floor, and
+                # told the model to "interact with all of them before
+                # leaving" — which for a shared lever means pressing one,
+                # then pressing another, and standing exactly where it
+                # started. The count is per REGION and a statue is per
+                # BUILDING (2026-09-10).
+                # IT STAYS OFFERED. Flipping the lever moves walls on every
+                # floor, so on a floor you cannot cross it is a real way
+                # on, and here it is the only one. What is dropped is the
+                # claim that it is untouched and the instruction to press
+                # them all.
+                _tog = {str(o.get("name")): str(o.get("toggle") or "")
+                        for o in ((cur.get("map") or {}).get("objects") or [])
+                        if o.get("toggle")}
+                _lever = [n for n in live if _tog.get(str(n))]
+                _open = [n for n in live if n not in _talk and n not in _lever]
+                if _lever:
+                    _set = _tog.get(str(_lever[0])) or "?"
+                    trace.append(
+                        f"A LEVER IS WITHIN REACH HERE: "
+                        f"{', '.join(str(x) for x in _lever[:4])} — every "
+                        f"switch statue in this building shares ONE "
+                        f"setting, and it is {_set} right now. Flipping it "
+                        f"moves walls on EVERY floor, so it can open ground "
+                        f"no walk reaches while it stands as it is. Press "
+                        f"ONE and look: pressing a second one puts the "
+                        f"first straight back, and none of them is a thing "
+                        f"you have left untouched.")
                 if _open:
                     trace.append(
                         f"Do NOT conclude this area is a dead end yet: you "

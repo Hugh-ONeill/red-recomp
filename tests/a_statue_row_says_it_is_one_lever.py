@@ -22,6 +22,7 @@ sys.path.insert(0, "planner")
 checks = []
 def ck(name, cond): checks.append((name, bool(cond)))
 
+from pathlib import Path
 import executor as E, ledger
 
 HERE = "POKEMON_MANSION_2F|6,1"
@@ -151,6 +152,25 @@ ck("the re-offer list drops the statue and keeps the can",
    ex4._worth_another_word(HERE, {}, backfill=False) == [CAN])
 ck("...and the backfilling form agrees",
    ex4._worth_another_word(HERE, {}, backfill=True) == [CAN])
+
+
+# ---- ...and the dead-end advice does not call it untouched -------------
+from pathlib import Path                                # noqa: E402
+SRC = (Path(__file__).resolve().parents[1] / "planner" / "executor.py").read_text()
+_blk = SRC.split("Do NOT conclude this area is a dead end yet", 1)[0][-3500:]
+ck("a lever gets its own clause in the dead-end advice",
+   "A LEVER IS WITHIN REACH HERE" in _blk)
+ck("...and is taken out of the count of things never interacted with",
+   "_open = [n for n in live if n not in _talk and n not in _lever]" in _blk)
+ck("...read off the toggle the shim marks, not off a name prefix",
+   'o.get("toggle")' in _blk and "_tog =" in _blk)
+ck("...saying which way the one setting is set now",
+   "shares ONE " in _blk and "right now" in _blk)
+ck("...and that pressing a second one puts the first back",
+   "first straight back" in _blk)
+ck("...while the press-them-all instruction stays for ordinary things",
+   "Interact with all of "
+   in SRC.split("Do NOT conclude this area is a dead end yet", 1)[1][:900])
 
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:
