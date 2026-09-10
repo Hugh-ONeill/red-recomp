@@ -523,6 +523,25 @@ def _is_door_key(k) -> bool:
 # ONE IMPLEMENTATION, IN THE LEDGER (which this module already imports; the
 # other direction would be a cycle). Both rankings read it, so the words and
 # the deed cannot drift about where "here" ends.
+def _mon_types(m) -> str:
+    """A party member's TYPES, as its own status screen shows them.
+
+    One button from the party menu, and the observation has carried them
+    since the shim first read the party — both party lines printed species,
+    level and HP and dropped them. Buying an evolution stone is the choice
+    that needs them: run 16 stood at Celadon 4F with a Water, a Thunder and
+    a Fire stone in front of it and an EEVEE to spend one on, and picked
+    WATER with a GYARADOS already in the party (user, 2026-09-10).
+
+    Which type is worth having is the model's call. What it is choosing
+    between was ours to say.
+    """
+    t = [str(x) for x in ((m or {}).get("types") or []) if x]
+    # gen 1 stores a single-type Pokemon's type twice; say it once
+    t = list(dict.fromkeys(t))
+    return f" ({'/'.join(t)})" if t else ""
+
+
 _building = ledger._building
 
 
@@ -10638,8 +10657,19 @@ class Executor:
                      f"door satisfies it. Walking somewhere new is not "
                      f"progress here; fighting is."]
         if party:
+            # ...AND WHAT EACH OF THEM IS. A party member's TYPES are on
+            # its own status screen, one button from the party menu, and
+            # the observation has carried them all along — this line
+            # printed species, level and HP and dropped them. Buying an
+            # evolution stone is the choice that needs them: run 16 stood
+            # at Celadon 4F with a Water, a Thunder and a Fire stone in
+            # front of it and an EEVEE to spend one on, and picked WATER
+            # with a GYARADOS already in the party (user, 2026-09-10: "id
+            # rather itdve got the thunder in this case since we already
+            # have water with gyara"). Which type is worth having is the
+            # model's call; what it is choosing between was ours to say.
             lines.append("YOUR PARTY RIGHT NOW: " + "; ".join(
-                f"{i}. {m.get('species')} L{m.get('level')} "
+                f"{i}. {m.get('species')}{_mon_types(m)} L{m.get('level')} "
                 f"{m.get('hp')}/{m.get('max_hp')}hp"
                 + (f" [{m.get('status')}]" if m.get("status") else "")
                 for i, m in enumerate(party, 1)))
@@ -17761,7 +17791,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # all, and the party walked in at 18/39 straight from the gym
             # trainer's fight (2026-09-07). Whether to heal first is the
             # model's call, and it needs the number to make it.
-            _pl = [f"{m.get('species')} L{m.get('level')} "
+            _pl = [f"{m.get('species')}{_mon_types(m)} L{m.get('level')} "
                    f"{m.get('hp')}/{m.get('max_hp')}hp"
                    + (f" [{m.get('status')}]" if m.get("status") else "")
                    for m in ((cur or {}).get("party") or [])
