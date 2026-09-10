@@ -6584,6 +6584,43 @@ function OPS.cross(G, c)
                                                 .. "," .. tostring(ey) .. ")") or "")
   end
   -- step off the seam repeatedly until the map changes
+  -- A SEAM WHOSE FAR SIDE IS WATER IS CROSSED FROM THE WATER. Cinnabar's
+  -- east edge is dry land looking at ROUTE_20's open sea: every landing
+  -- cell there is water, passable only while surfing. The model did the
+  -- right thing — walk_to(surf) to the shore, then cross(dir=east,
+  -- surf=true) — but the walk did not need to ride to get along its own
+  -- shore, so it arrived ON FOOT, and surf= on the cross was read as
+  -- permission for the landing rather than an instruction to be afloat:
+  -- the step went off the edge and the game refused, "stepped right at
+  -- gap (19,13) but no map change", nine rounds of it (user, 2026-09-10:
+  -- "the east seam of cinnabar is a map boundary with land on the
+  -- cinnabar and water on the rt20 side"). Mount first, the way walk_to
+  -- and grind already do; WHICH seam is still the model's.
+  if not p.surfing and landing_ok(G, dir, p.cellX, p.cellY, true)
+     and not landing_ok(G, dir, p.cellX, p.cellY, false) then
+    local knows = false
+    for _, mon in ipairs((G.save or {}).party or {}) do
+      for _, mv in ipairs(mon.moves or {}) do
+        if tostring(type(mv) == "table" and mv.id or mv) == "SURF" then
+          knows = true
+        end
+      end
+    end
+    if not knows then
+      return false, ("the far side of the %s seam of %s is WATER, and "
+        .. "nothing in the party knows SURF, so it cannot be crossed on "
+        .. "foot from here"):format(tostring(c.dir), tostring(startMap))
+    end
+    local _d = DIRS[dir]
+    local _wx, _wy = p.cellX + _d[1], p.cellY + _d[2]
+    local _mok, _mwhy = OPS.field_move(G, { move = "SURF", x = _wx, y = _wy })
+    if not p.surfing then
+      return false, ("the far side of the %s seam of %s is WATER: it is "
+        .. "crossed from the water, and getting on it here did not work "
+        .. "(%s)"):format(tostring(c.dir), tostring(startMap),
+                          tostring(_mwhy))
+    end
+  end
   for _ = 1, 8 do
     if (ow.map and ow.map.id) ~= startMap then return true, crossed_at() end
     table.insert(G.input.pressQueue, dir)
