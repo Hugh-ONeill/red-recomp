@@ -12137,9 +12137,35 @@ function OPS.save_game(G)
   -- the write lands while "Now saving..." is still held (120 frames) — let
   -- the auto-boxes finish before backing out, or B presses hit a box that
   -- ignores input and the run resumes with the menu still up
+  -- ...AND THE STARTMENU COMES BACK INTO VIEW BEFORE THE LAST BOX DOES.
+  -- SAVE was picked from the StartMenu, so the menu is underneath the
+  -- whole time and is the top for the gap between "Now saving..." popping
+  -- itself and "<NAME> saved the game!" being pushed. Breaking on it ended
+  -- this wait inside that gap: the B presses below then hit a box that
+  -- ignores input, the op returned with it still up, and the NEXT save's
+  -- need_overworld refused with "a box was up and would not close: text:
+  -- RED saved the game!" — followed one second later by a third save
+  -- reporting "save file never changed". Fourteen ratchet saves failed in
+  -- exactly that pair today, always in that order, seconds apart
+  -- (2026-09-10; run 16's own log). The menu is only the end of this when
+  -- a box has already come and gone.
+  -- ...AND THERE ARE TWO BOXES, WITH THE MENU VISIBLE BETWEEN THEM.
+  -- "Now saving..." pops itself and "<NAME> saved the game!" is pushed on
+  -- its onDone, so the StartMenu is the top for the frames in between.
+  -- Stopping at the first sight of the menu after a box stops in that gap
+  -- and leaves the second box for the B presses to bounce off. The menu
+  -- is the end of this only once it has STAYED the top; a gap does not
+  -- last, and this costs half a second when the save is really over.
+  local saw_box, menu_for = false, 0
   for _ = 1, 200 do
     local t = ui_top(G)
-    if t == G.overworld or (t and t.screenId == "StartMenu") then break end
+    if t and t ~= G.overworld and t.screenId ~= "StartMenu" then
+      saw_box, menu_for = true, 0
+    elseif t and t.screenId == "StartMenu" then
+      menu_for = menu_for + 1
+    end
+    if t == G.overworld then break end
+    if saw_box and menu_for >= 8 then break end
     U.wait(4)
   end
   -- close the StartMenu for real: a single back-out pass sometimes left it
@@ -12150,6 +12176,13 @@ function OPS.save_game(G)
     ui_back_out(G)
     U.tap(G, "b"); U.wait(8)
   end
+  -- ...AND THE STAMP IS READ ONCE MORE BEFORE ANY OF THIS IS CALLED A
+  -- FAILURE. Both loops above break on the overworld, and the overworld
+  -- can be the top before the 120-frame "Now saving..." hold reaches its
+  -- onDone — so the wait for the write ended before the write. The
+  -- back-out pass has run since; ask the file again rather than report a
+  -- save that did happen as a save that never did.
+  if not written and save_stamp() > stamp0 then written = true end
   if not written then
     return false, ("save file never changed (top=%s)"):format(
       tostring((ui_top(G) or {}).screenId or "overworld"))
