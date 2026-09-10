@@ -73,9 +73,20 @@ CASES = [
     # THE PREDICATE THAT MAKES "pc" UNNECESSARY. `mode` can only say that
     # SOME menu is open; `screen` names which one, off the label the shim
     # has always passed through as ui.screenId and nothing could test.
-    ("the PC's Pokemon storage is nameable", {"screen": "BoxMenu"}, False),
-    ("...and its item storage", {"screen": "PlayerPC"}, False),
-    ("...and the shop counter", {"screen": "ShopMenu"}, False),
+    # ...AND THE STORAGE SCREENS ARE REFUSED, which is the opposite of what
+    # this file asserted when `screen` was added. The ops that work a PC or
+    # a shop — pc_deposit, pc_withdraw, store_item, retrieve_item, buy,
+    # sell — drive the screen and CLOSE it, so a condition on one is never
+    # true when it is tested. Run 16 (2026-09-08) wrote deposit_pokemon
+    # with {"screen":"BoxMenu"}: the deposit happened in round 3, the step
+    # stayed open, and the run kept depositing — down to a party of two.
+    # What the deed CHANGES is the witness: pc_holds for a deposit,
+    # party_size or has_species for a withdrawal, has_item / lacks_item /
+    # bag_kinds_below for a purchase or a sale.
+    ("the PC's Pokemon storage is refused: no op leaves it open",
+     {"screen": "BoxMenu"}, True),
+    ("...and its item storage", {"screen": "PlayerPC"}, True),
+    ("...and the shop counter", {"screen": "ShopMenu"}, True),
     ("a screen the engine never pushes is refused",
      {"screen": "PC"}, True),
     ("...including the one the old mode guess meant",

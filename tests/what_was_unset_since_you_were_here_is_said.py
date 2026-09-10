@@ -133,8 +133,12 @@ ck("a trail trimmed past the record says so with an ellipsis",
 # --- wired into the round, after the page is built ----------------------
 src = (ROOT / "planner/executor.py").read_text()
 ck("the trail is fed at the round start and at every op",
-   "start = self.settle()\n            self._note_map(start)" in src
-   and "self._note_map(obs)\n            before = self._snapshot(obs)" in src)
+   0 < src.index("self._note_map(start)") - src.index("start = self.settle()") < 400
+   # the op-side call keeps its place before the snapshot; what sits
+   # between them is free (2026-09-10: _note_warp_looks went in there)
+   and src.index("self._note_map(obs)")
+   < src.index("before = self._snapshot(obs)")
+   < src.index("self._note_map(obs)") + 400)
 _i = src.index("self._note_switches(start)")
 ck("the switches are recorded AFTER the round's page is composed and before it is logged",
    src.index("memory += self._bag_pressure_line(start)") < _i
