@@ -21,7 +21,13 @@ def ck(n, ok, d=""): checks.append((n, bool(ok), d))
 
 ck("the number table is the engine's own", E.MACHINE_NUMBERS.get("TM_RAZOR_WIND") == "TM02" and E.MACHINE_NUMBERS.get("HM_CUT") == "HM01" and len(E.MACHINE_NUMBERS) == 55)
 fake = types.SimpleNamespace(_item_from={"TM_BUBBLEBEAM": {"who": "CERULEANGYM_MISTY"}})
-ck("a found TM reads by number", E.Executor._disp_item(fake, "TM_RAZOR_WIND") == "TM02")
+# THE ID RIDES ALONG (2026-09-10). The number is what the ITEM screen
+# shows; the id is what {"op":"use_item","item":...} takes, and the
+# bag-full paragraph names TMs by id. Two names for one thing on two lines
+# cost run 16 five rounds of freeing a slot with an ABLE member for the TM
+# it was holding.
+ck("a found TM reads by number, with the id the ops take beside it",
+   E.Executor._disp_item(fake, "TM_RAZOR_WIND") == "TM02 (TM_RAZOR_WIND)")
 ck("a gift TM keeps the move a person named", E.Executor._disp_item(fake, "TM_BUBBLEBEAM") == "TM_BUBBLEBEAM")
 ck("an HM keeps its id (always handed over)", E.Executor._disp_item(fake, "HM_CUT") == "HM_CUT")
 ck("other items are untouched", E.Executor._disp_item(fake, "POTION") == "POTION")

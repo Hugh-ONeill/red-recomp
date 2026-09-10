@@ -11319,10 +11319,23 @@ class Executor:
         """What the page calls an item: a TM by its number unless a person
         handed it over (they named the move), every other item by its id.
         HMs always come from people, so they keep their ids."""
+        # ...AND THE ID BESIDE IT, because the OPS take the id and the rest
+        # of the page uses it. The bag-full paragraph — the one place the
+        # model decides which slot to free — says "a TM tossed is a move
+        # the party will never get from it, and you hold one each of
+        # TM_BLIZZARD, TM_EARTHQUAKE", while the only line saying WHO can
+        # learn them called the same two objects TM14 and TM26. Two names
+        # for one thing, on two lines, and the direction we give is only
+        # usable if the reader joins them. Run 16 spent five rounds freeing
+        # a slot with a TM in the bag and an ABLE party member for it
+        # (2026-09-10, user: "it has to relearn it every time it does this
+        # with a TM despite us telling it how to use a tm properly").
+        # The number is what the ITEM screen shows and stays first; the id
+        # is what {"op":"use_item","item":...} wants.
         k = str(item or "")
         if k.startswith("TM_") and k in MACHINE_NUMBERS \
                 and k not in (getattr(self, "_item_from", None) or {}):
-            return MACHINE_NUMBERS[k]
+            return f"{MACHINE_NUMBERS[k]} ({k})"
         return k
 
     @staticmethod

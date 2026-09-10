@@ -42,7 +42,8 @@ ex = E.Executor.__new__(E.Executor)
 pre = {"bag": {"POTION": 3}, "money": 11798}
 post = {"bag": {"POTION": 3, "TM_SWIFT": 1}, "money": 11798}
 got = ex._goods_delta(pre, post)
-ck("a TM gained mid-round is reported by number", "TM39 +1" in got)
+ck("a TM gained mid-round is reported by number, and by the id ops take",
+   "TM39 (TM_SWIFT) +1" in got)
 ex._item_from = {"TM_SWIFT": "ROUTE12GATE2F_MAN"}
 got = ex._goods_delta(pre, post)
 ck("a gift TM is reported by the move its giver named", "TM_SWIFT +1" in got)
