@@ -97,6 +97,17 @@ import time
 from collections import deque
 from pathlib import Path
 
+# WHERE THE GAME PUTS ITS SAVE. love2d's write directory; the shim's own
+# save op reads the same files to decide whether a write landed.
+_SAVE_DIR = Path.home() / ".local/share/love/pokemon-love2d/saves/red"
+
+
+def SAVE_FILES():
+    try:
+        return [f for f in _SAVE_DIR.iterdir() if f.is_file()]
+    except OSError:
+        return []
+
 RUN = Path(__file__).resolve().parent.parent / "run"
 
 # A round that takes this much longer than the recent median is a box
@@ -408,8 +419,26 @@ class Watcher:
             # while it was still on screen. Six of these in one afternoon,
             # every one benign (2026-09-09). Report it, at the level that
             # says nothing is wrong.
+            # ...AND NEITHER IS ONE WHOSE WRITE LANDED A MOMENT LATER.
+            # "save file never changed (top=overworld)" is the shim's other
+            # report, and it is decided by a poll that can end before the
+            # 120-frame "Now saving..." hold reaches the write. Run 16's
+            # 14:07 pair: the file was written at 14:07:13 and the op said
+            # never-changed at 14:07:15, two seconds after its own write.
+            # The shim was fixed for this on 2026-09-10, but that lands at
+            # the next game BOOT, and the file is the ground truth from
+            # here either way. Ask it.
             _d = str(r.get("detail") or "")
-            self.emit("info" if "saved the game" in _d else "warn",
+            _ok = "saved the game" in _d
+            if not _ok and "never changed" in _d:
+                try:
+                    _t = float(r.get("t") or 0)
+                    _m = max((_f.stat().st_mtime for _f in SAVE_FILES()),
+                             default=0.0)
+                    _ok = bool(_t and _m and abs(_m - _t) <= 30)
+                except OSError:
+                    _ok = False
+            self.emit("info" if _ok else "warn",
                       "save_failed", f"{sub}: {one_line(_d)}", subgoal=sub)
         elif k == "send_timeout":
             # One of these is weather: 20 of them across the replayed
