@@ -1802,6 +1802,39 @@ local function observe(G, seq, result)
       end
       return _swim_memo or {}
     end
+    -- CAN THE PARTY COME ASHORE ONTO THIS CELL FROM WATER IT CAN RIDE TO?
+    -- The swum flood answers "which water can be reached"; this answers
+    -- the question that matters for a doorway standing on dry land, and
+    -- it asks the engine rather than the grid (a wall between the water
+    -- and the ladder neighbours it just as closely as an open shore).
+    local function swim_step_to(x, y)
+      local sc = swim_cells()
+      if sc[x .. "," .. y] then return true end          -- a mat in the water
+      local okc, Collision = pcall(require, "src.world.Collision")
+      local ow = G.overworld
+      if not (okc and Collision and ow and ow.map and ow.player) then
+        return false
+      end
+      for dn, d in pairs(DIRS) do
+        local fx, fy = x - d[1], y - d[2]                -- step FROM here
+        if sc[fx .. "," .. fy] then
+          -- surfing only if that cell IS water: the flood walks ashore
+          -- and keeps going, so a from-cell may be dry land inside an
+          -- area only the water opens (user, 2026-09-10: "the warp is in
+          -- an area (flood) that can only be reached by water, it is not
+          -- itself reachable either in the water or directly next to the
+          -- water").
+          local probe = setmetatable(
+            { cellX = fx, cellY = fy,
+              surfing = real_water(G, ow.map, fx, fy) and true or nil },
+            { __index = ow.player })
+          if Collision.canMove(ow.map, ow.entities, probe, dn) then
+            return true
+          end
+        end
+      end
+      return false
+    end
     -- A HOLE IS A WAY DOWN AND IT IS IN NO LIST. The doorway list is
     -- built from the map's WARP TABLE, and a Seafoam hole is not a warp
     -- entry: you fall by STEPPING ON THE TILE. So two ways down that a
@@ -2700,8 +2733,37 @@ local function observe(G, seq, result)
                               -- mat read "no walk from here reaches it"
                               -- with 1418 cells of water on the same floor
                               -- and nothing joining the two facts.
+                              -- ...AND A LADDER STANDS ON DRY LAND. This
+                              -- asked whether the SWUM flood covers the
+                              -- warp's OWN cell, which is never true of a
+                              -- ladder or a door: the water stops at the
+                              -- shore and the flag stayed unset. Seafoam
+                              -- B3F reported 16 water-frontier spots, one
+                              -- chain of them running down x=25 to (25,13),
+                              -- one cell from the ladder at (25,14) — and
+                              -- every ladder on the floor came back "you
+                              -- cannot walk to it" with nothing said about
+                              -- the water (user, 2026-09-10: "the ladder is
+                              -- reachable just over water"). The item rule
+                              -- has always been the right one: you stand
+                              -- BESIDE a thing to use it. Ask the same
+                              -- question here — does the water reach a cell
+                              -- next to it — and the ledger's own words
+                              -- ("no walk from here reaches it, but the
+                              -- WATER does") become true when they are.
+                              -- ...AND ADJACENT IS NOT THE SAME AS
+                              -- STEPPABLE. A flood cell one tile away may
+                              -- be on the far side of a wall: the grid
+                              -- neighbours it and the party could never
+                              -- come ashore there. Ask the engine the same
+                              -- question the walk asks — can a surfing
+                              -- mover step from THAT water cell onto this
+                              -- one — so the flag means "the water you can
+                              -- ride reaches a place you can step off from
+                              -- onto it", which is what the ledger's
+                              -- sentence promises.
                               by_water = (not reach[w.x .. "," .. w.y])
-                                         and swim_cells()[w.x .. "," .. w.y]
+                                         and swim_step_to(w.x, w.y)
                                          and true or nil }
         end
       end
