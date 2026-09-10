@@ -7069,13 +7069,22 @@ def new_part_exhausted(dw, mp: str) -> str:
     walked = sorted(r for r in visited_regions() if str(r).split("|")[0] == mp)
     if not walked or set(walked) - {str(x) for x in na}:
         return ""                      # some walked part is still allowed
+    # ...AND THE REPAIR IS NOT A WEAKER WITNESS. The first version of this
+    # offered "end on that part by name", which is a condition satisfied by
+    # STANDING STILL — the very thing new_part exists to refuse (user,
+    # 2026-09-10: "then it could write a trivially solved condition that we
+    # were trying to avoid in the first place"). Say what is true and offer
+    # nothing: a step whose deed is already done does not need a cheaper
+    # condition, it needs to not be planned.
     return (f"asks for a part of {mp} you have NOT stood on, and you have "
             f"stood on all {len(walked)} that this run has ever recorded "
-            f"({', '.join(walked)}) — so nothing known can satisfy it and "
-            f"only ground never yet seen could. If you mean one particular "
-            f"side, end on that part by name ({{\"area\": \"<one of "
-            f"those>\"}}); if you mean somewhere genuinely unseen, say so "
-            f"in the goal_text and expect to explore for it.")
+            f"({', '.join(walked)}) — so nothing known can satisfy it, and "
+            f"only ground never yet seen could. Do NOT weaken it to a part "
+            f"you can already stand on: that would be true before the step "
+            f"ran. Either this step wants ground nobody has seen — say so "
+            f"in its goal_text — or the deed it marks has ALREADY HAPPENED, "
+            f"in which case this leg does not need a plan at all and saying "
+            f"that plainly is the answer.")
 
 
 def _reverted_wordings() -> set:
