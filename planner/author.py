@@ -7069,6 +7069,23 @@ def new_part_exhausted(dw, mp: str) -> str:
     walked = sorted(r for r in visited_regions() if str(r).split("|")[0] == mp)
     if not walked or set(walked) - {str(x) for x in na}:
         return ""                      # some walked part is still allowed
+    # ...AND ONLY WHEN THERE IS NOWHERE LEFT FOR A NEW PART TO BE. Every
+    # new_part excludes every walked part — that is what it IS — so the
+    # test above is true whenever the key is used, including the case the
+    # key exists for: the far side genuinely not reached yet (user,
+    # 2026-09-10: "will this allow it to still work in the first place when
+    # that ground is genuinely not reached yet?"). What separates the two
+    # is whether any ground on that map is still UNSEEN. The run keeps that
+    # per part: a frontier entry is a spot where the ground it has looked
+    # at ends. While any part still has one, a further part may be out
+    # there and the condition is honest.
+    try:
+        fr = json.loads(Path("run/explored.json").read_text() or "{}") \
+            .get("frontier") or {}
+    except (OSError, ValueError, json.JSONDecodeError):
+        return ""                      # cannot tell: say nothing
+    if any(len(fr.get(r) or ()) > 0 for r in walked):
+        return ""                      # unseen ground remains; it may hold one
     # ...AND THE REPAIR IS NOT A WEAKER WITNESS. The first version of this
     # offered "end on that part by name", which is a condition satisfied by
     # STANDING STILL — the very thing new_part exists to refuse (user,
