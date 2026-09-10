@@ -40,7 +40,9 @@ ck("bare adjacency is not enough: the engine is asked to make the step",
    "Collision.canMove(ow.map, ow.entities, probe, dn)" in step)
 ck("...and the probe surfs only where the cell is water, since the flood walks ashore",
    "surfing = real_water(G, ow.map, fx, fy)" in step)
-ck("...stepping FROM the water cell onto this one", "local fx, fy = x - d[1], y - d[2]" in step and "if sc[fx .. \",\" .. fy] then" in step)
+ck("...stepping FROM the water cell onto this one", "local fx, fy = x - sd[2], y - sd[3]" in step and "if sc[fx .. \",\" .. fy] then" in step)
+ck("...over four directions spelled in place, since DIRS is declared later in the file",
+   '{ "up", 0, -1 }, { "down", 0, 1 },' in step and "pairs(DIRS)" not in step)
 ck("...keeping the own-cell case, for a mat that sits in water", 'if sc[x .. "," .. y] then return true end' in step)
 ck("the swum flood is still gated on a party Pokemon knowing SURF", "party_knows_surf() and warp_reach(G, nil, true)" in sh)
 ck("the ledger already has the words for it", 'no walk from here reaches it, but the WATER does' in lg)

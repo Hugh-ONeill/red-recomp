@@ -1815,8 +1815,14 @@ local function observe(G, seq, result)
       if not (okc and Collision and ow and ow.map and ow.player) then
         return false
       end
-      for dn, d in pairs(DIRS) do
-        local fx, fy = x - d[1], y - d[2]                -- step FROM here
+      -- the four steps, spelled here: DIRS is declared further down the
+      -- file, so at this point the name is a nil GLOBAL — reading it threw
+      -- "bad argument #1 to 'pairs'" and killed the driver mid-run
+      -- (2026-09-10, my own edit).
+      for _, sd in ipairs({ { "up", 0, -1 }, { "down", 0, 1 },
+                            { "left", -1, 0 }, { "right", 1, 0 } }) do
+        local dn = sd[1]
+        local fx, fy = x - sd[2], y - sd[3]              -- step FROM here
         if sc[fx .. "," .. fy] then
           -- surfing only if that cell IS water: the flood walks ashore
           -- and keeps going, so a from-cell may be dry land inside an
