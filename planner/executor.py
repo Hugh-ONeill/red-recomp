@@ -6143,8 +6143,14 @@ class Executor:
             # one dropped a real crossing in silence, and silence is why a
             # deliberate walk onto a drop taught the atlas nothing and left
             # no trace of having taught it nothing (2026-09-10).
+            # THE KEY, NOT HALF OF IT. This printed step["x"] alone, so a
+            # door at (5,10) was logged as "via 5" — a coordinate cut in
+            # half is worse than none, because it reads like a seam
+            # (2026-09-10, its first firing).
+            _sx, _sy = (step or {}).get("x"), (step or {}).get("y")
             self.log("transition_dropped_no_region", frm=src, to=dst,
-                     via=str((step or {}).get("x", (step or {}).get("dir"))))
+                     via=(f"{_sx},{_sy}" if _sx is not None
+                          else str((step or {}).get("dir") or "?")))
             return
         # WHERE THE OP SAYS IT ARRIVED BEATS WHERE WE ENDED UP STANDING.
         # `dst` is read after settling, so anything that moved the party

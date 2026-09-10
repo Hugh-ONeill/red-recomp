@@ -79,11 +79,18 @@ ck("...after a bounded wait", ex4.waits <= 8, ex4.waits)
 
 # ---- and the guard that drops such an edge now says so ------------------
 SRC = (ROOT / "planner" / "executor.py").read_text()
-blk = SRC.split("def note_transition", 1)[1][:900]
+blk = SRC.split("def note_transition", 1)[1][:1800]  # widened: the
+# guard grew a comment when its first firing showed it printing half a cell
 ck("the no-region guard logs the edge it refuses",
    "transition_dropped_no_region" in blk)
 ck("...naming where it was going and by which tile",
    'frm=src, to=dst' in blk and "via=" in blk)
+# A COORDINATE CUT IN HALF READS LIKE A SEAM. Its first firing logged a
+# door at (5,10) as "via 5" (2026-09-10).
+ck("...as a whole cell, never half of one",
+   'f"{_sx},{_sy}"' in blk and '.get("x", ' not in blk)
+ck("...falling back to the direction for a seam",
+   '.get("dir")' in blk)
 ck("...and every other drop guard already logged",
    SRC.count("transition_dropped_") >= 4)
 
