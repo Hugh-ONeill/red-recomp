@@ -787,6 +787,30 @@ def _compass(text: str) -> "str | None":
     return ms[-1].lower() if ms else None
 
 
+def _walk_joined(part_a: str, part_b: str, explored=None) -> bool:
+    """Can the run WALK between these two parts of one map, by its own
+    record? Only walk: edges count — a door or a pad joins two places
+    without making them one side of anything."""
+    if not part_a or not part_b:
+        return False
+    if part_a == part_b:
+        return True
+    ex = _load_explored() if explored is None else explored
+    seen, queue = {part_a}, [part_a]
+    while queue:
+        cur = queue.pop()
+        for k, e in (ex.get(cur) or {}).items():
+            if not str(k).startswith("walk:"):
+                continue
+            nxt = str((e or {}).get("to") or "")
+            if nxt and nxt not in seen:
+                if nxt == part_b:
+                    return True
+                seen.add(nxt)
+                queue.append(nxt)
+    return False
+
+
 def _came_out_onto(from_map: str, to_map: str, explored=None, side=None) -> list:
     """Parts of `to_map` the run has reached by a door FROM inside the place
     `from_map` belongs to (any floor of it), with the door and how often:
@@ -1442,6 +1466,20 @@ def validate(plan: dict) -> list:
                 for _m_in in dict.fromkeys(_ins):
                     _co_a += _came_out_onto(_m_in, _am, side=_side_a)
                 _bad_ex = sorted(set(str(x) for x in _na) & {pt for pt, _d, _n, _f in _co_a})
+                # ...UNLESS IT IS STILL THE NEAR SIDE. Coming out onto a
+                # part is not proof it is the FAR side: Seafoam's 1F door
+                # (4,17) lands on ROUTE_20|52,2 three times over, and 52,2
+                # is walk-joined to 44,2 where the run went in — one side,
+                # two names. Told "that part IS the far side", the author
+                # was sent at the one answer that cannot be right, five
+                # rounds running, twice (2026-09-09). A far side is a part
+                # no walk from the way in reaches.
+                _in_parts = [_map_now()] + [
+                    str((x.get("done_when") or {}).get("area") or "")
+                    for x in subs[:_i5] if isinstance(x, dict)
+                    and isinstance(x.get("done_when"), dict)]
+                _bad_ex = [pt for pt in _bad_ex
+                           if not any(_walk_joined(pt, w) for w in _in_parts if w)]
                 if _bad_ex:
                     _pt = _bad_ex[0]
                     _door, _flr = next(((d, f) for pt, d, n, f in _co_a if pt == _pt), ("?", _from5 or "inside"))
@@ -1450,8 +1488,11 @@ def validate(plan: dict) -> list:
                         f"{_am} you have ALREADY come out of {_flr} onto (its door at {_door}). "
                         f"If this step means the far side, that part IS it: end on "
                         + '{"area": "' + _pt + '"}' +
-                        f". Excluding it asks for a part of {_am} you have never stood on, "
-                        f"and there may be none.")
+                        f". If instead you mean ANY part of {_am} you have not stood on, "
+                        f"do not list the parts yourself — write "
+                        + '{"new_part": "' + _am + '"}' +
+                        f" and the parts you have stood in are filled in from the "
+                        f"run's own record.")
         if set(_dw5) != {"map"}:
             continue
         _m5 = str(_dw5.get("map") or "")
