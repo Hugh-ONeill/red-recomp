@@ -103,11 +103,26 @@ ck("explore now reaches for the drop", "hole (16,14)" in first, first[:160])
 # ---- the row carries the op that takes it ------------------------------
 row = next(ln for ln in txt.splitlines()
            if "hole (16,14)" in ln and not ln.strip().startswith("1."))
-ck("the row says a drop is not a doorway", "NOT a doorway" in row)
-ck("...that it takes no use_warp", "takes no use_warp" in row)
-ck("...and names walk_to", '{"op":"walk_to","x":N,"y":N}' in row)
+ck("the row leads with what a drop IS, not with what it costs",
+   row.index("an untried way OFF this floor")
+   < row.index("cannot come back up"), row[:200])
+ck("...names walk_to, the one op a drop answers",
+   '{"op":"walk_to","x":N,"y":N}' in row and "rather than by use_warp" in row)
 ck("...and does not claim which floor it lands on",
    "floor below" not in row and "POKEMON_MANSION_1F" not in row)
+# A COST SAID FIVE TIMES IS AN ARGUMENT. Beside "stairs down (25,14) ->
+# UNKNOWN - never taken from here", the old row said not-a-doorway, no
+# climbing back up, and a way down and never a way back, over a header
+# that said it twice more; run 16 took those stairs twice and left both
+# drops untaken (2026-09-10).
+import re as _re                                        # noqa: E402
+_ONEWAY = _re.compile(r"come back|climbing back|never a way back|"
+                      r"NOT a doorway")
+ck("the one-way fact is stated once in the row",
+   len(_ONEWAY.findall(row)) == 1, _ONEWAY.findall(row))
+_hdr = txt.splitlines()[0]
+ck("...and once in the header",
+   len(_ONEWAY.findall(_hdr)) == 1, _ONEWAY.findall(_hdr))
 
 # ---- a drop that HAS been taken is not unfinished ground ---------------
 ex2 = _Ex(walked={"16,14": "POKEMON_MANSION_1F|1,1"})

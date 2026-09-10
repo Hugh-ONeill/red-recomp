@@ -2800,11 +2800,10 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                      + (" is" if len(_hb) == 1 else " are")
                      + " also a HOLE in the floor a BOULDER can be sent "
                        "down"
-                     + (" — the rest are exits like a doorway you cannot "
-                        "come back through"
+                     + (" — the rest are ways OFF this floor"
                         if len(_hb) < len(_holes) else ""))
                     if _hb else
-                    " — an exit like a doorway you cannot come back through"))
+                    " — a way OFF this floor that is in no doorway list"))
     _w = (m.get("water") or {}) if isinstance(m.get("water"), dict) else {}
     if _w.get("cells"):
         _knows = any("SURF" in [str(x.get("id") if isinstance(x, dict) else x)
@@ -3316,11 +3315,28 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
             # its own op or the list is a trap (2026-09-10).
             # "THE FLOOR BELOW" WAS AN OVER-CLAIM and the header stopped
             # making it: the Mansion's 3F drops land on 1F and on 2F.
-            words = ("a HOLE in the floor, and NOT a doorway — it takes no "
-                     "use_warp: {\"op\":\"walk_to\",\"x\":N,\"y\":N} onto "
-                     "it is how it is taken. Stepping on it DROPS you to "
-                     "another floor and there is no climbing back up it, "
-                     "so it is a way DOWN and never a way back — " + words)
+            # ...AND SAY THE COST ONCE. This row said it three times — not
+            # a doorway, no climbing back up it, a way DOWN and never a way
+            # back — over a header that had already said it twice more.
+            # Five cautions and one op. Beside it sat "stairs down (25,14)
+            # -> UNKNOWN — never taken from here", and run 16 took those
+            # stairs twice while both drops on the same floor stayed
+            # untaken (user, 2026-09-10: "its very odd that its got these
+            # two exits from 3F that it hasnt taken yet, its taken the
+            # stairs to nowhere but not one of the holes yet").
+            #
+            # A player looks at a hole and sees the way down. Lead with
+            # what the thing IS — an untried way off this floor, no
+            # different in that from the staircase — keep the op, because
+            # it is the one exit use_warp cannot take, and state the
+            # one-way fact once. Whether the cost is worth it stays the
+            # model's; it was never ours to press with repetition.
+            words = ("a HOLE in the floor: an untried way OFF this floor, "
+                     "taken by WALKING ONTO IT — "
+                     "{\"op\":\"walk_to\",\"x\":N,\"y\":N} — rather "
+                     "than by use_warp, which no drop answers. Where it "
+                     "sets you down is not known until you take it, and "
+                     "you cannot come back up the same way — " + words)
         if c.kind == "shut_door" and getattr(c, "now_held", None):
             _tw = [t for t in (getattr(c, "twins", None) or []) if t]
             words = ("a CLOSED DOOR, drawn shut across the way"
