@@ -6585,6 +6585,28 @@ def check_already_done(deed: str, start: str, model: str,
         print(f"[already-done] refused: '{deed[:60]}' names {badge} and the "
               f"run is not wearing it", file=sys.stderr)
         return False
+    # ...AND THE OTHER TWO OF THE FAMILY, WHICH ONLY check_done HAD. The
+    # four guards were written together and this rung got two of them, so
+    # the judgment that crosses a leg off FOR EVER was the weaker of the
+    # pair. Leg 41, "Retrieve the Secret Key from the Pokemon Mansion",
+    # was crossed off with the reason "The CARD_KEY is present in the bag,
+    # which is the Secret Key retrieved from the mansion basement" — two
+    # different items, one of them not held, and _item_not_held would have
+    # said so without asking anybody. The run walked on toward Cinnabar
+    # Gym with no key to open it (2026-09-10).
+    #
+    # A crossed-off leg never comes back on its own, which is exactly why
+    # this rung needs the guards MORE than check_done does, not less.
+    levels = _levels_not_reached(deed, start)
+    if levels:
+        print(f"[already-done] refused: '{deed[:60]}' names {levels}",
+              file=sys.stderr)
+        return False
+    item = _item_not_held(deed, start)
+    if item:
+        print(f"[already-done] refused: '{deed[:60]}' names {item} and it "
+              f"is not in the bag", file=sys.stderr)
+        return False
     body = (f"THE OBJECTIVE: {deed}\n\nWHERE THE RUN STANDS: {start}"
             + recent_events() + _events_bearing(deed)
             + walked_ground_text([(0, deed)], observed))
