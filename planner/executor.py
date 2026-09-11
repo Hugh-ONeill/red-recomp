@@ -10691,6 +10691,48 @@ class Executor:
                     ((int(m.get("level") or 0), m.get("species"), i)
                      for i, m in enumerate(party, 1)
                      if int(m.get("level") or 0) < _need))
+                # ...AND FOR A SLOT, WHO IS STANDING IN IT. Only the
+                # party-wide form had this line, so a slot_level step said
+                # nothing at all about its slot — and the step's own words
+                # name whoever was there when the plan was WRITTEN. A party
+                # is reordered by switching, depositing and withdrawing,
+                # and an evolution renames one in place, so leg 46's five
+                # training steps ended up testing slots that held none of
+                # the Pokemon they were named for: train_eevee on a slot
+                # holding DODRIO, train_gloom on one already at L50 and so
+                # unable to do anything at all, burning its attempts
+                # (user, 2026-09-11: "fix the subgoal names to use the
+                # slot's current occupant").
+                #
+                # The plan is not rewritten: the model wrote those words
+                # and they are its record. What the page adds is who the
+                # condition is actually reading.
+                _slot = (int(dw_val.get("slot") or 0)
+                         if _kind == "slot_level" and isinstance(dw_val, dict)
+                         else 1 if _kind == "lead_level" else 0)
+                if _slot and party:
+                    _occ = party[_slot - 1] if _slot <= len(party) else None
+                    if _occ is None:
+                        lines.append(
+                            f"WHAT THIS CONDITION COUNTS: SLOT {_slot} of "
+                            f"your party — and your party has only "
+                            f"{len(party)}, so there is nobody in it.")
+                    else:
+                        _lv = int(_occ.get("level") or 0)
+                        lines.append(
+                            f"WHAT THIS CONDITION COUNTS: SLOT {_slot} of "
+                            f"your party, whoever is standing in it — that "
+                            f"is {_occ.get('species')}{_mon_types(_occ)} "
+                            f"L{_lv} right now"
+                            + (f", still {_need - _lv} short of L{_need}."
+                               if _lv < _need else
+                               f", already at L{_need}, so this condition "
+                               f"HOLDS and battling changes nothing here.")
+                            + " The step's own words name whoever stood in "
+                              "that slot when the plan was written; a party "
+                              "is reordered by switching, depositing and "
+                              "withdrawing, and an evolution renames one in "
+                              "place. The SLOT is what is read.")
                 if _kind == "party_min_level" and _short:
                     lines.append(
                         "WHAT THIS CONDITION COUNTS: every Pokemon IN YOUR "
