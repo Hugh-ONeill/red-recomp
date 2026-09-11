@@ -6741,6 +6741,17 @@ let you past until it is done, phrased the way the rest of your list is
 phrased. Do NOT restate something already on the docket, and do not name
 something the recorded events show is already done.
 
+A MISSING OBJECTIVE IS A GATE, NOT A CHORE. If the leg you are stuck on
+could simply DO the thing as one of its own steps — walk somewhere, heal
+at a Center, buy an item, press a thing, teach a move — then it is a STEP
+inside that leg and not an objective of its own, and putting it on the
+list buys you nothing but a plan to write. Name only what the game
+REFUSES until some other deed is done: a badge it checks at a gate, an
+item a person demands before they move, a barrier that opens on a flag.
+"Revive the fainted party members" is a chore and the grind leg already
+heals; "Obtain the SILPH SCOPE" is a gate, because the tower's ghosts
+cannot be fought without it.
+
 Reply with ONLY a JSON object, the reason FIRST:
 {"why": "one sentence", "insert": "the objective"}   or
 {"why": "one sentence", "insert": null}"""
