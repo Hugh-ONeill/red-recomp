@@ -1705,6 +1705,23 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
                     f"and keep going until something new comes into view; "
                     f"{_n0} such spot(s) on this floor; nothing past them is "
                     f"known yet")
+        # ...AND FAILING THAT, A DROP NOBODY HAS TAKEN (the deed aims the
+        # sweep at one; see executor _explore_step). A drop sits on ground
+        # ALREADY seen, so sweeping can never turn it up as new — the floor
+        # sweeps dry with one standing in the middle of it, which is how
+        # POKEMON_MANSION_3F read for a whole leg. Coverage still comes
+        # first, as it does for every exit; what changes is that the line
+        # says the drop is there (2026-09-11).
+        _dr0 = next((c for c in cands
+                     if c.kind == "door" and getattr(c, "look", "") == "hole"
+                     and c.status == "untried" and c.reachable), None)
+        if _dr0 is not None:
+            return (f"walk to the unseen ground nearest {_dr0.label()} — a "
+                    f"way OFF this floor never taken, which sweeping will "
+                    f"not turn up because it is already on screen — and "
+                    f"keep going until something new comes into view; "
+                    f"{_n0} such spot(s) on this floor; nothing past them "
+                    f"is known yet")
         if _f.get("slide"):
             return (f"step onto the ARROW tile at ({_f.get('x')},"
                     f"{_f.get('y')}) — it carries you onto ground that has "

@@ -2863,6 +2863,34 @@ class Executor:
                     self, obs, target, outcomes=self._outcomes_here(obs),
                     want_explore=False))
                 _d0 = next((c for c in _uw if c.kind == "door"), None)
+                # ...AND FAILING THAT, A DROP NOBODY HAS TAKEN. Coverage
+                # comes first for every exit and a drop is no exception —
+                # but unlike a door, a drop sits on ground ALREADY seen, so
+                # no amount of sweeping will ever turn it up as new. The
+                # floor can be swept dry with one standing in the middle of
+                # it, which is how Mansion 3F read for a whole leg. Aim the
+                # sweep at it and say it is there, the same courtesy an
+                # unreachable way out has had since 2026-08-29. Taking it
+                # stays the model's: a drop is one-way, and the row says so
+                # (2026-09-11, user: "now the coverage-first rule so drops
+                # get offered").
+                if _d0 is None:
+                    _cands0 = ledger.build(self, obs, target,
+                                           outcomes=self._outcomes_here(obs),
+                                           want_explore=False)
+                    _d0 = next((c for c in _cands0
+                                if c.kind == "door"
+                                and getattr(c, "look", "") == "hole"
+                                and c.status == "untried"
+                                and getattr(c, "reachable", False)), None)
+                    if _d0 is not None:
+                        _st["toward_x"], _st["toward_y"] = (
+                            int(str(_d0.key).split(",")[0]),
+                            int(str(_d0.key).split(",")[1]))
+                        _near = (f" nearest {_d0.label()}, a way OFF this "
+                                 f"floor never taken — sweeping will not "
+                                 f"turn it up, it is already on screen,")
+                        _d0 = None      # said; do not say it twice below
                 if _d0 is not None:
                     _st["toward_x"], _st["toward_y"] = (
                         int(str(_d0.key).split(",")[0]),
