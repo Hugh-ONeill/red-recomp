@@ -19313,6 +19313,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 continue
         idx = -1
         self._plan_regress = None
+        # ...AND WHETHER ANY STEP HAS ACTUALLY RUN. The "objective already
+        # holds" shortcut below is barred at idx 0, because a witness true
+        # before the plan moves witnesses nothing. But BACKTRACK sends a
+        # stuck plan back to an earlier subgoal, so one that regresses to
+        # its first sits at idx 0 for ever and can never take the shortcut
+        # however much it has achieved since.
+        #
+        # leg 47 "revive all fainted party members" is the case: CHARIZARD
+        # came back to 158hp mid-leg, the objective party_healthy held, and
+        # the plan went on working go_to_cinnabar_island from Seafoam B3F
+        # because it had backtracked to step one (2026-09-11).
+        _ran_any = False
         while idx + 1 < len(subgoals):
             idx += 1
             sg = subgoals[idx]
@@ -19363,12 +19375,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # rounds, twice, and the chain crossed the leg off (run 16,
             # 2026-09-07). The plan runs; the validator says why the witness
             # was wrong at the next authoring.
-            if idx == 0 and _fin and pred_holds(_fin, self.settle()):
+            if idx == 0 and not _ran_any and _fin \
+                    and pred_holds(_fin, self.settle()):
                 print(f"== the plan's OBJECTIVE ({json.dumps(_fin)}) already holds "
                       f"before its first step — a witness true before the deed "
                       f"witnesses nothing; running the plan anyway")
                 self.log("plan_objective_true_at_start", objective=_fin)
-            if idx > 0 and idx < len(subgoals) - 1 and _fin \
+            if (idx > 0 or _ran_any) and idx < len(subgoals) - 1 and _fin \
                     and objective_vouches(_fin) \
                     and pred_holds(_fin, self.settle()):
                 print(f"== the plan's OBJECTIVE ({json.dumps(_fin)}) holds "
@@ -19379,6 +19392,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             has_macro = bool(sg.get("macro"))
             print(f"== subgoal: {sg['id']}" + ("" if has_macro else " (no macro)"))
             ok = self._attempt(sg)
+            _ran_any = True
             # BACKTRACK: a subgoal that cannot be done may not be the broken
             # one. A done_when like {map:X} is satisfied ANYWHERE on X, so the
             # PREVIOUS subgoal can "succeed" in a place this one is impossible
