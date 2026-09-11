@@ -2694,6 +2694,35 @@ class Executor:
                       f"not recorded — it may be another cell of the edge "
                       f"you crossed to get here, and it may be another map "
                       f"entirely.")
+        # NOTHING UNTRIED LIES TOWARD THE GOAL IS AN ANSWER. Under a map
+        # goal, when every walked area with something left is AWAY from it
+        # on the printed map, walking to the least-bad one is not
+        # exploring, it is going backwards. Standing on ROUTE_23 one leg
+        # from Victory Road under INDIGO_PLATEAU, the areas level with the
+        # goal had nothing untried and explore walked 4 legs to ROUTE_2 —
+        # after the same picker had walked 39 to the Rocket Hideout before
+        # the doorstep fix (2026-09-11, user: "if its got a target map
+        # explore shouldnt be directing it away from that").
+        #
+        # The walk is refused; nothing else is. Every area is still listed
+        # on the page with the printed map's word for which way it lies,
+        # and {"op":"go"} still takes the party anywhere it has walked. What
+        # stops is the HARNESS choosing to go backwards on its own.
+        if best is not None and str(target or "").startswith("map:") \
+                and best[0][3] == 2:
+            _g = str(target)[4:].split("|")[0]
+            self.log("explore_refused_away", subgoal=sg.get("id"),
+                     region=best[1], goal=_g)
+            return False, [
+                f"explore: nothing untried lies toward {_g}. Every area you "
+                f"have walked that still has something is AWAY from it on "
+                f"the printed map — the nearest is {best[1]}, "
+                f"{len(best[4])} leg(s) back — so walking to one is going "
+                f"backwards, and the harness will not do that for you. The "
+                f"way on is something here you have not done, or a place "
+                f"you have never stood in. {{\"op\":\"go\",\"to\":\"AREA\"}} "
+                f"still takes you anywhere you have walked, if one of them "
+                f"is what you want."], []
         if not best:
             _rc = self._ride_chance(here, targets)
             if _rc:
