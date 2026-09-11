@@ -1480,7 +1480,11 @@ def validate(plan: dict) -> list:
                 # ITSELF, so every candidate filtered itself out — and the
                 # far side of Route 20 is walk-joined to the OTHER far
                 # part, so even without the self-join it read as near.
-                _in_parts = [_map_now()] + [
+                # THE PARTY'S REGION, NOT ITS MAP. _walk_joined compares
+                # two regions; a bare map name matches nothing, so this
+                # filter never fired and the rule called the near side the
+                # far side (2026-09-11).
+                _in_parts = [_region_now()] + [
                     str((x.get("done_when") or {}).get("area") or "")
                     for x in subs[:_i5] if isinstance(x, dict)
                     and isinstance(x.get("done_when"), dict)]
@@ -2262,6 +2266,39 @@ def _map_now(obs=None, last=None) -> "str | None":
             last = {}
     m = (last or {}).get("map")
     return str(m) if isinstance(m, str) and m else None
+
+
+def _region_now(obs=None, last=None) -> "str | None":
+    """The REGION the run stands in ("ROUTE_23|10,104"), not just its map.
+
+    _map_now answers with the map alone, which is the right answer for the
+    questions that ask "which map are you on". The near-side filter asks a
+    different one — is this candidate part walk-joined to where the party
+    IS — and a bare map name can never be walk-joined to anything, so the
+    filter never fired. That is why "Come out of Victory Road onto a part
+    of ROUTE_23 you have never stood on" could not be authored: it refused
+    excluding ROUTE_23|4,31, insisting that part IS the far side, when
+    4,31 is the part Victory Road's door lands on and is walk-joined to
+    both other parts the run has walked (2026-09-11, user: "fix the
+    near-side filter to use the region not the map").
+
+    None when either half is missing: no claim is better than a bare map
+    wearing a region's shape.
+    """
+    if obs is None:
+        obs = _obs_now()
+    m = (obs or {}).get("map")
+    if isinstance(m, dict) and m.get("id") and m.get("region"):
+        return f"{m['id']}|{m['region']}"
+    if last is None:
+        try:
+            last = json.loads(Path("run/last_state.json").read_text() or "{}")
+        except (OSError, ValueError, TypeError):
+            last = {}
+    _m, _r = (last or {}).get("map"), (last or {}).get("region")
+    if isinstance(_m, str) and _m and isinstance(_r, str) and _r:
+        return f"{_m}|{_r}"
+    return None
 
 
 def witness_holds_now(dw, obs, trust_bag: bool = False) -> "bool | None":
