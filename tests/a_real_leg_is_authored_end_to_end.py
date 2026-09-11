@@ -65,6 +65,19 @@ BAD = {
 }
 
 
+# THE WORLD IS PINNED, NOT BORROWED. This authored against run/obs.json,
+# so the day the run picked the SECRET KEY up the sound plan started being
+# refused for ending on something already true (2026-09-10). A synthetic
+# test must not depend on how far the live run has got.
+PINNED = {"map": {"id": "CINNABAR_ISLAND", "region": "10,0"},
+          "player": {"x": 10, "y": 0}, "mode": "overworld",
+          "bag": {"POKE_BALL": 5}, "key_items": [], "badges": [],
+          "flags": [], "party": [{"species": "CHARIZARD", "level": 56,
+                                  "types": ["FIRE", "FLYING"],
+                                  "hp": 190, "max_hp": 190}]}
+A._obs_now = lambda path="run/obs.json": dict(PINNED)
+
+
 def run_author(reply_plan) -> tuple:
     """author() with the model stubbed. Returns (plan, prompts seen)."""
     seen = []
