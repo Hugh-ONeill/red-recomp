@@ -325,9 +325,22 @@ def _walked_door_into(map_id: str):
     best = None
     for region, exits in graph.items():
         for k, e in (exits or {}).items():
+            # A WALK BETWEEN TWO PARTS OF ONE FLOOR IS NOT A DOOR INTO IT.
+            # Those edges are keyed "walk:<MAP>|x,y", which carries a comma,
+            # so the door test matched them and a map became its own
+            # doorstep: ROCKET_HIDEOUT_B1F resolved to itself, SILPH_CO_9F
+            # and 10F to each other, and every Safari Zone quadrant to a
+            # rest house. A doorstep the printed map cannot place scores
+            # LEVEL with any goal, so explore walked the party 39 legs from
+            # Route 23 to the hideout lift under the goal INDIGO_PLATEAU,
+            # twice in one leg (2026-09-11).
+            if (str(k).startswith(("walk:", "lift:"))):
+                continue
             if ("," in str(k) and isinstance(e, dict) and int(e.get("n") or 0) >= 1
                     and str(e.get("to") or "").split("|")[0] == map_id):
                 hit = (region.split("|")[0], str(k))
+                if hit[0] == map_id:
+                    continue          # a door from itself places nothing
                 if hit[0] in MAP_EDGES:
                     return hit
                 best = best or hit
@@ -374,7 +387,36 @@ def _doorstep(map_id: str, _seen=None) -> str:
                 return city
     hit = _walked_door_into(map_id)
     if hit and hit[0] != map_id and hit[0] not in _seen:
-        return hit[0] if hit[0] in MAP_EDGES else _doorstep(hit[0], _seen)
+        _out = hit[0] if hit[0] in MAP_EDGES else _doorstep(hit[0], _seen)
+        if _out in MAP_EDGES:
+            return _out
+    # ...AND A BUILDING IS PLACED BY WHICHEVER OF ITS PARTS OPENS ON THE
+    # STREET. Some places are only ever entered at one part: Silph's 9F,
+    # 10F and 11F have doors to each other and to nothing outside, and the
+    # Safari Zone's four quadrants and rest houses open only into one
+    # another. The walk above then follows a door into a sibling, the
+    # sibling's door comes straight back, and the pair settles on each
+    # other — placed nowhere, which scores LEVEL with every goal and lets
+    # explore rank them against the road it is actually on (2026-09-11).
+    #
+    # A building's parts share the first two segments of their names, which
+    # the game itself writes that way (SILPH_CO_9F, SAFARI_ZONE_EAST,
+    # ROCKET_HIDEOUT_B4F). Ask the SIBLINGS where the building stands; the
+    # first that lands on the printed map places the whole of it. Still the
+    # run's own walked doors, and still nothing about what any part holds.
+    _parts = map_id.split("_")
+    if len(_parts) >= 3:
+        _fam = "_".join(_parts[:2]) + "_"
+        _graph = getattr(_WALKED_REF[0], "explored", None) or {}
+        _kin = sorted({str(r).split("|")[0] for r in _graph}
+                      | {str((e or {}).get("to") or "").split("|")[0]
+                         for ex in _graph.values() for e in (ex or {}).values()})
+        for _sib in _kin:
+            if _sib == map_id or not _sib.startswith(_fam):
+                continue
+            _h2 = _walked_door_into(_sib)
+            if _h2 and _h2[0] in MAP_EDGES:
+                return _h2[0]
     return map_id
 import battle_oracle
 import brock_probe   # reuse the live model driver (chat/parse) for escalation
