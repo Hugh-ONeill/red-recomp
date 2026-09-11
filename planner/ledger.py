@@ -264,6 +264,33 @@ def goalward_tier(ex, region: str | None, here: str | None,
     return 0 if da < dh else (2 if da > dh else 1)
 
 
+def edge_tier(ex, region: str | None, key: str, target: str | None) -> int:
+    """Where the PRINTED MAP sends this untried exit, as a goalward tier.
+
+    goalward_tier answers about an AREA. An area on the same map as the
+    party reads level with the goal whichever way its edges point, so
+    ROUTE_23|4,31 — the region holding the door into Victory Road — ranked
+    on distance alone, and the only untried thing in it was its SOUTH
+    edge, which the box the game hands you draws as the road to ROUTE_22.
+    Under the goal INDIGO_PLATEAU the page offered it and the run walked
+    back down the route it had to climb (2026-09-11, user: "if its got a
+    target map explore shouldnt be directing it away from that").
+
+    A door has no printed direction and is always 1. Only a compass edge
+    can be read off the map, and only under a map goal.
+    """
+    if key not in ("north", "south", "east", "west"):
+        return 1
+    try:
+        import sys as _sys
+        _E = _sys.modules.get(type(ex).__module__)
+        _to = ((getattr(_E, "MAP_EDGES", {}) or {}).get(_map_of(region))
+               or {}).get(key)
+    except Exception:
+        return 1
+    return goalward_tier(ex, _to, _map_of(region), target) if _to else 1
+
+
 def goalward_words(tier: int, target: str | None, short: bool = False) -> str:
     """The page's word for a goalward tier; nothing when there is nothing
     to say (no map goal, or level with it)."""
@@ -1903,8 +1930,22 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         # (goalward_tier says why that is manual tier and not pointing);
         # distance decides among areas level with it. The deed's rule.
         _goal = goalward_tier(ex, region, here, target)
-        r = (_pri, _local, _goal, len(path), 0 if (left or _unr) else 1,
-             -(len(left) + len(things) + unseen + len(_unr)), region)
+        # ...AND AN UNTRIED EXIT THAT LEADS AWAY IS NOT A REASON TO WALK
+        # THERE. The tier above is about the AREA, and an area on the same
+        # map as the party reads level with the goal whichever way its
+        # edges point. So ROUTE_23|4,31 — the region holding the door into
+        # Victory Road — won on distance, and the only untried thing in it
+        # was its SOUTH edge, which the printed map draws as the road back
+        # to ROUTE_22. Under the goal INDIGO_PLATEAU the page sent the run
+        # back down the route it had to climb (2026-09-11).
+        #
+        # Away-edges are still LISTED, with the printed map's word for
+        # them; they just stop counting as the business that makes an area
+        # worth the walk. Nothing is hidden and nothing is pointed at.
+        _fwd = [k for k in left if edge_tier(ex, region, k, target) != 2]
+        r = (_pri, _local, _goal, len(path),
+             0 if (_fwd or things or unseen or _unr) else 1,
+             -(len(_fwd) + len(things) + unseen + len(_unr)), region)
         found.append((r, region, left, things, path, unseen, _unr))
     found.sort(key=lambda f: f[0])
     best = found[0] if found else None
@@ -1923,9 +1964,25 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
             # name a seam as an EDGE and a door as a DOOR: "take one of
             # west" read as a typo; the untried thing on Route 7 was its
             # west edge — the road to the next town.
+            # ...AND WHICH WAY THE PRINTED MAP SAYS THAT EDGE GOES. The
+            # goalward note is attached to AREAS ("GAME_CORNER ... AWAY
+            # from INDIGO_PLATEAU on the printed map") and never to the
+            # EXIT being offered inside one. So on ROUTE_23, under the goal
+            # INDIGO_PLATEAU, item 1 read "explore walks there to take the
+            # south edge (never taken)" — south is ROUTE_22, the way it
+            # came, and the box the game hands you says so. The run walked
+            # back down the route it had to climb (2026-09-11, user: "its
+            # backtracking because its allready been through here").
+            #
+            # Same source and same words as the area note: the printed map
+            # says which way an edge leads, nothing about what is there or
+            # whether the road is open. Whether to take it stays the
+            # model's.
             def _word(k):
-                return (f"the {k} edge" if k in ("north", "south", "east",
-                                                "west") else f"door ({k})")
+                if k in ("north", "south", "east", "west"):
+                    return f"the {k} edge" + goalward_words(
+                        edge_tier(ex, region, k, target), target, short=True)
+                return f"door ({k})"
             what.append("take " + " or ".join(_word(k)
                                               for k in sorted(left)[:3])
                         + " (never taken)")

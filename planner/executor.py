@@ -3206,13 +3206,29 @@ class Executor:
             # pocket outweigh the one untaken way out of Mt Moon B2F, at
             # the same distance — but a way out is what changes the map a
             # map goal asks for, and unseen ground only MIGHT hold one.
-            _way_here = 0 if (left or _unr) else 1
+            # ...AND AN UNTRIED EXIT THAT LEADS AWAY IS NOT A WAY ON. The
+            # tier below is about the AREA, and an area on the same map as
+            # the party reads level with the goal whichever way its edges
+            # point. ROUTE_23|4,31 holds the door into Victory Road and its
+            # only untried exit is the SOUTH edge, which the printed map
+            # draws as the road back to ROUTE_22: under the goal
+            # INDIGO_PLATEAU it won on distance and the walk went backwards
+            # (2026-09-11, user: "if its got a target map explore shouldnt
+            # be directing it away from that").
+            #
+            # Same reader as the page (ledger.edge_tier) so the deed and
+            # the words cannot drift, which is the whole reason goalward
+            # lives in one place. The exit is still taken if the model asks
+            # for it; it just stops being the reason to walk here.
+            _fwd = [k for k in left
+                    if ledger.edge_tier(self, region, k, target) != 2]
+            _way_here = 0 if (_fwd or _unr) else 1
             # A COUNT THE REGION'S OWN READING CONTRADICTS RANKS BEHIND
             # fresh ground of its tier, whatever the distance: walking there
             # to sweep has already been shown to find nothing. Not last —
             # the mis-named-pocket case keeps it ahead of nothing at all —
             # and the dry-walk rule still finishes the demotion.
-            _stale = (1 if (unseen and not left and not unpressed and not _unr
+            _stale = (1 if (unseen and not _fwd and not unpressed and not _unr
                             and self._dry_from_within(region)) else 0)
             # ...THEN TOWARD THE GOAL BEFORE AWAY FROM IT. Under a map
             # goal the walk went AWAY from the goal on the printed map 66
@@ -3224,7 +3240,7 @@ class Executor:
             # comes first.
             _goal = ledger.goalward_tier(self, region, here, target)
             r = (_pri, _stale, _local, _goal, len(path), _way_here,
-                 -(len(left) + len(unpressed) + unseen + len(_unr)),
+                 -(len(_fwd) + len(unpressed) + unseen + len(_unr)),
                  region)
             if best is None or r < best[0]:
                 best = (r, region, left, unpressed, path, unseen)
