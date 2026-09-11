@@ -20,7 +20,9 @@ src = (ROOT / "planner" / "executor.py").read_text()
 checks = []
 def ck(n, ok): checks.append((n, bool(ok)))
 ck("unreachable untaken ways are remembered per region and persisted",
-   "_unr = sorted(f\"{w.get('x')},{w.get('y')}\"" in src
+   # became a set union on 2026-09-11, when a DROP no walk reaches joined
+   # the ways-out-no-walk-reaches list alongside an unreachable doorway
+   "_unr = sorted({f\"{w.get('x')},{w.get('y')}\"" in src
    and '"unreached_at": getattr(self, "unreached_at", {})' in src
    and 'self.unreached_at = data.get("unreached_at", {}) or {}' in src)
 ck("...and dropped once that way has been walked",

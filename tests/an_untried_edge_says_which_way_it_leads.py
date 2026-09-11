@@ -74,7 +74,8 @@ ck("the edge reader is shared by the words and the ranking",
 _rank = SRC.split("AN UNTRIED EXIT THAT LEADS AWAY IS NOT A REASON", 1)[1][:1400]
 ck("away-edges are dropped from what makes an area worth walking to",
    "_fwd = [k for k in left if edge_tier(ex, region, k, target) != 2]" in _rank)
-ck("...from the has-something flag", "0 if (_fwd or things or unseen or _unr) else 1" in _rank)
+ck("...from the has-something flag, which stays WAYS OUT only",
+   "0 if (_fwd or _unr) else 1" in _rank)
 ck("...and from the count that breaks ties",
    "-(len(_fwd) + len(things) + unseen + len(_unr))" in _rank)
 ck("the area's own goalward tier still leads the key",

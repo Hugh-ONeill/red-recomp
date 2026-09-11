@@ -1943,8 +1943,13 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
         # them; they just stop counting as the business that makes an area
         # worth the walk. Nothing is hidden and nothing is pointed at.
         _fwd = [k for k in left if edge_tier(ex, region, k, target) != 2]
-        r = (_pri, _local, _goal, len(path),
-             0 if (_fwd or things or unseen or _unr) else 1,
+        # WAYS OUT ONLY in the flag, as before: a way out is what changes
+        # the map a map goal asks for, and unseen ground only MIGHT hold
+        # one. Widening this to things and unseen ground (first cut,
+        # 2026-09-11) let a pocket with 4 unseen spots beat the one holding
+        # an untaken way out — the exact case an_unreachable_way_out_is_
+        # unfinished_business was written for.
+        r = (_pri, _local, _goal, len(path), 0 if (_fwd or _unr) else 1,
              -(len(_fwd) + len(things) + unseen + len(_unr)), region)
         found.append((r, region, left, things, path, unseen, _unr))
     found.sort(key=lambda f: f[0])

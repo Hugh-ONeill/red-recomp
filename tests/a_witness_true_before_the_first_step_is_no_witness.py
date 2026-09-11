@@ -32,7 +32,11 @@ p = A.witness_already_true_problems(plan)
 ck("the author refuses the plan and says why lacks_item failed here",
    len(p) == 1 and "ALREADY HOLDS" in p[0] and "a thing GONE that you hold NOW" in p[0], p)
 ck("the executor never declares the objective met before the first step",
-   "if idx > 0 and idx < len(subgoals) - 1 and _fin" in ex_src
+   # became "(idx > 0 or _ran_any)" on 2026-09-11: BACKTRACK can put a
+   # plan back at index 0 after steps HAVE run, and the bar was always
+   # meant to be "nothing has happened yet", which _ran_any says exactly
+   "if (idx > 0 or _ran_any) and idx < len(subgoals) - 1 and _fin" in ex_src
+   and "if idx == 0 and not _ran_any and _fin" in ex_src
    and 'self.log("plan_objective_true_at_start", objective=_fin)' in ex_src)
 
 bad = [n for n, ok, _ in checks if not ok]

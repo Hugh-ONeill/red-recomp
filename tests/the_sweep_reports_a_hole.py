@@ -52,9 +52,12 @@ _o["map"]["holes"] = [{"x": 16, "y": 14, "reachable": True, "drop": 1},
                       {"x": 17, "y": 14, "reachable": True, "drop": 1},
                       {"x": 23, "y": 15, "reachable": True, "boulder": True, "drop": 2}]
 _pg = L.render(L.build(_ex, _o, target="flag:X"), _ex, _o, target="flag:X")
-ck("the ledger says ONE-WAY DROP, names the boulder hole, and calls the rest exits",
+# the trailing clause lost its second statement of the one-way cost on
+# 2026-09-11: the header said it twice and the row three times more, and
+# run 16 took a reversible staircase over two drops on the same floor
+ck("the ledger says ONE-WAY DROP, names the boulder hole, and calls the rest ways off",
    "2 ONE-WAY DROP(S) IN IT" in _pg and "(23,15) is also a HOLE" in _pg
-   and "the rest are exits like a doorway" in _pg and "floor below" not in _pg)
+   and "the rest are ways OFF this floor" in _pg and "floor below" not in _pg)
 ck("...and folds the two tiles of one drop into one label",
    "(16,14)+(17,14)" in _pg and "ONE drop wider than one cell" in _pg)
 ck("a pad is a pad, a door a doorway",

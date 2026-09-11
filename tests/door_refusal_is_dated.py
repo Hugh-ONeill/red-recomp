@@ -54,10 +54,14 @@ for _now, want in ((244, True), (117, False), (100, False)):
 
 # executor wraps the same sentence across two f-string lines
 _ex = Path("planner/executor.py").read_text()
+# the executor's half gained a second clause on 2026-09-11 (a refusal is
+# dated against the BAG too, because picking up a key item fires no flag),
+# so the sentence is built from parts now; the claim is that both halves
+# say "said before N event(s) that have fired since"
 ck("the wording matches the people-said block",
    "said before " in src[i:i + 1600]
-   and "(said before {now - then} event(s) that have " in _ex
-   and 'fired since)' in _ex)
+   and 'event(s) that have fired since")' in _ex
+   and "said before {', and before '.join(_bits)}" in _ex)
 
 import ast
 try:

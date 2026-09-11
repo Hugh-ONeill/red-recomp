@@ -35,9 +35,12 @@ src = (ROOT / "planner" / "executor.py").read_text()
 ck("the deed tiers unseen ground (and an unreachable untaken way) with an untried exit for a map goal",
    "_pri = (0 if (left or unseen or _unr) else 1) if _map_goal else 0" in src)
 lsrc = (ROOT / "planner" / "ledger.py").read_text()
+# the tie-break count reads _fwd rather than left since 2026-09-11: an
+# untried edge the printed map sends AWAY from a map goal stopped counting
+# as a reason to walk there. _pri, the tier this test is about, is unchanged.
 ck("...and the words carry the same tier",
    '_pri = ((0 if (left or unseen or _unr) else 1)' in lsrc
-   and "-(len(left) + len(things) + unseen + len(_unr)), region)" in lsrc)
+   and "-(len(_fwd) + len(things) + unseen + len(_unr)), region)" in lsrc)
 ex._dry_walks = {MOON: 2}
 txt2 = L.plan_explore(ex, o, L.build(ex, o, target="map:CERULEAN_CITY", want_explore=False), target="map:CERULEAN_CITY")
 ck("two dry walks to an area rank it last (the museum's ticket desk)", "never tried is MUSEUM|0,1" in txt2)

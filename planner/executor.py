@@ -2694,35 +2694,6 @@ class Executor:
                       f"not recorded — it may be another cell of the edge "
                       f"you crossed to get here, and it may be another map "
                       f"entirely.")
-        # NOTHING UNTRIED LIES TOWARD THE GOAL IS AN ANSWER. Under a map
-        # goal, when every walked area with something left is AWAY from it
-        # on the printed map, walking to the least-bad one is not
-        # exploring, it is going backwards. Standing on ROUTE_23 one leg
-        # from Victory Road under INDIGO_PLATEAU, the areas level with the
-        # goal had nothing untried and explore walked 4 legs to ROUTE_2 —
-        # after the same picker had walked 39 to the Rocket Hideout before
-        # the doorstep fix (2026-09-11, user: "if its got a target map
-        # explore shouldnt be directing it away from that").
-        #
-        # The walk is refused; nothing else is. Every area is still listed
-        # on the page with the printed map's word for which way it lies,
-        # and {"op":"go"} still takes the party anywhere it has walked. What
-        # stops is the HARNESS choosing to go backwards on its own.
-        if best is not None and str(target or "").startswith("map:") \
-                and best[0][3] == 2:
-            _g = str(target)[4:].split("|")[0]
-            self.log("explore_refused_away", subgoal=sg.get("id"),
-                     region=best[1], goal=_g)
-            return False, [
-                f"explore: nothing untried lies toward {_g}. Every area you "
-                f"have walked that still has something is AWAY from it on "
-                f"the printed map — the nearest is {best[1]}, "
-                f"{len(best[4])} leg(s) back — so walking to one is going "
-                f"backwards, and the harness will not do that for you. The "
-                f"way on is something here you have not done, or a place "
-                f"you have never stood in. {{\"op\":\"go\",\"to\":\"AREA\"}} "
-                f"still takes you anywhere you have walked, if one of them "
-                f"is what you want."], []
         if not best:
             _rc = self._ride_chance(here, targets)
             if _rc:
@@ -3299,7 +3270,11 @@ class Executor:
             # to sweep has already been shown to find nothing. Not last —
             # the mis-named-pocket case keeps it ahead of nothing at all —
             # and the dry-walk rule still finishes the demotion.
-            _stale = (1 if (unseen and not _fwd and not unpressed and not _unr
+            # ...COUNTING EVERY UNTRIED EXIT, away ones included: this
+            # asks whether sweeping here has already been shown to find
+            # nothing, which is a fact about the ground and not about
+            # which way the goal lies.
+            _stale = (1 if (unseen and not left and not unpressed and not _unr
                             and self._dry_from_within(region)) else 0)
             # ...THEN TOWARD THE GOAL BEFORE AWAY FROM IT. Under a map
             # goal the walk went AWAY from the goal on the printed map 66
@@ -3316,6 +3291,45 @@ class Executor:
             if best is None or r < best[0]:
                 best = (r, region, left, unpressed, path, unseen)
                 self._best_unreached = _unr
+        # NOTHING UNTRIED LIES TOWARD THE GOAL IS AN ANSWER. Under a map
+        # goal, when every walked area with something left is AWAY from it
+        # on the printed map, walking to the least-bad one is not
+        # exploring, it is going backwards. Standing on ROUTE_23 one leg
+        # from Victory Road under INDIGO_PLATEAU, the areas level with the
+        # goal had nothing untried and explore walked 4 legs to ROUTE_2 —
+        # after the same picker had walked 39 to the Rocket Hideout before
+        # the doorstep fix (2026-09-11, user: "if its got a target map
+        # explore shouldnt be directing it away from that").
+        #
+        # The walk is refused; nothing else is. Every area is still listed
+        # on the page with the printed map's word for which way it lies,
+        # and {"op":"go"} still takes the party anywhere it has walked. What
+        # stops is the HARNESS choosing to go backwards on its own.
+        if best is not None and str(target or "").startswith("map:") \
+                and best[0][3] == 2:
+            _g = str(target)[4:].split("|")[0]
+            # ...AND ONLY CREDIT THE PRINTED MAP WHILE IT IS IN THE BAG.
+            # TOWN_MAP is an item in this game; every channel that quotes
+            # the box is gated on holding it, and the hops behind this tier
+            # already are (static_cost gates MAP_EDGES on PRINTED_MAP_HELD,
+            # so without the map it counts only roads this run has walked).
+            # The sentence has to match: with the map it is the map that
+            # says so, without it, the run's own walking.
+            _held = self._holding_town_map(obs)
+            _src = ("on the printed map" if _held
+                    else "by the roads you have walked")
+            self.log("explore_refused_away", subgoal=sg.get("id"),
+                     region=best[1], goal=_g, held=bool(_held))
+            return False, [
+                f"explore: nothing untried lies toward {_g}. Every area you "
+                f"have walked that still has something is AWAY from it "
+                f"{_src} — the nearest is {best[1]}, "
+                f"{len(best[4])} leg(s) back — so walking to one is going "
+                f"backwards, and the harness will not do that for you. The "
+                f"way on is something here you have not done, or a place "
+                f"you have never stood in. {{\"op\":\"go\",\"to\":\"AREA\"}} "
+                f"still takes you anywhere you have walked, if one of them "
+                f"is what you want."], []
         if not best:
             # ...AND SAY WHICH KIND OF NOTHING IT IS. "Something you have
             # done must be undone" is a claim about the WORLD, and it was

@@ -40,7 +40,10 @@ ck("the deed ranks locality above distance, and a room means a DOOR not a seam",
 ck("...and the trace says why it went there",
    "a room off the area you are in, its door taken from " in src)
 lsrc = (ROOT / "planner" / "ledger.py").read_text()
-ck("the words carry the same order", "r = (_pri, _local, _goal, len(path), 0 if (left or _unr) else 1," in lsrc)
+# `left` became `_fwd` on 2026-09-11: an untried edge the printed map
+# sends AWAY from a map goal stopped counting as a reason to walk there.
+ck("the words carry the same order",
+   "r = (_pri, _local, _goal, len(path), 0 if (_fwd or _unr) else 1," in lsrc)
 # ...AND THE SAME NOTION OF NEAR. A floor is its own map, so measuring
 # locality by map name made the next floor up as foreign as another town
 # (2026-09-05). Both rankings read _building now; if only one had, the

@@ -1563,36 +1563,13 @@ def validate(plan: dict) -> list:
                     if _from5 else [])
             if _co5:
                 _pt, _door, _n, _flr = _co5[0]
-                # ...AND ONLY CALL IT THE FAR SIDE IF IT IS ONE. The excludes
-                # rule one screen up learned on 2026-09-09 that coming out
-                # onto a part is no proof it is the far side; this one did
-                # not, and on ROUTE_23 it is the exact reverse —
-                # VICTORY_ROAD_1F's door lands at ROUTE_23|4,31, which is
-                # the way IN. So this said "that part IS it: end on
-                # {"area":"ROUTE_23|4,31"}" and the NEXT refusal in the same
-                # list rejected that very answer for being a part already
-                # stood in. Five rounds, twice over, and the leg could not
-                # be authored at all while the party stood one door from the
-                # Indigo Plateau (2026-09-10).
-                #
-                # _parts5 is already the parts of this map the run has stood
-                # on, computed above for the sentence that refuses them.
-                # Ask it before offering one as a witness.
-                _far5 = _pt not in _parts5
                 probs.append(
                     f"subgoal[{_i5}] ({_s5.get('id')}) ends on " + '{"map": "' + _m5 + '"}'
                     + f" and its words say it comes OUT somewhere — and you have ALREADY "
                     f"come out of {_flr} onto {_pt} (its door at {_door}, {_n}x). "
                     + '{"map": "' + _m5 + '"}' + f" is true on any part of {_m5}, including "
-                    f"the one you started from; "
-                    + ((f"if this step means the far side, that part IS it: end on "
-                        + '{"area": "' + _pt + '"}' + ".") if _far5 else
-                       (f"and {_pt} is a part you have STOOD IN, so ending there "
-                        f"witnesses nothing either. If this step means coming out on "
-                        f"a part of {_m5} you have NOT stood on, write "
-                        + '{"new_part": "' + _m5 + '"}'
-                        + f" and the parts you have stood in are filled in from the "
-                          f"run's own record.")))
+                    f"the one you started from; if this step means the far side, that "
+                    f"part IS it: end on " + '{"area": "' + _pt + '"}' + ".")
                 continue
             probs.append(
                 f"subgoal[{_i5}] ({_s5.get('id')}) ends on "

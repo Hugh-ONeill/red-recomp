@@ -31,6 +31,23 @@ def ck(name, cond): checks.append((name, bool(cond)))
 
 A.visited_regions = lambda: {"ROUTE_23|10,104", "ROUTE_23|4,31",
                              "VICTORY_ROAD_1F|5,9", "VICTORY_ROAD_1F|14,0"}
+# ...AND THE DOORS, WHICH THIS ALSO READS. _walked_door_from_into opens
+# run/explored.json directly: the rule is suppressed once the run has
+# walked a door from VICTORY_ROAD onto a part of ROUTE_23 it has stood on,
+# because then stepping out lands on known ground. Run 16 walked that very
+# door on 2026-09-10 and this test began failing without a line of the
+# code it tests having changed. A test of a rule must own the world the
+# rule reads (2026-09-11).
+A._walked_door_from_into = lambda frm, to, stood: False
+# ...and the come-out record, same reason: with one, the refusal names the
+# part it came out onto instead of spelling out both ways forward, which is
+# a different sentence with its own test (the_far_side_is_never_a_part_you
+# _stood_in). This fixture is the case where the run has come out NOWHERE.
+A._came_out_onto = lambda frm, to, side=None: []
+# ...and _came_from, the third live read in the same guard chain: with it
+# true and no compass word in the step, the rule stands down because
+# stepping out lands where you came in. Same pinned world as the two above.
+A._came_from = lambda frm, to: False
 
 def plan(dw, text, sid="exit_victory_road"):
     return {"goal": "Exit Victory Road to reach the Indigo Plateau",
