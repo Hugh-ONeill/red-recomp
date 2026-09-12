@@ -10350,9 +10350,15 @@ class Executor:
             # and answering it on the merits is how every Pokemon in every
             # run so far went un-named: saying no costs nothing and ends
             # the box. The catch flow in the shim has always answered YES
-            # here; a GIFT, a TRADE and a revived FOSSIL come through this
-            # branch instead and were left to the model's judgement, which
-            # is the wrong question to ask if a name is wanted at all.
+            # here; a GIFT and a revived FOSSIL come through this branch
+            # instead and were left to the model's judgement, which is the
+            # wrong question to ask if a name is wanted at all.
+            # A TRADE never reaches here and never could: Commands.lua sets
+            # the traded mon's nickname straight off the trade table, so
+            # the DUGTRIO is called GURIO whoever receives it, and a gift
+            # that ships with its own nickname skips the prompt the same
+            # way. Those are the game's to name, not ours (user,
+            # 2026-09-12: "you cant rename a traded pokemon").
             # What to CALL it is still entirely the model's (see ask_name).
             if NICKNAMES_REQUIRED and "nickname" in str(text or "").lower():
                 self.b.send("tap", btn="a")

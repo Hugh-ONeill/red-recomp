@@ -6,10 +6,20 @@ quickest way to make the screen go away. So the run took RED, then BLUE,
 then GARY, every time — and across every journal this repo keeps, NOT ONE
 Pokemon has ever been nicknamed. The two paths that could have produced a
 nickname both leak: the catch flow in the shim answers the "give a
-nickname?" box YES and hands the screen over correctly, but a GIFT, a
-TRADE and a revived FOSSIL raise that same box through the executor's
-yes/no branch, where it was answered on the merits — and saying no costs
-nothing and ends the box.
+nickname?" box YES and hands the screen over correctly, but a GIFT and a
+revived FOSSIL raise that same box through the executor's yes/no branch,
+where it was answered on the merits — and saying no costs nothing and ends
+the box.
+
+NOT A TRADE, THOUGH. An in-game trade is never asked about: Commands.lua
+sets `newMon.nickname = trade.nickname` straight off the trade table, so
+the DUGTRIO comes back called GURIO whatever anyone wanted, and a gift
+that ships with a nickname of its own skips the question the same way
+(`if gift.nickname then ... end`, and the prompt is gated on `not
+gift.nickname`). Only the ones the game actually asks about can be named
+(user, 2026-09-12: "you cant rename a traded pokemon"). Named here because
+this file first claimed otherwise, and a test that states a falsehood
+about the game pins it.
 
 (user, 2026-09-12: "I want to see what nicknames it actually chooses for
 things instead of simply trying to complete the objective of choosing a
