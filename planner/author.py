@@ -2440,6 +2440,7 @@ def author(goal: str, model: str, rounds: int = 5,
     # still re-minted a DIFFERENT wrong id each round (HM01 -> flag guess
     # -> HM01 again) and three rounds died before the oscillation settled.
     fb = ""
+    _thought = 0                 # thinking rounds actually spent, see below
     for rnd in range(1, rounds + 1):
         user = build_prompt(goal, start) + (
             f"\n\nFIX THESE PROBLEMS from your last attempt — where a "
@@ -2448,15 +2449,29 @@ def author(goal: str, model: str, rounds: int = 5,
             f"do not guess another one, change the CONDITION. Change "
             f"nothing else about your plan:\n{fb}"
             if fb else "")
-        # ...ON THE FIRST ROUND ONLY. Rounds 2+ are the validator handing
-        # back "use this exact id verbatim" — a correction to copy, not a
-        # question to deliberate on, and the loop can run five of them. At
-        # 4.2 minutes each that is the cost of a whole leg spent retyping
-        # an item id. The deliberation this buys belongs to the first draft.
+        # ...ON THE FIRST ROUND THAT GETS A WHOLE REPLY OUT. Rounds 2+ are
+        # normally the validator handing back "use this exact id verbatim"
+        # — a correction to copy, not a question to deliberate on, and the
+        # loop can run five of them. At 4.2 minutes each that is the cost
+        # of a whole leg spent retyping an item id, so the deliberation
+        # belongs to the first draft.
+        #
+        # BUT A TRUNCATED ROUND IS NOT A DRAFT. The first real thinking
+        # author pass ran into the generation ceiling, was cut mid-JSON and
+        # failed the parse — and "round 1 only" then spent the whole
+        # thinking budget on a reply nobody could read, while the plan that
+        # came out was written by an ordinary round 2 (2026-09-12). The
+        # ceiling is raised, and this is the belt: thinking carries over to
+        # the next round when the last one was cut off, twice at most.
+        _cut = (brock_probe.LAST or {}).get("gtok", 0) >= \
+            brock_probe.NUM_PREDICT_THINK
+        _thinking = bool(think) and (rnd == 1
+                                     or (_cut and _thought < 2))
+        if _thinking:
+            _thought += 1
         reply = brock_probe.chat(
             [{"role": "system", "content": SYS},
-             {"role": "user", "content": user}], model,
-            think=bool(think) and rnd == 1)
+             {"role": "user", "content": user}], model, think=_thinking)
         m = re.search(r"\{.*\}", reply, re.S)
         if not m:
             fb = "your reply was not a JSON object"; continue

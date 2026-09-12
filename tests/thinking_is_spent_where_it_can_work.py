@@ -131,7 +131,17 @@ ck("the author can be told to think, and never decides it itself",
 ck("only ONE of the drafts deliberates",
    "think=bool(think) and i == 0" in ASRC)
 ck("...and only its FIRST round, not the validator's corrections",
-   "think=bool(think) and rnd == 1" in ASRC)
+   "rnd == 1" in ASRC and "_thinking = bool(think)" in ASRC)
+# A TRUNCATED ROUND IS NOT A DRAFT. The first real thinking author pass ran
+# into the generation ceiling, was cut mid-JSON, failed the parse, and the
+# plan that came out was written by an ordinary round 2 — the whole
+# thinking spend bought nothing and the A/B it was meant to settle was
+# measuring two plain passes (2026-09-12).
+ck("...unless that round was cut off at the ceiling, which is not a draft",
+   "_cut = (brock_probe.LAST or {}).get(\"gtok\", 0)" in ASRC
+   and "(_cut and _thought < 2)" in ASRC)
+ck("the ceiling fits a whole plan, not just a macro",
+   B.NUM_PREDICT_THINK >= 16384)
 
 CSRC = (ROOT / "campaign.sh").read_text()
 ck("campaign.sh spends it from the third plan for a leg",

@@ -152,7 +152,14 @@ THINK_DRY_CAP = int(os.environ.get("RED_THINK_DRY_CAP") or 3)
 # does not. A reply cut mid-JSON fails the parse and costs the round, which
 # is the exact failure NUM_PREDICT exists to bound. This applies ONLY to
 # calls that are actually thinking, so a normal round keeps its tight cap.
-NUM_PREDICT_THINK = int(os.environ.get("RED_NUM_PREDICT_THINK") or 8192)
+# 8192 was sized for a MACRO — an op list a dozen lines long — and the
+# author writes a whole plan: fifteen subgoals of JSON with a thinking
+# trace in front of them ran into this ceiling on the first real
+# thinking author pass (2026-09-12), was cut mid-JSON, failed the parse
+# and threw away the one expensive round of the three. A ceiling is a
+# CAP, not a target: raising it costs a short reply nothing, and the
+# only thing it changes for a long one is whether it survives.
+NUM_PREDICT_THINK = int(os.environ.get("RED_NUM_PREDICT_THINK") or 16384)
 
 
 LAST: dict = {}
