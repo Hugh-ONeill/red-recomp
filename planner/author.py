@@ -2435,7 +2435,7 @@ def witness_already_true_problems(plan: dict, obs: dict | None = None) -> list:
 
 
 def author(goal: str, model: str, rounds: int = 5,
-           start: str | None = None) -> dict | None:
+           start: str | None = None, think: bool = False) -> dict | None:
     # 5 rounds, not 3: with correct suggestions in the feedback the author
     # still re-minted a DIFFERENT wrong id each round (HM01 -> flag guess
     # -> HM01 again) and three rounds died before the oscillation settled.
@@ -2448,9 +2448,15 @@ def author(goal: str, model: str, rounds: int = 5,
             f"do not guess another one, change the CONDITION. Change "
             f"nothing else about your plan:\n{fb}"
             if fb else "")
+        # ...ON THE FIRST ROUND ONLY. Rounds 2+ are the validator handing
+        # back "use this exact id verbatim" — a correction to copy, not a
+        # question to deliberate on, and the loop can run five of them. At
+        # 4.2 minutes each that is the cost of a whole leg spent retyping
+        # an item id. The deliberation this buys belongs to the first draft.
         reply = brock_probe.chat(
             [{"role": "system", "content": SYS},
-             {"role": "user", "content": user}], model)
+             {"role": "user", "content": user}], model,
+            think=bool(think) and rnd == 1)
         m = re.search(r"\{.*\}", reply, re.S)
         if not m:
             fb = "your reply was not a JSON object"; continue
@@ -4028,8 +4034,18 @@ def pick_plan(goal: str, plans: list, model: str,
 
 
 def author_best_of(goal: str, model: str, draws: int = 3,
-                   start: str | None = None) -> dict | None:
-    """Several independent plans for one goal, then the model picks one."""
+                   start: str | None = None,
+                   think: bool = False) -> dict | None:
+    """Several independent plans for one goal, then the model picks one.
+
+    ONE of the draws deliberates, not all of them. Best-of-N exists to buy
+    VARIETY, and a thinking draft buys consideration instead — three of
+    them is three slow answers to one question and 12.6 extra minutes on a
+    single leg. One thinking draft beside two fast ones costs +4.2 min and
+    hands the pick step the comparison we actually want to read: did
+    deliberating produce the plan that got chosen? (2026-09-12, measured:
+    38.6s a normal draw, 290.8s a thinking one.)
+    """
     plans, seen = [], {}
     for i in range(max(1, draws)):
         # ONE FLAKY CALL MUST NOT COST THE CHAIN. Taking several drafts
@@ -4038,7 +4054,8 @@ def author_best_of(goal: str, model: str, draws: int = 3,
         # runs under set -e, and a 25-leg campaign died on a socket. A draw
         # that fails is a draw we do not have, nothing more.
         try:
-            p = author(goal, model, start=start)
+            p = author(goal, model, start=start,
+                       think=bool(think) and i == 0)
         except (OSError, TimeoutError, ValueError) as e:
             print(f"[draws] draft {i + 1} failed ({type(e).__name__}: "
                   f"{str(e)[:80]}) — carrying on with the rest")
@@ -8777,6 +8794,17 @@ def main():
     ap.add_argument("--journal", type=Path, default=None,
                     help="executor_log.jsonl: what actually happened last "
                          "run (money, wipes, failed steps) for the audit")
+    # THINKING, FOR A LEG THAT HAS ALREADY FAILED TWICE. Off by default and
+    # spent by the caller, never chosen here: campaign.sh knows the attempt
+    # number and this file does not. Measured 2026-09-12 on the real
+    # leg-author prompt (5,659 tokens): 38.6s off, 290.8s on — 7.5x, worse
+    # than the executor's 3.3x because the thinking trace is a roughly
+    # fixed ~2000 generated tokens and the executor's 17,800-token page
+    # dilutes it with prefill. Too dear for every pass; the third attempt
+    # is where the cheap answers are already spent.
+    ap.add_argument("--think", action="store_true",
+                    help="let the author deliberate on this pass (costs "
+                         "~7.5x; for a leg whose earlier plans failed)")
     args = ap.parse_args()
     if not args.goal and not (args.validate or args.outline_repass):
         ap.error("--goal is required")
@@ -8947,8 +8975,11 @@ def main():
         for i, l in enumerate(legs, 1):
             print(f"  {i}. {l}")
         return
+    if args.think:
+        print("[think] this leg has already failed twice — one draft "
+              "deliberates (about 4 minutes more than a plain pass)")
     plan = author_best_of(args.goal, args.model, draws=args.draws,
-                          start=args.start)
+                          start=args.start, think=args.think)
     if not plan:
         sys.exit("author failed to produce a valid plan")
     if not args.no_review:

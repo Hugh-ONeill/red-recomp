@@ -17081,6 +17081,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         self._reach_exempt: set = set()
         self._repeat_rounds = 0   # free refusals used this subgoal
         self._stale_rounds = 0    # the stale budget counts per subgoal
+        self._thought_dry = 0     # thinking rounds since the world moved
         self._stale_fp = None
         self._left_target = set() # target maps walked out of on purpose
         self._dead_why = getattr(self, "_dead_why", {})
@@ -17595,12 +17596,36 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # ledger never put the deciding fact in front of the model,
             # this buys a better-argued wrong answer more slowly — the
             # harness-gap rule still applies first.
+            #
+            # ...AND IT IS CAPPED, because it cannot fix a FALSE PREMISE.
+            # Run 16 fired it on ten legs. On eight it went once or twice
+            # and the leg moved on. On defeat_blaine it went ELEVEN times
+            # across two attempts while the stall deepened (stale 3->4->5,
+            # twice), the model re-arguing "I must deliver the Dome Fossil
+            # to open the Gym" from inside the Mansion at 115s a go. Three
+            # deliberations that do not move the world are three answers to
+            # a question that was never the problem — so the budget is
+            # spent per DRY STRETCH, and refills the moment the world moves
+            # (see where _stale_rounds resets: _thought_dry resets with it).
+            _cap = brock_probe.THINK_DRY_CAP
             _think = (brock_probe.THINK_ON_STUCK > 0
-                      and self._stale_rounds >= brock_probe.THINK_ON_STUCK)
+                      and self._stale_rounds >= brock_probe.THINK_ON_STUCK
+                      and (_cap <= 0 or self._thought_dry < _cap))
             if _think:
+                self._thought_dry += 1
                 self.log("think_on", subgoal=sg["id"], round=rnd,
                          stale=self._stale_rounds,
                          threshold=brock_probe.THINK_ON_STUCK,
+                         dry=self._thought_dry, cap=_cap,
+                         at=self._where(obs))
+            elif (brock_probe.THINK_ON_STUCK > 0
+                  and self._stale_rounds >= brock_probe.THINK_ON_STUCK
+                  and _cap > 0 and self._thought_dry == _cap):
+                # said ONCE per dry stretch, so the journal shows the cap
+                # biting rather than the gate silently going quiet
+                self._thought_dry += 1
+                self.log("think_capped", subgoal=sg["id"], round=rnd,
+                         stale=self._stale_rounds, spent=_cap,
                          at=self._where(obs))
             try:
                 reply = brock_probe.chat(
@@ -19340,6 +19365,9 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             _moved_world = bool(_fresh_ground or _fp != self._stale_fp)
             if _moved_world:
                 self._stale_rounds = 0
+                # a dry stretch that ended pays its thinking budget back:
+                # the cap is on deliberating at a wall, not on deliberating
+                self._thought_dry = 0
             elif not _exempt:
                 self._stale_rounds += 1
             self._stale_fp = _fp

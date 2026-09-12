@@ -139,6 +139,13 @@ NUM_PREDICT = int(os.environ.get("RED_NUM_PREDICT") or 3072)
 # escalate_repeat_refused fired 510 times (6.5%). At 6.5% a gemma round
 # averages ~35 s against 29.3 — about a fifth dearer overall.
 THINK_ON_STUCK = int(os.environ.get("RED_THINK_ON_STUCK") or 0)
+# ...AND HOW MANY OF THEM ONE DRY STRETCH IS WORTH. Thinking answers a
+# question that deliberation can answer; it does nothing for a leg stuck
+# on a belief that is simply false, and run 16 bought eleven of those on
+# defeat_blaine while the stall got deeper. The counter that pays for
+# this resets whenever the world moves, so a leg that keeps getting
+# somewhere keeps its budget; only a wall runs it out. 0 = no cap.
+THINK_DRY_CAP = int(os.environ.get("RED_THINK_DRY_CAP") or 3)
 # A THINKING REPLY NEEDS ITS OWN CEILING. gemma spent 2167 of the 3072
 # budget on the trace alone in the measurement above, leaving the macro
 # ~900 tokens — and on a larger prompt the trace grows while the budget

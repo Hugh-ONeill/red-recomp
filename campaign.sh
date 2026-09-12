@@ -284,9 +284,24 @@ PY
   # pipefail` a non-zero exit here — one ollama socket timeout is enough —
   # took the whole chain down BEFORE the "produced nothing" guard three
   # lines below could do its job, mid-run, with no message.
+  # THINKING, FROM THE THIRD PLAN ONWARD. This rewrite is the plan
+  # attempt $((attempt + 1)) will run, so attempt>=2 here is the third
+  # plan this leg has had. The first two are cheap and often enough:
+  # of run 16's 91 leg attempts, 31 goals needed only one or two. The
+  # 44 that went to a third try are where the fast answers were
+  # already spent — Indigo Plateau went 14 rounds of them.
+  # One draft of the three deliberates, which costs about 4 minutes;
+  # RED_AUTHOR_THINK_FROM=0 turns it off, a higher number delays it.
+  think_arg=()
+  _tf="${RED_AUTHOR_THINK_FROM:-3}"
+  if [ "$_tf" -gt 0 ] && [ "$((attempt + 1))" -ge "$_tf" ]; then
+    think_arg=(--think)
+    echo "--- plan $((attempt + 1)) for this leg: the author thinks ---" \
+        | tee -a "$LOG"
+  fi
   python planner/author.py --goal "$goal" --start "$start" \
       --out "$rewritten" --model "$AUTHOR_MODEL" \
-      --observed run/explored.json \
+      --observed run/explored.json "${think_arg[@]}" \
       --journal run/executor_log.jsonl 2>&1 | tee -a "$LOG" || true
   if [ ! -s "$rewritten" ]; then
     # ...UNLESS THE OLD PLAN IS THE THING THAT WAS REFUSED. Keeping the
