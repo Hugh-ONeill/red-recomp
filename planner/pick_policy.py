@@ -129,6 +129,14 @@ def main():
             mark = "WINNER" if p == win else ("  ok  " if ok else "REJECT")
             print(f"{mark} {p.name:28s} arena={arena:6s} "
                   + (why or f"score={sc}"), file=sys.stderr)
+            # A SCORE IS UNREADABLE WITHOUT THE PARTY THAT PRODUCED IT.
+            # v3's eight rooms with no healing rules at all look like a
+            # finding about the spec until you see the L71 CHARIZARD that
+            # swept them. Specs written before 2026-09-12 cannot say.
+            lead = (_eval(p).get("arena_party") or [])
+            if ok and lead:
+                print(f"       scored on: {', '.join(lead[:6])}",
+                      file=sys.stderr)
     if not win:
         return 1
     print(win)

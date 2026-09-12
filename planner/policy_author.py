@@ -410,6 +410,16 @@ class Gym:
         print(f"[gym] arena: {here}")
         for p in party:
             print(f"[gym]   {p}")
+        # ...AND KEPT, because a score is unreadable without the party that
+        # produced it. v3 cleared EIGHT Elite Four rooms with no battle_items
+        # rule and no field_heal at all, which reads as "healing is
+        # unnecessary" until you see that the arena party leads with a
+        # CHARIZARD L71 against a league that tops out in the low sixties —
+        # it swept, and the spec was credited (user, 2026-09-12: "we must
+        # have given it overlevelled mons if it was able to solve it without
+        # item usage"). The number was never wrong; it was never legible.
+        self.arena_party = list(party)
+        self.arena_map = here
         self.b.send("checkpoint_capture", token="eval_e4")
         self.rival_ok = False
 
@@ -779,7 +789,9 @@ def main():
         # and every gauntlet spec beats every Brock spec for free. It
         # was inferable from the shape of the score and now it is not
         # guessed (2026-09-12).
-        "eval": dict(best_r, arena=gym.arena),
+        "eval": dict(best_r, arena=gym.arena,
+                     arena_map=getattr(gym, "arena_map", None),
+                     arena_party=getattr(gym, "arena_party", [])),
         "baseline_typed_v0": base,
     }
     args.out.write_text(json.dumps(artifact, indent=2))

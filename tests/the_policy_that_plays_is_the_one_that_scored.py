@@ -95,7 +95,16 @@ ck("fresh_run.sh is still valid shell",
 
 PA = (ROOT / "planner" / "policy_author.py").read_text()
 ck("a spec written from now on records the arena that judged it",
-   'dict(best_r, arena=gym.arena)' in PA)
+   "dict(best_r, arena=gym.arena," in PA)
+# A SCORE IS UNREADABLE WITHOUT THE PARTY THAT PRODUCED IT. v3's eight
+# rooms with no healing rules at all read as a finding about the spec
+# until you see the CHARIZARD L71 that swept them against a league topping
+# out in the low sixties (user, 2026-09-12: "we must have given it
+# overlevelled mons if it was able to solve it without item usage").
+ck("...and the party it was scored against",
+   "arena_party=getattr(gym" in PA and "self.arena_party = list(party)" in PA)
+ck("the ranking prints that party when the file has it",
+   "scored on: " in (ROOT / "planner" / "pick_policy.py").read_text())
 
 # ...and on the real files, which is the case that bit
 real = list((ROOT / "plans").glob("policy_model_v*.json"))
