@@ -1,0 +1,18 @@
+{
+  "bag": {"FULL_RESTORE": 8, "REVIVE": 4, "FULL_HEAL": 4,
+          "MAX_POTION": 2, "ULTRA_BALL": 3},
+  "money": 30372,
+  "start": {"map": "LORELEIS_ROOM", "x": 4, "y": 11, "facing": "up"},
+  "clear_flags": ["EVENT_BEAT_LORELEIS_ROOM_TRAINER_0",
+                  "EVENT_BEAT_BRUNOS_ROOM_TRAINER_0",
+                  "EVENT_BEAT_AGATHAS_ROOM_TRAINER_0",
+                  "EVENT_BEAT_LANCE",
+                  "EVENT_BEAT_CHAMPION_RIVAL",
+                  "EVENT_BEAT_LORELEI", "EVENT_BEAT_BRUNO",
+                  "EVENT_BEAT_AGATHA"],
+  "clear_trainers": ["LORELEIS_ROOM_obj_1", "LORELEIS_ROOM_obj_2",
+                     "BRUNOS_ROOM_obj_1", "BRUNOS_ROOM_obj_2",
+                     "AGATHAS_ROOM_obj_1", "AGATHAS_ROOM_obj_2",
+                     "LANCES_ROOM_obj_1", "LANCES_ROOM_obj_2",
+                     "CHAMPIONS_ROOM_obj_1", "CHAMPIONS_ROOM_obj_2"]
+}
