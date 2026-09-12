@@ -8,16 +8,23 @@ intense item-usage policy that encourages the usage of tms when we get them
 and/or when we get new pokemon, so we use the tms at some point other than
 just when the bag is full").
 
-The two moments a TM is worth a thought are when it ARRIVES and when the
-PARTY CHANGES, and this process can see both.
+THIS TEST WAS ITSELF WRONG, and that is the more useful half of its record.
+It asserted "it does NOT claim to know compatibility — the harness does not
+know it", and by the time anyone read that line back the harness DID: the
+shim publishes obs.machines off the party screen a machine opens, which marks
+every member ABLE or NOT ABLE at once, and the TOSS guard was already
+printing that list at the moment of DESTRUCTION. So the facts were being
+withheld where they would have helped and shown where they could not, and a
+passing test said that was correct. A test pins a decision, and a decision
+outlives its reason — when the reason goes, the test goes with it.
 
-Everything the note says is on the item's own label or in the party: the move
-is IN the TM's name (TM_THUNDERBOLT), and whether anyone knows it already is
-in obs.party. Compatibility is NOT said — the harness does not know it, and
-the game states it plainly when a TM will not take. Which Pokemon, what it
-would forget, and whether to bother stay the model's.
+What is pinned here now is the PAGE's standing list: what you carry that
+nobody knows, who the game marks able, and what you already answered. The
+arrival QUESTION that replaced the old note's job, and the measurements that
+moved it, are in a_machine_is_a_question_when_it_arrives.py.
 """
-import sys, re
+import sys
+import re
 from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 checks = []
@@ -26,33 +33,36 @@ src = (ROOT / "planner" / "executor.py").read_text()
 
 i = src.find("A TM IS ONLY MENTIONED WHEN THE BAG IS FULL")
 ck("the note exists", i > 0)
-blk = src[i:i + 4200]
+blk = src[i:i + 6000]
 flat = re.sub(r'"\s*\n\s*f?"', "", blk)
 
-ck("it reads the TMs out of the bag",
-   'if str(k).startswith("TM_")' in blk)
-ck("...and drops any whose move the party already knows",
-   "_unused = [t for t in _tms if t[3:].upper() not in _knows]" in blk)
-ck("it fires when a TM arrives",
-   "set(_tms) - set(_prev_tms or ())" in blk)
-ck("...and when the party roster changes",
-   "_roster != _prev_roster" in blk)
-ck("...and not on every page otherwise",
-   "if _unused and _fresh:" in blk)
-ck("it says which of those two it is",
-   "a new TM is in the bag" in blk and "your party has changed" in blk)
-
-ck("the move is read off the TM's own name",
-   "A TM's NAME IS THE MOVE IT TEACHES" in flat)
+ck("it reads the machines out of the bag, the shim's list not a name test",
+   '((start or {}).get("machines") or {}).get(_it)' in blk)
+ck("...and drops any whose move somebody already knows",
+   "if _mv and _mv not in _kn" in blk
+   and "_mach = self._teachable_now(start)" in blk)
+ck("it names who the game marks ABLE, by slot",
+   "ABLE: " in flat and "(slot {i})" in blk)
+ck("...and separately what NOBODY in this party can take",
+   "NOBODY IN THIS PARTY CAN TAKE" in flat)
+ck("...saying an evolution can change that",
+   "CHANGES WHEN IT EVOLVES" in flat)
+ck("it says where ABLE comes from, so it is not read as a guess",
+   "the machine's own party screen" in flat)
 ck("it gives the op, and the forget clause for a full moveset",
    "use_item" in flat and "forget" in flat and "already knows four" in flat)
-ck("it says a TM is spent when used",
-   "A TM IS SPENT WHEN IT IS USED" in flat)
-ck("it does NOT claim to know compatibility",
-   "not something this harness knows" in flat
-   and "compatible with" not in flat and "can learn it" not in flat)
-ck("...and leaves the choice",
-   "is yours to judge" in flat)
+ck("it says the move written over is gone", "THAT MOVE IS THEN GONE" in flat)
+ck("it says a TM is spent and an HM is not",
+   "A TM is spent when it works; an HM never is" in flat)
+ck("it shows back the answer already given, so it can be changed",
+   "asked already, and you said no" in blk)
+ck("...and says the choice can be made here at any time",
+   "any time you change your mind" in flat)
+
+# THE CLAIM THAT WAS FALSE, pinned inverted so it cannot come back
+ck("it never again says compatibility is unknowable",
+   "not something this harness knows" not in src)
+
 ck("it is recorded, like every other thing the model is told",
    'self.log("tm_note"' in blk)
 

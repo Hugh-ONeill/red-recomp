@@ -1742,6 +1742,17 @@ class Executor:
         # where the PC is. What goes on the list is the model's, always;
         # the harness only carries it and never adds to it.
         self._stow: list = []
+        # WHICH MACHINE HAS ALREADY BEEN PUT TO THE MODEL, and to which
+        # candidates. Per-PROCESS memory was why run 16 fired "this is the
+        # first page of this run" over and over: every leg is a new
+        # executor, so the arrival note re-arrived all day.
+        # Keyed by machine + the ABLE list, NOT the whole roster: swapping
+        # a Pokemon nobody was choosing between changes nothing about the
+        # question, and re-asking on every party_swap (101 of them in run
+        # 16) would be the same noise in a new costume. A swap that puts
+        # someone ABLE in the party is a genuinely different question and
+        # does reopen it. See _ask_teach.
+        self._tm_asked: dict = {}
         # whether the one-shot un-spend of menu-only presses has run
         self._lists_reopened: bool = False
         self._plan_hist: dict = {}   # target -> [(round, where, plan)] last 8
@@ -4411,6 +4422,7 @@ class Executor:
             self._shelf_reads = data.get("shelf_reads") or {}
             self._shelf_machine = set(data.get("shelf_machine") or [])
             self._stow = [str(x) for x in (data.get("stow") or [])]
+            self._tm_asked = data.get("tm_asked") or {}
             self._lists_reopened = bool(data.get("lists_reopened"))
             # MEMORY THAT OUTLIVES THE ATTEMPT. The outcome ledger and the
             # plan history were per process, and every attempt is a new
@@ -4889,6 +4901,7 @@ class Executor:
                  "shelf_machine": sorted(getattr(self, "_shelf_machine",
                                                  set())),
                  "stow": list(getattr(self, "_stow", []) or []),
+                 "tm_asked": getattr(self, "_tm_asked", {}),
                  "lists_reopened": bool(getattr(
                      self, "_lists_reopened", False)),
                  "walks_reopened": bool(getattr(
@@ -11328,6 +11341,152 @@ class Executor:
                 "on the same op sent again with \"confirm\":true.")
         return out
 
+    TEACH_SYS = (
+        "You are playing Pokemon Red. You are carrying a machine (a TM or "
+        "an HM) that teaches a move, and the game's own ITEM screen says "
+        "which of your Pokemon are ABLE to learn it. Nobody in your party "
+        "knows that move yet. Decide whether to teach it now, to whom, and "
+        "what it would replace. A Pokemon carries FOUR moves: teaching a "
+        "fifth means one is gone for good, so a teach can cost more than it "
+        "gives. Saying no is a real answer and often the right one. Reply "
+        "with a JSON object and nothing else: "
+        "{\"why\":\"<one short sentence>\",\"teach\":null} to teach it "
+        "to nobody, or {\"why\":\"...\",\"teach\":<party slot number>,"
+        "\"forget\":\"<one of that Pokemon's four moves>\"} — leave "
+        "forget out or null when that Pokemon knows fewer than four.")
+
+    def _teachable_now(self, obs):
+        """Machines in the bag somebody is ABLE to learn and nobody knows.
+
+        obs.machines is the shim's read of the screen a machine opens: pick
+        a TM or HM on the ITEM list and the party screen marks every member
+        ABLE or NOT ABLE at once. Nothing here is inferred — the ABLE list
+        is that screen, the four moves are the summary screen, and which of
+        them is worth trading is never ours.
+        """
+        bag = (obs or {}).get("bag") or {}
+        party = [m for m in ((obs or {}).get("party") or [])
+                 if isinstance(m, dict)]
+        knows = {str(mv.get("id") if isinstance(mv, dict) else mv).upper()
+                 for m in party for mv in (m.get("moves") or [])}
+        out = []
+        for item in sorted(bag):
+            m = ((obs or {}).get("machines") or {}).get(item)
+            if not isinstance(m, dict):
+                continue
+            move = str(m.get("move") or "").upper()
+            if not move or move in knows:
+                continue
+            able = {str(x) for x in (m.get("able") or [])}
+            who = [(i, str(mon.get("species")),
+                    [str(mv.get("id") if isinstance(mv, dict) else mv).upper()
+                     for mv in (mon.get("moves") or [])])
+                   for i, mon in enumerate(party, 1)
+                   if str(mon.get("species")) in able]
+            if who:
+                out.append((item, move, who))
+        return out
+
+    def _ask_teach(self, obs, sg):
+        """A machine ARRIVING is the moment to spend it, and it never was.
+
+        Run 16 fired the arrival note 110 times. The round that followed
+        mentioned the named TM 14 times and taught one SIX times, and five
+        of the run's twelve teaches came from legs written by hand for the
+        purpose. That is not the model ignoring a fact — teaching never
+        advances the subgoal being escalated, so a correct round-by-round
+        choice declines it 104 times out of 110. We had made improvement
+        compete with progress for the same round.
+
+        So take it out of the round, the way _maybe_forget does at
+        level-up: a short question with a small answer space, asked once
+        per machine per roster, costing a model call and no round. The
+        level-up question is the precedent and it answers well.
+
+        One machine per boundary, so a bagful never stalls a round.
+        """
+        pend = [t for t in self._teachable_now(obs)
+                if f"{t[0]}|{','.join(sorted(w[1] for w in t[2]))}"
+                not in (getattr(self, "_tm_asked", None) or {})]
+        if not pend:
+            return obs
+        item, move, who = pend[0]
+        key = f"{item}|{','.join(sorted(w[1] for w in who))}"
+        is_hm = item.startswith("HM_")
+        user = (
+            f"THE MACHINE: {self._disp_item(item)} teaches {move}.\n"
+            + ("An HM is NOT used up: teaching it costs a move slot and "
+               "nothing else, and it can be taught again later.\n" if is_hm
+               else "A TM IS USED UP THE MOMENT IT WORKS. You hold one and "
+                    "there is no second.\n")
+            + "NOBODY IN YOUR PARTY KNOWS " + move + ".\n"
+              "THE GAME MARKS THESE ABLE TO LEARN IT"
+              " (the rest of the party it marks NOT ABLE):\n"
+            + "\n".join(
+                f"  slot {i}: {sp} L{((obs or {}).get('party') or [{}])[i-1].get('level')}"
+                f" — knows {', '.join(mvs) if mvs else 'nothing'}"
+                + ("  (FOUR moves: one must go)" if len(mvs) >= 4 else "")
+                for i, sp, mvs in who)
+            + "\n\nWHAT YOU ARE TRYING TO DO RIGHT NOW: "
+            + str(sg.get("goal_text") or sg.get("id") or "make progress")
+            + "\nHM moves (CUT, FLY, SURF, STRENGTH, FLASH) can never be "
+              "forgotten once learned, so they cannot be the one you drop."
+              "\nNo round is spent either way. Answer it.")
+        choice, forget, why = None, None, ""
+        try:
+            reply = brock_probe.chat(
+                [{"role": "system", "content": self.TEACH_SYS},
+                 {"role": "user", "content": user}], self.model)
+            mm = _re.search(r"\{.*\}", reply or "", _re.S)
+            d = json.loads(mm.group(0)) if mm else {}
+            why = str(d.get("why") or "")[:200]
+            t = d.get("teach")
+            if t is not None:
+                choice = int(t)
+                f = d.get("forget")
+                forget = str(f).upper().replace(" ", "_") if f else None
+        except Exception as e:
+            self.log("teach_chat_error", subgoal=sg.get("id"), err=str(e)[:120])
+        # ...AND THE ANSWER IS CHECKED AGAINST THE SAME SCREEN THE QUESTION
+        # CAME FROM. A slot the game marks NOT ABLE, or a forget that is not
+        # one of that Pokemon's four, is a doomed op: the shim would refuse
+        # it with a good sentence nobody is going to read, because this is
+        # not a round and there is no feedback loop to read it in.
+        bad = ""
+        row = next((w for w in who if w[0] == choice), None) if choice else None
+        if choice is not None and row is None:
+            bad = f"slot {choice} is not one the game marks ABLE"
+        elif row is not None:
+            if len(row[2]) >= 4 and not forget:
+                bad = f"{row[1]} knows four moves and no forget= was given"
+            elif forget and forget not in row[2]:
+                bad = f"{row[1]} does not know {forget}"
+            elif forget and forget in self.FIELD_MOVE_WORDS:
+                bad = f"{forget} is an HM move and cannot be forgotten"
+        self._tm_asked = dict(getattr(self, "_tm_asked", None) or {})
+        self._tm_asked[key] = {"teach": choice, "forget": forget,
+                               "why": why, "bad": bad}
+        self.log("teach_asked", subgoal=sg.get("id"), item=item, move=move,
+                 able=",".join(w[1] for w in who), teach=choice,
+                 forget=forget, why=why, refused=bad)
+        if choice is None or bad:
+            if bad:
+                print(f"   (teach {move}: answer not usable — {bad})")
+            return obs
+        kw = {"item": item, "slot": choice}
+        if forget:
+            kw["forget"] = forget
+        r = (self._send_safe("use_item", **kw) or {})
+        res = r.get("result") or {}
+        self.log("teach_done", subgoal=sg.get("id"), item=item, move=move,
+                 slot=choice, forget=forget, ok=bool(res.get("ok")),
+                 detail=str(res.get("detail") or "")[:140])
+        print(f"   (taught {move} to slot {choice}"
+              + (f", forgetting {forget}" if forget else "")
+              + (": " + str(res.get("detail") or "")[:70] if not res.get("ok")
+                 else "") + ")")
+        return self.settle() or obs
+
     @staticmethod
     def _pc_here(obs) -> bool:
         """Is there a PC on this map that a walk can reach? The shim
@@ -16835,6 +16994,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # model has left an order and the things are in the bag, they
             # go now. See _stow_at_pc.
             start = self._stow_at_pc(start, sg) or start
+            # ...AND THE MACHINE NOBODY HAS BEEN ASKED ABOUT YET. Same
+            # standing: a question, not a page section, and no round spent
+            # on the answer either way. See _ask_teach.
+            start = self._ask_teach(start, sg) or start
             # WHERE THIS ROUND BEGINS, taken AFTER the two things the
             # harness does for itself (draining a fight, carrying out the
             # standing order). The walk to a PC puts cells on screen, and
@@ -17002,52 +17165,69 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # intense item-usage policy that encourages the usage of tms
             # when we get them and/or when we get new pokemon, so we use
             # the tms at some point other than just when the bag is full").
-            # The two moments when a TM is worth a thought are when it
-            # ARRIVES and when the party CHANGES, and both are things this
-            # process can see. Everything said here is on the item's own
-            # label or in the party: the move is IN the TM's name, and
-            # whether anybody already knows it is in obs.party. Which
-            # Pokemon, and whether the trade is worth it, is not ours —
-            # nor is compatibility, which this harness cannot know and the
-            # game states plainly when a TM will not take.
-            _tms = sorted(k for k in ((start or {}).get("bag") or {})
-                          if str(k).startswith("TM_"))
-            _knows = {str(mv.get("id") if isinstance(mv, dict) else mv).upper()
-                      for mon in ((start or {}).get("party") or [])
-                      for mv in (mon.get("moves") or [])}
-            _roster = tuple(sorted(
-                str(m.get("species") or "") for m in
-                ((start or {}).get("party") or [])))
-            _unused = [t for t in _tms if t[3:].upper() not in _knows]
-            _prev_tms, _prev_roster = getattr(self, "_tm_seen", (None, None))
-            _fresh = (_prev_tms is None
-                      or set(_tms) - set(_prev_tms or ())
-                      or _roster != _prev_roster)
-            self._tm_seen = (list(_tms), _roster)
-            if _unused and _fresh:
-                _why = ("a new TM is in the bag"
-                        if _prev_tms is not None and set(_tms) - set(_prev_tms or ())
-                        else "your party has changed"
-                        if _prev_tms is not None else
-                        "this is the first page of this run")
-                self.log("tm_note", subgoal=sg["id"], why=_why,
-                         tms=",".join(_unused[:8]))
+            #
+            # THE ARRIVAL MOMENT IS NOW A QUESTION, NOT A PARAGRAPH (see
+            # _ask_teach): this note fired 110 times in run 16 and six
+            # teaches came of it, because a paragraph on page 17,800 tokens
+            # long competes with the subgoal for the round it would cost.
+            # What is left here is the STANDING record — what you carry
+            # that nobody knows, who the game marks able, and what you
+            # already answered when you were asked — so the decision can be
+            # revisited at any time by the model's own choice.
+            #
+            # The line that used to say compatibility "is not something
+            # this harness knows" was FALSE by the time it was read: the
+            # shim publishes obs.machines off the very screen a machine
+            # opens, which marks every party member ABLE or NOT ABLE at
+            # once, and the TOSS guard was already printing that list at
+            # the moment of destruction. The facts were being withheld
+            # where they would have helped and shown where they could not.
+            _mach = self._teachable_now(start)
+            _none = []
+            for _it in sorted((start or {}).get("bag") or {}):
+                _m = ((start or {}).get("machines") or {}).get(_it)
+                if not isinstance(_m, dict):
+                    continue
+                _mv = str(_m.get("move") or "").upper()
+                _kn = {str(x.get("id") if isinstance(x, dict) else x).upper()
+                       for _p in ((start or {}).get("party") or [])
+                       for x in (_p.get("moves") or [])}
+                if _mv and _mv not in _kn and not (_m.get("able") or []):
+                    _none.append(f"{self._disp_item(_it)} ({_mv})")
+            if _mach or _none:
+                _asked = getattr(self, "_tm_asked", None) or {}
+                _rows = []
+                for _it, _mv, _who in _mach:
+                    _k = f"{_it}|{','.join(sorted(w[1] for w in _who))}"
+                    _a = _asked.get(_k) or {}
+                    _said = ""
+                    if _a and _a.get("teach") is None and not _a.get("bad"):
+                        _said = (" — asked already, and you said no: "
+                                 + (str(_a.get("why") or "")[:90]
+                                    or "no reason given"))
+                    _rows.append(
+                        f"{self._disp_item(_it)} teaches {_mv}, ABLE: "
+                        + ", ".join(f"{sp} (slot {i})" for i, sp, _ in _who)
+                        + _said)
+                self.log("tm_note", subgoal=sg["id"],
+                         teachable=len(_mach), unusable=len(_none))
                 memory += (
-                    f"\nTEACHABLE MOVES YOU ARE CARRYING ({_why}): "
-                    + ", ".join(_unused[:8])
-                    + ". A TM's NAME IS THE MOVE IT TEACHES, and no "
-                      "Pokemon in your party knows "
-                      + ("that one" if len(_unused) == 1 else "any of those")
-                    + " right now. Teaching is "
+                    "\nMACHINES YOU CARRY THAT NOBODY IN YOUR PARTY KNOWS"
+                    + ((": " + "; ".join(_rows[:6])) if _rows else "")
+                    + ((". NOBODY IN THIS PARTY CAN TAKE: "
+                        + ", ".join(_none[:6])
+                        + " — what a species can learn CHANGES WHEN IT "
+                          "EVOLVES, and a different party member could")
+                       if _none else "")
+                    + ". ABLE / NOT ABLE is the machine's own party screen, "
+                      "not a guess. Teaching is "
                       "{\"op\":\"use_item\",\"item\":\"TM_...\","
                       "\"slot\":N} — add \"forget\":\"MOVE\" when that "
-                      "Pokemon already knows four. A TM IS SPENT WHEN IT "
-                      "IS USED, and whether a given Pokemon can learn a "
-                      "given TM is not something this harness knows: the "
-                      "game says so plainly when one will not take, and "
-                      "nothing is lost by being told no. Which Pokemon, "
-                      "which move it would replace, and whether any of it "
-                      "is worth doing at all is yours to judge.\n")
+                      "Pokemon already knows four, and THAT MOVE IS THEN "
+                      "GONE. A TM is spent when it works; an HM never is. "
+                      "You are asked about each of these once when it "
+                      "becomes teachable, and you can act on one here any "
+                      "time you change your mind.\n")
             # Log what the model was actually TOLD. Most of this session's
             # bugs were "the signal never reached the model" (dead ends only
             # in failure feedback, the too-weak note shadowed by an elif,
