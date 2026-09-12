@@ -1753,6 +1753,9 @@ class Executor:
         # someone ABLE in the party is a genuinely different question and
         # does reopen it. See _ask_teach.
         self._tm_asked: dict = {}
+        # ...and the same for stones, keyed by the stones held plus who
+        # still has an evolution ahead of them. See _ask_stone.
+        self._stone_asked: dict = {}
         # whether the one-shot un-spend of menu-only presses has run
         self._lists_reopened: bool = False
         self._plan_hist: dict = {}   # target -> [(round, where, plan)] last 8
@@ -4423,6 +4426,7 @@ class Executor:
             self._shelf_machine = set(data.get("shelf_machine") or [])
             self._stow = [str(x) for x in (data.get("stow") or [])]
             self._tm_asked = data.get("tm_asked") or {}
+            self._stone_asked = data.get("stone_asked") or {}
             self._lists_reopened = bool(data.get("lists_reopened"))
             # MEMORY THAT OUTLIVES THE ATTEMPT. The outcome ledger and the
             # plan history were per process, and every attempt is a new
@@ -4902,6 +4906,7 @@ class Executor:
                                                  set())),
                  "stow": list(getattr(self, "_stow", []) or []),
                  "tm_asked": getattr(self, "_tm_asked", {}),
+                 "stone_asked": getattr(self, "_stone_asked", {}),
                  "lists_reopened": bool(getattr(
                      self, "_lists_reopened", False)),
                  "walks_reopened": bool(getattr(
@@ -11341,6 +11346,158 @@ class Executor:
                 "on the same op sent again with \"confirm\":true.")
         return out
 
+    def _stone_pair(self, obs):
+        """The two halves of the stone question: what you carry, and who in
+        THIS party still has an evolution ahead of them.
+
+        Both facts were already in the harness and never on the same line.
+        The stones are the bag. "Still has an evolution ahead" is the engine
+        species table — the same judgment party_fully_evolved is made on, so
+        it is already something this harness says out loud. WHICH stone
+        suits WHICH member is not here and never will be: that is the one
+        thing the game answers for free, by evolving them.
+        """
+        stones = sorted(k for k in ((obs or {}).get("bag") or {})
+                        if str(k).endswith("_STONE"))
+        left = [(i, str(m.get("species")))
+                for i, m in enumerate(((obs or {}).get("party") or []), 1)
+                if isinstance(m, dict) and not fully_evolved(m.get("species"))]
+        return stones, left
+
+    def _stone_join(self, obs) -> str:
+        """Say them together. Run 16 carried a MOON_STONE to the Hall of
+        Fame past a party that had members with evolutions open, and the
+        page that could have said so only ever said it under a
+        party_fully_evolved goal — a goal that leg never had (user,
+        2026-09-11: "if you got it and you CAN use it, why not do so?").
+        """
+        stones, left = self._stone_pair(obs)
+        if not stones:
+            return ""
+        rec = getattr(self, "_stone_asked", None) or {}
+        said = rec.get(self._stone_key(stones, left)) or {}
+        tail = ""
+        if said.get("detail"):
+            tail = (" YOU HAVE ALREADY TRIED IT: "
+                    + str(said["detail"])[:160] + ".")
+        elif said.get("use") is None and said.get("why"):
+            tail = (" You were asked about this and said no: "
+                    + str(said["why"])[:120] + ".")
+        if not left:
+            return ("\nSTONES YOU ARE CARRYING: " + ", ".join(stones)
+                    + " — and NOBODY in your party has an evolution left to "
+                      "them, so no stone you hold has a use in this party as "
+                      "it stands." + tail + "\n")
+        return ("\nSTONES YOU ARE CARRYING: " + ", ".join(stones)
+                + ". STILL WITH AN EVOLUTION AHEAD OF THEM: "
+                + ", ".join(f"{sp} (slot {i})" for i, sp in left)
+                + " — that is the engine's own species table, the same "
+                  "judgment {\"party_fully_evolved\"} is made on. WHICH of "
+                  "your stones suits WHICH of them, or whether any does, is "
+                  "not said here: {\"op\":\"use_item\",\"item\":\"..."
+                  "_STONE\",\"slot\":\"any\"} tries one on every member "
+                  "in turn, stops at the one it evolves, and hands the stone "
+                  "back if nobody takes it — so the whole question costs ONE "
+                  "op and nothing else." + tail + "\n")
+
+    @staticmethod
+    def _stone_key(stones, left) -> str:
+        return ("+".join(stones) + "|"
+                + ",".join(sorted(sp for _, sp in left)))
+
+    STONE_SYS = (
+        "You are playing Pokemon Red. You are carrying one or more evolution "
+        "stones, and some of your party still have an evolution ahead of "
+        "them. Decide whether to spend a stone now. A stone used on a "
+        "Pokemon it does not suit is REFUSED and kept, so finding the taker "
+        "costs nothing — the only real decision is whether you want that "
+        "Pokemon evolved at all, and when. Evolving is permanent. Reply with "
+        "a JSON object and nothing else: "
+        "{\"why\":\"<one short sentence>\",\"use\":null} to spend "
+        "none, or {\"why\":\"...\",\"item\":\"<the stone>\","
+        "\"use\":\"any\"} to try it on each member until one takes it, "
+        "or {\"why\":\"...\",\"item\":\"<the stone>\","
+        "\"use\":<party slot number>} for one member in particular.")
+
+    def _ask_stone(self, obs, sg):
+        """The stone question, on the same hook and for the same reason as
+        the machine one: a stone evolution never advances the subgoal being
+        escalated, so a page fact loses the round every time and a MOON
+        STONE rides to the credits. Asked once per (stones, candidates), so
+        a new stone or a changed party reopens it and a standing party
+        never asks twice.
+        """
+        stones, left = self._stone_pair(obs)
+        if not stones or not left:
+            return obs
+        key = self._stone_key(stones, left)
+        if key in (getattr(self, "_stone_asked", None) or {}):
+            return obs
+        party = (obs or {}).get("party") or []
+        user = (
+            "STONES IN YOUR BAG: " + ", ".join(stones) + "\n"
+            "PARTY MEMBERS WITH AN EVOLUTION STILL AHEAD OF THEM:\n"
+            + "\n".join(
+                f"  slot {i}: {sp} L{party[i-1].get('level')}"
+                f" — knows {', '.join(str(mv.get('id') if isinstance(mv, dict) else mv).upper() for mv in (party[i-1].get('moves') or [])) or 'nothing'}"
+                for i, sp in left)
+            + "\n(Everyone else in the party has no evolution left to them.)"
+              "\n\nWHAT YOU ARE TRYING TO DO RIGHT NOW: "
+            + str(sg.get("goal_text") or sg.get("id") or "make progress")
+            + "\nWhich stone suits which Pokemon is not stated here and you "
+              "do not have to know: \"any\" tries each member in turn and "
+              "the stone comes back if nobody takes it."
+              "\nEvolving cannot be undone. No round is spent either way. "
+              "Answer it.")
+        use, item, why = None, None, ""
+        try:
+            reply = brock_probe.chat(
+                [{"role": "system", "content": self.STONE_SYS},
+                 {"role": "user", "content": user}], self.model)
+            mm = _re.search(r"\{.*\}", reply or "", _re.S)
+            d = json.loads(mm.group(0)) if mm else {}
+            why = str(d.get("why") or "")[:200]
+            u = d.get("use")
+            if u is not None:
+                item = canon_item(str(d.get("item") or "").upper())
+                use = "any" if str(u).lower() == "any" else int(u)
+        except Exception as e:
+            self.log("stone_chat_error", subgoal=sg.get("id"), err=str(e)[:120])
+        # CHECKED AGAINST THE BAG AND THE PARTY, which is all the harness
+        # is willing to speak to. A stone that suits nobody is NOT refused
+        # here — the harness does not say which stone suits which species,
+        # and the game answers that one for free.
+        bad = ""
+        if use is not None:
+            if item not in stones:
+                bad = f"{item or 'no stone'} is not a stone in the bag"
+            elif use != "any" and not any(i == use for i, _ in left):
+                bad = (f"slot {use} is not one of the members with an "
+                       f"evolution ahead of them")
+        rec = dict(getattr(self, "_stone_asked", None) or {})
+        rec[key] = {"use": use, "item": item, "why": why, "bad": bad}
+        self._stone_asked = rec
+        self.log("stone_asked", subgoal=sg.get("id"), stones=",".join(stones),
+                 candidates=",".join(sp for _, sp in left), item=item,
+                 use=use, why=why, refused=bad)
+        if use is None or bad:
+            if bad:
+                print(f"   (stone: answer not usable — {bad})")
+            return obs
+        r = (self._send_safe("use_item", item=item, slot=use) or {})
+        res = r.get("result") or {}
+        detail = str(res.get("detail") or "")[:200]
+        # THE GAME'S ANSWER IS KEPT. "Tried on every member and nobody took
+        # it" comes back as ok=True with nothing evolved, and that is a
+        # fact worth more than the attempt: it says this stone has no use
+        # in this party, which is what makes it a candidate for the PC.
+        rec[key] = dict(rec[key], detail=detail, ok=bool(res.get("ok")))
+        self._stone_asked = rec
+        self.log("stone_used", subgoal=sg.get("id"), item=item, slot=use,
+                 ok=bool(res.get("ok")), detail=detail)
+        print(f"   (stone {item} on {use}: {detail[:90]})")
+        return self.settle() or obs
+
     TEACH_SYS = (
         "You are playing Pokemon Red. You are carrying a machine (a TM or "
         "an HM) that teaches a move, and the game's own ITEM screen says "
@@ -13407,6 +13564,7 @@ class Executor:
         # bag, on every page, for as long as it is pending. Without this it
         # would be the one thing the harness does that the run cannot see
         # coming.
+        _rs_line = self._stone_join(obs) + _rs_line
         _stow = [i for i in (getattr(self, "_stow", None) or [])
                  if i in _bagall]
         if _stow:
@@ -16998,6 +17156,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # standing: a question, not a page section, and no round spent
             # on the answer either way. See _ask_teach.
             start = self._ask_teach(start, sg) or start
+            start = self._ask_stone(start, sg) or start
             # WHERE THIS ROUND BEGINS, taken AFTER the two things the
             # harness does for itself (draining a fight, carrying out the
             # standing order). The walk to a PC puts cells on screen, and
