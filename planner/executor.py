@@ -10345,6 +10345,26 @@ class Executor:
         # 2 in 15,347 records of a full day's run — so this is a handful of
         # calls per playthrough, not a tax on every step.
         if self._is_question(obs):
+            # A NICKNAME QUESTION IS NOT ONE OF THE DECISIONS. "Do you want
+            # to give a nickname to X?" is the door to the naming screen,
+            # and answering it on the merits is how every Pokemon in every
+            # run so far went un-named: saying no costs nothing and ends
+            # the box. The catch flow in the shim has always answered YES
+            # here; a GIFT, a TRADE and a revived FOSSIL come through this
+            # branch instead and were left to the model's judgement, which
+            # is the wrong question to ask if a name is wanted at all.
+            # What to CALL it is still entirely the model's (see ask_name).
+            if NICKNAMES_REQUIRED and "nickname" in str(text or "").lower():
+                self.b.send("tap", btn="a")
+                obs = self.settle() or obs
+                self.log("question_answered", subgoal=sg.get("id"),
+                         text=str(text)[:200], answer="yes",
+                         why="a nickname is always accepted",
+                         mode=(obs or {}).get("mode"))
+                self._ui_pending = 0
+                if (obs or {}).get("naming"):
+                    obs = self._resolve_naming(obs)
+                return obs
             ans = self._ask_question(obs, sg, text)
             if ans is not None:
                 self.b.send("tap", btn=("a" if ans else "b"))
@@ -20291,6 +20311,21 @@ def _balls_in(obs) -> bool:
 
 NAMING_MODEL = None       # set by main() before bootstrap; None = defaults
 
+# EVERY NAMING SCREEN GETS A NAME OF ITS OWN. The game hands you a menu of
+# ready-made names and a default, and taking one is the fastest way to make
+# the screen go away — so the run took RED, then BLUE, then GARY, every
+# time, and no Pokemon has ever been nicknamed at all. That is a naming
+# screen answered as an obstacle rather than as a question (user,
+# 2026-09-12: "I want to see what nicknames it actually chooses for things
+# instead of simply trying to complete the objective of choosing a name as
+# swiftly and thoughtlessly as possible"). It is also a REQUIREMENT of the
+# nuzlocke rules a later run will play under.
+#
+# The presets are still named, because they are on the screen and hiding
+# them would be lying about what is there. They are named as what NOT to
+# send. RED_NICKNAMES=0 puts it back the way it was.
+NICKNAMES_REQUIRED = os.environ.get("RED_NICKNAMES", "1") != "0"
+
 NAME_SYS = (
     "You are playing Pokemon Red and the game is asking you to type a "
     "NAME. Reply with a JSON object and nothing else: {\"name\":\"...\"}. "
@@ -20299,8 +20334,21 @@ NAME_SYS = (
     "keeps the game's default. Name it the way the player you are would."
 )
 
+NAME_SYS_OWN = (
+    "You are playing Pokemon Red and the game is asking you to type a "
+    "NAME. Reply with a JSON object and nothing else: {\"name\":\"...\"}. "
+    "Letters A-Z and a-z, space and - ? ! . , are typed; anything else is "
+    "dropped; the game cuts the name at its length limit.\n"
+    "GIVE IT A NAME OF YOUR OWN. Not the ready-made name the menu offers, "
+    "not the default, not the species in capitals, and never an empty "
+    "reply. It is yours to choose and you will be living with it for the "
+    "rest of the run, so choose it the way a player naming their own team "
+    "would — after what it is, what it did, what you mean it to become, "
+    "or anything else you like. A short one is fine. A joke is fine."
+)
 
-def _naming_prompt(obs: dict) -> str:
+
+def _naming_prompt(obs: dict, insist: str = "") -> str:
     """What is being named, in the game's own words plus what is on
     screen: the title, the newest party member for a NICKNAME, the
     ready-made names when the game offers them."""
@@ -20323,15 +20371,31 @@ def _naming_prompt(obs: dict) -> str:
     lines = [f"THE GAME ASKS: \"{title}\"{what}.",
              f"UP TO {nm.get('max') or 7} CHARACTERS."]
     if nm.get("presets"):
-        lines.append("READY-MADE NAMES THE GAME OFFERS (sending one exactly "
-                     "picks it): " + ", ".join(str(p) for p in nm["presets"]))
+        lines.append(
+            ("READY-MADE NAMES ON THE MENU, WHICH ARE NOT FOR YOU — they are "
+             "listed so you know what to avoid, not what to pick: "
+             if NICKNAMES_REQUIRED else
+             "READY-MADE NAMES THE GAME OFFERS (sending one exactly "
+             "picks it): ")
+            + ", ".join(str(p) for p in nm["presets"]))
     if nm.get("default"):
-        lines.append(f"THE DEFAULT IF YOU SEND NOTHING: {nm['default']}")
+        lines.append(
+            (f"THE DEFAULT, ALSO NOT FOR YOU: {nm['default']}"
+             if NICKNAMES_REQUIRED
+             else f"THE DEFAULT IF YOU SEND NOTHING: {nm['default']}"))
     if party:
         lines.append("YOUR PARTY: " + ", ".join(
             f"{m.get('species')} L{m.get('level')}"
             + (f" (\"{m.get('nickname')}\")" if m.get("nickname") else "")
             for m in party))
+    if NICKNAMES_REQUIRED:
+        lines.append("A NAME OF YOUR OWN, PLEASE — not one off the menu, "
+                     "not the default, not blank.")
+    if insist:
+        # the second ask, and it says WHY the first one came back
+        lines.append("YOUR LAST ANSWER WAS " + insist + ". That is one of "
+                     "the ready-made ones, or nothing at all. Think of a "
+                     "name yourself and send that instead.")
     return "\n".join(lines)
 
 
@@ -20341,32 +20405,56 @@ def ask_name(obs: dict, model, log=None) -> str:
     reply, means "" (the game's default) — a name must never wedge a run."""
     if not model:
         return ""
+    nm = (obs or {}).get("naming") or {}
     try:
-        reply = brock_probe.chat(
-            [{"role": "system", "content": NAME_SYS},
-             {"role": "user", "content": _naming_prompt(obs)}], model)
-    except Exception as e:
-        if log:
-            log("name_chat_error", err=str(e)[:200])
-        return ""
-    m = _re.search(r"\{.*\}", reply or "", _re.S)
-    name = ""
-    if m:
-        try:
-            name = str(json.loads(m.group(0)).get("name") or "")
-        except (json.JSONDecodeError, AttributeError):
-            name = ""
-    name = "".join(ch for ch in name.strip()
-                   if ch.isalnum() or ch in " -?!.,():;")
-    try:
-        cap = int(((obs or {}).get("naming") or {}).get("max") or 10)
+        cap = int(nm.get("max") or 10)
     except (TypeError, ValueError):
         cap = 10
-    name = name[:cap]
-    if log:
-        log("name_asked", title=str(((obs or {}).get("naming") or {})
-                                    .get("title")), name=name,
-            reply=str(reply)[:200])
+    # what counts as not having chosen: nothing, a name off the menu, the
+    # default, or the species shouted back at you
+    off_menu = {str(x).strip().upper() for x in (nm.get("presets") or [])}
+    if nm.get("default"):
+        off_menu.add(str(nm["default"]).strip().upper())
+    for m2 in ((obs or {}).get("party") or []):
+        if m2.get("species"):
+            off_menu.add(str(m2["species"]).strip().upper())
+
+    insist, name = "", ""
+    for attempt in range(3 if NICKNAMES_REQUIRED else 1):
+        try:
+            reply = brock_probe.chat(
+                [{"role": "system", "content": (NAME_SYS_OWN
+                                                if NICKNAMES_REQUIRED
+                                                else NAME_SYS)},
+                 {"role": "user",
+                  "content": _naming_prompt(obs, insist)}], model)
+        except Exception as e:
+            if log:
+                log("name_chat_error", err=str(e)[:200])
+            return ""
+        m = _re.search(r"\{.*\}", reply or "", _re.S)
+        name = ""
+        if m:
+            try:
+                name = str(json.loads(m.group(0)).get("name") or "")
+            except (json.JSONDecodeError, AttributeError):
+                name = ""
+        name = "".join(ch for ch in name.strip()
+                       if ch.isalnum() or ch in " -?!.,():;")[:cap]
+        if log:
+            log("name_asked", title=str(nm.get("title")), name=name,
+                attempt=attempt + 1, reply=str(reply)[:200])
+        if not NICKNAMES_REQUIRED:
+            return name
+        if name and name.strip().upper() not in off_menu:
+            return name
+        # ...AND A NAME MUST NEVER WEDGE A RUN. That rule is older than this
+        # one and it still wins: after three tries the game's own default
+        # stands rather than a naming screen nobody can get past.
+        insist = repr(name) if name else "empty"
+        if log:
+            log("name_refused", title=str(nm.get("title")), name=name,
+                attempt=attempt + 1)
     return name
 
 
