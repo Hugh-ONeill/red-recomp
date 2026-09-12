@@ -35,8 +35,28 @@ for _ in $(seq 1 60); do [ -f run/obs.json ] && break; sleep 1; done
 # authored and live-evaluated (6/6 rival, 3/3 badge, 0 blackouts, beating
 # the typed_v0 baseline on oracle agreement 47 to 36) and never once used.
 # Newest by version, overridable, and silent if there is none.
-POLICY="${RED_POLICY:-$(ls -1 plans/policy_model_v*.json 2>/dev/null \
-        | sort -V | tail -1 || true)}"
+# ...AND THE ONE THAT SCORED BEST, NOT THE ONE NAMED LAST. This read
+# `sort -V | tail -1` — the highest version NUMBER, which is a filename and
+# not a result — so run 16 fought its whole game on v6, whose own
+# provenance records three gauntlet trials that cleared zero rooms and
+# blacked out three times of three, while v1 (6/6 rival, three badges, no
+# blackouts) and v3 (eight Elite Four rooms, no blackouts) sat beside it
+# (2026-09-12). Every spec carries the trial that judged it; pick_policy.py
+# reads it, refuses one that failed its own trial, and picks by STAGE where
+# there is a spec scored for it — the arenas measure different things and a
+# POTION rule is right for Kanto and useless at the league.
+_badges=$(python - <<'PB' 2>/dev/null || echo 0
+import json
+try:
+    print(len((json.load(open("run/obs.json")).get("badges") or [])))
+except Exception:
+    print(0)
+PB
+)
+# --why goes to stderr and the chosen path to stdout, so the log keeps
+# the whole ranking (including what was rejected and why) beside the pick.
+POLICY="${RED_POLICY:-$(python planner/pick_policy.py \
+        --badges "$_badges" --why || true)}"
 pol=()
 if [ -n "$POLICY" ] && [ -s "$POLICY" ]; then
   pol=(--policy-spec "$POLICY")

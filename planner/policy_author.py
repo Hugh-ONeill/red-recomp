@@ -773,7 +773,14 @@ def main():
     artifact["provenance"] = {
         "authored_by": args.model, "run": args.run_id,
         "via": "policy_author", "rounds": len(candidates),
-        "eval": best_r, "baseline_typed_v0": base,
+        # WHICH ARENA JUDGED IT, said outright. pick_policy.py has to
+        # know, because `rooms` exists only for the gauntlet and
+        # `badge`/`rival_wins` only for Brock — rank them on one scale
+        # and every gauntlet spec beats every Brock spec for free. It
+        # was inferable from the shape of the score and now it is not
+        # guessed (2026-09-12).
+        "eval": dict(best_r, arena=gym.arena),
+        "baseline_typed_v0": base,
     }
     args.out.write_text(json.dumps(artifact, indent=2))
     print(f"\nBEST: {best_spec['name']} -> {args.out}")
