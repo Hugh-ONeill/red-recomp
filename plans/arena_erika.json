@@ -1,0 +1,36 @@
+{
+  "bag": {
+    "SUPER_POTION": 8,
+    "REVIVE": 2,
+    "PARLYZ_HEAL": 3,
+    "GREAT_BALL": 5
+  },
+  "money": 12882,
+  "start": {
+    "map": "CELADON_GYM",
+    "x": 4,
+    "y": 17,
+    "facing": "up"
+  },
+  "clear_flags": [
+    "EVENT_BEAT_ERIKA",
+    "EVENT_BEAT_CELADON_GYM_TRAINER_0",
+    "EVENT_BEAT_CELADON_GYM_TRAINER_1",
+    "EVENT_BEAT_CELADON_GYM_TRAINER_2",
+    "EVENT_BEAT_CELADON_GYM_TRAINER_3",
+    "EVENT_BEAT_CELADON_GYM_TRAINER_4",
+    "EVENT_BEAT_CELADON_GYM_TRAINER_5",
+    "EVENT_BEAT_CELADON_GYM_TRAINER_6"
+  ],
+  "clear_trainers": [
+    "CELADON_GYM_obj_1",
+    "CELADON_GYM_obj_2",
+    "CELADON_GYM_obj_3",
+    "CELADON_GYM_obj_4",
+    "CELADON_GYM_obj_5",
+    "CELADON_GYM_obj_6",
+    "CELADON_GYM_obj_7",
+    "CELADON_GYM_obj_8",
+    "CELADON_GYM_obj_9"
+  ]
+}

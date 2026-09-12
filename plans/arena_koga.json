@@ -1,0 +1,29 @@
+{
+  "bag": {
+    "SUPER_POTION": 8,
+    "REVIVE": 2,
+    "FULL_HEAL": 3,
+    "ULTRA_BALL": 1
+  },
+  "money": 12814,
+  "clear_flags": [
+    "EVENT_BEAT_KOGA",
+    "EVENT_BEAT_FUCHSIA_GYM_TRAINER_0",
+    "EVENT_BEAT_FUCHSIA_GYM_TRAINER_1",
+    "EVENT_BEAT_FUCHSIA_GYM_TRAINER_2",
+    "EVENT_BEAT_FUCHSIA_GYM_TRAINER_3",
+    "EVENT_BEAT_FUCHSIA_GYM_TRAINER_4",
+    "EVENT_BEAT_FUCHSIA_GYM_TRAINER_5"
+  ],
+  "clear_trainers": [
+    "FUCHSIA_GYM_obj_1",
+    "FUCHSIA_GYM_obj_2",
+    "FUCHSIA_GYM_obj_3",
+    "FUCHSIA_GYM_obj_4",
+    "FUCHSIA_GYM_obj_5",
+    "FUCHSIA_GYM_obj_6",
+    "FUCHSIA_GYM_obj_7",
+    "FUCHSIA_GYM_obj_8",
+    "FUCHSIA_GYM_obj_9"
+  ]
+}
