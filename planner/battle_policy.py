@@ -53,9 +53,23 @@ SPEC DSL v1 (all keys optional; unknown keys are validation errors):
              float (def 0.7)  move until the foe is below this fraction of
            max_balls: int }   the hp it appeared with, then throw (gen1
                               catch odds scale with missing hp)
-  replacement: { order: "healthiest"|"first_alive" }
+  replacement: { order: "healthiest"|"first_alive"|"resists"|
+                          "best_matchup",
+                 min_hp_frac: float }
                              when the active mon faints with a backup
-                             alive, which party slot comes in
+                             alive, which party slot comes in.
+                             resists      = takes least from the foe's own
+                                            types; best_matchup = hits it
+                                            hardest for what it takes.
+                             Both read the foe's TYPES, not its moves,
+                             which are not on screen until used, and the
+                             bench member's OWN types, because a benched
+                             mon's moves reach the observation without
+                             theirs. min_hp_frac keeps a rule from sending
+                             in something nearly dead; if nobody clears it,
+                             it is ignored rather than obeyed.
+                             Outside a fight there is no foe to read, and
+                             the type orders fall back to healthiest.
 
 choose(obs, spec, ctx) -> op dict for the executor. ctx carries per-battle
 state the executor owns: {"turn": n, "used": {move: count},
@@ -213,8 +227,13 @@ def validate_spec(spec) -> list:
     if "replacement" in spec and spec["replacement"] is not None:
         rp = spec["replacement"]
         if not isinstance(rp, dict) or rp.get("order") not in (
-                None, "healthiest", "first_alive"):
-            probs.append("replacement.order must be healthiest/first_alive")
+                None, "healthiest", "first_alive", "resists", "best_matchup"):
+            probs.append("replacement.order must be healthiest / first_alive "
+                         "/ resists / best_matchup")
+        elif rp.get("min_hp_frac") is not None:
+            f = rp.get("min_hp_frac")
+            if not (isinstance(f, (int, float)) and 0.0 <= float(f) <= 1.0):
+                probs.append("replacement.min_hp_frac float in [0,1]")
     if "flee_wild" in spec:
         fw = spec["flee_wild"]
         if not isinstance(fw, dict):
@@ -245,6 +264,56 @@ def effectiveness(move_type: str, foe_types) -> float:
     for t in foe_types or []:
         mult *= _CHART.get(move_type, {}).get(t, 1.0)
     return mult
+
+
+def incoming(foe_types, mine_types) -> float:
+    """Worst multiplier the FOE's own types would land on this defender.
+
+    The same chart `effectiveness` already reads, pointed the other way.
+    It uses the foe's TYPES, not its moves, because a foe's moveset is not
+    on screen until it uses them — STAB is the honest proxy and the spec
+    prices it, the way it prices everything else."""
+    return max((effectiveness(str(t).upper(), mine_types)
+                for t in (foe_types or [])), default=1.0)
+
+
+def outgoing(mon_or_types, foe_types) -> float:
+    """Best multiplier this member could actually LAND on the foe.
+
+    THE MOVES IT HOLDS, not the type it happens to be. GYARADOS is the
+    right lead into LORELEI because it carries THUNDERBOLT, which is
+    double against her WATER half; by typing alone WATER/FLYING reads
+    neutral into ICE/WATER and it looks like nobody special (user,
+    2026-09-12: "it should be considering the moves it has not just the
+    types"). A move's type and power are on the SUMMARY screen for every
+    party member, so this is eyesight, not inference — the shim publishes
+    them for the bench as of the same day.
+
+    Takes a party member, or a bare list of types for callers that have
+    only those. A move with no power is not an attack and cannot land
+    anything, so it is skipped; if NO move has a type (an older
+    observation, or a mon whose moves have not been read), the member's
+    own types stand in, which is what this did before.
+    """
+    if isinstance(mon_or_types, dict):
+        mon, mine_types = mon_or_types, mon_or_types.get("types") or []
+        best, seen = 0.0, False
+        for mv in (mon.get("moves") or []):
+            if not isinstance(mv, dict):
+                continue
+            t = mv.get("type")
+            if not t:
+                continue
+            seen = True
+            if (mv.get("power") or 0) <= 0:
+                continue           # a status move lands no multiplier
+            best = max(best, effectiveness(str(t).upper(), foe_types))
+        if seen:
+            return best
+    else:
+        mine_types = mon_or_types
+    return max((effectiveness(str(t).upper(), foe_types)
+                for t in (mine_types or [])), default=1.0)
 
 
 def journal_key(move_id: str, species: str, level) -> tuple:
@@ -344,19 +413,69 @@ def should_field_cure(obs: dict,
 
 
 def choose_replacement(obs: dict, spec: dict | None = None) -> int | None:
-    """The active mon fainted: which party slot comes in (1-based)."""
+    """The active mon fainted: which party slot comes in (1-based).
+
+    THE SPEC COULD ONLY EVER SAY "healthiest" OR "first_alive", and neither
+    is about the fight. Run 16 replaced a fainted mon 86 times and every
+    one of them was the healthiest rule; of 101 party reorders the model
+    made itself, 96 said in their own words they were putting a low-level
+    member in front to TRAIN it and none were about the matchup (user,
+    2026-09-12: "it only switches around the team to put mons in first to
+    train them"). Part of that is the round economy, which is not ours to
+    fix here — but part was that the language had no words for it. The
+    type chart has been in this file all along, read one way, for scoring
+    our moves. `resists` and `best_matchup` read it the other way.
+
+    Which order to use is the model's, as ever. This knows only how to
+    carry out the four it can name.
+    """
     spec = spec or DEFAULT_SPEC
-    order = (spec.get("replacement") or {}).get("order", "healthiest")
-    best, slot = -1.0, None
-    for i, mon in enumerate((obs or {}).get("party") or []):
-        if (mon.get("hp") or 0) <= 0:
-            continue
-        if order == "first_alive":
-            return i + 1
-        f = _hp_frac(mon)
-        if f > best:
-            best, slot = f, i + 1
-    return slot
+    rp = spec.get("replacement") or {}
+    order = rp.get("order", "healthiest")
+    party = (obs or {}).get("party") or []
+    alive = [(i + 1, m) for i, m in enumerate(party) if (m.get("hp") or 0) > 0]
+    if not alive:
+        return None
+    if order == "first_alive":
+        return alive[0][0]
+    # A FLOOR, AND NEVER AN EMPTY BENCH. min_hp_frac stops a resist rule
+    # sending in the one thing that walls the foe on 4% health — but if
+    # nobody clears the floor, the floor is not a reason to send nobody.
+    floor = rp.get("min_hp_frac")
+    try:
+        floor = float(floor) if floor is not None else 0.0
+    except (TypeError, ValueError):
+        floor = 0.0
+    pool = [(n, m) for n, m in alive if _hp_frac(m) >= floor] or alive
+    foe = (((obs or {}).get("battle") or {}).get("foe") or {})
+    foe_types = foe.get("types") or []
+    # ...AND A TYPE RULE WITH NOBODY TO READ falls back to health rather
+    # than to an arbitrary slot. There is no foe on screen when the party
+    # is being arranged outside a fight.
+    if order in ("resists", "best_matchup") and not foe_types:
+        order = "healthiest"
+
+    def key(n_m):
+        n, m = n_m
+        types = [str(t).upper() for t in (m.get("types") or [])]
+        f = _hp_frac(m)
+        if order == "resists":
+            # least damage taken; health breaks the tie
+            return (-incoming(foe_types, types), f)
+        if order == "best_matchup":
+            # the MON, so outgoing can read the moves it actually holds
+            # hits hardest for what it takes; health breaks the tie.
+            # AN IMMUNITY IS BETTER THAN A DOUBLE RESIST, so the divisor
+            # floors BELOW the chart's smallest real multiplier (0.25)
+            # rather than at it — clamping 0 to 0.25 would price a mon the
+            # foe cannot touch at all exactly like one it can hurt a
+            # little. The floor exists to keep the ratio finite, nothing
+            # more; gen 1's ladder is 0, 0.25, 0.5, 1, 2, 4.
+            return (outgoing(m, foe_types)
+                    / max(0.125, incoming(foe_types, types)), f)
+        return (f, 0.0)
+
+    return max(pool, key=key)[0]
 
 
 def should_switch(obs: dict, spec: dict | None = None,

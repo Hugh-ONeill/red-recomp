@@ -98,9 +98,20 @@ DSL_DOC = """SPEC DSL (JSON object; every key optional; no other keys):
     (during a CATCH task: weaken the wild mon with the gentlest non-KO
      move until it is below that fraction of the hp it appeared with,
      then throw — gen1 catch odds scale with missing hp)
-  replacement: {"order": "healthiest"|"first_alive"}
+  replacement: {"order": "healthiest"|"first_alive"|"resists"|"best_matchup",
+                "min_hp_frac": 0.0-1.0}
     (when your active mon faints and a backup lives, which one comes in —
-     a replacement instead of a blackout, which would HALVE your money)"""
+     a replacement instead of a blackout, which would HALVE your money.
+     "resists" sends the one the foe's own types hurt least; "best_matchup"
+     the one that hits it hardest for what it takes. Both weigh TYPES: the
+     foe's, because its moves are not visible until it uses them, and on your
+     side THE MOVES THAT MEMBER HOLDS -- a GYARADOS carrying THUNDERBOLT is
+     the answer to a WATER foe that its own WATER/FLYING typing calls
+     neutral. A move with no power lands nothing, and a member whose moves
+     carry no type falls back to its own typing. "min_hp_frac" stops a type rule sending in something nearly
+     dead — if nobody clears the floor it is ignored, never obeyed into
+     sending nobody. Outside a fight there is no foe to read and the type
+     orders fall back to healthiest.)"""
 
 # ------------------------------------------------------- context, from evidence
 # WHAT USED TO BE HERE. A hand-written CONTEXT block that told the model

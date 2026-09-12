@@ -305,6 +305,25 @@ local function party(G)
     m.moves = {}
     for j, mv in ipairs(mon.moves or {}) do
       m.moves[j] = type(mv) == "table" and scalars(mv, 0) or tostring(mv)
+      -- WHAT EACH MOVE IS, not just what it is called. scalars() copies
+      -- the save's own fields (id, pp) and a move's TYPE and POWER live in
+      -- the move table it points at, so the bench arrived with four names
+      -- and nothing else -- while the two mons IN a fight have carried
+      -- type and power since the battle side was written. The SUMMARY
+      -- screen prints both for every move of every party member, one
+      -- button from the party menu, so this is the same eyesight tier as
+      -- the level beside it.
+      -- It decides leads. GYARADOS is the right answer to LORELEI because
+      -- it holds THUNDERBOLT, not because WATER/FLYING reads well against
+      -- ICE/WATER -- by typing alone it is neutral (user, 2026-09-12:
+      -- "it should be considering the moves it has not just the types").
+      if type(m.moves[j]) == "table" and m.moves[j].id then
+        local mdef = G.data and G.data.moves and G.data.moves[m.moves[j].id]
+        if mdef then
+          m.moves[j].type = mdef.type
+          m.moves[j].power = mdef.power
+        end
+      end
     end
     -- WHAT TYPE IT IS. The status screen prints it under the name, so it is
     -- as player-visible as the level beside it -- but nothing published it,
