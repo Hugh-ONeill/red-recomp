@@ -1730,6 +1730,18 @@ class Executor:
         # which of those are VENDING MACHINES rather than a counter:
         # the stock is kept the same way, the sentence is not
         self._shelf_machine: set = set()
+        # THE STANDING ORDER: items to put in the PC the next time the run
+        # stands at one. Run 16 spent 504 escalation pages with the bag at
+        # 20 of 20 kinds and FOURTEEN of them were in a Pokemon Center —
+        # the pressure lands in Seafoam, Silph and the Mansion, and the one
+        # remedy that destroys nothing lives somewhere else entirely. The
+        # sentence saying a Center's PC takes key items and hands them back
+        # was on 752 pages of that run and nothing was ever stored, because
+        # by the time storing was possible nothing was pressing. So the
+        # DECISION is taken where the pressure is and the DEED happens
+        # where the PC is. What goes on the list is the model's, always;
+        # the harness only carries it and never adds to it.
+        self._stow: list = []
         # whether the one-shot un-spend of menu-only presses has run
         self._lists_reopened: bool = False
         self._plan_hist: dict = {}   # target -> [(round, where, plan)] last 8
@@ -4398,6 +4410,7 @@ class Executor:
             self._shelves = data.get("shelves") or {}
             self._shelf_reads = data.get("shelf_reads") or {}
             self._shelf_machine = set(data.get("shelf_machine") or [])
+            self._stow = [str(x) for x in (data.get("stow") or [])]
             self._lists_reopened = bool(data.get("lists_reopened"))
             # MEMORY THAT OUTLIVES THE ATTEMPT. The outcome ledger and the
             # plan history were per process, and every attempt is a new
@@ -4875,6 +4888,7 @@ class Executor:
                  "shelf_reads": getattr(self, "_shelf_reads", {}),
                  "shelf_machine": sorted(getattr(self, "_shelf_machine",
                                                  set())),
+                 "stow": list(getattr(self, "_stow", []) or []),
                  "lists_reopened": bool(getattr(
                      self, "_lists_reopened", False)),
                  "walks_reopened": bool(getattr(
@@ -11295,12 +11309,77 @@ class Executor:
                     "and STORING ({\"op\":\"store_item\"}) needs a "
                     "Pokemon Center PC, and THERE IS NEITHER ON THIS MAP"
                     + ((" — the nearest you have walked to: "
-                        + ", ".join(_rows[:3]) + ".") if _rows else "."))
+                        + ", ".join(_rows[:3]) + ".") if _rows else ".")
+                    # ...BUT THE DECISION DOES NOT HAVE TO WAIT FOR THE
+                    # ROOM. This branch is where run 16 lived: 504 pages
+                    # with a full bag, 14 of them anywhere near a PC, and
+                    # every one of those 504 could only be answered by
+                    # tossing. Naming the deferred way here is the whole
+                    # point of the op — the thinking about the bag is
+                    # happening NOW, in this room, and it need not be
+                    # thrown away for want of a machine.
+                    + " You can still DECIDE it here: "
+                      "{\"op\":\"store_later\",\"items\":[...]} puts "
+                      "them in the PC the moment you next stand at one, "
+                      "with no round spent then and nothing destroyed now.")
         out += ("\nTOSSING ({\"op\":\"toss\",\"item\":X}) frees the "
                 "slot here and now and destroys the thing; it is refused "
                 "once for anything with a use left in it and goes through "
                 "on the same op sent again with \"confirm\":true.")
         return out
+
+    @staticmethod
+    def _pc_here(obs) -> bool:
+        """Is there a PC on this map that a walk can reach? The shim
+        publishes every PC tile as a fixture named PC (map_fixtures reads
+        field.hiddenExtras.pcTiles), which is the same thing a player sees
+        standing in the room. Not a name test: the player's own bedroom has
+        one and one Center could always be laid out differently."""
+        if (obs or {}).get("mode") != "overworld":
+            return False
+        for o in (((obs or {}).get("map") or {}).get("objects") or []):
+            if not isinstance(o, dict):
+                continue
+            if str(o.get("name")) == "PC" and o.get("reachable"):
+                return True
+        return False
+
+    def _stow_at_pc(self, obs, sg):
+        """Carry out the standing order, here, for no round.
+
+        The one automatic item action in the harness, and it is automatic
+        only because it is the REVERSIBLE one: a stored thing is on every
+        page in obs.pc_items and comes back with one op. Deciding WHAT goes
+        is never ours — this moves exactly the list the model wrote with
+        {"op":"store_later"} and stops.
+
+        Same standing as the field heal that fires after a battle: the
+        model's own rule, executed where it applies, costing no round.
+        """
+        want = [i for i in (getattr(self, "_stow", None) or [])
+                if i in ((obs or {}).get("bag") or {})]
+        if not want or not self._pc_here(obs):
+            return obs
+        done, failed = [], []
+        for item in want:
+            r = (self._send_safe("store_item", item=item) or {})
+            res = r.get("result") or {}
+            if res.get("ok"):
+                done.append(item)
+            else:
+                failed.append((item, str(res.get("detail") or "")[:80]))
+            obs = self.settle() or obs
+        # only what actually went comes off the order; a thing the PC
+        # refused is still waiting, and so is one not in the bag today
+        if done:
+            self._stow = [i for i in (self._stow or []) if i not in done]
+        self.log("stow_done", subgoal=(sg or {}).get("id"),
+                 stored=",".join(done),
+                 failed=",".join(i for i, _ in failed),
+                 left=",".join(self._stow or []))
+        if done:
+            print(f"   (standing order: stored {', '.join(done)} at the PC)")
+        return obs
 
     @staticmethod
     def _usable_on_a_mon(items):
@@ -13163,6 +13242,21 @@ class Executor:
                   "one on "
                   "the spot. Whether any of it serves what you are doing is "
                   "yours to read.\n") + _rs_line
+        # AN ORDER YOU LEFT IS ONE YOU CAN STILL CHANGE. A standing order
+        # written four floors down a dungeon fires a long way from where it
+        # was written, and by then the reason may be gone — so it rides the
+        # bag, on every page, for as long as it is pending. Without this it
+        # would be the one thing the harness does that the run cannot see
+        # coming.
+        _stow = [i for i in (getattr(self, "_stow", None) or [])
+                 if i in _bagall]
+        if _stow:
+            _rs_line = (
+                "STANDING ORDER YOU LEFT: " + ", ".join(_stow)
+                + " go into the PC the next time you stand at one — no "
+                  "round is spent on it and nothing is destroyed. Send "
+                  "{\"op\":\"store_later\",\"items\":[...]} to change "
+                  "the list, or with an empty list to cancel it.\n") + _rs_line
         # WHO IS IN THE BOX, ON EVERY PAGE. The three places that named
         # stored Pokemon were all inside PARTY-goal prompts, so on a map
         # or flag goal the run's own boxed roster was invisible. It boxed
@@ -14046,6 +14140,14 @@ DESTROYS NOTHING; key items and HMs go in too, and it is the ONE place the
 game lets those go; obs.pc_items lists what is already in there),
 {"op":"retrieve_item","item":"HM_CUT","count":N} (take one back out of
 the PC; it fails if the bag is already at 20 kinds),
+{"op":"store_later","items":["SILPH_SCOPE","S_S_TICKET"]} (a STANDING
+ORDER, for when you want the PC and there is no PC here. Nothing happens
+now; the moment you next stand in a room with a PC these go into it, with
+NO round spent on it and nothing else changed. This is how a bag that
+fills four floors down a dungeon gets emptied — decide it where it hurts,
+it happens where it is possible. Send it again to change the list; an
+empty list cancels it. Only things in the bag when you arrive are taken,
+and one {"op":"retrieve_item"} brings any of them straight back),
 {"op":"pc_deposit","slot":N} (put party member N into a PC box, at THIS
 map's PC. It keeps its levels and moves and can be taken back out; it will
 not leave you with an empty party. This is how you make room),
@@ -14654,6 +14756,52 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # city, and an NPC parked in the gap can make even the good
             # side fail transiently. Three such misses sealed the only road
             # to Route 5 for the rest of the leg.
+            # {"op":"store_later","items":[...]} — THE STANDING ORDER.
+            # Not a shim op: nothing happens in the game here. It records
+            # what to deposit the next time the run stands at a PC, and
+            # _stow_at_pc does it there for free. The op exists so the
+            # decision can be made in the place where it is actually being
+            # thought about — a full bag four floors down a dungeon — and
+            # carried out in the place where it is possible. An empty list
+            # clears the order. Nothing is added by the harness and nothing
+            # is refused: which of these still has a use ahead is the
+            # model's to know, and a stored thing comes back with one
+            # {"op":"retrieve_item"}.
+            if op == "store_later":
+                _want = step.get("items")
+                if _want is None:
+                    _want = [step.get("item")] if step.get("item") else None
+                if _want is None:
+                    trace.append('store_later: needs "items":[...] — a list '
+                                 'of item ids to put in the PC next time '
+                                 'you stand at one (an empty list clears '
+                                 'the order)')
+                    continue
+                _new = [canon_item(str(i).upper()) for i in _want if i]
+                _same = _new == list(getattr(self, "_stow", []) or [])
+                self._stow = _new
+                self.log("stow_set", subgoal=sg.get("id"),
+                         items=",".join(_new), same=_same)
+                # WRITING A NOTE IS NOT DOING THE THING, and this op is
+                # cheap enough to send every round forever. It is NOT
+                # appended to `clean`: the world did not move, so a round
+                # that only writes an order is an empty round and the
+                # stale budget must go on counting it as one. Re-sending
+                # the same list says so plainly rather than reading back
+                # as though something happened.
+                trace.append(
+                    ("store_later: that is ALREADY the standing order and "
+                     "nothing changed — it fires when you reach a PC, not "
+                     "when you write it, and writing it again does not "
+                     "bring one closer") if _same else
+                    ("store_later: nothing will be stored — the standing "
+                     "order is now empty") if not _new else
+                    ("store_later: recorded — " + ", ".join(_new)
+                     + " go into the PC the next time you stand at one, "
+                       "with no round spent on it. NOTHING HAS HAPPENED "
+                       "YET and your bag is unchanged; send store_later "
+                       "again to change the list."))
+                continue
             # {"op":"explore"} — THE FRONTIER STEP, ON REQUEST (EXPLORE_DESIGN
             # §4). Not a shim op: the executor picks the concrete op the
             # ledger ranks first and runs it through this same loop, so
@@ -16662,7 +16810,6 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             self._stop_if_asked()
             rnd += 1
             start = self.settle()
-            _news0 = self._news_snapshot(start)   # where this round begins (the loop's first round has no obs yet)
             self._note_map(start)
             # NEVER ASK THE MODEL FROM INSIDE A FIGHT. settle() resolves
             # dialogue but not battles, so a wild that jumped the party at
@@ -16682,6 +16829,18 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             if _fights:
                 self.log("battle_drained_before_round", subgoal=sg["id"],
                          round=rnd, fights=_fights)
+            # A ROUND BOUNDARY IN A ROOM WITH A PC is the moment the
+            # standing order was written for: the world is settled, no op
+            # is half-done, and nothing is being spent to be here. If the
+            # model has left an order and the things are in the bag, they
+            # go now. See _stow_at_pc.
+            start = self._stow_at_pc(start, sg) or start
+            # WHERE THIS ROUND BEGINS, taken AFTER the two things the
+            # harness does for itself (draining a fight, carrying out the
+            # standing order). The walk to a PC puts cells on screen, and
+            # taken before this the round's own news would have claimed
+            # them. The loop's first round has no obs yet.
+            _news0 = self._news_snapshot(start)
             # THE WORLD MAY HAVE CAUGHT UP SINCE THE LAST CHECK. A trade's
             # animation outlasted round 2's post-op check, so the party
             # read unchanged then and the model was asked a round 3 it

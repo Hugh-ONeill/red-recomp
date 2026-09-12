@@ -13,7 +13,15 @@ i = src.find("IN PC STORAGE (yours, not in the party")
 ck("the general page names storage", i > 0)
 
 # it must sit on the page every goal gets, not inside a party-goal branch
-seg = src[max(0, i - 7200):i]   # grew with the shelf-reading note
+seg = src[max(0, i - 9000):i]   # grew with the shelf-reading note, then
+                                # again with the standing-order line
+                                # (2026-09-11). A BYTE WINDOW IS NOT THE
+                                # CLAIM: what this pins is that the boxed
+                                # roster sits in the unconditional part of
+                                # the page, and every paragraph added above
+                                # it pushes the anchor further back. Widen
+                                # it when that happens; it has never once
+                                # been a real failure.
 ck("...outside the party-goal branches",
    "_rs_line = self._respawn_line(obs)" in seg)
 ck("it names species, level, box and index",
