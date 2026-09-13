@@ -3435,6 +3435,27 @@ local function observe(G, seq, result)
   else
     o.mode = "boot"
   end
+  -- A NAMING SCREEN UNDER A TEXT BOX IS STILL A NAMING SCREEN. The chain
+  -- above reports what is ON TOP, and TextBox is tested before naming --
+  -- so after a catch, while "Gotcha! PIKACHU was caught!" and the dex page
+  -- are still riding above it, o.naming was nil and every reader that
+  -- gates on it stood down. The shim's own throw_ball answers the nickname
+  -- box and BREAKS on naming_on_stack, which is a stack check and saw it
+  -- fine; the executor then asked the OBSERVATION and was told there was
+  -- nothing to name. Run 17 caught two PIKACHU and a NIDORAN and named
+  -- none of them, with party_grew asked=false each time (2026-09-13, the
+  -- sixth attempt at this: every earlier fix was in the planner, and the
+  -- fact it needed was being withheld here).
+  -- mode still says what is on top -- a text box is a text box and must be
+  -- advanced -- but the pending question is no longer hidden behind it.
+  -- OPS.name reads the stack directly, so it types fine from here.
+  if not o.naming then
+    local _ns = naming_on_stack(G)
+    if _ns then
+      o.naming = naming_fields(G, _ns)
+      o.naming.behind = _screen_name(G)
+    end
+  end
   -- THE SAFARI GAME IS A CLOCK AND A BALL COUNT, and neither was in the
   -- observation: the run paid its 500, walked in, and had no way to know
   -- it was on a 500-step timer with 30 SAFARI BALLs — both of which the
