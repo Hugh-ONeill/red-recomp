@@ -10381,8 +10381,27 @@ class Executor:
                 self._ui_pending = 0
                 obs = self._maybe_forget(obs, sg)
                 return obs
+        # B IS "NO", AND THIS LOOP IS WHERE THE NICKNAME WENT. Every guard
+        # so far sat further up: _ask_question needs the box to read as a
+        # CHOICE, and settle's wait needs to run before anything else
+        # touches the screen. Neither held for the starter — run 17 logged
+        # party_grew with asked=false after twelve polls and the word
+        # "nickname" never appeared in the journal once, because this drain
+        # had already pressed B on it (2026-09-13, third attempt at this).
+        # A drain that presses B is the LAST thing to see a box; check here
+        # too, and never dismiss the one question a name depends on.
         n = 0
         while obs and obs.get("mode") == "ui" and n < tries:
+            _nt = str(((obs or {}).get("dialog") or {}).get("text")
+                      or (obs or {}).get("last_text") or "").lower()
+            if NICKNAMES_REQUIRED and "nickname" in _nt:
+                self.b.send("tap", btn="a")
+                obs = self.settle() or obs
+                self.log("nickname_box_kept", subgoal=sg.get("id"),
+                         where="ui_drain")
+                if (obs or {}).get("naming"):
+                    obs = self._resolve_naming(obs)
+                break
             self.b.send("tap", btn="b")
             obs = self.settle() or obs
             n += 1

@@ -167,6 +167,24 @@ ck("a party that did not grow is still only glanced at, as before",
 ck("the wait is recorded, so a miss is visible next time",
    'self.log("party_grew"' in SRC)
 
+# ...AND THE DRAIN THAT PRESSES B IS WHERE IT ACTUALLY WENT. Two guards
+# sat further up and neither held for the starter: _ask_question needs the
+# box to read as a CHOICE, and settle's wait needs to run before anything
+# else touches the screen. Run 17 logged party_grew with asked=false after
+# twelve polls, and the word "nickname" never appeared in its journal
+# once, because the UI drain had already pressed B — which is No
+# (2026-09-13, the third attempt at this fix). A loop that dismisses boxes
+# is the LAST thing to see one, so it has to check too.
+ck("the drain never presses B on a nickname box",
+   'if NICKNAMES_REQUIRED and "nickname" in _nt:' in SRC)
+ck("...it presses A instead and drives the screen behind it",
+   SRC.split('if NICKNAMES_REQUIRED and "nickname" in _nt:')[1][:400]
+      .count("_resolve_naming") == 1)
+ck("...and says where it caught it",
+   'where="ui_drain"' in SRC)
+ck("every OTHER box is still dismissed with B as before",
+   'self.b.send("tap", btn="b")' in SRC)
+
 # ---- the catch path already did this, and still does -------------------
 SH = (ROOT / "harness" / "shim.lua").read_text()
 ck("the shim's throw still answers the nickname box YES",

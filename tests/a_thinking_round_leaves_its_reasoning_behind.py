@@ -150,8 +150,16 @@ ck("prose numbers are not read as tiles",
 # this one did exactly that until it was reframed (2026-09-13).
 BLAINE = ("I still have the Dome Fossil in my bag, which is why the "
           "Cinnabar Gym remains locked. I will deliver it to the scientist.")
-ck("the name check finds nothing wrong with the Blaine round",
-   M.unsupported(BLAINE, PAGE) == ([], [], []))
+# reading the same text against a page that DOES name the gym, every
+# thing it mentions is accounted for — and the claim is still false
+PAGE_GYM = PAGE + "CINNABAR_GYM is a door you have walked past at (11,3)\n"
+ck("with every name accounted for, the check finds nothing wrong",
+   M.unsupported(BLAINE, PAGE_GYM) == ([], [], []))
+# ...and prose spelling is what makes that true. The page writes
+# CINNABAR_GYM and the model writes "the Cinnabar Gym"; an id-only scan
+# matched neither, so this check was blind to prose until 2026-09-13.
+ck("a name the page never mentions is caught in prose spelling too",
+   M.unsupported(BLAINE, PAGE)[0] == ["CINNABAR_GYM"])
 ck("...so the judge asks about support, never about truth",
    "NOT to say whether the reasoning is true" in M.JUDGE_SYS
    and "being sure is not evidence" in M.JUDGE_SYS)

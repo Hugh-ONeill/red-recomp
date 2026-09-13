@@ -144,18 +144,58 @@ def page_for(journal, trace):
     return (best or {}).get("memory") or ""
 
 
-def unsupported(trace_text: str, page: str):
-    """World-state tokens the trace leans on that the page never mentions.
+# ...AND IT WRITES PROSE, NOT IDS. The page speaks in ROUTE_23 and the
+# model writes "the way west to Route 23", so an id-only scan sees nothing
+# and the check that exists to catch exactly this misses it (run 17,
+# 2026-09-13: "the way west to Route 23 is currently blocked by the guard
+# (as noted in the blockers/history)" — a page with no guard, no Route 23
+# and no blockers anywhere in it). Every map and item name is matched in
+# both spellings. None of the game's map names is shorter than seven
+# characters as prose, so none of them collides with an ordinary word.
+def _prose(names):
+    return {n.replace("_", " ").lower(): n for n in names}
 
-    Returns (maps, items, coords). A name in BOTH the species and the map
-    lists (there is no such case today, but VICTORY_ROAD_1F-style ids are
-    close enough to warrant it) is dropped rather than counted twice."""
+
+MAP_PROSE = _prose(MAPS)
+ITEM_PROSE = _prose(ITEMS)
+
+
+def _named(txt: str, ids: set, prose: dict) -> set:
+    """Every name from `ids` the text uses, written either way."""
+    up = set(re.findall(r"\b[A-Z][A-Z_0-9]{2,}\b", txt)) & ids
+    low = txt.lower()
+    for form, name in prose.items():
+        if form in low:
+            up.add(name)
+    return up
+
+
+def _on_page(name: str, page: str) -> bool:
+    """The page mentions it, in either spelling."""
+    return (name in page
+            or name.replace("_", " ").lower() in page.lower())
+
+
+def unsupported(trace_text: str, page: str):
+    """World-state names the reasoning leans on that the page never mentions.
+
+    Returns (maps, items, coords). Species and move names are never counted:
+    knowing what a GYARADOS is, or what THUNDERBOLT does, is the reason it
+    is playing and not something the page has to grant it."""
     txt = str(trace_text or "")
     page = str(page or "")
-    up = set(re.findall(r"\b[A-Z][A-Z_0-9]{2,}\b", txt))
-    up -= SPECIES | MOVES          # game knowledge is not an invention
-    maps = sorted(n for n in (up & MAPS) if n not in page)
-    items = sorted(n for n in (up & ITEMS) if n not in page)
+    _skip = SPECIES | MOVES        # game knowledge is not an invention
+    maps = sorted(n for n in _named(txt, MAPS, MAP_PROSE)
+                  if n not in _skip and not _on_page(n, page))
+    # ITEMS ARE MATCHED BY ID ONLY. A map name in prose is specific —
+    # "Route 23" means one place — but an item name is ordinary speech: the
+    # starter rounds all say "interact with these Poke Balls", meaning the
+    # three objects on Oak's table, and prose matching read every one of
+    # them as a claim to be carrying POKE_BALL. That put 40 of 73 rounds on
+    # the list, which is a report nobody reads (2026-09-13).
+    items = sorted(n for n in (set(re.findall(r"\b[A-Z][A-Z_0-9]{2,}\b", txt))
+                               & ITEMS)
+                   if n not in _skip and not _on_page(n, page))
     # a door or a tile it claims is there. Only pairs written as the ops
     # write them, so prose numbers ("level 30") are never read as a cell.
     coords = sorted({c for c in re.findall(r"\((\d{1,3},\s?\d{1,3})\)", txt)
@@ -248,9 +288,55 @@ def main():
         for sg, n in per.most_common(10):
             print(f"  {n:3d}  {sg}")
 
+    # EVERY ROUND, NOT ONLY THE ONES THAT THOUGHT. The premise check was
+    # wired to thinking traces because that is what it was built beside —
+    # and the round that made it matter did not think. Run 17's Nidoran leg
+    # wrote "the way west to Route 23 is currently blocked by the guard (as
+    # noted in the blockers/history)" onto a page with no guard, no Route
+    # 23 and no blockers in it, and nothing looked (2026-09-13, user:
+    # "point the meter at all rounds, not just thinking ones"). A round's
+    # PLAN prose sits in the journal beside the page it was handed, so the
+    # same check reads it for free.
+    props = [r for r in journal if r.get("kind") == "escalate_proposal"]
+    flagged = []
+    for r in props:
+        page = page_for(journal, {"subgoal": r.get("subgoal"), "t": r.get("t")})
+        if not page:
+            continue
+        maps, items, coords = unsupported(r.get("plan"), page)
+        if maps or items or coords:
+            flagged.append((r, maps, items, coords))
+    # WHAT THIS CAN AND CANNOT SEE. escalate_context records the LEDGER
+    # half of the page; the raw observation the model also reads — warps,
+    # buildings, objects, the bag — is rendered separately and is not kept.
+    # So a claim the observation supported ("the map data shows a door at
+    # (29,19)") reads as unsupported here. Coordinates are worst hit and
+    # map names least, because places are what the ledger talks about.
+    # Read the map column; treat the rest as a prompt to go and look.
+    print(f"\nrounds whose PLAN leans on something the LEDGER never said: "
+          f"{len(flagged)} of {len(props)}  (the raw observation is not "
+          f"journalled, so tiles especially will over-report)")
+    for r, maps, items, coords in flagged[:12]:
+        bits = ([("maps " + ", ".join(maps[:3]))] if maps else []) \
+            + ([("items " + ", ".join(items[:3]))] if items else []) \
+            + ([("tiles " + ", ".join(coords[:3]))] if coords else [])
+        print(f"  {r.get('subgoal')} r{r.get('round')}: " + "; ".join(bits))
+        print(f"     {str(r.get('plan') or '')[:150]}".replace("\n", " "))
+    if a.judge and flagged:
+        print("\n  (judging the first few)")
+        for r, *_ in flagged[:3]:
+            page = page_for(journal, {"subgoal": r.get("subgoal"),
+                                      "t": r.get("t")})
+            v = judge(page, r.get("plan"), a.judge)
+            print(f"   {r.get('subgoal')} r{r.get('round')}: "
+                  f"{v.get('verdict') or v.get('error')}")
+            for c in (v.get("unsupported") or [])[:3]:
+                print("      unsupported:", str(c)[:130])
+
     if not traces:
         print(f"\nno traces in {a.traces} — they are written from "
-              f"2026-09-12 on; the numbers above come from think_on alone")
+              f"2026-09-12 on; the thinking numbers above come from "
+              f"think_on alone")
         return 0
 
     print(f"\n{len(traces)} trace(s):")
