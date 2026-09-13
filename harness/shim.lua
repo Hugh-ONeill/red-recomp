@@ -269,10 +269,21 @@ do
   local _tap = U.tap
   U.tap = function(game, btn)
     if DLG_TRACE then dlg_trace(game, "tap:" .. tostring(btn), 0) end
-    if btn == "start" and not naming_driver and naming_on_stack(game) then
-      -- refused, not deferred: whatever wanted the start menu can have it
-      -- once the name is given, and the caller's own loop will try again
-      if DLG_TRACE then dlg_trace(game, "start:REFUSED", 0) end
+    if not naming_driver and naming_on_stack(game) then
+      -- EVERY button, not just START. Refusing START alone left the grid
+      -- open and the same caller's next press was A — which on a letter
+      -- grid TYPES the letter under the cursor, and the cursor starts on
+      -- "A". The starter came back called AAAAAAAAAA, ten presses being
+      -- all it took to fill maxLen (2026-09-13). The rule ui_back_out has
+      -- always stated in words is the right one at this layer too: while
+      -- the grid is up the name is the model's to give, and nothing but
+      -- the op carrying that name may touch it.
+      -- Refused, not deferred: whatever wanted the start menu can have it
+      -- once the name is given. Its own loop is bounded and will report
+      -- the failure, and settle then resolves the naming screen properly.
+      if DLG_TRACE then
+        dlg_trace(game, "REFUSED:" .. tostring(btn), 0)
+      end
       return
     end
     return _tap(game, btn)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""START on a naming grid is CONFIRM, and confirming nothing takes the default.
+"""While the grid is up, the name is the model's — so nothing else presses.
 
 Ten looks, nine of them guesses. The answer came from tracing every button
 press with the box it landed on (2026-09-13):
@@ -34,13 +34,18 @@ SH = (ROOT / "harness" / "shim.lua").read_text()
 
 ck("every press goes through one place",
    "local _tap = U.tap" in SH and "U.tap = function(game, btn)" in SH)
-ck("START is refused while a naming grid is up",
-   'if btn == "start" and not naming_driver and naming_on_stack(game) then'
-   in SH)
-ck("...and only START — every other button is untouched",
-   SH.split("U.tap = function(game, btn)")[1][:700].count('btn ==') == 1)
+ck("every button is refused while a naming grid is up",
+   "if not naming_driver and naming_on_stack(game) then" in SH)
+# Refusing START alone left the grid OPEN, and the same caller's next
+# press was A — which on a letter grid types the letter under the cursor,
+# and the cursor starts on "A". The starter came back AAAAAAAAAA, ten
+# presses being all it takes to fill maxLen (2026-09-13).
+ck("...because A on a letter grid TYPES, it does not confirm",
+   "called AAAAAAAAAA" in SH)
 ck("...refused outright, so the caller's own loop can try again later",
-   "refused, not deferred" in SH)
+   "Refused, not deferred" in SH)
+ck("...and the refusal names which button it was",
+   'dlg_trace(game, "REFUSED:" .. tostring(btn), 0)' in SH)
 
 ck("the name op is exempt, because START is its confirm",
    'naming_driver = (cmd.op == "name")' in SH)
@@ -53,8 +58,6 @@ ck("the flag starts down", "local naming_driver = false" in SH)
 
 ck("the op still confirms with START itself",
    'U.tap(G, "start"); U.wait(10)               -- confirm (START = ED)' in SH)
-ck("the refusal is visible in the trace when it is on",
-   'dlg_trace(game, "start:REFUSED", 0)' in SH)
 ck("...and the trace itself stays opt-in",
    'local DLG_TRACE = os.getenv("RED_DIALOG_TRACE") == "1"' in SH)
 
