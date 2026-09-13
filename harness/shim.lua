@@ -1022,12 +1022,47 @@ local function seen_filter(G, o)
   m.dark = dark and true or nil
   m.warps = keep_xy(m.warps)
   do
+    -- A BUILDING YOU HAVE NOT LOOKED AT IS NOT ON THE PAGE, AND NEITHER
+    -- IS A DOOR YOU HAVE NOT SEEN. Warps have been filtered by sight since
+    -- the mask existed; this list was handed over whole, straight off the
+    -- static table -- so ROUTE_25 published "small house, door 45,3" with
+    -- ZERO warps seen and nothing of that end of the road ever on screen,
+    -- and the run did the obvious thing: use_warp(45,3), refused, "(45,3)
+    -- has NEVER BEEN ON SCREEN". The page showed a door and the ops said
+    -- it did not exist yet (run 17, 2026-09-13). Viridian's (29,19) cost
+    -- four rounds of the same thing.
+    -- A building is kept once ANY of its footprint has been on screen --
+    -- you can see a house across the street -- and its doors are kept one
+    -- by one, because making out the doorway is a nearer thing than seeing
+    -- the roof. A building with no door yet is still worth listing: that
+    -- is exactly what a player sees, and it is a reason to walk closer.
     local _bl = BUILDINGS[m.id]
     if _bl then
-      m.buildings = _bl
+      local kept = {}
+      for _, b in ipairs(_bl) do
+        local any = false
+        for x = b.x0 or 0, b.x1 or -1 do
+          for y = b.y0 or 0, b.y1 or -1 do
+            if seen(x, y) then any = true break end
+          end
+          if any then break end
+        end
+        if any then
+          local ds = {}
+          for _, d in ipairs(b.doors or {}) do
+            local dx, dy = tostring(d):match("^(%-?%d+),(%-?%d+)$")
+            if dx and seen(tonumber(dx), tonumber(dy)) then
+              ds[#ds + 1] = d
+            end
+          end
+          kept[#kept + 1] = { x0 = b.x0, y0 = b.y0, x1 = b.x1, y1 = b.y1,
+                              look = b.look, doors = ds }
+        end
+      end
+      m.buildings = (#kept > 0) and kept or nil
       for _, w in ipairs(m.warps or {}) do
         local wk = tostring(w.x) .. "," .. tostring(w.y)
-        for i, b in ipairs(_bl) do
+        for i, b in ipairs(kept) do
           for _, d in ipairs(b.doors or {}) do
             if d == wk then w.bld = i end
           end
