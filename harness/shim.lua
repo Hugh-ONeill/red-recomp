@@ -31,14 +31,44 @@ local function dlg_trace(G, where, i)
   if not f then return end
   local t = G and G.stack and G.stack:top()
   local ow = G and G.overworld
+  -- index and the words were the two fields this did NOT print, and they
+  -- are the two that decide whether a box is the nickname question: the
+  -- choice rides ON the TextBox (opts.choice) and pops a ChoiceBox only
+  -- once the last page has typed out, so "is this a choice" and "which
+  -- box is it" both need them. Eight fixes were guessed without them
+  -- (2026-09-13).
+  local _pg = t and t.pages and t.pages[t.pageIndex]
+  local _tx = type(_pg) == "table" and table.concat(_pg, " ") or tostring(_pg)
   f:write(("%-10s %3d top=%s ow=%s screen=%s kind=%s pages=%s idx=%s "
-           .. "items=%s title=%s choice=%s\n"):format(
+           .. "index=%s items=%s title=%s choice=%s done=%s wait=%s "
+           .. "text=%q\n"):format(
     where, i, tostring(t), tostring(t == ow),
     tostring(t and t.screenId), tostring(t and t.kind),
     tostring(t and t.pages and #t.pages), tostring(t and t.pageIndex),
+    tostring(t and t.index),
     tostring(t and t.items and #t.items), tostring(t and t.title),
-    tostring(t and (t.choice ~= nil or t.yesNo ~= nil or t.isChoice))))
+    tostring(t and (t.choice ~= nil or t.yesNo ~= nil or t.isChoice)),
+    tostring(t and t.done), tostring(t and t.waiting),
+    tostring(_tx):sub(1, 60)))
   f:close()
+end
+
+-- EVERY PRESS, WHEN THE TRACE IS ON. dlg_trace covers settle_dialog and
+-- ui_back_out, which is where the harness KNOWS it is pressing buttons —
+-- and the nickname question is eaten somewhere else entirely: the trace
+-- ran straight from the starter's YES/NO box to "SAGE saved the game!"
+-- with the received-mon box and the question never appearing in 5,322
+-- lines (2026-09-13, after eight fixes aimed at places it never reached).
+-- Wrapping the tap itself is the one view that cannot miss: whatever
+-- presses, presses through here. Off unless RED_DIALOG_TRACE=1, and the
+-- wrapper is installed once.
+if DLG_TRACE and not U._red_tap_traced then
+  local _tap = U.tap
+  U.tap = function(game, btn)
+    dlg_trace(game, "tap:" .. tostring(btn), 0)
+    return _tap(game, btn)
+  end
+  U._red_tap_traced = true
 end
 
 -- ------------------------------------------------------------ op watchdog
