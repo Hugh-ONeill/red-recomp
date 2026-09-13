@@ -30,6 +30,17 @@ explored = {"ROCK_TUNNEL_1F|24,16": {"15,33": {"to": "ROUTE_10|14,52", "n": 2}, 
 explored_no_lav = {k: v for k, v in explored.items() if k != "LAVENDER_TOWN|6,0"}
 _unused = {
             "ROUTE_9|50,6": {"east": {"to": "ROUTE_10|0,4", "n": 1}}}
+# ...AND THE FILE READS THE STUBS DO NOT COVER. _load_explored is one of
+# nine relative reads in author.py; the others found run 17's fresh world
+# and this test went red with them (2026-09-13). Pin the lot.
+sys.path.insert(0, str(ROOT / "tests"))
+from pinned_world import pin_world                             # noqa: E402
+pin_world(explored={"ROUTE_10|0,4": {}, "ROUTE_10|14,52": {},
+                    "ROCK_TUNNEL_1F|24,16": {}, "ROCK_TUNNEL_B1F|2,2": {}},
+          frontier={"ROUTE_10|0,4": ["1,9"], "ROUTE_10|14,52": ["15,40"],
+                    "ROCK_TUNNEL_1F|24,16": [], "ROCK_TUNNEL_B1F|2,2": []},
+          obs={"map": {"id": "ROCK_TUNNEL_B1F", "region": "2,2"},
+               "player": {"x": 2, "y": 2}, "party": []})
 A._load_explored = lambda: explored
 A.holding_town_map = lambda: True
 A.visited_regions = lambda *a, **k: {"ROUTE_10|0,4", "ROUTE_10|14,52", "ROCK_TUNNEL_1F|24,16", "ROCK_TUNNEL_B1F|2,2"}

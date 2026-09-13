@@ -58,15 +58,17 @@ _f = SRC.split("_in_parts = [_region_now()]", 1)[1][:500]
 ck("...and still never joins a part to itself", 'w != pt' in _f)
 
 # ---- the joined-ness it depends on is real ------------------------------
-# ROUTE_23's three walked parts are joined by walk: edges in the live atlas
-try:
-    _atlas = json.loads((ROOT / "run" / "explored.json").read_text())
-    _has = any(str(k).startswith("walk:") for r, e in
-               (_atlas.get("explored") or {}).items()
-               if str(r).startswith("ROUTE_23") for k in (e or {}))
-except OSError:
-    _has = True          # no run to read; the unit checks above stand alone
-ck("walk: edges are what join two parts of one map", _has)
+# THIS WENT LOOKING IN THE LIVE ATLAS for ROUTE_23's walk: edges, which is
+# a fact about run 16 and about no other run — red the hour run 17 started
+# a fresh game, and it would have been red for the first day of any run
+# (2026-09-13). What the filter depends on is that a walk: edge is the
+# shape that joins two parts of ONE map, and that is checkable against the
+# writer that mints them rather than against whoever walked last.
+_src_ex = (ROOT / "planner" / "executor.py").read_text()
+ck("a walk: edge is what the run writes when it walks between two parts "
+   "of one map", '"walk:' in _src_ex)
+ck("...and the filter is looking for exactly that prefix",
+   'walk:' in blk or 'startswith("walk:")' in SRC)
 
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:

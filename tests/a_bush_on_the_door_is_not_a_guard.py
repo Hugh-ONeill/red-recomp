@@ -37,7 +37,20 @@ ck("a person on the door is still a guard, move or no move",
    len(p3) == 1 and "the deed that moves them" in p3[0], p3)
 ck("the party reader sees the status screen's moves",
    A._party_knows("CUT", knows) and not A._party_knows("CUT", lacks) and not A._party_knows("CUT", []))
-ck("the live record: someone knows CUT now", A._party_knows("CUT"))
+# ...AND WITH NO PARTY GIVEN IT READS THE OBSERVATION. This asserted "the
+# live record: someone knows CUT now", which is a claim about a
+# PLAYTHROUGH, not about the reader — and it went red the hour run 17
+# started a fresh game (2026-09-13). What is worth pinning is that the
+# bare call reads run/obs.json at all, so it reads a world we wrote.
+sys.path.insert(0, str(ROOT / "tests"))
+from pinned_world import pinned                                # noqa: E402
+with pinned(obs={"party": [{"species": "ODDISH", "level": 14,
+                            "moves": [{"id": "CUT"}]}]}):
+    ck("with no party given, it reads the observation", A._party_knows("CUT"))
+with pinned(obs={"party": [{"species": "ODDISH", "level": 14,
+                            "moves": [{"id": "ABSORB"}]}]}):
+    ck("...and says no when that party lacks it",
+       not A._party_knows("CUT"))
 
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:

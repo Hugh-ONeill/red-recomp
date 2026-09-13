@@ -32,10 +32,19 @@ def ck(name, cond):
         fails.append(name)
 
 
-walked = sorted(r for r in A.visited_regions() if str(r).split("|")[0] == "ROUTE_20")
-ck("this run has walked several parts of ROUTE_20 to test against", len(walked) >= 2)
-ck("a map with unseen ground left is NOT refused — new_part is honest there",
-   A.new_part_exhausted({"map": "ROUTE_20", "not_area": walked}, "ROUTE_20") == "")
+# A WORLD THIS TEST WROTE, not whichever one the live run is in. This read
+# ROUTE_20 out of the live record and asserted the run had walked several
+# parts of it — true of run 16, false of any run that has not got to
+# Fuchsia yet, and red within the hour when run 17 started (2026-09-13).
+sys.path.insert(0, str(ROOT / "tests"))
+from pinned_world import pinned                                # noqa: E402
+
+# several walked parts AND unseen ground still on the frontier
+with pinned(explored={"ROUTE_20|32,8": {}, "ROUTE_20|52,2": {}},
+            frontier={"ROUTE_20|32,8": ["40,9"], "ROUTE_20|52,2": []}):
+    walked = ["ROUTE_20|32,8", "ROUTE_20|52,2"]
+    ck("a map with unseen ground left is NOT refused — new_part is honest there",
+       A.new_part_exhausted({"map": "ROUTE_20", "not_area": walked}, "ROUTE_20") == "")
 
 # the case the rule is for: every walked part excluded AND nothing unseen left
 import json as _json, tempfile, os
@@ -60,7 +69,10 @@ _msg = msg
 ck("...and offering NO weaker witness to replace it", "Do NOT weaken it to a part " in _msg and '{"area"' not in _msg)
 ck("...naming the two honest readings instead", "ground nobody has seen" in _msg and "ALREADY HAPPENED" in _msg)
 
-ck("no exclusions at all is fine", A.new_part_exhausted({"map": "ROUTE_20"}, "ROUTE_20") == "")
+with pinned(explored={"ROUTE_20|32,8": {}},
+            frontier={"ROUTE_20|32,8": ["40,9"]}):
+    ck("no exclusions at all is fine",
+       A.new_part_exhausted({"map": "ROUTE_20"}, "ROUTE_20") == "")
 ck("a map with nothing walked is fine", A.new_part_exhausted({"map": "NOWHERE_AT_ALL", "not_area": ["NOWHERE_AT_ALL|1,1"]}, "NOWHERE_AT_ALL") == "")
 ck("validate runs it on the frozen form", "_npe = new_part_exhausted(dw, str(dw.get(\"map\")))" in src)
 ck("validate still runs the check on the frozen form", "_npe = new_part_exhausted(dw" in src)

@@ -27,6 +27,17 @@ checks = []
 def ck(n, ok, d=""): checks.append((n, bool(ok), d))
 
 _m, _r = A.visited_maps, A.visited_regions
+# THE STUBS ABOVE ARE NOT THE WHOLE WORLD. author.py reads
+# run/explored.json from eight places and run/obs.json besides, all by
+# relative path, so stubbing visited_regions leaves the rest open onto
+# whatever the live run is doing — and every check here went red the hour
+# run 17 archived run 16's world (2026-09-13). One chdir closes all of them.
+sys.path.insert(0, str(ROOT / "tests"))
+from pinned_world import pin_world                             # noqa: E402
+pin_world(explored={"ROUTE_10|0,4": {}, "VERMILION_CITY|18,0": {}},
+          frontier={"ROUTE_10|0,4": ["1,9"], "VERMILION_CITY|18,0": ["2,2"]},
+          obs={"map": {"id": "ROUTE_10", "region": "0,4"},
+               "player": {"x": 0, "y": 4}, "party": []})
 A.visited_maps = lambda: {"ROUTE_10", "VERMILION_CITY"}
 A.visited_regions = lambda: {"ROUTE_10|0,4", "VERMILION_CITY|18,0"}
 try:

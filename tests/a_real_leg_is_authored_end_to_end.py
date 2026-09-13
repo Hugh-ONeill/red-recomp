@@ -76,6 +76,18 @@ PINNED = {"map": {"id": "CINNABAR_ISLAND", "region": "10,0"},
                                   "types": ["FIRE", "FLYING"],
                                   "hp": 190, "max_hp": 190}]}
 A._obs_now = lambda path="run/obs.json": dict(PINNED)
+# ...AND THE WALKED RECORD WITH IT. _obs_now was pinned in 2026-09-10 for
+# exactly this reason and only got half the world: freeze_new_parts carves
+# not_area off run/explored.json, and the deed-leg rule reads it too, so
+# both answers moved when run 17 archived run 16's atlas (2026-09-13).
+sys.path.insert(0, str(ROOT / "tests"))
+from pinned_world import pin_world                             # noqa: E402
+pin_world(explored={"ROUTE_20|32,8": {}, "ROUTE_20|52,2": {},
+                    "CINNABAR_ISLAND|10,0": {},
+                    "POKEMON_MANSION_1F|5,5": {}},
+          frontier={"ROUTE_20|32,8": ["40,9"], "ROUTE_20|52,2": [],
+                    "CINNABAR_ISLAND|10,0": [], "POKEMON_MANSION_1F|5,5": []},
+          obs=dict(PINNED))
 
 
 def run_author(reply_plan) -> tuple:
