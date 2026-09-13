@@ -2,7 +2,6 @@ Obtain a starter Pokemon
 Collect the OAKS_PARCEL from the clerk at the Viridian City Poke Mart and deliver it to Professor Oak in his lab in Pallet Town
 Catch a NIDORAN on Route 22
 Reach Pewter City
-the party holds a WATER or GRASS type
 every party member is at least level 12
 Defeat Brock for the Boulder Badge
 Exit Mt. Moon and reach Cerulean City
