@@ -41,6 +41,11 @@ class S:
 S._wild_elsewhere_note = E.Executor._wild_elsewhere_note
 S._wild_elsewhere_fought_note = E.Executor._wild_elsewhere_fought_note
 S._wild_never_fought_note = E.Executor._wild_never_fought_note
+# the note for the ground UNDERFOOT rides along with the elsewhere one
+# (2026-09-13); this stub has no _wild_seen for ROUTE_22, so it renders
+# empty and the checks below are about the elsewhere half, as before
+S._wild_here_note = E.Executor._wild_here_note
+S._is_party_goal = E.Executor._is_party_goal
 note = S()._wild_elsewhere_note("ROUTE_22", {"map": {"id": "ROUTE_22"}})
 
 ck("names another map's wild levels", "POKEMON_MANSION_B1F L34-L39" in note)
