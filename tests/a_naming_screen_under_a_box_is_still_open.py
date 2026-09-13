@@ -96,10 +96,13 @@ ck("every other box is still closed with B",
    'U.tap(G, "b"); U.wait(6)' in bo)
 ck("...and the loop still has somewhere to continue to",
    "::continue::" in bo)
-ck("the text is read off the page actually on screen",
-   "t.pages[t.pageIndex]" in bo)
-ck("...and only a box with a CHOICE on it is answered",
-   "t.index ~= nil" in bo)
+# TextBox.lua pushes a SEPARATE ChoiceBox once the last page types out, so
+# the top has an index and no pages and the words are on the box below it.
+# Reading t.pages here matched nothing, which was attempt eight.
+ck("the box on top is the choice, with no pages of its own",
+   "t.index ~= nil and t.pages == nil" in bo)
+ck("...and the words come from the speech still showing under it",
+   'tostring(last_text or ""):lower()' in bo)
 
 ck("the file compiles",
    subprocess.run(["luac", "-p", str(ROOT / "harness" / "shim.lua")]).returncode == 0)

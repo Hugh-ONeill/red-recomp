@@ -6858,10 +6858,14 @@ ui_back_out = function(G)
     -- naming screen, and the guard above then stops and hands it over. A
     -- model that wants no nickname sends an empty name and the default
     -- stands.
-    if t and t.pages and t.pageIndex and t.index ~= nil then
-      local _pg = t.pages[t.pageIndex] or {}
-      local _tx = (type(_pg) == "table" and table.concat(_pg, " ")
-                   or tostring(_pg)):lower()
+    -- THE QUESTION IS ON THE BOX UNDERNEATH. TextBox.lua pushes a separate
+    -- ChoiceBox on top once the last page has typed out, so the thing on
+    -- top has an `index` and NO pages, and the words are on the TextBox
+    -- below it. A first cut read t.pages here and matched nothing, which
+    -- is attempt eight (2026-09-13). last_text is the accumulated speech
+    -- of the box that is still showing, which is exactly those words.
+    if t and t.index ~= nil and t.pages == nil then
+      local _tx = tostring(last_text or ""):lower()
       if _tx:find("nickname", 1, true) then
         ui_cursor_to(G, "index", 1)          -- row 1 is YES
         U.tap(G, "a"); U.wait(8)
