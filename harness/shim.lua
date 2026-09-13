@@ -6842,6 +6842,33 @@ ui_back_out = function(G)
     -- a naming screen is not closed by B (B deletes a letter) and must
     -- not be confirmed by the harness: the name is the model's to give
     if naming_on_stack(G) then return false end
+    -- ...AND THE QUESTION THAT OPENS IT IS ANSWERED, NOT DISMISSED. The
+    -- guard above protects the naming SCREEN; "Do you want to give a
+    -- nickname to X?" is a TextBox with a choice riding on it, which
+    -- exists BEFORE that screen does, and B on a choice is NO. Every op
+    -- calls need_overworld, need_overworld calls this, so the question was
+    -- being answered No inside an op's preamble before any observation was
+    -- ever taken — which is why run 17 took a CHARMANDER, caught a NIDORAN
+    -- and two PIKACHU and named none of them, and why the word "nickname"
+    -- never once appeared in its journal (2026-09-13, the seventh attempt:
+    -- five fixes in the planner, one in the observation, and the press was
+    -- here all along).
+    -- YES is what throw_ball already answers for a caught mon, for the same
+    -- stated reason: the name is the model's to give. Saying yes opens the
+    -- naming screen, and the guard above then stops and hands it over. A
+    -- model that wants no nickname sends an empty name and the default
+    -- stands.
+    if t and t.pages and t.pageIndex and t.index ~= nil then
+      local _pg = t.pages[t.pageIndex] or {}
+      local _tx = (type(_pg) == "table" and table.concat(_pg, " ")
+                   or tostring(_pg)):lower()
+      if _tx:find("nickname", 1, true) then
+        ui_cursor_to(G, "index", 1)          -- row 1 is YES
+        U.tap(G, "a"); U.wait(8)
+        if naming_on_stack(G) then return false end
+        goto continue
+      end
+    end
     if t == G.overworld or (t and (t.enemy or t.kind)) then return true end
     -- A SLOT MACHINE MID-SPIN IGNORES B: its spinup/spin/payout/flash
     -- stages only advance on A (each A stops a wheel), and B exits only
@@ -6861,6 +6888,7 @@ ui_back_out = function(G)
     else
       stall, seen_top, seen_idx = 0, t, (t and t.pageIndex)
     end
+    ::continue::
   end
   return false
 end

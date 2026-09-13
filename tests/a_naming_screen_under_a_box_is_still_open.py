@@ -75,6 +75,32 @@ ck("...and rides whatever text is above it",
 ck("throw_ball still says YES for itself",
    '-- "give a nickname?" — YES:' in SH)
 
+# ---- THE PRESS THAT WAS EATING IT, found on the seventh attempt --------
+# ui_back_out has always protected the naming SCREEN. The QUESTION that
+# opens it — "Do you want to give a nickname to X?" — is a TextBox with a
+# choice riding on it, which exists BEFORE that screen, and B on a choice
+# is No. Every op calls need_overworld, need_overworld calls this, so the
+# question was answered No inside an op's preamble before any observation
+# was taken. Five planner fixes and one observation fix could none of them
+# have worked (2026-09-13).
+bo = SH.split("ui_back_out = function(G)", 1)[1][:3400]
+ck("the naming SCREEN is still never touched",
+   "if naming_on_stack(G) then return false end" in bo)
+ck("the QUESTION is answered rather than dismissed",
+   'if _tx:find("nickname", 1, true) then' in bo)
+ck("...with YES, by placing the cursor, not a blind press",
+   'ui_cursor_to(G, "index", 1)' in bo and "row 1 is YES" in bo)
+ck("...and hands over the screen it opens",
+   bo.split('_tx:find("nickname"')[1][:300].count("naming_on_stack") == 1)
+ck("every other box is still closed with B",
+   'U.tap(G, "b"); U.wait(6)' in bo)
+ck("...and the loop still has somewhere to continue to",
+   "::continue::" in bo)
+ck("the text is read off the page actually on screen",
+   "t.pages[t.pageIndex]" in bo)
+ck("...and only a box with a CHOICE on it is answered",
+   "t.index ~= nil" in bo)
+
 ck("the file compiles",
    subprocess.run(["luac", "-p", str(ROOT / "harness" / "shim.lua")]).returncode == 0)
 
