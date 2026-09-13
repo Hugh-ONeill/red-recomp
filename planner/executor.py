@@ -17658,6 +17658,17 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     [{"role": "system", "content": self.MACRO_AUTHOR_SYS},
                      {"role": "user", "content": user}], self.model,
                     think=_think)
+                # WHAT IT ACTUALLY DELIBERATED ABOUT. The round costs three
+                # times a normal one and the trace was discarded the moment
+                # its length was counted, so the one record of what the
+                # money bought was a token total. It goes to its own file;
+                # the journal keeps think_on to say a trace exists.
+                if brock_probe.log_thinking(
+                        "escalate", subgoal=sg["id"], round=rnd,
+                        stale=self._stale_rounds, at=self._where(obs),
+                        goal=sg.get("goal_text") or sg.get("id")):
+                    self.log("think_logged", subgoal=sg["id"], round=rnd,
+                             chars=(brock_probe.LAST or {}).get("think_chars"))
             except Exception as e:
                 # ONE BAD SECOND IS NOT THE END OF THE SUBGOAL. This used to
                 # `break`, forfeiting every remaining round: ollama swapping

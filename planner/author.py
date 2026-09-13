@@ -2472,6 +2472,12 @@ def author(goal: str, model: str, rounds: int = 5,
         reply = brock_probe.chat(
             [{"role": "system", "content": SYS},
              {"role": "user", "content": user}], model, think=_thinking)
+        # ...and keep what it deliberated about, same as the executor does.
+        # An author trace is the more interesting of the two: it is the
+        # model reasoning about a world it cannot see, on a leg that has
+        # already failed twice.
+        brock_probe.log_thinking("author", goal=goal, round=rnd,
+                                 draft=_thought)
         m = re.search(r"\{.*\}", reply, re.S)
         if not m:
             fb = "your reply was not a JSON object"; continue

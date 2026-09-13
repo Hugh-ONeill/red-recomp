@@ -183,7 +183,46 @@ def stats_of(d) -> dict:
             "gtok": (d or {}).get("eval_count"),
             "p_s": _s("prompt_eval_duration"), "g_s": _s("eval_duration"),
             "tot_s": _s("total_duration"),
-            "think": bool(_think), "think_chars": len(_think)}
+            # ...AND THE TRACE ITSELF. Only its LENGTH was kept, so every
+            # thinking round this harness has ever paid for has been thrown
+            # away the moment it was counted — the one part worth reading
+            # (user, 2026-09-12: "we might want to log down the extra
+            # thoughts we get when thinking is enabled"). It rides LAST and
+            # is written by log_thinking(); nothing else reads it, so a
+            # caller that does not want it pays only the reference.
+            "think": bool(_think), "think_chars": len(_think),
+            "thinking": _think}
+
+
+def log_thinking(where: str, **fields) -> bool:
+    """Write the last call's thinking trace to run/thinking.jsonl.
+
+    ITS OWN FILE, not the journal. A trace runs to a couple of thousand
+    tokens and a journal that swallowed them could not be read with grep
+    any more — while thinking rounds are rare enough (21 in all of run 16)
+    that keeping every one whole costs a few hundred KB. The journal still
+    gets the think_on record that says a trace exists; this is where the
+    words are.
+
+    Returns False when the last call did not think, so a caller can put it
+    on every call without asking.
+    """
+    trace = (LAST or {}).get("thinking") or ""
+    if not trace:
+        return False
+    try:
+        import datetime
+        rec = dict(fields, where=where, t=time.time(),
+                   at=datetime.datetime.now().isoformat(timespec="seconds"),
+                   chars=len(trace), gtok=(LAST or {}).get("gtok"),
+                   tot_s=(LAST or {}).get("tot_s"), thinking=trace)
+        path = Path(os.environ.get("RED_RUN_DIR") or RUN) / "thinking.jsonl"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "a") as fh:
+            fh.write(json.dumps(rec) + "\n")
+        return True
+    except Exception:
+        return False          # a lost trace must never cost a round
 
 
 def chat(msgs, model, retries=2, think=False):
