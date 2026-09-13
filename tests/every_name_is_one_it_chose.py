@@ -151,8 +151,15 @@ ck("a party that just grew is waited on, not glanced at",
    "_grew = _pn > getattr(self, \"_party_n\", _pn)" in SRC
    and "for _try in range(12 if (_grew and NICKNAMES_REQUIRED) else 1):" in SRC)
 ck("...and the wait ends the moment the question appears",
-   'if "nickname" in _t:' in SRC
-   and SRC.split('if "nickname" in _t:')[1][:300].count("break") >= 1)
+   'if "nickname" in _t and o.get("mode") in ("dialog", "ui"):' in SRC
+   and SRC.split('if "nickname" in _t and o.get("mode")')[1][:400]
+       .count("break") >= 1)
+# last_text OUTLIVES ITS BOX, so the mode guard is what stops a nickname
+# answered ten rounds ago sending a stray A into whatever is on screen now.
+# Re-observing each pass is what makes the WAIT safe; dropping the guard
+# would not have (2026-09-13).
+ck("...and a stale line cannot fire it, because the box must be up",
+   'o.get("mode") in ("dialog", "ui")' in SRC)
 ck("...and gives up rather than waiting out an arrival that never asks",
    "ships with its own nickname never asks" in SRC)
 ck("a party that did not grow is still only glanced at, as before",

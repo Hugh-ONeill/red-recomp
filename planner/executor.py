@@ -14278,7 +14278,11 @@ class Executor:
             for _try in range(12 if (_grew and NICKNAMES_REQUIRED) else 1):
                 _t = str((o.get("dialog") or {}).get("text")
                          or o.get("last_text") or "").lower()
-                if "nickname" in _t:
+                # the mode check stays: last_text PERSISTS, so a nickname
+                # box answered ten rounds ago would otherwise send a stray
+                # A into whatever is on screen now. Re-observing each pass
+                # of the loop is what makes waiting safe, not dropping it.
+                if "nickname" in _t and o.get("mode") in ("dialog", "ui"):
                     self._send_safe("tap", btn="a")
                     try:
                         o = self._note(self.b.obs()) or o
