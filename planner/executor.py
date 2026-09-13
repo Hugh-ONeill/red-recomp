@@ -14416,7 +14416,13 @@ class Executor:
                 # A into whatever is on screen now. Re-observing each pass
                 # of the loop is what makes waiting safe, not dropping it.
                 if "nickname" in _t and o.get("mode") in ("dialog", "ui"):
-                    self._send_safe("tap", btn="a")
+                    # YES is row 1. The catch flow in the shim places the
+                    # cursor before pressing for the same reason: a blind A
+                    # takes whatever the cursor happens to be on.
+                    if ((o.get("ui") or {}).get("is_choice")):
+                        self._send_safe("menu", index=1)
+                    else:
+                        self._send_safe("tap", btn="a")
                     try:
                         o = self._note(self.b.obs()) or o
                     except TimeoutError:
@@ -14426,10 +14432,26 @@ class Executor:
                     break          # the question is already answered
                 if not (_grew and NICKNAMES_REQUIRED):
                     break
-                # a gift that ships with its own nickname never asks, so
-                # this must give up rather than wait out every arrival
+                # WAITING IS NOT ADVANCING, and that is why this missed the
+                # box five times running. The starter script plays
+                # "_OaksLabReceivedMonText" — a TEXT BOX that waits on an A
+                # press — and only then does give_pokemon raise the
+                # nickname question behind it. A loop that sleeps six
+                # frames twelve times sits on "you received CHARMANDER" for
+                # all twelve and never sees the question at all, which is
+                # exactly what the journal showed: party_grew asked=false,
+                # and the word "nickname" nowhere in it (2026-09-13).
+                # So step the dialogue on. Only a plain text box is
+                # advanced with A; a CHOICE is never pressed blind here —
+                # the one we want is answered above, by name, and any other
+                # is left for the branch that asks the model about it.
+                _ui = (o or {}).get("ui") or {}
                 try:
-                    o = self._note(self._send_safe("wait", frames=6)) or o
+                    if (o.get("mode") == "dialog"
+                            and not _ui.get("is_choice")):
+                        o = self._note(self._send_safe("tap", btn="a")) or o
+                    else:
+                        o = self._note(self._send_safe("wait", frames=6)) or o
                 except TimeoutError:
                     break
             if _grew:

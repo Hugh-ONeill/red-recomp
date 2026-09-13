@@ -150,10 +150,12 @@ ck("every other yes/no box is still the model's to judge",
 ck("a party that just grew is waited on, not glanced at",
    "_grew = _pn > getattr(self, \"_party_n\", _pn)" in SRC
    and "for _try in range(12 if (_grew and NICKNAMES_REQUIRED) else 1):" in SRC)
+_LOOP = SRC.split("for _try in range(12 if", 1)[1][:2200]
 ck("...and the wait ends the moment the question appears",
-   'if "nickname" in _t and o.get("mode") in ("dialog", "ui"):' in SRC
-   and SRC.split('if "nickname" in _t and o.get("mode")')[1][:400]
-       .count("break") >= 1)
+   'if "nickname" in _t and o.get("mode") in ("dialog", "ui"):' in _LOOP
+   # the branch now places the cursor, presses, re-observes and THEN
+   # breaks, so the break sits further down than it used to
+   and _LOOP.split('if "nickname" in _t')[1][:900].count("break") >= 1)
 # last_text OUTLIVES ITS BOX, so the mode guard is what stops a nickname
 # answered ten rounds ago sending a stray A into whatever is on screen now.
 # Re-observing each pass is what makes the WAIT safe; dropping the guard
@@ -161,11 +163,25 @@ ck("...and the wait ends the moment the question appears",
 ck("...and a stale line cannot fire it, because the box must be up",
    'o.get("mode") in ("dialog", "ui")' in SRC)
 ck("...and gives up rather than waiting out an arrival that never asks",
-   "ships with its own nickname never asks" in SRC)
-ck("a party that did not grow is still only glanced at, as before",
-   "else 1):" in SRC)
-ck("the wait is recorded, so a miss is visible next time",
-   'self.log("party_grew"' in SRC)
+   "range(12 if (_grew and NICKNAMES_REQUIRED) else 1)" in SRC)
+
+# WAITING IS NOT ADVANCING, and that is why five fixes in a row missed the
+# box. The starter script plays "_OaksLabReceivedMonText" — a text box
+# that waits on an A press — and only THEN does give_pokemon raise the
+# nickname question behind it. A loop that sleeps twelve times sits on
+# "you received CHARMANDER" for all twelve. The journal said so plainly
+# every time: party_grew asked=false, and the word "nickname" nowhere in
+# it (2026-09-13).
+ck("the wait steps the dialogue on rather than sleeping through it",
+   'self._send_safe("tap", btn="a")) or o' in SRC
+   and 'o.get("mode") == "dialog"' in SRC)
+ck("...but only a plain text box, never a choice pressed blind",
+   'and not _ui.get("is_choice")' in SRC)
+ck("...and still sleeps when there is no box to step",
+   'self._send_safe("wait", frames=6)' in SRC)
+ck("the YES puts the cursor on YES instead of pressing blind",
+   'self._send_safe("menu", index=1)' in SRC
+   and "takes whatever the cursor happens to be on" in SRC)
 
 # ...AND THE DRAIN THAT PRESSES B IS WHERE IT ACTUALLY WENT. Two guards
 # sat further up and neither held for the starter: _ask_question needs the
