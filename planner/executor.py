@@ -19432,7 +19432,41 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # ui) wipe five stale rounds of pacing between the mart and the
             # street, and the mart leg was pacing exactly that. Only new
             # ground or a changed fingerprint says the run got somewhere.
-            _moved_world = bool(_fresh_ground or _fp != self._stale_fp)
+            # GROUND COMING ONTO THE SCREEN IS THE RUN GETTING SOMEWHERE,
+            # and this counter was the only part of the harness that said
+            # otherwise. _fresh_ground means STANDING in a region this
+            # subgoal has not stood in, and the fingerprint is what the run
+            # carries — so a sweep that revealed 266 cells of Viridian
+            # without leaving its region counted as a dry round, three in a
+            # row tripped the thinking gate, and the round cost 235 seconds
+            # and 5,092 tokens to deliberate about a search that was
+            # working (run 17, 2026-09-13, user: "it was making progress
+            # (unseen ground now seen) so idk why the thinking mode would
+            # activate"). The round budget had already ruled the other way
+            # and said so in the trace of every one of those rounds: "this
+            # round found something new — 266 cell(s) newly on screen — and
+            # does not count against the step's rounds". Two counters, one
+            # round, opposite verdicts.
+            #
+            # Safe because it is SELF-LIMITING: a sweep stops of its own
+            # accord once nothing new comes into view, so revealed ground
+            # cannot hold the budget open the way an idea can. Counted per
+            # MAP and against the high-water mark, so re-entering a room
+            # already seen reveals nothing and resets nothing.
+            _mid_now = str(((cur.get("map") or {}).get("id")) or "")
+            try:
+                _seen_n = int(((cur.get("map") or {}).get("seen") or {})
+                              .get("n") or 0)
+            except (TypeError, ValueError):
+                _seen_n = 0
+            _seen_hi = getattr(self, "_seen_hi", None)
+            if _seen_hi is None:
+                _seen_hi = self._seen_hi = {}
+            _looked = _mid_now in _seen_hi and _seen_n > _seen_hi[_mid_now]
+            if _mid_now:
+                _seen_hi[_mid_now] = max(_seen_n, _seen_hi.get(_mid_now, 0))
+            _moved_world = bool(_fresh_ground or _looked
+                                or _fp != self._stale_fp)
             if _moved_world:
                 self._stale_rounds = 0
                 # a dry stretch that ended pays its thinking budget back:
@@ -19448,6 +19482,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # "based on previous attempts". Each plan now carries what came
             # of it: new ground / something changed / NOTHING CHANGED.
             _verdict = ("new ground" if _fresh_ground else
+                        "more of this map on screen" if _looked else
                         "something changed" if _moved_world else
                         "NOTHING CHANGED")
             # ...AND WHAT THE WORDS NAMED THAT DID NOT HAPPEN. "→ new ground"
