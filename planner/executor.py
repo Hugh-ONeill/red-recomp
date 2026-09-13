@@ -17141,6 +17141,8 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
         self._repeat_rounds = 0   # free refusals used this subgoal
         self._stale_rounds = 0    # the stale budget counts per subgoal
         self._thought_dry = 0     # thinking rounds since the world moved
+        self._bo_here = 0         # wipes this subgoal has taken
+        self._bo_ops: list = []   # ...and the macro that took each of them
         self._stale_fp = None
         self._left_target = set() # target maps walked out of on purpose
         self._dead_why = getattr(self, "_dead_why", {})
@@ -17373,6 +17375,27 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # played its "got it!" text into a 20-of-20 bag and vanished.
             # The game normally says "no room" on screen; say it here.
             memory += self._bag_pressure_line(start)
+            # WHAT KEEPS KILLING YOU, said plainly and kept. A wipe was
+            # reported once, in the trace of the round it happened in, and
+            # the next round's plan opened "I will first explore the
+            # remaining unseen ground" as though it had not — six times
+            # over on run 17's Nidoran leg, six walks into the Route 22
+            # rival (2026-09-13). The count and the op are the run's own
+            # record and belong on every page until the step ends.
+            if getattr(self, "_bo_here", 0):
+                _bo_last = (getattr(self, "_bo_ops", []) or ["?"])[-1]
+                memory += (
+                    f"\nTHIS STEP HAS BLACKED OUT {self._bo_here} TIME(S). "
+                    f"A blackout is the whole party fainting: you wake at a "
+                    f"Pokemon Center, healed, HALF YOUR MONEY GONE, and "
+                    f"wherever you had walked to is lost. The last one "
+                    f"followed this macro: {_bo_last}. "
+                    + ("Running the same thing again is the same walk into "
+                       "the same fight. Something about the plan has to "
+                       "change — where you go, what you send out, or what "
+                       "you are carrying.\n"
+                       if self._bo_here > 1 else
+                       "What beat you is still there.\n"))
             # the switches as they stood on this page, for the next page's
             # "it was open the last time you stood here" (see _note_switches)
             self._note_switches(start)
@@ -18800,6 +18823,15 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     f"door — or walked ground you left unfinished.")
             loop_note = ""
             had_blackout = any("blackout" in t for t in trace)
+            # HOW MANY TIMES THIS STEP HAS WIPED, which decides whether the
+            # round is pardoned (see below) and is said on the page.
+            if had_blackout:
+                self._bo_here = getattr(self, "_bo_here", 0) + 1
+                self._bo_ops = (getattr(self, "_bo_ops", [])
+                                + [json.dumps(_macro_full)[:120]])[-6:]
+                self.log("blackout_round", subgoal=sg["id"], round=rnd,
+                         n=self._bo_here)
+            _bo_n = getattr(self, "_bo_here", 0)
             # A round in which EVERY op was refused executed nothing: the
             # model has been told "no" but has not yet had a turn to act on
             # it. Charging those rounds meant enter_oaks_lab burned 3 of its
@@ -19006,9 +19038,21 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                                  f"and does not count against the step's rounds)")
                 else:
                     spent += 1   # round went nowhere (same map/party/flags, nothing new)
-            elif had_blackout or pardon:
+            elif (had_blackout or pardon) and _bo_n <= 1:
                 # a blackout's map-jump wasn't chosen, and the NEXT round's
                 # walk back to where the party fainted isn't circling either
+                #
+                # ...BUT ONLY THE FIRST ONE IS BAD LUCK. Pardoning EVERY
+                # wipe gives a step that keeps wiping an unlimited budget,
+                # and run 17's Nidoran leg spent six identical rounds on
+                # {"op":"explore"} — six walks into the Route 22 rival, six
+                # blackouts, six pardons, nothing counted, nothing escalated
+                # and no rung reached (2026-09-13, user: "its trying to
+                # explore instead of catching in the patch of grass it can
+                # see, leading it to fight the rival and inevitably lose
+                # each time"). The first wipe is something that happened to
+                # the run. The sixth is something it chose. From the second
+                # on, the round is spent like any other.
                 pardon = had_blackout
             elif sig1[0] and sig1[0] != sig0[0]:
                 # revisit penalty only on an actual TRANSITION to a seen map:
@@ -19425,7 +19469,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                        or self._is_party_goal(self._cur_target or "")
                        or bool(self.contested.get(self._cur_target, {})
                                .get(_here_now))
-                       or _switches or had_blackout
+                       or _switches or (had_blackout and _bo_n <= 1)
                        or cur.get("mode") != "overworld")
             # An exempt round is NOT COUNTED — neither for nor against.
             # Resetting on it let a round that ended in the shop menu (mode
