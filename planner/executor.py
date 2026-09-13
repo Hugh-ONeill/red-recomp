@@ -63,6 +63,22 @@ USE_LEDGER = os.environ.get("RED_LEDGER", "1") != "0"
 # about spending, not about the game; RED_STALE=0 disables it.
 STALE_CUTOFF = int(os.environ.get("RED_STALE", "6") or 0)
 
+# WHO THE LEADER OF EACH GYM IS, from the engine's own gym table
+# (gen1recomp data/scripts/gyms.lua). Pamphlet tier: the leader's name is
+# what the town is known for and what the badge page prints.
+# A first cut tried to tell staff from leader by the SUFFIX of the object
+# name, on the theory that a class is a kind of trainer and a leader is a
+# person. Checked against every gym's real objects it called BEAUTY1,
+# SUPER_NERD3, CHANNELER1 and ROCKER2 leaders as well — numbered staff fall
+# outside any class list you can write by hand (2026-09-13). The game knows
+# the answer; ask it instead of guessing.
+GYM_LEADERS = {
+    "PEWTER_GYM": "BROCK", "CERULEAN_GYM": "MISTY",
+    "VERMILION_GYM": "LT_SURGE", "CELADON_GYM": "ERIKA",
+    "FUCHSIA_GYM": "KOGA", "SAFFRON_GYM": "SABRINA",
+    "CINNABAR_GYM": "BLAINE", "VIRIDIAN_GYM": "GIOVANNI",
+}
+
 BADGE_GYMS = {
     "BOULDERBADGE": "PEWTER_GYM", "CASCADEBADGE": "CERULEAN_GYM",
     "THUNDERBADGE": "VERMILION_GYM", "RAINBOWBADGE": "CELADON_GYM",
@@ -3757,6 +3773,24 @@ class Executor:
         the layout of Kanto is not something the player can read."""
         return "TOWN_MAP" in ((obs or {}).get("bag") or {})
 
+    @staticmethod
+    def _is_gym_leader(name: str, gym_map: str) -> bool:
+        """Is this object the leader of THIS gym?
+
+        The engine names a leader's object for the gym it stands in and
+        for the leader: CERULEAN_GYM's is CERULEANGYM_MISTY. GYM_LEADERS
+        carries the names off the game's own gym table, so this is an exact
+        match against eight known objects rather than a rule about shapes.
+
+        Deliberately narrow: wrong here means a sweep presses a leader (the
+        bug) or skips a trainer the model can still press itself (a round).
+        """
+        who = GYM_LEADERS.get(str(gym_map))
+        if not who:
+            return False
+        tail = str(name).replace("_", "").upper()
+        return tail == (str(gym_map).replace("_", "") + who.replace("_", ""))
+
     def _sealed(self, region) -> set:
         """Seams still proven uncrossable AS OF NOW.
 
@@ -7153,7 +7187,61 @@ class Executor:
     def _wild_elsewhere_note(self, here_map, obs) -> str:
         """The fought rows, then the walked ground never fought on."""
         return (self._wild_elsewhere_fought_note(here_map, obs)
+                + self._wild_here_note(here_map, obs)
                 + self._wild_never_fought_note(here_map, obs))
+
+    def _wild_here_note(self, here_map, obs) -> str:
+        """THE GROUND YOU ARE STANDING ON, and what this step does with it.
+
+        Its sibling below lists wild ground ELSEWHERE and skips here_map by
+        design, so the one floor never described is the one under the
+        party's feet. Run 17 worked out for itself that Charmeleon and
+        Nidorino lose to Misty and that a GRASS or ELECTRIC type would
+        answer her, walked to Route 25, and then swept the map pressing
+        signs — because nothing on that page said the grass it was standing
+        in produces wild Pokemon, and nothing said what the step would do
+        with one (user, 2026-09-13: "it should know it can try to grind
+        with the intent to catch for this").
+
+        Two facts, both about the harness rather than about the game. How
+        much wild ground here has been on screen, which is the run's own
+        footprint. And what a wild met here is FOR right now, which follows
+        the step's condition and is FLEE for anything that is not a level
+        or a catch — a default the run cannot observe and would otherwise
+        have to lose an encounter to learn. Whether to hunt anything, and
+        what, stays entirely the model's.
+        """
+        try:
+            c = (getattr(self, "_wild_seen", None) or {}).get(here_map) or {}
+            g, cv = int(c.get("grass") or 0), int(c.get("cave") or 0)
+            if g <= 0 and cv <= 0:
+                return ""
+            what = (f"{g} cell(s) of tall grass" if g else "") \
+                + (" and " if g and cv else "") \
+                + (f"{cv} cell(s) of cave floor" if cv else "")
+            # "48 cell(s) of tall grass of it" — the tail read as a second
+            # quantity and there is only one
+            tgt = self._target_key(self._cur_sg or {}) \
+                if getattr(self, "_cur_sg", None) else ""
+            if str(tgt).startswith(("party_type:", "has_species:",
+                                    "party_size:")):
+                deft = ("a ball is thrown at what this step is looking for; "
+                        "anything else is fled")
+            elif self._is_party_goal(tgt):
+                deft = "it is FOUGHT, because this step is judged on levels"
+            else:
+                deft = ("it is FLED — this step is not about the party, so "
+                        "nothing is thrown and nothing is fought")
+            return ("\nWILD GROUND YOU ARE STANDING ON: " + what
+                    + " has been on screen here. Wild Pokemon come "
+                      "from WALKING on it and never from standing still. "
+                      "As this step is written, a wild met here: " + deft
+                    + ". {\"op\":\"grind\"} is how the walking is done, "
+                      "and its \"intent\" and \"want\" say otherwise when "
+                      "you mean otherwise. What lives here, and whether any "
+                      "of it is worth a ball, is yours to judge.\n")
+        except Exception:
+            return ""
 
     def _wild_never_fought_note(self, here_map, obs) -> str:
         """WALKED GROUND WITH WILD GRASS OR CAVE FLOOR NEVER FOUGHT ON. The
@@ -19290,6 +19378,43 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                               and o.get("name") in touched
                               and o.get("name") not in self._retalked
                               and not self._retalked.add(o.get("name"))]
+                # A GYM LEADER IS NOT SOMETHING YOU TRY. A sweep presses
+                # everything reachable to see what it says, which is a fair
+                # deal with a sign or a shopkeeper and is a BOSS FIGHT with
+                # a leader — the one press in the building that cannot be
+                # taken back. Run 17 announced, three rounds running, that
+                # it was leaving Cerulean Gym to catch a Grass type for
+                # Misty; round 4's macro walked to the city's north edge
+                # and asked to cross, the cross was refused ("CERULEAN_GYM
+                # has no north edge"), and the sweep that followed pressed
+                # A on CERULEANGYM_MISTY and lost the party a third time
+                # (2026-09-13, user: "said this then fought misty again").
+                # Nothing the model wrote asked for that fight.
+                # The leader is beaten by a plan that MEANS to — the badge
+                # is always somebody's objective — so the sweep leaves this
+                # one alone and says it did. Every other trainer in the gym
+                # stays in: they are the road to the leader, and the model
+                # can still press the leader itself whenever it likes.
+                _gym_here = str(here_s).split("|")[0]
+                _leaders = {g: b for b, g in BADGE_GYMS.items()}
+                _skipped_boss = []
+                if _gym_here in _leaders:
+                    _kept = []
+                    for _n in loose:
+                        _o = next((o for o in
+                                   ((cur.get("map") or {}).get("objects") or [])
+                                   if o.get("name") == _n), {})
+                        # the leader is the trainer the gym is named for:
+                        # CERULEAN_GYM -> CERULEANGYM_MISTY
+                        _stem = _gym_here.replace("_", "")
+                        if (_o.get("kind") == "trainer"
+                                and str(_n).replace("_", "").startswith(_stem)
+                                and _n not in touched
+                                and self._is_gym_leader(_n, _gym_here)):
+                            _skipped_boss.append(_n)
+                            continue
+                        _kept.append(_n)
+                    loose = _kept
                 # A BUSH IS NOT PRESSED, IT IS CUT. The sweep pressed A on
                 # CUT_TREE and nothing happened — with CUT known for hours
                 # and the harness itself naming the tree as the untouched
@@ -19403,6 +19528,16 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     # got through on the go after that (user, 2026-08-26:
                     # "from vermillion stopped at rt9 again"). What the
                     # felling opens is not stated — it may open nothing.
+                    if _skipped_boss:
+                        trace.append(
+                            f"(the sweep did NOT press "
+                            f"{', '.join(_skipped_boss)}: that is this gym's "
+                            f"LEADER, and pressing them starts the badge "
+                            f"fight. A sweep tries things to see what they "
+                            f"say; this one cannot be untried. Send "
+                            f"{{\"op\":\"interact\",\"name\":"
+                            f"\"{_skipped_boss[0]}\"}} when you mean to "
+                            f"fight)")
                     _pressed = list(loose[:8])
                     if _pressed:
                         trace.append(
