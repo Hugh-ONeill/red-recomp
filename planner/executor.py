@@ -7291,9 +7291,23 @@ class Executor:
                 out.setdefault(k, v)
         for _r2, _es in (self.explored or {}).items():
             for _k2, _e2 in (_es or {}).items():
-                if _k2 not in _OPP or (_e2 or {}).get("to") != region:
+                # A SUFFIXED DIRECTION IS STILL A DIRECTION. A crossing made
+                # at a different cell of the same edge is filed as
+                # "north#skip1" so _walk_route can reproduce it — and this
+                # rule matched the bare word only, so that crossing offered
+                # no way back at all. Run 17 walked Pallet -> Route 1 ->
+                # Viridian and then could not `go` to Pallet: the Route 1
+                # hop was under north#skip1 (the bare north having been
+                # taken by Oak's scripted pull into his lab), so the reverse
+                # was never inferred and the router said "no walked way"
+                # (2026-09-13, user: "that kind of defeats the purpose of
+                # go for any long journey, the whole point of it is to be
+                # able to quickly backtrack"). Across run 16 one `go` in
+                # eight was refused this way.
+                _dir2 = str(_k2).split("#")[0]
+                if _dir2 not in _OPP or (_e2 or {}).get("to") != region:
                     continue
-                _back = _OPP[_k2]
+                _back = _OPP[_dir2]
                 if (region, _back, _r2) in getattr(self, "_bad_seam", ()):
                     continue
                 if _back not in out:
