@@ -1009,11 +1009,36 @@ def recent_events(cap: int = 14) -> str:
     fam: collections.OrderedDict = collections.OrderedDict()
     for f in reversed(fired):                 # newest first while grouping
         fam.setdefault(re.sub(r"_\d+", "_N", f), []).append(f)
-    out = [b + (f" x{len(g)}" if len(g) > 1 else "") if len(g) > 1 else g[0]
-           for b, g in fam.items()][:cap]
-    return ("\n\nWHAT THIS RUN HAS ALREADY DONE, most recent first (event "
-            "records the game itself wrote; a {\"flag\":...} condition can "
-            "name any of these): " + ", ".join(out)
+    # ...AND WHERE EACH ONE HAPPENED. The list said WHAT the run had done
+    # and never WHERE, and the two together are the answer to a whole class
+    # of question. Run 17 was shown EVENT_MET_BILL and
+    # EVENT_USED_CELL_SEPARATOR_ON_BILL second and third in this very line,
+    # and still wrote a plan that travelled to FUCHSIA_CITY to find Bill's
+    # mother — while the run's own record says both fired in BILLS_HOUSE,
+    # four legs north of where it stood (2026-09-13). The place is not a
+    # hint about what to do; it is the same history the event name is, kept
+    # by the run in its flag_sites ledger and never handed over.
+    # Only for events that fired ONCE, and only the map: a family of twenty
+    # beaten trainers has no one place, and a region suffix is noise here.
+    sites = {}
+    try:
+        _d = json.loads(Path("run/explored.json").read_text() or "{}")
+        for _f, _r in (_d.get("flag_sites") or {}).items():
+            _m = str(_r).split("|")[0]
+            if _m and "None" not in _m:
+                sites[_f] = _m
+    except (OSError, ValueError):
+        pass
+    out = []
+    for b, g in list(fam.items())[:cap]:
+        if len(g) > 1:
+            out.append(f"{b} x{len(g)}")
+            continue
+        _where = sites.get(g[0])
+        out.append(g[0] + (f" (at {_where})" if _where else ""))
+    return ("\n\nWHAT THIS RUN HAS ALREADY DONE, most recent first, and "
+            "WHERE (event records the game itself wrote; a {\"flag\":...} "
+            "condition can name any of these): " + ", ".join(out)
             + (f" (+{len(fam) - cap} more)" if len(fam) > cap else "") + ".")
 
 

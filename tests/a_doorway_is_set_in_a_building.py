@@ -62,7 +62,13 @@ else:
 # the shim side, source-anchored (Lua)
 sh = (ROOT / "harness" / "shim.lua").read_text()
 ck("the shim carries the building table", "local BUILDINGS = {" in sh and "ROUTE_16 = {" in sh)
-ck("warp rows are tagged with their building", "if d == wk then w.bld = i end" in sh and "m.buildings = _bl" in sh)
+# the tag now indexes the KEPT list, not the raw table: a building the run
+# has not looked at is no longer published at all (2026-09-13, see
+# a_door_you_have_not_seen_is_not_on_the_page)
+ck("warp rows are tagged with their building",
+   "if d == wk then w.bld = i end" in sh
+   and "m.buildings = (#kept > 0) and kept or nil" in sh
+   and "for i, b in ipairs(kept) do" in sh)
 ck("the sweep names the building a doorway is set in", 'text = text .. " in a " .. b.look' in sh)
 ck("...and the same building's other doorway when it has been on screen", "the same building as the doorway at (%s)" in sh)
 
