@@ -53,24 +53,6 @@ local function dlg_trace(G, where, i)
   f:close()
 end
 
--- EVERY PRESS, WHEN THE TRACE IS ON. dlg_trace covers settle_dialog and
--- ui_back_out, which is where the harness KNOWS it is pressing buttons —
--- and the nickname question is eaten somewhere else entirely: the trace
--- ran straight from the starter's YES/NO box to "SAGE saved the game!"
--- with the received-mon box and the question never appearing in 5,322
--- lines (2026-09-13, after eight fixes aimed at places it never reached).
--- Wrapping the tap itself is the one view that cannot miss: whatever
--- presses, presses through here. Off unless RED_DIALOG_TRACE=1, and the
--- wrapper is installed once.
-if DLG_TRACE and not U._red_tap_traced then
-  local _tap = U.tap
-  U.tap = function(game, btn)
-    dlg_trace(game, "tap:" .. tostring(btn), 0)
-    return _tap(game, btn)
-  end
-  U._red_tap_traced = true
-end
-
 -- ------------------------------------------------------------ op watchdog
 -- Every bridge-side activity must be FRAME-BOUNDED: brock19 wedged >120s
 -- inside one op mid-forest and the whole stack died on an uncaught bridge
@@ -269,6 +251,34 @@ local function naming_on_stack(G)
   end
   return nil
 end
+-- START ON A NAMING SCREEN IS *CONFIRM*, AND CONFIRM WITH NOTHING TYPED
+-- TAKES THE DEFAULT. That is the whole bug, found on the tenth look with a
+-- trace of every press (2026-09-13). The sequence was never in doubt once
+-- it was visible: the nickname question is answered YES, the grid opens,
+-- and the very next press is tap:start — the start MENU being reached for
+-- by some other op — which the grid reads as "done", commits an empty
+-- name, and closes before the model is ever asked. Nine fixes before this
+-- one were all about getting the question TO the model; it was arriving
+-- and being confirmed away a frame later.
+--
+-- OPS.name presses START itself, legitimately, to confirm the name it has
+-- just typed. So this cannot be a blanket refusal: the op raises a flag
+-- while it is driving the grid and everyone else is refused.
+local naming_driver = false
+do
+  local _tap = U.tap
+  U.tap = function(game, btn)
+    if DLG_TRACE then dlg_trace(game, "tap:" .. tostring(btn), 0) end
+    if btn == "start" and not naming_driver and naming_on_stack(game) then
+      -- refused, not deferred: whatever wanted the start menu can have it
+      -- once the name is given, and the caller's own loop will try again
+      if DLG_TRACE then dlg_trace(game, "start:REFUSED", 0) end
+      return
+    end
+    return _tap(game, btn)
+  end
+end
+
 -- the NEW NAME / presets list the player naming pushes over the grid
 local function naming_presets_menu(G, ns)
   local t = G and G.stack and G.stack:top()
@@ -11654,6 +11664,12 @@ end
 function OPS.name(G, c)
   local ns = naming_on_stack(G)
   if not ns then return false, "no naming screen is open" end
+  -- THIS op is allowed to press START, because on this screen START is the
+  -- confirm and confirming is what it is here to do; the dispatcher raises
+  -- naming_driver for the "name" op alone. Everyone else is refused while
+  -- the grid is up: a stray reach for the start MENU used to land on the
+  -- grid as "done" and commit an empty name before the model had been
+  -- asked at all.
   local text = tostring(c.text or "")
   local function ride(said)
     for _ = 1, 400 do
@@ -12614,7 +12630,13 @@ return function(G)
     cmd.ball = canon_item(G, cmd.ball)
     local op = OPS[cmd.op]
     if op then
+      -- ONE OP AT A TIME, so the naming grid's START exemption cannot
+      -- outlive the op that raised it. OPS.name sets naming_driver while
+      -- it types; clearing it HERE means no early return, error or
+      -- watchdog kill can leave the guard open for the next op.
+      naming_driver = (cmd.op == "name")
       local ok, detail = wd_run(G, cmd.op, OP_FRAME_BUDGET, op, G, cmd)
+      naming_driver = false
       result = { op = cmd.op, ok = ok and true or false,
                  detail = detail and tostring(detail) or nil }
     else
