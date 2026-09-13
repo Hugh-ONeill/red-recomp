@@ -34,6 +34,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+import re
 import statistics
 import sys
 from pathlib import Path
@@ -97,6 +98,115 @@ def broke_the_wall(journal, sg, rnd, within=2):
     return (nxt.get("stale") or 0) < here
 
 
+# ---------------------------------------------------------------- premises
+# WHAT COUNTS AS A FALSE PREMISE, and what emphatically does not. The model's
+# own Pokemon knowledge is not an invention — that it knows Blaine uses fire
+# types, or that a LEAF_STONE evolves a GLOOM, is the whole reason it is
+# playing and the pamphlet standard says so. What it must NOT reason from is
+# a claim about THIS RUN'S WORLD that the page it was handed does not
+# support: a map it is not on, a door at coordinates nothing listed, an item
+# it is not carrying. Those are the ones no amount of deliberation repairs
+# (user, 2026-09-13: "thinking is not going to magically insert more true
+# facts, but im hoping that it reasons over the facts it has ... better").
+#
+# So the mechanical pass looks ONLY at world-state tokens, and it is
+# deliberately conservative: a species or a move name is never counted, and
+# anything the page mentions anywhere at all is taken as supported.
+def _names(fname):
+    try:
+        return {l.strip() for l in (REPO / "planner" / fname).read_text()
+                .splitlines() if l.strip()}
+    except OSError:
+        return set()
+
+
+MAPS = _names("engine_maps.txt")
+ITEMS = _names("engine_items.txt")
+SPECIES = _names("engine_species.txt")
+MOVES = _names("engine_moves.txt")
+
+
+def page_for(journal, trace):
+    """The escalation page this trace reasoned over: same subgoal, the
+    context written for the same round. Without it nothing here can be
+    said, and the meter says so rather than guessing."""
+    sg, rnd = trace.get("subgoal"), trace.get("round")
+    best = None
+    for r in journal:
+        if r.get("kind") != "escalate_context" or r.get("subgoal") != sg:
+            continue
+        # escalate_context carries no round; the one written closest
+        # BEFORE this trace is the page it was handed
+        if trace.get("t") and r.get("t") and r["t"] > trace["t"]:
+            continue
+        if best is None or (r.get("t") or 0) > (best.get("t") or 0):
+            best = r
+    return (best or {}).get("memory") or ""
+
+
+def unsupported(trace_text: str, page: str):
+    """World-state tokens the trace leans on that the page never mentions.
+
+    Returns (maps, items, coords). A name in BOTH the species and the map
+    lists (there is no such case today, but VICTORY_ROAD_1F-style ids are
+    close enough to warrant it) is dropped rather than counted twice."""
+    txt = str(trace_text or "")
+    page = str(page or "")
+    up = set(re.findall(r"\b[A-Z][A-Z_0-9]{2,}\b", txt))
+    up -= SPECIES | MOVES          # game knowledge is not an invention
+    maps = sorted(n for n in (up & MAPS) if n not in page)
+    items = sorted(n for n in (up & ITEMS) if n not in page)
+    # a door or a tile it claims is there. Only pairs written as the ops
+    # write them, so prose numbers ("level 30") are never read as a cell.
+    coords = sorted({c for c in re.findall(r"\((\d{1,3},\s?\d{1,3})\)", txt)
+                     if c.replace(" ", "") not in page.replace(" ", "")})
+    return maps, items, coords
+
+
+JUDGE_SYS = (
+    "You are auditing one round of a Pokemon Red bot. You are given THE "
+    "PAGE the bot was handed and THE REASONING it then produced. Your job "
+    "is NOT to say whether the reasoning is true. It is to say which of "
+    "its load-bearing claims THE PAGE DOES NOT SUPPORT.\n"
+    "A load-bearing claim is one the plan rests on — most often a claim "
+    "about WHY: why something is blocked, why an action would open it, why "
+    "a place is worth going to. Those are the ones to check.\n"
+    "A claim is UNSUPPORTED when the page neither states it nor shows it, "
+    "however confident or reasonable it sounds. A remembered fact about "
+    "Pokemon Red, asserted as the REASON for the plan, is unsupported "
+    "unless the page backs it — being sure is not evidence. Do not try to "
+    "decide whether such a claim is correct; only whether the page said "
+    "it. Ordinary description that matches the page is supported and is "
+    "not worth listing.\n"
+    "DO NOT LIST THE OBJECTIVE. What the run is trying to achieve — win "
+    "the badge, reach the town, get the item — is the goal it was given, "
+    "not a claim it made, and a plan that simply says what it is going for "
+    "has invented nothing. List a claim only if the plan would be POINTLESS "
+    "were that claim false.\n"
+    "Reply with a JSON object and nothing else: "
+    "{\"unsupported\":[\"<claim>\", ...],\"verdict\":\"reasoning\"} "
+    "where verdict is \"reasoning\" when every load-bearing claim came "
+    "off the page, and \"false premise\" when the plan rests on at least "
+    "one claim the page did not give it."
+)
+
+
+def judge(page: str, trace_text: str, model: str):
+    """Ask a model which claims the page does not support. Judgement, so it
+    is opt-in and never runs as part of the plain read."""
+    import brock_probe
+    body = (f"THE PAGE:\n{page[:14000]}\n\n"
+            f"THE REASONING:\n{str(trace_text)[:8000]}")
+    try:
+        reply = brock_probe.chat(
+            [{"role": "system", "content": JUDGE_SYS},
+             {"role": "user", "content": body}], model)
+        m = re.search(r"\{.*\}", reply or "", re.S)
+        return json.loads(m.group(0)) if m else {}
+    except Exception as e:
+        return {"error": str(e)[:120]}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--journal", type=Path,
@@ -104,6 +214,9 @@ def main():
     ap.add_argument("--traces", type=Path,
                     default=REPO / "run/thinking.jsonl")
     ap.add_argument("--full", action="store_true")
+    ap.add_argument("--judge", metavar="MODEL", default=None,
+                    help="also ask a model which claims the page did not "
+                         "support (one call per trace)")
     a = ap.parse_args()
 
     journal = _read(a.journal)
@@ -152,6 +265,39 @@ def main():
               f"{t.get('chars')} chars -> new ops {got.get('new_ops')}, "
               f"{verdict}")
         txt = str(t.get("thinking") or "")
+        # DID IT REASON OVER THE PAGE, OR OVER SOMETHING IT MADE UP? The
+        # whole bet on thinking is that it reasons BETTER over the facts it
+        # has, not that it acquires more — so a trace leaning on a map, an
+        # item or a tile the page never mentioned is not a thinking problem
+        # at all, and no cap or budget fixes it. One of these is worth more
+        # than any number of firings as a signal to stop paying.
+        page = page_for(journal, t)
+        if not page:
+            print("    (no page found for this round — cannot say)")
+        else:
+            maps, items, coords = unsupported(txt, page)
+            if maps or items or coords:
+                bits = []
+                if maps:
+                    bits.append("maps " + ", ".join(maps[:4]))
+                if items:
+                    bits.append("items " + ", ".join(items[:4]))
+                if coords:
+                    bits.append("tiles " + ", ".join(coords[:4]))
+                print("    FALSE PREMISE: reasoned from "
+                      + "; ".join(bits)
+                      + " — none of which its page mentioned. More "
+                        "deliberation will not repair this one.")
+            else:
+                print("    premises: everything it names was on its page")
+            if a.judge:
+                v = judge(page, txt, a.judge)
+                if v.get("error"):
+                    print(f"    (judge failed: {v['error']})")
+                else:
+                    print(f"    judged: {v.get('verdict')}"
+                          + ("".join("\n      unsupported: " + str(c)[:140]
+                                     for c in (v.get("unsupported") or [])[:5])))
         print("    " + (txt if a.full else
                         (txt[:600] + ("..." if len(txt) > 600 else "")))
               .replace("\n", "\n    "))

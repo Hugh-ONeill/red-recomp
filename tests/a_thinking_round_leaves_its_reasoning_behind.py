@@ -109,6 +109,70 @@ ASRC = (ROOT / "planner" / "author.py").read_text()
 ck("...and so does the author",
    'brock_probe.log_thinking("author"' in ASRC)
 
+# ---- did it reason over the page, or over something it made up? -------
+# THE BET ON THINKING IS NARROW: that it reasons BETTER over the facts it
+# has, not that it acquires more (user, 2026-09-13: "thinking is not going
+# to magically insert more true facts, but im hoping that it reasons over
+# the facts it has (true or not) better"). So a trace leaning on something
+# its page never gave it is not a thinking problem at all, and no cap or
+# budget repairs it — one of those is a better reason to stop paying than
+# any number of firings.
+PAGE = ("WHERE YOU STAND: CINNABAR_LAB|2,3 — indoors.\n"
+        "WHAT YOU ARE CARRYING: DOME_FOSSIL x1, POKE_BALL x5 (2 of 20 kinds).\n"
+        "1. SCIENTIST (person at 5,4) — never spoken to\n")
+ck("a map its page never mentioned is an invention",
+   M.unsupported("I will go to SAFFRON_CITY and buy one", PAGE)[0]
+   == ["SAFFRON_CITY"])
+ck("an item it is not carrying is an invention",
+   M.unsupported("I will use the HELIX_FOSSIL here", PAGE)[1]
+   == ["HELIX_FOSSIL"])
+ck("a tile nothing listed is an invention",
+   "24,16" in M.unsupported("the stairs at (24,16) lead down", PAGE)[2])
+ck("what IS on the page is not flagged",
+   M.unsupported("I hold the DOME_FOSSIL and stand in CINNABAR_LAB "
+                 "beside the SCIENTIST", PAGE) == ([], [], []))
+ck("a SPECIES is knowledge, not an invention — it is expected to know them",
+   M.unsupported("BLAINE uses fire types so my GYARADOS answers", PAGE)[0]
+   == [] and "GYARADOS" not in str(M.unsupported(
+       "my GYARADOS answers", PAGE)))
+ck("a MOVE name is knowledge too",
+   M.unsupported("THUNDERBOLT would be double damage", PAGE) == ([], [], []))
+ck("prose numbers are not read as tiles",
+   M.unsupported("it is level 30, about 20 turns away", PAGE)[2] == [])
+
+# ...AND THE MECHANICAL PASS CANNOT SEE THE CASE THAT PROMPTED ALL THIS.
+# Run 16's defeat_blaine believed the gym was locked BECAUSE it held the
+# Dome Fossil. Every thing it named — the lab, the fossil, the scientist —
+# was genuinely on its page; the invention was the CAUSAL claim between
+# them, which no name check can reach. That is why there is a judged pass,
+# and why its prompt asks about SUPPORT rather than truth: a judge asked
+# whether a claim is correct calls a confident wrong memory correct, and
+# this one did exactly that until it was reframed (2026-09-13).
+BLAINE = ("I still have the Dome Fossil in my bag, which is why the "
+          "Cinnabar Gym remains locked. I will deliver it to the scientist.")
+ck("the name check finds nothing wrong with the Blaine round",
+   M.unsupported(BLAINE, PAGE) == ([], [], []))
+ck("...so the judge asks about support, never about truth",
+   "NOT to say whether the reasoning is true" in M.JUDGE_SYS
+   and "being sure is not evidence" in M.JUDGE_SYS)
+ck("...and is told not to flag the objective it was handed",
+   "DO NOT LIST THE OBJECTIVE" in M.JUDGE_SYS
+   and "POINTLESS were that claim false" in M.JUDGE_SYS)
+ck("the judge is opt-in, because it is judgement and it costs a call",
+   "--judge" in (ROOT / "planner" / "think_meter.py").read_text())
+ck("a judge that cannot be reached is reported, not raised",
+   "error" in M.judge("p", "t", "no-such-model-at-all"))
+
+# the page a trace reasoned over is found by subgoal and time, never guessed
+J3 = [{"kind": "escalate_context", "subgoal": "a", "t": 10, "memory": "old"},
+      {"kind": "escalate_context", "subgoal": "a", "t": 30, "memory": "right"},
+      {"kind": "escalate_context", "subgoal": "a", "t": 90, "memory": "later"},
+      {"kind": "escalate_context", "subgoal": "b", "t": 31, "memory": "other"}]
+ck("the page is the last one written before the trace, on its own leg",
+   M.page_for(J3, {"subgoal": "a", "t": 40}) == "right")
+ck("no page for that leg says nothing rather than borrowing one",
+   M.page_for(J3, {"subgoal": "zz", "t": 40}) == "")
+
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:
     print(("  ok   " if ok else "  FAIL ") + n)
