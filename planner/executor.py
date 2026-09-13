@@ -14010,6 +14010,18 @@ class Executor:
         b0 = (obs or {}).get("battle") or {}
         foe, me = b0.get("foe") or {}, b0.get("me") or {}
         self._op_battles = getattr(self, "_op_battles", 0) + 1
+        # WHO IS IN FRONT OF YOU, KEPT. A blackout told the next page that
+        # the party fainted and where it woke up, and never once what beat
+        # it — so a run that walked into the Route 22 rival with one L8
+        # CHARMANDER read "you respawned at PALLET_TOWN" and went back for
+        # more, six times over (run 17, 2026-09-13, user: "the rival will
+        # inevitably beat a lvl5 char with his squirtle with an elemental
+        # move and second mon"). Species and level are on screen for the
+        # whole fight; there was simply nowhere for them to go.
+        self._recent_foes = (getattr(self, "_recent_foes", [])
+                             + [(f"{foe.get('species')} L{foe.get('level')}",
+                                 str(((obs or {}).get("map") or {}).get("id")
+                                     or ""))])[-6:]
         self.log("battle_start", subgoal=subgoal["id"], policy=name,
                  foe=f"{foe.get('species')} L{foe.get('level')}",
                  me=f"{me.get('species')} L{me.get('level')} "
@@ -17390,6 +17402,10 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     f"Pokemon Center, healed, HALF YOUR MONEY GONE, and "
                     f"wherever you had walked to is lost. The last one "
                     f"followed this macro: {_bo_last}. "
+                    + (("WHAT BEAT YOU, in the order it came out: "
+                        + "; ".join(f"{_f} on {_w or 'somewhere'}"
+                                    for _f, _w in getattr(self, "_bo_foes", []))
+                        + ". ") if getattr(self, "_bo_foes", None) else "")
                     + ("Running the same thing again is the same walk into "
                        "the same fight. Something about the plan has to "
                        "change — where you go, what you send out, or what "
@@ -18829,8 +18845,13 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 self._bo_here = getattr(self, "_bo_here", 0) + 1
                 self._bo_ops = (getattr(self, "_bo_ops", [])
                                 + [json.dumps(_macro_full)[:120]])[-6:]
+                # ...AND WHO DID IT: the foes of the fight that just ended
+                # the party, in the order they came out.
+                self._bo_foes = list(getattr(self, "_recent_foes", []))[-4:]
+                self._recent_foes = []
                 self.log("blackout_round", subgoal=sg["id"], round=rnd,
-                         n=self._bo_here)
+                         n=self._bo_here,
+                         foes=",".join(f for f, _ in self._bo_foes))
             _bo_n = getattr(self, "_bo_here", 0)
             # A round in which EVERY op was refused executed nothing: the
             # model has been told "no" but has not yet had a turn to act on

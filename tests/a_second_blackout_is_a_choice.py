@@ -108,6 +108,28 @@ ck("...and after the first, that repeating it is the same walk",
 ck("...while a single wipe only says what is still there",
    "What beat you is still there." in SRC)
 
+# ---- AND WHO DID IT, which was never recorded at all -------------------
+# A blackout said the party fainted and where it woke up. It never said
+# what had beaten it — so a run that walked into the Route 22 rival with
+# one level-8 CHARMANDER read "you respawned at PALLET_TOWN" and went back
+# for more (user, 2026-09-13: "the rival will inevitably beat a lvl5 char
+# with his squirtle with an elemental move and second mon"). Species and
+# level are on screen for the whole fight; there was simply nowhere for
+# them to go.
+ck('the foes of each fight are kept as they come out',
+   'self._recent_foes = (getattr(self, "_recent_foes", [])' in SRC)
+ck("...with the map they were met on",
+   'str(((obs or {}).get("map") or {}).get("id")' in SRC)
+ck('a wipe takes a copy of them and starts the next fight clean',
+   'self._bo_foes = list(getattr(self, "_recent_foes", []))[-4:]' in SRC
+   and 'self._recent_foes = []' in SRC)
+ck('...they go to the journal',
+   'foes=",".join(f for f, _ in self._bo_foes)' in SRC)
+ck("...and onto the page, in the order they came out",
+   "WHAT BEAT YOU, in the order it came out:" in SRC)
+ck("...and nothing is said when there is nothing to say",
+   'if getattr(self, "_bo_foes", None) else ""' in SRC)
+
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:
     print(("  ok   " if ok else "  FAIL ") + n)
