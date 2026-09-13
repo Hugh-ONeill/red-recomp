@@ -14261,15 +14261,44 @@ class Executor:
         # change and the plan ended with the box still up (2026-08-29).
         # The YES is mechanics, exactly as it is after a catch; the NAME
         # that follows is the model's, and an empty one keeps the default.
+        # ...AND IT ARRIVES LATE, SO ONE GLANCE MISSES IT. The op that
+        # brings the Pokemon returns as soon as it has pressed its button,
+        # and the engine then plays "CHARMANDER! I choose you!" before it
+        # puts the nickname question up — so a single look finds an
+        # overworld with no box and moves on, and the next thing to touch
+        # the UI presses B, which is NO. That is how the run 17 starter
+        # arrived un-named four minutes after this was built (2026-09-13),
+        # and it is the same lesson the catch flow already learned: WAIT ON
+        # THE PARTY, NOT ON A FRAME COUNT. A party that just grew is owed a
+        # question; nothing else is waited for.
+        _pn = len(o.get("party") or [])
+        _grew = _pn > getattr(self, "_party_n", _pn)
+        self._party_n = _pn
         if not o.get("naming") and not getattr(self, "_naming", False):
-            _t = str((o.get("dialog") or {}).get("text")
-                     or o.get("last_text") or "").lower()
-            if "nickname" in _t and o.get("mode") in ("dialog", "ui"):
-                self._send_safe("tap", btn="a")
+            for _try in range(12 if (_grew and NICKNAMES_REQUIRED) else 1):
+                _t = str((o.get("dialog") or {}).get("text")
+                         or o.get("last_text") or "").lower()
+                if "nickname" in _t:
+                    self._send_safe("tap", btn="a")
+                    try:
+                        o = self._note(self.b.obs()) or o
+                    except TimeoutError:
+                        pass
+                    break
+                if o.get("naming"):
+                    break          # the question is already answered
+                if not (_grew and NICKNAMES_REQUIRED):
+                    break
+                # a gift that ships with its own nickname never asks, so
+                # this must give up rather than wait out every arrival
                 try:
-                    o = self._note(self.b.obs()) or o
+                    o = self._note(self._send_safe("wait", frames=6)) or o
                 except TimeoutError:
-                    pass
+                    break
+            if _grew:
+                self.log("party_grew", n=_pn,
+                         asked=bool(o.get("naming")),
+                         waited=NICKNAMES_REQUIRED)
         if o.get("naming") and not getattr(self, "_naming", False):
             o = self._resolve_naming(o)
         return o

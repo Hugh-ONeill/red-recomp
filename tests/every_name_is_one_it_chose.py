@@ -140,6 +140,26 @@ ck("...and the naming screen behind it is then driven",
 ck("every other yes/no box is still the model's to judge",
    "ans = self._ask_question(obs, sg, text)" in SRC)
 
+# ...AND THE QUESTION ARRIVES LATE. The op that brings the Pokemon returns
+# as soon as it has pressed its button; the engine then plays "CHARMANDER!
+# I choose you!" and only THEN asks. A single glance sees an overworld with
+# no box, moves on, and the next thing to touch the UI presses B — which is
+# NO. Run 17's starter arrived un-named four minutes after this file was
+# written (2026-09-13). The catch flow had already learned the same lesson
+# in its own words: wait on the PARTY, not on a frame count.
+ck("a party that just grew is waited on, not glanced at",
+   "_grew = _pn > getattr(self, \"_party_n\", _pn)" in SRC
+   and "for _try in range(12 if (_grew and NICKNAMES_REQUIRED) else 1):" in SRC)
+ck("...and the wait ends the moment the question appears",
+   'if "nickname" in _t:' in SRC
+   and SRC.split('if "nickname" in _t:')[1][:300].count("break") >= 1)
+ck("...and gives up rather than waiting out an arrival that never asks",
+   "ships with its own nickname never asks" in SRC)
+ck("a party that did not grow is still only glanced at, as before",
+   "else 1):" in SRC)
+ck("the wait is recorded, so a miss is visible next time",
+   'self.log("party_grew"' in SRC)
+
 # ---- the catch path already did this, and still does -------------------
 SH = (ROOT / "harness" / "shim.lua").read_text()
 ck("the shim's throw still answers the nickname box YES",
