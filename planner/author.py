@@ -6566,6 +6566,50 @@ def _item_not_held(goal: str, start: str) -> str | None:
     return None
 
 
+_BLOCK_TO = _re.compile(
+    r"(?:block\w*|gat\w*|bar\w*|seal\w*|prevent\w*|stop\w*|clos\w*|"
+    r"lock\w*|refus\w*|deny|denies|denied)[^.]{0,60}?"
+    r"(?:access|entry|entrance|passage|the way|way|reach\w*|enter\w*|"
+    r"get\w* (?:to|into)|into|to)\s+(?:the\s+)?$", _re.I)
+
+
+def _blocks_a_place_you_have_walked(why: str, observed=None) -> str | None:
+    """A reason that says something bars the way INTO a place the run has
+    already walked in. Names that place, or None.
+
+    The missing rung inserted "Give a FRESH WATER to the guards at the
+    Route 5 and 6 gates" ahead of "Travel through Rock Tunnel", because
+    "the guards at the gates of Route 5 and 6 block access to the Rock
+    Tunnel until they are given a drink" — which is not true of this game
+    and, more to the point, is refuted by the run's own ledger: it had
+    stood in four chambers of Rock Tunnel by then (2026-09-14, user: "im
+    wondering how it got there in the first place"). The leg was pushed
+    two places back and the chain went the long way round.
+
+    Only the place the way is barred TO counts, never every place the
+    sentence mentions: a guard who really does bar the road stands on a
+    route the run has walked, and saying so must stay sayable. Floors are
+    one place with their building, since a reason says "Rock Tunnel" and
+    the ledger says ROCK_TUNNEL_1F.
+    """
+    _w = str(why or "")
+    if not _w:
+        return None
+    walked = set()
+    for _r in visited_regions():
+        _m = str(_r).split("|")[0]
+        walked.add(_m)
+        walked.add(_re.sub(r"_(B?\d+F|ROOF|ELEVATOR)$", "", _m))
+    for _map in sorted(walked, key=len, reverse=True):
+        _spoken = _map.replace("_", " ")
+        if len(_spoken) < 5:
+            continue
+        for _m in _re.finditer(_re.escape(_spoken), _w, _re.I):
+            if _BLOCK_TO.search(_w[:_m.start()]):
+                return _map
+    return None
+
+
 def _events_bearing(goal: str) -> str:
     """Events THIS RUN HAS FIRED whose names touch the objective's words.
 
@@ -6757,7 +6801,15 @@ Reply with ONLY {"why": "<one sentence>", "done": true} or
 
 
 _INFERRED = re.compile(
+    # ...AND "INDICATING" IS "IMPLYING" IN ANOTHER COAT. check-done crossed
+    # off "Travel through Rock Tunnel" before it ran, on "The run has
+    # previously exited Rock Tunnel to Route 10, indicating the tunnel has
+    # been traversed" — and what it had exited onto was ROUTE_10|0,4, the
+    # very part it went IN from. Coming back out the way you came in is
+    # not traversing, and the word doing the work was a hedge this list
+    # did not hold (2026-09-14).
     r"\b(impl(?:y|ies|ying|ied)|suggest(?:s|ing|ed)?|likely|probably|"
+    r"indicat(?:e|es|ing|ed|ive)|"
     r"presumably|should have|must have|would have|assum(?:e|es|ing|ed)|"
     r"so (?:it|they|the \w+) (?:is|are|was|were) (?:presumably|likely)|"
     # ...AND THE ORDER OF THE STORY IS INFERENCE TOO. "The player has
@@ -7263,6 +7315,13 @@ def check_missing(goal: str, ahead: list, start: str, model: str,
                                      "wants first is one the game SAID it "
                                      "wants — a person's words, a door that "
                                      "turned you back — name that, or none"))
+            continue
+        _walked_in = _blocks_a_place_you_have_walked(_why, observed)
+        if _walked_in:
+            print(f"[missing] turned down {ins!r}: its reason says the way "
+                  f"into {_walked_in} is barred, and this run has already "
+                  f"walked in {_walked_in} — {_why}", file=sys.stderr)
+            turned_down.append((ins, f"you have already walked in {_walked_in}"))
             continue
         if check_already_done(ins, start, model, observed=observed):
             print(f"[missing] turned down {ins!r}: judged already done — "
