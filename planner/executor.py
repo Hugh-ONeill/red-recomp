@@ -4604,6 +4604,13 @@ class Executor:
             # while the rewrite alone saw the counts. Keyed by TARGET, so
             # they survive a rewrite that renames the step.
             self._outcomes = data.get("outcomes") or {}
+            # ...AND THE ORDER THEY WERE PRESSED IN. The outcome book holds
+            # each thing's distinct replies with counts, which survives a
+            # relaunch; the ORDER lived only in this process, so the room's
+            # history restarted empty every attempt — and the room where
+            # order is the whole fact is the one the run spends attempts in
+            # (Vermilion's gym, 2026-09-14). Same ledger, same lifetime.
+            self._press_log = data.get("press_log") or {}
             self._plan_hist = data.get("plan_hist") or {}
             if not self._shelves:
                 # BACKFILL ONCE from this world's journal: the counter's
@@ -5081,6 +5088,7 @@ class Executor:
                  "walks_reopened": bool(getattr(
                      self, "_walks_reopened", False)),
                  "outcomes": getattr(self, "_outcomes", {}),
+                 "press_log": getattr(self, "_press_log", {}),
                  "plan_hist": getattr(self, "_plan_hist", {}),
                  "blackouts": self._blackouts,
                  "blackout_lead": self._blackout_lead,

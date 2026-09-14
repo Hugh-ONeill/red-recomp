@@ -112,6 +112,9 @@ ck("it still refuses to read the record for the model",
 src = (ROOT / "planner" / "executor.py").read_text()
 ck("the press log is deep enough to hold a turn plus a room of sameness",
    "del _pl[:-60]" in src)
+ck("...and outlives the attempt, like the outcome book beside it",
+   '"press_log": getattr(self, "_press_log", {})' in src
+   and 'self._press_log = data.get("press_log") or {}' in src)
 
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, dd in checks:
