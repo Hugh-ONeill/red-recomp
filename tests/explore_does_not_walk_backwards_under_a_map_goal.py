@@ -78,7 +78,8 @@ ck("it comes before that picker's own empty-handed fallbacks",
 
 # and the ranking it reads is the one that was already there
 ck("the away tier is the same term the key ranks by",
-   "r = (_pri, _stale, _local, _goal, len(path), _way_here," in SRC)
+   # _picks (the starvation term) joined between _goal and distance, 2026-09-14
+   "r = (_pri, _stale, _local, _goal, _picks, len(path), _way_here," in SRC)
 
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, d in checks:

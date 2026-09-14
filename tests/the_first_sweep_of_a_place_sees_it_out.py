@@ -56,8 +56,11 @@ i = ex.index('            _st = {"op": "sweep"}')
 blk = ex[i:i + 3000]
 ck("the first sweep of a place is told to stop for nothing",
    '_st["until"] = "map_change"' in blk)
-ck("...once per place, remembered", "self._swept_out.add(_reg_now)" in blk
-   and "_reg_now not in self._swept_out" in blk)
+# the swept set became one persisted fact, _swept, shared with the header
+# that says when the party has never looked around where it stands
+ck("...once per place, remembered and persisted",
+   "self._note_swept(_reg_now)" in blk and "not self._has_swept(_reg_now)" in blk
+   and '"swept": sorted(getattr(self, "_swept", set()))' in ex)
 ck("...and never overrides an until the model asked for",
    '_params.get("until") is None' in blk
    and blk.index('for _k in ("until", "steps")') < blk.index('_st["until"] = "map_change"'))

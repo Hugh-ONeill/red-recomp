@@ -36,7 +36,8 @@ src = (ROOT / "planner" / "executor.py").read_text()
 ck("the deed ranks locality above distance, and a room means a DOOR not a seam",
    "_local = 0 if (_reg_b == _here_b or region in _rooms) else 1" in src
    and 'if str(k)[:1].isdigit() and (e or {}).get("to")}' in src
-   and "r = (_pri, _stale, _local, _goal, len(path), _way_here," in src)
+   # _picks (the starvation term) joined between _goal and distance, 2026-09-14
+   and "r = (_pri, _stale, _local, _goal, _picks, len(path), _way_here," in src)
 ck("...and the trace says why it went there",
    "a room off the area you are in, its door taken from " in src)
 lsrc = (ROOT / "planner" / "ledger.py").read_text()

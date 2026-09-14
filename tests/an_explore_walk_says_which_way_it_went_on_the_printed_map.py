@@ -80,7 +80,8 @@ ck("no map goal, nothing said", L.goalward_words(2, "badge:CASCADE") == "")
 src_e = Path("planner/executor.py").read_text()
 src_l = Path("planner/ledger.py").read_text()
 ck("the executor's remote picker ranks by it after the area you are in",
-   "r = (_pri, _stale, _local, _goal, len(path), _way_here," in src_e
+   # _picks (the starvation term) joined between _goal and distance, 2026-09-14
+   "r = (_pri, _stale, _local, _goal, _picks, len(path), _way_here," in src_e
    and "_goal = ledger.goalward_tier(self, region, here, target)" in src_e)
 # the tail of the key changed on 2026-09-11 (an away-edge stopped counting
 # as the business that makes an area worth the walk); the claim here is
@@ -89,7 +90,7 @@ ck("the page's ranking carries the same term after the same one",
    "r = (_pri, _local, _goal, len(path)," in src_l
    and "_goal = goalward_tier(ex, region, here, target)" in src_l)
 ck("...and the deed's key keeps it in the same place",
-   "r = (_pri, _stale, _local, _goal, len(path), _way_here," in src_e)
+   "r = (_pri, _stale, _local, _goal, _picks, len(path), _way_here," in src_e)
 ck("the explore trace says which way the walk went",
    "+ ledger.goalward_words(_goalward, target)" in src_e)
 ck("the journal keeps it for the meter", "goalward=_goalward" in src_e)

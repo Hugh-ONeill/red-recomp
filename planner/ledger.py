@@ -2466,6 +2466,27 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                     if _unseen_sides else " and nowhere else"))
     if been:
         head += f"; you have been in this exact area {been}x"
+    # ...AND WHETHER YOU HAVE EVER LOOKED AROUND IT. A leg can finish on
+    # the step that ARRIVES somewhere, and then the next leg's first step
+    # walks the party off before explore ever gets a round there: leg 16
+    # completed the instant the run stood on ROUTE_10|14,52, the far mouth
+    # of Rock Tunnel, and leg 17 opened by healing at the Center back
+    # through the tunnel. It had stood on the far side and never once
+    # looked south from it, which is where Lavender is, and Route 10 went
+    # on reading as one place already explored (2026-09-14, user: "its not
+    # quite connecting that south rt10 is on the other side of rock
+    # tunnel"). The ledger knows it was never swept here; say so where the
+    # party is standing, and say nothing about what is out there.
+    try:
+        _sn = (m.get("seen") or {})
+        _fh = int(_sn.get("frontier_n") or 0)
+        if _fh and not ex._has_swept(here):
+            head += (f". YOU HAVE NEVER LOOKED AROUND HERE: {_fh} spot(s) "
+                     f"where the ground you have seen ends, and no sweep of "
+                     f"this ground has been made — what is past them is not "
+                     f"known")
+    except Exception:
+        pass
     # ...AND WHAT THE PRINTED MAP DRAWS FOR THIS MAP, while it is held.
     # (the executor runs as __main__, so its module is found through the
     # executor object, never by the name "executor" — the first cut looked

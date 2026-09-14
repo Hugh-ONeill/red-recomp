@@ -2937,17 +2937,15 @@ class Executor:
             # NOT WHERE STEPS ARE THE CLOCK. In the Safari Zone every step
             # is spent from a fixed allowance, so walking a floor out is a
             # cost the model must choose, not one the harness may take.
-            if not hasattr(self, "_swept_out"):
-                self._swept_out = set()
             _reg_now = self._where(obs)
             if (_params.get("until") is None
                     and not (obs or {}).get("safari")
-                    and _reg_now not in self._swept_out
+                    and not self._has_swept(_reg_now)
                     and "None" not in str(_reg_now)):
                 _st["until"] = "map_change"      # stop for nothing; see it out
-                self._swept_out.add(_reg_now)
                 self.log("sweep_out_first_visit", subgoal=sg.get("id"),
                          region=_reg_now)
+            self._note_swept(_reg_now)
             # NEAREST A WAY OUT NO WALK REACHES, FIRST. A door on this
             # floor never taken and unreachable from here is the floor's
             # own unfinished business; the unseen ground nearest it is
@@ -3432,7 +3430,29 @@ class Executor:
             # areas level with the goal, and the area you are in still
             # comes first.
             _goal = ledger.goalward_tier(self, region, here, target)
-            r = (_pri, _stale, _local, _goal, len(path), _way_here,
+            # A PLACE EXPLORE KEEPS PASSING OVER IS STARVED, AND THE FILE
+            # ALREADY SOLVES THIS. The remote-hints block round-robins so
+            # "every room reachable gets its first sentence before any room
+            # gets its second", written when Celadon's slot-machine chatter
+            # ate all eight slots. The picker had no such rule: ranked by
+            # band, then locality, then goalward, then DISTANCE, and in a
+            # run holding a hundred walked areas there is always a loose
+            # end one leg away. So the far frontier was unreachable by
+            # explore in practice, for ever. ROUTE_10|14,52 is the case:
+            # six spots of unseen ground and a west edge never crossed, six
+            # legs off through Rock Tunnel, the only region on the board
+            # that could open new map, and explore never once chose it
+            # while Cerulean and Vermilion had ends to tidy (2026-09-14).
+            #
+            # So, inside a band: how many times explore has WALKED here
+            # before, ahead of how far it is. A region it has never picked
+            # gets its turn before one it has picked three times. Capped,
+            # so a place worked a few times rejoins the field on distance
+            # rather than being banished; the dry-walk rule is what retires
+            # ground that keeps giving nothing.
+            _picks = min(int((getattr(self, "_explore_picks", None) or {})
+                             .get(region, 0) or 0), 3)
+            r = (_pri, _stale, _local, _goal, _picks, len(path), _way_here,
                  -(len(_fwd) + len(unpressed) + unseen + len(_unr)),
                  region)
             if best is None or r < best[0]:
@@ -3521,6 +3541,10 @@ class Executor:
         _leg = _trips.setdefault((self._cur_target or "", here), [])
         _leg.append(region)
         del _leg[:-8]
+        if not hasattr(self, "_explore_picks"):
+            self._explore_picks = {}
+        self._explore_picks[region] = int(
+            self._explore_picks.get(region, 0) or 0) + 1
         _goalward = ledger.goalward_tier(self, region, here, target)
         self.log("explore_step", subgoal=sg.get("id"), step="walk",
                  to=region, legs=len(path), left=len(left),
@@ -3588,6 +3612,7 @@ class Executor:
         if ((cur or {}).get("map") or {}).get("frontier"):
             ok, t2, cl = _run({"op": "sweep"},
                               "sweeping the ground there never on screen")
+            self._note_swept(region)
             # count the walk that saw nothing (see the picker's _dry rule)
             t2 += self._count_dry_walk(region, t2)
             return ok, tr + t2, cl
@@ -3927,6 +3952,21 @@ class Executor:
     # bottom BAND of the ranking, it does not ban it, and one productive
     # sweep there is still worth more to the picker than a stale count.
     DRY_WALKS_RETIRE = int(os.environ.get("RED_DRY_WALKS") or 4)
+
+    def _has_swept(self, region) -> bool:
+        """Has a sweep ever been run on this ground? Persisted, because a
+        relaunch must not make the run forget it has looked around."""
+        return str(region) in (getattr(self, "_swept", None) or set())
+
+    def _note_swept(self, region) -> None:
+        if not region or "None" in str(region):
+            return
+        if not hasattr(self, "_swept"):
+            self._swept = set()
+        # no save of its own: memory is written from 49 places and this
+        # set rides along, and _note_swept must never be the thing that
+        # needs a fully built Executor
+        self._swept.add(str(region))
 
     def _count_dry_walk(self, region: str, trace=None) -> list:
         """Count an explore walk that put nothing new on screen, and say so
@@ -4670,6 +4710,8 @@ class Executor:
             # while the rewrite alone saw the counts. Keyed by TARGET, so
             # they survive a rewrite that renames the step.
             self._outcomes = data.get("outcomes") or {}
+            self._explore_picks = data.get("explore_picks") or {}
+            self._swept = set(data.get("swept") or ())
             # ...AND THE ORDER THEY WERE PRESSED IN. The outcome book holds
             # each thing's distinct replies with counts, which survives a
             # relaunch; the ORDER lived only in this process, so the room's
@@ -5154,6 +5196,8 @@ class Executor:
                  "walks_reopened": bool(getattr(
                      self, "_walks_reopened", False)),
                  "outcomes": getattr(self, "_outcomes", {}),
+                 "explore_picks": getattr(self, "_explore_picks", {}),
+                 "swept": sorted(getattr(self, "_swept", set())),
                  "press_log": getattr(self, "_press_log", {}),
                  "plan_hist": getattr(self, "_plan_hist", {}),
                  "blackouts": self._blackouts,
