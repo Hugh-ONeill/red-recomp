@@ -8757,6 +8757,17 @@ def plan_finish_text(goal: str, plans_dir=None, observed=None,
             "whether the run ever met it:\n" + "\n".join(rows))
 
 
+def _event_names_a_place(event: str) -> bool:
+    """Does this event's name carry a town or a route? Towns are named by
+    their first word in every event about them (CINNABAR, VERMILION), and
+    routes as ROUTE16 or ROUTE_16. Everything else in a name — a person, a
+    thing, a deed — places it nowhere."""
+    towns = {m.split("_")[0] for m in ROUTE_MAPS
+             if m.endswith(("_CITY", "_TOWN", "_ISLAND"))}
+    segs = str(event or "").upper().split("_")
+    return any(sg in towns or re.fullmatch(r"ROUTE\d*", sg) for sg in segs)
+
+
 def check_done(goal: str, start: str, model: str,
                observed=None, gained: str = "") -> bool:
     """The model judges whether a failed leg's objective is already met.
@@ -8876,9 +8887,21 @@ def check_done(goal: str, start: str, model: str,
         # "CINNABAR_ISLAND" is in no event name at all (2026-08-28).
         _stem = want.split("_")[0] if not want.startswith("ROUTE") else want
         names = re.findall(r"EVENT_[A-Z0-9_]+", bearing)
-        if names and not any(want in n or want.replace("ROUTE_", "ROUTE") in n
-                             or f"_{_stem}_" in n or n.endswith(f"_{_stem}")
-                             for n in names):
+        # AN EVENT THAT NAMES NO PLACE NAMES NOWHERE ELSE. The trade leg
+        # completed with DUX in the party and was refused here: "names
+        # VERMILION_CITY and the events it could rest on name somewhere
+        # else (EVENT_LEFT_BILLS_HOUSE_AFTER_HELPING, EVENT_TRADED_SPEAROW_
+        # FOR_FARFETCHD)" — the deed's own event, which carries no town and
+        # no route, read as evidence of elsewhere (2026-09-14; the leg then
+        # went down the ladder and was crossed off a rung later). This
+        # guard is for the Snorlax case, where every event on offer named a
+        # DIFFERENT place. So it speaks only when every bearing event names
+        # some place and none of them names this one.
+        _placed = [n for n in names if _event_names_a_place(n)]
+        if (names and _placed and len(_placed) == len(names)
+                and not any(want in n or want.replace("ROUTE_", "ROUTE") in n
+                            or f"_{_stem}_" in n or n.endswith(f"_{_stem}")
+                            for n in names)):
             print(f"[check-done] refused: this objective names {want} and "
                   f"the events it could rest on name somewhere else "
                   f"({', '.join(names[:3])})")
