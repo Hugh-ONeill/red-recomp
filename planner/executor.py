@@ -16246,6 +16246,21 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 if (not step.get("name") and op in ("sweep", "explore")
                         and getattr(self, "_last_press_name", None)):
                     who = self._last_press_name      # the sweep's presser
+                # ...AND A WALK CAN BE STOPPED BY SOMEONE WITHOUT PRESSING
+                # THEM. Viridian's sleeping old man is the wall across the
+                # north exit, and the sweep that walked into him came back
+                # "interrupted (battle or script)" with his line quoted and
+                # nobody to file it under — so the hints ledger got nothing
+                # and his row went on saying "never spoken to" while the
+                # page's own trace had him refusing the run (2026-09-13,
+                # user: "sweep is directing it to the old man"). The shim
+                # names whoever is standing where the walk stopped; take
+                # the name from its own words rather than guessing one.
+                _stopped = _re.search(
+                    r"interrupted \(battle or script\) by ([A-Z][A-Z0-9_]+)",
+                    str(((obs or {}).get("result") or {}).get("detail") or ""))
+                if _stopped and not step.get("name"):
+                    who = _stopped.group(1)
                 reg = self._where(pre_obs)
                 # The harness's own noise is not a hint: saving, using an
                 # item and buying all print a line the game addressed to

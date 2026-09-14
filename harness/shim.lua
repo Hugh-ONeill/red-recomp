@@ -12182,7 +12182,37 @@ function OPS.sweep(G, c)
   -- something is unreachable it should still try to explore near there").
   local tx, ty = tonumber(c.toward_x), tonumber(c.toward_y)
   while true do
-    if G.stack:top() ~= ow then why = "interrupted (battle or script)"; break end
+    if G.stack:top() ~= ow then
+      -- WHO STOPPED YOU. "interrupted (battle or script)" plus a quoted
+      -- line is how the run met Viridian's sleeping old man, and the line
+      -- had no speaker to be filed under — so the hints ledger got
+      -- nothing and his row on the page went on reading "never spoken to"
+      -- while he was in fact the wall across the north exit (2026-09-13,
+      -- user: "sweep is directing it to the old man"). The player's own
+      -- position is known here and a talker is beside them; name them, and
+      -- the heard line has somewhere to live.
+      -- Adjacency only, in the direction being faced first. If nobody is
+      -- beside the player it stays unnamed rather than guessing.
+      local _p, _who = ow.player, nil
+      if _p then
+        local _dx = (_p.facing == "left" and -1) or (_p.facing == "right" and 1) or 0
+        local _dy = (_p.facing == "up" and -1) or (_p.facing == "down" and 1) or 0
+        local _try = { { _p.cellX + _dx, _p.cellY + _dy },
+                       { _p.cellX, _p.cellY - 1 }, { _p.cellX, _p.cellY + 1 },
+                       { _p.cellX - 1, _p.cellY }, { _p.cellX + 1, _p.cellY } }
+        for _, cell in ipairs(_try) do
+          for _, npc in ipairs((ow and ow.npcs) or {}) do
+            if npc.cellX == cell[1] and npc.cellY == cell[2] and npc.name then
+              _who = tostring(npc.name); break
+            end
+          end
+          if _who then break end
+        end
+      end
+      why = "interrupted (battle or script)"
+        .. (_who and (" by " .. _who) or "")
+      break
+    end
     if (ow.map and ow.map.id) ~= map0 then
       why = "warped to " .. tostring(ow.map and ow.map.id)
         .. safari_ended_note(G, _sf0); break
