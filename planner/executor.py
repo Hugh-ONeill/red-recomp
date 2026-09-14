@@ -2463,6 +2463,11 @@ class Executor:
         book = self._outcomes.setdefault(f"{self._cur_target}|{here}", {})
         rec = book.setdefault(key, {"n": 0, "last": ""})
         rec["n"] = int(rec.get("n") or 0) + 1
+        # WHAT KIND OF THING IT IS, kept with its record — a person or a
+        # fixture, as the screen lists it. Read by _hint_stands.
+        _kd = self._kind_on_map(pre_obs, key)
+        if _kd and not rec.get("kind"):
+            rec["kind"] = _kd
         last = note.split(": ", 1)[1] if ": " in note else note
         rec["last"] = speech_excerpt(last.strip(), 200)   # head AND tail
         # WHAT IT SAID, EVERY DISTINCT TIME — AND IN WHAT ORDER. The page
@@ -13669,7 +13674,8 @@ class Executor:
         # WHAT YOU HAVE BEEN TOLD HERE. Grouped as hints and shown when the
         # room is not yielding — the answer to "why can I not get past" is
         # usually a sentence somebody already said out loud.
-        said_here = self.hints.get(here) or []
+        said_here = [l for l in (self.hints.get(here) or [])
+                     if self._hint_stands(here, l)]
         hint_line = ""
         if said_here and self.visits.get(here, 0) >= 2:
             hint_line = ("\nWHAT PEOPLE HERE HAVE TOLD YOU (their words, in "
@@ -13947,7 +13953,10 @@ class Executor:
             _p = self._route(here, _rg)
             if _p is None:
                 continue
-            said_away.append((len(_p), _rg, list(_lines)))
+            _stand = [l for l in _lines if self._hint_stands(_rg, l)]
+            if not _stand:
+                continue
+            said_away.append((len(_p), _rg, _stand))
         if said_away:
             # DO NOT PICK WHICH SENTENCE MATTERS. Two goes at ranking got
             # it wrong in opposite directions: last-two-lines-of-three-rooms
@@ -14562,6 +14571,49 @@ class Executor:
             for _t, _n in ((((_book or {}).get(who) or {}).get("said")) or {}).items():
                 out[_t] = int(out.get(_t) or 0) + int(_n or 0)
         return out
+
+    @staticmethod
+    def _kind_on_map(obs, name: str) -> str:
+        """The kind the screen lists a named thing under ("person",
+        "fixture", ...), or "" when it is not on this map's object list."""
+        if not name:
+            return ""
+        for o in (((obs or {}).get("map") or {}).get("objects") or []):
+            if isinstance(o, dict) and str(o.get("name")) == str(name):
+                return str(o.get("kind") or "")
+        return ""
+
+    def _thing_kind(self, region: str, who: str) -> str:
+        """The kind recorded for this thing IN THIS REGION, from whichever
+        target's outcome book pressed it; "" when no record carries one
+        (records written before kinds were kept)."""
+        if not who:
+            return ""
+        for _k, _book in (getattr(self, "_outcomes", None) or {}).items():
+            if not str(_k).endswith("|" + str(region)):
+                continue
+            _kd = str((((_book or {}).get(who) or {}).get("kind")) or "")
+            if _kd:
+                return _kd
+        return ""
+
+    def _hint_stands(self, region: str, line: str) -> bool:
+        """Is this line a hint at all? A FIXTURE WHOSE ANSWERS HAVE VARIED
+        IS ANSWERING PRESSES, NOT GIVING HINTS. The hints ledger listed
+        "TRASH_CAN_14: Hey! There's a switch under the trash! ... The 1st
+        electric lock opened!" at the top of every gym page under the can's
+        own name, caveat appended, and the run held "14 opens the 1st lock"
+        through five plan starts while four different cans opened it once
+        each (2026-09-14, user: "yeah do the hints ledger one"). A sign
+        says one thing for ever and stays; a person who has said two things
+        stays with the caveat, because a person's second line is often the
+        one that matters; a can, a switch, a machine whose reply has moved
+        has no line worth keeping under its name — its rows and the room's
+        ordered log hold the whole history."""
+        _who = str(line).split(":", 1)[0].strip() if ":" in str(line) else ""
+        if not _who or self._thing_kind(region, _who) != "fixture":
+            return True
+        return len(self._said_variously(region, _who)) <= 1
 
     @staticmethod
     def _same_saying(a: str, b: str) -> bool:
