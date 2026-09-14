@@ -11953,50 +11953,90 @@ class Executor:
                 return True
         return False
 
-    def _heal_here(self, obs, sg):
-        """Heal at the counter you are standing beside, for no round.
+    HEAL_SYS = (
+        "You are playing Pokemon Red. You are standing in a room with a "
+        "Pokemon Center counter, and your party is not at full health. "
+        "Decide whether to heal here now. Healing at the counter is free, "
+        "restores every party member to full HP with no status, and takes "
+        "a few steps; it also makes this the Center you wake at if the "
+        "party faints. A Pokemon at 0 HP cannot fight until it is healed. "
+        "Saying no is a real answer. Reply with a JSON object and nothing "
+        "else: {\"why\":\"<one short sentence>\",\"heal\":true} or "
+        "{\"why\":\"...\",\"heal\":false}.")
 
-        THERE IS NO REASON NOT TO. Standing in a Center with a party that
-        is not party_healthy, the only choice the counter offers is a free
-        full heal, and the one side effect (waking here after a blackout)
-        is one the run has never once wanted otherwise. So this is a deed,
-        not a question, exactly like the bag standing order beside it: the
-        model decided to come in; the harness does the thing the room is
-        for. Watched on 2026-09-14: the run walked into the Mt Moon Center
-        with Spike at 0/40 hp, pressed nothing, and walked back out to
-        fight on Route 4 with two Pokemon (user: "basically theres no
-        reason to not heal your pokemon unless party=healthy").
+    def _ask_heal(self, obs, sg):
+        """Standing beside a counter with a hurt party: ask, then do what
+        the answer says, for no round.
 
-        Fires once per visit: a counter that refused is not asked again
-        until the party has left the room and come back.
+        THE DECISION IS THE MODEL'S. A first cut of this healed on its own
+        (2026-09-14, for an hour), on the reading that there is never a
+        reason not to; the user's rule is that the harness does not decide
+        for the model, it puts the facts in front of it — "it has to
+        decide to do after maybe a little encouragement". So this is the
+        TM and stone questions' shape: the facts of the room (who is hurt,
+        what the counter does, what it costs, what it changes), a small
+        answer space, one model call and no round. Watched before it
+        existed: the run walked into the Mt Moon Center with Spike at
+        0/40 hp, pressed nothing, and walked back out to fight on Route 4
+        with two Pokemon.
+
+        Asked once per visit: whatever the answer, the question is not
+        put again until the party has left the room and come back.
         """
         if not self._nurse_here(obs):
-            self._heal_tried_at = None
+            self._heal_asked_at = None
             return obs
         if pred_holds({"party_healthy": True}, obs):
             return obs
         here = self._where(obs)
-        if getattr(self, "_heal_tried_at", None) == here:
+        if getattr(self, "_heal_asked_at", None) == here:
             return obs
-        self._heal_tried_at = here
-        before = [f"{m.get('nickname') or m.get('species')} "
-                  f"{m.get('hp')}/{m.get('max_hp')}"
-                  for m in ((obs or {}).get("party") or [])
-                  if (m.get("hp") or 0) < (m.get("max_hp") or 0)
-                  or m.get("status") not in (None, "", "0", "NONE", "OK")]
+        self._heal_asked_at = here
+        hurt = []
+        for m in ((obs or {}).get("party") or []):
+            hp, mx = int(m.get("hp") or 0), int(m.get("max_hp") or 0)
+            st = m.get("status")
+            if hp < mx or st not in (None, "", "0", "NONE", "OK"):
+                hurt.append(f"{m.get('nickname') or m.get('species')} "
+                            f"L{m.get('level')} {hp}/{mx} hp"
+                            + (" — FAINTED" if hp == 0 else "")
+                            + (f" — {st}" if st not in (None, "", "0", "NONE", "OK") else ""))
+        user = ("YOUR PARTY, as the screen shows it:\n  "
+                + "\n  ".join(hurt)
+                + "\n\nTHE ROOM: a Pokemon Center counter a few steps away. "
+                  "Healing there costs nothing and restores the whole party; "
+                  "it also makes this the Center you wake at if the party "
+                  "faints.\n\nWHAT YOU ARE TRYING TO DO RIGHT NOW: "
+                + str((sg or {}).get("goal_text") or (sg or {}).get("id")
+                      or "make progress")
+                + "\nNo round is spent either way. Answer it.")
+        choice, why = None, ""
+        try:
+            reply = brock_probe.chat(
+                [{"role": "system", "content": self.HEAL_SYS},
+                 {"role": "user", "content": user}], self.model)
+            mm = _re.search(r"\{.*\}", reply or "", _re.S)
+            d = json.loads(mm.group(0)) if mm else {}
+            why = str(d.get("why") or "")[:200]
+            if d.get("heal") is not None:
+                choice = bool(d.get("heal"))
+        except Exception as e:
+            self.log("heal_chat_error", subgoal=(sg or {}).get("id"),
+                     err=str(e)[:120])
+        self.log("heal_asked", subgoal=(sg or {}).get("id"),
+                 hurt="; ".join(hurt), heal=choice, why=why)
+        if not choice:
+            print(f"   (heal here? no — {why or 'no usable answer'})")
+            return obs
         r = (self._send_safe("heal") or {})
         res = r.get("result") or {}
         obs = self.settle() or obs
         ok = bool(res.get("ok")) and pred_holds({"party_healthy": True}, obs)
-        self.log("heal_done", subgoal=(sg or {}).get("id"), ok=ok,
-                 before=", ".join(before),
+        self.log("heal_done", subgoal=(sg or {}).get("id"), ok=ok, why=why,
                  detail=str(res.get("detail") or "")[:120])
-        if ok:
-            print(f"   (standing order: healed at the counter — "
-                  f"{', '.join(before) or 'the party was not at full health'})")
-        else:
-            print(f"   (standing order: the counter did not heal — "
-                  f"{str(res.get('detail') or '')[:100]})")
+        print(f"   (heal here? yes — {why}"
+              + ("" if ok else f"; the counter did not heal: "
+                 f"{str(res.get('detail') or '')[:80]}") + ")")
         return obs
 
     @staticmethod
@@ -17538,7 +17578,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # model has left an order and the things are in the bag, they
             # go now. See _stow_at_pc.
             start = self._stow_at_pc(start, sg) or start
-            start = self._heal_here(start, sg) or start
+            start = self._ask_heal(start, sg) or start
             # ...AND THE MACHINE NOBODY HAS BEEN ASKED ABOUT YET. Same
             # standing: a question, not a page section, and no round spent
             # on the answer either way. See _ask_teach.
