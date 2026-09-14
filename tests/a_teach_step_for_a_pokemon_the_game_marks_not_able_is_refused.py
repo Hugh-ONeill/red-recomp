@@ -75,10 +75,11 @@ ck("a slot the party does not have: left to the other checks",
 ck("no observation at all: nothing is said", A.machine_slot_problems(plan({"knows_move": {"move": "CUT", "slot": 3}}), {}) == [])
 
 # ---- it sits in every chain that accepts a plan ----------------------------------
+# pinned to the term, not to its being last: through_a_place joined after it
 src = (ROOT / "planner" / "author.py").read_text()
-ck("the author's rounds ask it", "or held_step_problems(plan) or machine_slot_problems(plan))" in src)
-ck("the review asks it", "or machine_slot_problems(revised))" in src)
-ck("the draws filter asks it", "or machine_slot_problems(p2))]" in src)
+ck("the author's rounds ask it", "or machine_slot_problems(plan)" in src)
+ck("the review asks it", "or machine_slot_problems(revised)" in src)
+ck("the draws filter asks it", "or machine_slot_problems(p2)" in src)
 
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, dd in checks:

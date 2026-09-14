@@ -2605,7 +2605,8 @@ def author(goal: str, model: str, rounds: int = 5,
         normalize_items(plan)
         _last = plan
         probs = (validate(plan) or witness_already_true_problems(plan)
-                 or held_step_problems(plan) or machine_slot_problems(plan))
+                 or held_step_problems(plan) or machine_slot_problems(plan)
+                 or through_a_place_problems(plan))
         if not probs:
             # tag each subgoal so escalation/distillation runs it macro-less
             for s in plan["subgoals"]:
@@ -4268,7 +4269,8 @@ def author_best_of(goal: str, model: str, draws: int = 3,
     # if every one is invalid, say so and hand back the least-bad, which is
     # what happened before this check existed.
     good = [p2 for p2 in plans if not (validate(p2) or held_step_problems(p2)
-                                       or machine_slot_problems(p2))]
+                                       or machine_slot_problems(p2)
+                                       or through_a_place_problems(p2))]
     if good and len(good) < len(plans):
         print(f"[draws] {len(plans) - len(good)} draft(s) dropped as invalid")
     return pick_plan(goal, good or plans, model, start=start)
@@ -4314,7 +4316,8 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
         normalize_items(revised)
         probs = (validate(revised) or witness_already_true_problems(revised)
                  or held_step_problems(revised)
-                 or machine_slot_problems(revised))
+                 or machine_slot_problems(revised)
+                 or through_a_place_problems(revised))
         if probs:
             print(f"[review] round {rnd} produced an invalid plan, keeping "
                   f"the previous one: {probs[0]}")
@@ -8358,6 +8361,49 @@ def _terrain_on_door(h: str) -> "tuple | None":
         if re.search(r"\(" + holder + r"[A-Z0-9_]* is standing there\)", str(h or "")):
             return holder, move
     return None
+
+
+def through_a_place_problems(plan: dict) -> list:
+    """A plan for going THROUGH a place, with no step that ends inside it.
+
+    "Travel through Rock Tunnel" was authored as one subgoal, exit_rock_
+    tunnel ending on {"map": "ROUTE_11"} — the model believes the tunnel
+    comes out there — so the plan never entered the tunnel at all and was
+    satisfiable by walking east out of Vermilion (2026-09-14). An earlier
+    draft of the same leg did the same thing with three steps and finished
+    without going near it.
+
+    To go through a place you have to be in it, which needs no knowledge
+    of this game. Nothing here says where the place is, what it connects
+    to, or where it comes out: only that a plan for crossing somewhere
+    should have a step that ends there.
+    """
+    goal = str((plan or {}).get("goal") or (plan or {}).get("objective") or "")
+    if not re.search(r"\b(through|across|traverse[sd]?|traversing)\b", goal, re.I):
+        return []
+    words = re.sub(r"[^A-Z0-9]+", " ", goal.upper()).split()
+    _fam = lambda m: re.sub(r"_(B?\d+F|ROOF|ELEVATOR)$", "", str(m).split("|")[0])
+    named = None
+    for m in sorted(ROUTE_MAPS, key=len, reverse=True):
+        parts = _fam(m).split("_")
+        if len(parts) >= 2 and all(w in words for w in parts):
+            named = _fam(m)
+            break
+    if not named:
+        return []
+    for sg in ((plan or {}).get("subgoals") or []):
+        dw = sg.get("done_when") if isinstance(sg, dict) else None
+        if not isinstance(dw, dict):
+            continue
+        for key in ("map", "new_part"):
+            if _fam(dw.get(key) or "") == named:
+                return []
+        if _fam(str(dw.get("area") or "")) == named:
+            return []
+    return [f"this objective says to go THROUGH {named} and no step of this "
+            f"plan ends anywhere in {named} — as written the plan can finish "
+            f"without the party ever being in it. Give it a step that ends "
+            f"there."]
 
 
 def machine_slot_problems(plan: dict, obs: dict | None = None) -> list:
