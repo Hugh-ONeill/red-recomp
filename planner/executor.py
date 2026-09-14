@@ -14965,6 +14965,56 @@ class Executor:
         except (OSError, AttributeError, TypeError):
             return None
 
+    # OPS THAT FIND THEIR OWN WAY to the thing they act on: a press by name
+    # paths to the thing, a door op paths to the mat, a go replays a route,
+    # a shop or Center op walks to its counter. A walk_to written before
+    # one of these changes nothing about what happens next.
+    SELF_WALKING_OPS = frozenset((
+        "use_item", "heal", "buy", "sell", "trade", "store_item",
+        "retrieve_item", "go"))
+
+    @classmethod
+    def _repeat_key_ops(cls, macro) -> tuple:
+        """The ops that DECIDE what a macro does, as the repeat guard keys
+        them, and how many walk_to steps were left out.
+
+        THE GUARD WAS DODGED WITH A WALK. Keyed on the exact op list, a
+        round of [walk_to 9,11; interact TRASH_CAN_14; walk_to 3,9;
+        interact TRASH_CAN_4] that changed nothing was refused, and the
+        next rounds sent the same two presses behind walk_to (9,12), then
+        (5,5), then (0,11), then (0,0) — each a new key, each carried out:
+        twelve rounds on two cans in Vermilion's gym, with the plan text
+        saying it out loud, "To avoid the 'identical ops' refusal, I will
+        walk to a different coordinate first" (2026-09-14). A press by
+        name finds its own way to the thing; the walk before it is not
+        part of what was done. Dropped from the key: a walk_to whose next
+        real op finds its own way. Kept: a walk_to before a cross (the
+        crossing cell decides where you come out), a sweep, a grind, a
+        press with no target, a field move with no target — anything that
+        acts from where you stand. A trailing walk_to is left to the strip
+        that already owns it."""
+        ops = [s for s in (macro or []) if isinstance(s, dict)]
+        keep, dropped = [], 0
+        for i, s in enumerate(ops):
+            if s.get("op") != "walk_to":
+                keep.append(s)
+                continue
+            nxt = next((t for t in ops[i + 1:] if t.get("op") != "walk_to"),
+                       None)
+            if nxt is None:
+                keep.append(s)
+                continue
+            op = str(nxt.get("op"))
+            aimed = nxt.get("name") is not None or nxt.get("x") is not None
+            finds_own_way = (op in cls.SELF_WALKING_OPS
+                             or (op in ("interact", "use_warp", "field_move")
+                                 and aimed))
+            if finds_own_way:
+                dropped += 1
+            else:
+                keep.append(s)
+        return keep, dropped
+
     def _send_safe(self, op, **kw):
         """Bridge send that degrades a timeout to None instead of raising —
         for recovery paths (settle, checkpoints) where an uncaught
@@ -18781,8 +18831,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # in a new place. The strike ledger keys on region already;
             # this now does too, so a refusal only ever covers the ground
             # that earned it.
+            # ...AND A WALK BEFORE A PRESS THAT FINDS ITS OWN WAY IS NOT
+            # A DIFFERENT SET OF OPS. See _repeat_key_ops.
+            _key_ops, _decoy_walks = self._repeat_key_ops(macro)
             _mac_key = (self._where(obs) or "?",
-                        json.dumps(macro, sort_keys=True), str(_mk_now))
+                        json.dumps(_key_ops, sort_keys=True), str(_mk_now))
             _seen = self._spent_macros.get(_mac_key)
             # A RUN THE SEA INTERRUPTED IS NOT A RUN THAT WAS ANSWERED.
             # This gate says "NOTHING ABOUT THE WORLD HAS CHANGED since —
@@ -18862,7 +18915,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 _seen["refused"] = int(_seen.get("refused") or 0) + 1
                 self.log("escalate_repeat_refused", subgoal=sg["id"],
                          round=rnd, macro=macro, seen=_seen["n"],
-                         refused=_seen["refused"],
+                         refused=_seen["refused"], decoy_walks=_decoy_walks,
                          why=str(_seen.get("why") or "")[:200])
                 feedback = (
                     "REFUSED WITHOUT RUNNING IT: this exact set of ops has "
@@ -18884,7 +18937,12 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     "world. "
                     "Sending any of them again gets this message and "
                     "nothing else; only ops you have NOT yet spent here "
-                    "can be carried out.")
+                    "can be carried out."
+                    + ((f" The {_decoy_walks} walk_to step(s) you wrote "
+                        "before presses and door ops were not counted: a "
+                        "press by name and a door op find their own way "
+                        "to the thing, so a different walk before them is "
+                        "the same set of ops.") if _decoy_walks else ""))
                 # A REFUSAL IS NOT AN ATTEMPT — but it cannot be free for
                 # ever either, or a model that only ever repeats loops the
                 # escalation without end. The first two cost nothing (the
