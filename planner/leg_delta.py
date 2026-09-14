@@ -111,7 +111,19 @@ def main() -> int:
     except Exception:
         return 0                      # no snapshot: say nothing rather than guess
     now = _state()
-    if not now or not before:
+    if not before:
+        # AN EMPTY BASELINE IS A FACT WORTH SAYING. The chain snaps the
+        # baseline the moment a leg begins, and after a replay that moment
+        # has no observation on disk yet, so `{}` was written and every
+        # diff against it printed nothing — check-done then saw no "events
+        # that fired", fell through to its place guard, and refused a
+        # completed trade leg (2026-09-14). The executor now retakes an
+        # empty baseline on its first observation; when one is still empty
+        # here, say so rather than say nothing.
+        print("no baseline was taken when this leg began (the game was not "
+              "up), so what it gained is not on record")
+        return 0
+    if not now:
         return 0
     bits = []
     fl = [f for f in now.get("flags", []) if f not in set(before.get("flags", []))]

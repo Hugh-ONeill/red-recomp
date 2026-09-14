@@ -21077,6 +21077,42 @@ def resolve_naming_raw(b: Bridge, model, log=None, rounds: int = 4) -> dict:
     return obs
 
 
+def _backfill_leg_baseline(path: str = "run/leg_start.json") -> bool:
+    """Take the leg's baseline now if the chain took it while the game was
+    down.
+
+    The chain snaps run/leg_start.json the moment a leg begins, from the
+    last observation on disk. After a replay there is none — replay_from
+    clears obs.json and last_state.json — so the snapshot was `{}`, every
+    diff against it printed nothing, and check-done never heard that
+    EVENT_TRADED_SPEAROW_FOR_FARFETCHD had fired (2026-09-14: a completed
+    trade leg refused and pushed down the ladder). The executor is the
+    first thing to see the world after that, so it fills the gap here: a
+    baseline that is missing or empty is written from what is on disk
+    now; a real one is left exactly as the chain took it.
+    """
+    try:
+        p = Path(path)
+        cur = json.loads(p.read_text() or "{}") if p.exists() else None
+    except (OSError, ValueError):
+        cur = None
+    if cur:
+        return False
+    try:
+        import leg_delta
+        st = leg_delta._state()
+        if not st:
+            return False
+        p.write_text(json.dumps(st))
+        print("[baseline] the chain's snapshot of where this leg began was "
+              "empty (taken while the game was down); retaken from the first "
+              "observation")
+        return True
+    except Exception as e:                       # a baseline must never wedge a run
+        print(f"[baseline] not retaken: {str(e)[:80]}")
+        return False
+
+
 def bootstrap(b: Bridge, cont: bool = False):
     """New game, or CONTINUE from the on-disk save (mash A: with a save
     present the title's first option is CONTINUE, and A confirms the info
@@ -21260,6 +21296,7 @@ def main():
     if args.save_after_each:
         ex._install_stop_handler()
     ex.seed_regions()          # the bridge is up; re-teach known place-names
+    _backfill_leg_baseline()   # ...and the leg's baseline, if the chain's was empty
     ok = True
     for plan_path in args.plans:
         plan = json.loads(plan_path.read_text())
