@@ -74,7 +74,7 @@ p2 = E._naming_prompt({"naming": {"title": "YOUR NAME?", "max": 7, "presets": ["
 ck("...and the presets for the player's own name", "your own name" in p2 and "RED, ASH, JACK" in p2)
 E.brock_probe.chat = lambda msgs, model: '{"name": "Sir Ratty III <3"}'
 ck("the reply is sanitised to the grid's letters and cut to the limit",
-   E.ask_name(obs, "m") == "Sir Ratty ")
+   E.ask_name(obs, "m") == "SIR RATTY ")          # in capitals since 2026-09-14
 E.brock_probe.chat = lambda msgs, model: "no json here"
 ck("an unreadable reply keeps the default", E.ask_name(obs, "m") == "")
 E.brock_probe.chat = lambda msgs, model: (_ for _ in ()).throw(RuntimeError("down"))
