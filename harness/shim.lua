@@ -11965,6 +11965,7 @@ function OPS.sweep(G, c)
     people = "person", persons = "person", npc = "person", npcs = "person",
     trainers = "trainer", items = "item", signs = "sign", holes = "hole",
     nothing = "map_change", none = "map_change", all = "map_change",
+    everything = "map_change", floor = "map_change", region = "map_change",
   }
   local UNTIL_KNOWN = {
     door = true, person = true, trainer = true, item = true, sign = true,
@@ -12360,6 +12361,20 @@ function OPS.sweep(G, c)
             (mask.n or 0) - nbefore,
             #parts > 0 and ("came into view: " .. table.concat(parts, "; "))
                         or "nothing new came into view", tostring(why))
+  -- A SWEEP NEVER STEPS ONTO A DOORWAY (the target picker skips every
+  -- warp tile), so "until":"map_change" names a stop this walking cannot
+  -- reach: every one of them has ended "nothing more to see from ground
+  -- you can reach" (2026-09-14, user: "im not sure explore until map
+  -- change works as intended, it wont bring the bot to a new map but it
+  -- does explore the whole region"). What it DOES is stop for nothing
+  -- that comes into view, which is a floor swept out in one round. Say
+  -- that where it is asked for, so the word is not read as a promise.
+  if wants.map_change then
+    detail = detail .. (" -- (a sweep never steps onto a doorway, so it "
+      .. "cannot change the map by walking: what until=map_change gets you "
+      .. "is a sweep that stops for nothing that comes into view, which is "
+      .. "this floor seen out to every cell a walk from here reaches)")
+  end
   if #until_unknown > 0 then
     detail = detail .. (" -- NOTE: until=%s names nothing that comes into "
       .. "view (door, person, item, sign, hole; or map_change to stop for "

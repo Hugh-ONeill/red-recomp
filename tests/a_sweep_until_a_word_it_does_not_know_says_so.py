@@ -54,7 +54,10 @@ ck("the fold happens before the default is chosen",
 ck("the vocabulary keeps its kinds", '"until":"door"|"person"|"item"|"sign"|"hole"|"map_change"' in ex)
 ck('...says "warp" is taken as "door"', '"warp" is taken as "door"' in ex)
 ck('...and says what "map_change" really is: the whole floor in one round',
-   '"map_change" stops for nothing that comes into view, so it sweeps the\nwhole floor from all ground you can reach in ONE round' in ex)
+   # reworded 2026-09-14, when the sweep began saying it cannot change the
+   # map by walking at all (it skips every warp tile)
+   "A SWEEP NEVER STEPS ONTO A DOORWAY, so it cannot change the map by" in ex
+   and "this floor seen out to every cell a walk reaches, in ONE" in ex)
 
 bad = [n for n, ok, _ in checks if not ok]
 for n, ok, dd in checks:

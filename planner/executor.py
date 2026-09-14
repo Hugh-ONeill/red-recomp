@@ -2920,6 +2920,34 @@ class Executor:
             for _k in ("until", "steps"):
                 if _params.get(_k) is not None:
                     _st[_k] = _params[_k]
+            # THE FIRST SWEEP OF A PLACE SEES IT OUT. A sweep that stops at
+            # the first new thing spends a whole round to show one doorway,
+            # and the round is spent whether it walks four steps or a
+            # hundred: Vermilion City took five rounds to turn up five
+            # doors one at a time, while one sweep that stopped for nothing
+            # put 935 cells and six doorways on the page in a single round
+            # (2026-09-14, user: "a quick explore of the region to get
+            # everything in sight and then choosing from all the warps now
+            # available is the ideal way of handling a new region"). So the
+            # FIRST time explore sweeps a place it sees it out; after that,
+            # stopping at the first new thing is right again, because by
+            # then new ground is incidental and the model is working the
+            # room. The model's own "until" always wins.
+            #
+            # NOT WHERE STEPS ARE THE CLOCK. In the Safari Zone every step
+            # is spent from a fixed allowance, so walking a floor out is a
+            # cost the model must choose, not one the harness may take.
+            if not hasattr(self, "_swept_out"):
+                self._swept_out = set()
+            _reg_now = self._where(obs)
+            if (_params.get("until") is None
+                    and not (obs or {}).get("safari")
+                    and _reg_now not in self._swept_out
+                    and "None" not in str(_reg_now)):
+                _st["until"] = "map_change"      # stop for nothing; see it out
+                self._swept_out.add(_reg_now)
+                self.log("sweep_out_first_visit", subgoal=sg.get("id"),
+                         region=_reg_now)
             # NEAREST A WAY OUT NO WALK REACHES, FIRST. A door on this
             # floor never taken and unreachable from here is the floor's
             # own unfinished business; the unseen ground nearest it is
@@ -2981,8 +3009,11 @@ class Executor:
             # (2026-09-13, user: "otherwise itll go to the blocker and not
             # explore anywhere else").
             self._count_dry_walk(self._where(obs), tr)
-            return ok, [f"explore (sweeping unseen ground{_near}): {t}"
-                        for t in tr], cl
+            _how = ("seeing this place out, because it is the first sweep "
+                    "here" if _st.get("until") == "map_change"
+                    and _params.get("until") is None else
+                    "sweeping unseen ground")
+            return ok, [f"explore ({_how}{_near}): {t}" for t in tr], cl
         # THE FRONTIER ACROSS THE WATER COMES BEFORE LEAVING THE MAP. With
         # nothing left on foot, explore used to walk to the nearest OTHER
         # area with untried ground — six legs back to Route 21 from Route
@@ -15088,11 +15119,14 @@ once they have been in view. If this floor still has ground you have not
 looked at, explore walks to the nearest edge of what you have seen and
 keeps walking until something NEW comes into view, then stops and tells
 you what — add "until":"door"|"person"|"item"|"sign"|"hole"|"map_change" (or a
-list) to keep walking past ordinary sightings; "warp" is taken as "door";
-"map_change" stops for nothing that comes into view, so it sweeps the
-whole floor from all ground you can reach in ONE round, ended only by the
-map changing, a battle, or the step budget; "steps":N to bound the
-walk. Once the floor has been seen from all ground you can reach, it
+list) to keep walking past ordinary sightings; "warp" is taken as "door".
+A SWEEP NEVER STEPS ONTO A DOORWAY, so it cannot change the map by
+walking; "map_change" (or "everything") stops for nothing that comes into
+view, which is this floor seen out to every cell a walk reaches, in ONE
+round, ended only by a battle or the step budget — the cheapest way to
+meet a new place, since every door and person on it is then on the page
+at once to choose between. "steps":N bounds the walk. Once the floor has
+been seen from all ground you can reach, it
 presses the first thing HERE never pressed; if nothing, takes an exit
 HERE never taken; if nothing, walks you over ground you have already
 walked to the nearest area that still has one and takes or presses it

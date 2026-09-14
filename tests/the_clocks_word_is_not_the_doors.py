@@ -50,6 +50,6 @@ except Exception as e:                       # the bare instance may lack a late
 sh = (ROOT / "harness" / "shim.lua").read_text()
 j = sh.index('local detail = ("swept %d step(s)%s, %d cell(s) newly on screen; %s — stopped: %s")')
 ck("a sweep in the Safari Zone says where the clock stands",
-   'detail = detail .. (" — SAFARI clock now: %d step(s) left, %d SAFARI BALL(s)")' in sh[j:j + 1500]
-   and "if safari_running(G) then" in sh[j:j + 1500])
+   'detail = detail .. (" — SAFARI clock now: %d step(s) left, %d SAFARI BALL(s)")' in sh[j:j + 4000]
+   and "if safari_running(G) then" in sh[j:j + 4000])   # window widened: two notes now sit between
 sys.exit(1 if fails else 0)
