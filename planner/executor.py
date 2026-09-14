@@ -11818,6 +11818,62 @@ class Executor:
                 out.append((item, move, who))
         return out
 
+    def _teach_question(self, obs, item, move, who, sg) -> str:
+        """The TM question's facts, as the game's own screens give them.
+
+        WHAT THE MOVE IS AND WHO WOULD CARRY IT. Dig went to Charmeleon as
+        "valuable STAB" and Body Slam to Pikachu as "a powerful STAB move
+        for Pikachu" — good teaches, wrong reasons: neither move is its
+        carrier's type (2026-09-14, user: "its wrong about STAB neither
+        DIG nor BODYSLAM are stab moves for the mons taught to"). The
+        question named the move and the species and nothing about the
+        TYPE of either, so the model filled the gap from memory. The
+        summary screen shows a Pokemon's types and each move's type and
+        power; the shim's machines ledger carries the same for the move a
+        machine teaches. Facts only: what a type match is worth, and
+        whether it matters here, stays the model's to weigh.
+        """
+        m = ((obs or {}).get("machines") or {}).get(item) or {}
+        party = (obs or {}).get("party") or []
+        is_hm = item.startswith("HM_")
+
+        def _shown(x):                 # a move as the summary screen shows it
+            if isinstance(x, dict):
+                bits = [str(x.get("type")).upper()] if x.get("type") else []
+                if x.get("power"):
+                    bits.append(f"power {x.get('power')}")
+                return str(x.get("id")) + (f" ({', '.join(bits)})" if bits else "")
+            return str(x)
+
+        _mt = str(m.get("type") or "").upper()
+        _mp = m.get("power")
+        mdesc = move + (f" ({_mt}" + (f", power {_mp}" if _mp else "") + ")"
+                        if _mt else "")
+        rows = []
+        for i, sp, mvs in who:
+            mon = party[i - 1] if 0 < i <= len(party) and isinstance(party[i - 1], dict) else {}
+            types = "/".join(str(t).upper() for t in (mon.get("types") or []))
+            shown = [_shown(x) for x in (mon.get("moves") or [])] or list(mvs)
+            rows.append(f"  slot {i}: {sp}" + (f" ({types})" if types else "")
+                        + f" L{mon.get('level')} — knows "
+                        + (", ".join(shown) if shown else "nothing")
+                        + ("  (FOUR moves: one must go)" if len(mvs) >= 4 else ""))
+        return (
+            f"THE MACHINE: {self._disp_item(item)} teaches {mdesc}.\n"
+            + ("An HM is NOT used up: teaching it costs a move slot and "
+               "nothing else, and it can be taught again later.\n" if is_hm
+               else "A TM IS USED UP THE MOMENT IT WORKS. You hold one and "
+                    "there is no second.\n")
+            + "NOBODY IN YOUR PARTY KNOWS " + move + ".\n"
+              "THE GAME MARKS THESE ABLE TO LEARN IT"
+              " (the rest of the party it marks NOT ABLE):\n"
+            + "\n".join(rows)
+            + "\n\nWHAT YOU ARE TRYING TO DO RIGHT NOW: "
+            + str((sg or {}).get("goal_text") or (sg or {}).get("id") or "make progress")
+            + "\nHM moves (CUT, FLY, SURF, STRENGTH, FLASH) can never be "
+              "forgotten once learned, so they cannot be the one you drop."
+              "\nNo round is spent either way. Answer it.")
+
     def _ask_teach(self, obs, sg):
         """A machine ARRIVING is the moment to spend it, and it never was.
 
@@ -11844,25 +11900,7 @@ class Executor:
         item, move, who = pend[0]
         key = f"{item}|{','.join(sorted(w[1] for w in who))}"
         is_hm = item.startswith("HM_")
-        user = (
-            f"THE MACHINE: {self._disp_item(item)} teaches {move}.\n"
-            + ("An HM is NOT used up: teaching it costs a move slot and "
-               "nothing else, and it can be taught again later.\n" if is_hm
-               else "A TM IS USED UP THE MOMENT IT WORKS. You hold one and "
-                    "there is no second.\n")
-            + "NOBODY IN YOUR PARTY KNOWS " + move + ".\n"
-              "THE GAME MARKS THESE ABLE TO LEARN IT"
-              " (the rest of the party it marks NOT ABLE):\n"
-            + "\n".join(
-                f"  slot {i}: {sp} L{((obs or {}).get('party') or [{}])[i-1].get('level')}"
-                f" — knows {', '.join(mvs) if mvs else 'nothing'}"
-                + ("  (FOUR moves: one must go)" if len(mvs) >= 4 else "")
-                for i, sp, mvs in who)
-            + "\n\nWHAT YOU ARE TRYING TO DO RIGHT NOW: "
-            + str(sg.get("goal_text") or sg.get("id") or "make progress")
-            + "\nHM moves (CUT, FLY, SURF, STRENGTH, FLASH) can never be "
-              "forgotten once learned, so they cannot be the one you drop."
-              "\nNo round is spent either way. Answer it.")
+        user = self._teach_question(obs, item, move, who, sg)
         choice, forget, why = None, None, ""
         try:
             reply = brock_probe.chat(

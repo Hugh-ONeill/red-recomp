@@ -41,7 +41,8 @@ ck("the bag line carries it", '{self._gift_note(k)}{self._able_note(k, obs)}' in
 
 sh = (ROOT / "harness" / "shim.lua").read_text()
 ck("the shim exports ABLE / NOT ABLE per machine in the bag",
-   "o.machines[k] = { move = mv, able = able, not_able = notable }" in sh)
+   "o.machines[k] = { move = mv, able = able, not_able = notable," in sh
+   and "type = mdef and mdef.type, power = mdef and mdef.power }" in sh)   # + the move's type and power since 2026-09-14
 ck("...read off the party and the species' machine list", 'for _, mvn in ipairs((pdef and pdef.tmhm) or {}) do' in sh)
 i = sh.index("is NOT COMPATIBLE with")
 ck("the refusal shows the whole party screen",

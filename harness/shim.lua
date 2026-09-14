@@ -3563,7 +3563,12 @@ local function observe(G, seq, result)
           if ok then able[#able + 1] = tostring(mon.species)
           else notable[#notable + 1] = tostring(mon.species) end
         end
-        o.machines[k] = { move = mv, able = able, not_able = notable }
+        -- WHAT THE MOVE IS, not just what it is called: the summary screen
+        -- shows every move's type and power once learned, and the TM
+        -- question needs them before (executor _teach_question, 2026-09-14)
+        local mdef = G.data and G.data.moves and G.data.moves[mv]
+        o.machines[k] = { move = mv, able = able, not_able = notable,
+                          type = mdef and mdef.type, power = mdef and mdef.power }
       end
     end
   end
