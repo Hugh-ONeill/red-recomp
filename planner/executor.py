@@ -14964,7 +14964,10 @@ once they have been in view. If this floor still has ground you have not
 looked at, explore walks to the nearest edge of what you have seen and
 keeps walking until something NEW comes into view, then stops and tells
 you what — add "until":"door"|"person"|"item"|"sign"|"hole"|"map_change" (or a
-list) to keep walking past ordinary sightings, "steps":N to bound the
+list) to keep walking past ordinary sightings; "warp" is taken as "door";
+"map_change" stops for nothing that comes into view, so it sweeps the
+whole floor from all ground you can reach in ONE round, ended only by the
+map changing, a battle, or the step budget; "steps":N to bound the
 walk. Once the floor has been seen from all ground you can reach, it
 presses the first thing HERE never pressed; if nothing, takes an exit
 HERE never taken; if nothing, walks you over ground you have already

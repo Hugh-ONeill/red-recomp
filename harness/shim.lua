@@ -11895,6 +11895,37 @@ function OPS.sweep(G, c)
   elseif type(u) == "table" then
     for _, s in ipairs(u) do wants[tostring(s):lower()] = true end
   end
+  -- THE PAGE CALLS THEM WARPS TOO. The observation lists a floor's doorways
+  -- under map.warps, so "until":"warp" is the model asking, in the page's
+  -- own word, to stop at a doorway -- and wants["warp"] matched no kind
+  -- anything comes into view as, so the sweep stopped for nothing: 165
+  -- steps past six doorways, ended by a wild battle beside the south seam
+  -- (2026-09-14, user: "whats would make it stop exactly?"). A synonym
+  -- folds to its kind; a word that names no kind is SAID in the result,
+  -- because silently meaning "nothing" is a different op from the one
+  -- that was asked for.
+  local UNTIL_ALIAS = {
+    warp = "door", warps = "door", doorway = "door", doorways = "door",
+    doors = "door", exit = "door", exits = "door",
+    people = "person", persons = "person", npc = "person", npcs = "person",
+    trainers = "trainer", items = "item", signs = "sign", holes = "hole",
+    nothing = "map_change", none = "map_change", all = "map_change",
+  }
+  local UNTIL_KNOWN = {
+    door = true, person = true, trainer = true, item = true, sign = true,
+    hole = true, way = true, boulder = true, map_change = true,
+  }
+  local until_unknown = {}
+  do
+    local folded = {}
+    for k in pairs(wants) do
+      local kk = UNTIL_ALIAS[k] or k
+      folded[kk] = true
+      if not UNTIL_KNOWN[kk] then until_unknown[#until_unknown + 1] = k end
+    end
+    table.sort(until_unknown)
+    wants = folded
+  end
   if next(wants) == nil then wants.anything_new = true end
   local budget = tonumber(c.steps) or tonumber(c.max_steps) or 300
   -- SWEEP THE WATER. While the player is afloat the reach set already
@@ -12274,6 +12305,12 @@ function OPS.sweep(G, c)
             (mask.n or 0) - nbefore,
             #parts > 0 and ("came into view: " .. table.concat(parts, "; "))
                         or "nothing new came into view", tostring(why))
+  if #until_unknown > 0 then
+    detail = detail .. (" -- NOTE: until=%s names nothing that comes into "
+      .. "view (door, person, item, sign, hole; or map_change to stop for "
+      .. "nothing but the map changing), so this sweep stopped for nothing")
+      :format(table.concat(until_unknown, ","))
+  end
   -- A SWEEP IS STEPS, AND IN THE SAFARI ZONE STEPS ARE THE CLOCK. The page
   -- shows the clock each round; the sweep that just spent 143 of its 500
   -- steps said nothing about it (run 16, 2026-09-08). Said, not decided:
