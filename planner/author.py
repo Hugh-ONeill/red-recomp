@@ -352,6 +352,12 @@ ENGINE_FLAGS = _engine_names("engine_flags.txt")
 # RIGHT condition for a fossil leg — unwritable in any spelling. The model
 # may name any real item; validation only checks the string is real.
 ENGINE_ITEMS = _engine_names("engine_items.txt")
+# ...AND WHICH OF THEM ARE THE STORY'S ONE-OF-A-KIND THINGS (items.lua,
+# keyItem = true; tools/gen_engine_key_items.py). Manual tier: the bag
+# shows them apart from what you buy, and none has a price. Read by one
+# rule only, _never_held: an objective that says one of these was given
+# away cannot be already done when the run has never once held it.
+ENGINE_KEY_ITEMS = _engine_names("engine_key_items.txt")
 # Every move id the engine defines (data/generated/moves.lua), so knows_move
 # can be spell-checked the same way. Manual tier: the TM's own description
 # names the move it teaches, and a Pokemon's summary screen lists its moves.
@@ -6382,6 +6388,65 @@ def _premise_item_not_held(why: str, start: str) -> str | None:
     return None
 
 
+# THE DEEDS THAT END WITH THE THING GONE. _item_not_held stands aside for
+# these, because absence from the bag is what success looks like; and
+# _never_held speaks for exactly these, because giving away a thing the run
+# never had is not a deed the record allows.
+GIVE_VERBS = (r"\b(give|gives|giving|deliver|delivers|delivering|trade|"
+              r"trades|trading|sell|sells|selling|use|uses|using|hand|"
+              r"hands|handing|spend|spends|spending|exchange|exchanges|"
+              r"exchanging|redeem|redeems|redeeming|swap|swaps|swapping|"
+              r"turn in|turns in|turning in|pay|pays|paying|cash in|"
+              r"cashes in|cashing in)\b")
+
+
+def _never_held(goal: str, start: str) -> str | None:
+    """A KEY item this objective says was given away that the run has
+    never once held.
+
+    Fourth of the family, and the one the third left open on purpose:
+    _item_not_held stands aside when the objective says GIVE or DELIVER,
+    because the thing being gone from the bag is what success looks like.
+    That left "Deliver the OAKS_PARCEL to Professor Oak" wholly to the
+    model, and the model said DONE with the parcel never collected —
+    "the player has already battled the rival in Oak's lab, which occurs
+    after the parcel has been delivered" (it does not; the fight is the
+    first thing that happens). The leg was crossed off, and the chain
+    walked on to "Obtain POKE BALLS from Professor Oak", a thing that
+    cannot happen, and stopped there (2026-09-14, leg 2 to v8; user: "it
+    went up to v7 without seeing the mart").
+
+    The record could have said no. The engine sets a flag the moment one
+    of these is handed over — EVENT_GOT_OAKS_PARCEL, EVENT_GOT_POKE_FLUTE,
+    EVENT_RECEIVED_BIKE_VOUCHER — and for GOLD_TEETH the flag is the
+    giving itself. When the objective's item is not in the bag AND the
+    engine has a flag that names it AND none of those flags has fired,
+    the run never had it, so it cannot have given it. Key items only:
+    a POKE_BALL can be bought, so no flag's silence says it was never
+    held. Where the engine names no flag for the item (FRESH_WATER),
+    the record is silent and the judgment stays the model's, as before.
+    """
+    if not re.search(GIVE_VERBS, goal, re.I):
+        return None
+    try:
+        fired = json.loads(Path("run/obs.json").read_text()).get("flags")
+    except (OSError, ValueError, AttributeError):
+        fired = None
+    if not isinstance(fired, list):
+        return None                    # no record; the record cannot speak
+    fired = set(fired)
+    _sq = lambda t: re.sub(r"[^A-Z]+", "", str(t).upper())
+    g, have = _sq(goal), _sq(start or "")
+    for it in sorted(ENGINE_KEY_ITEMS, key=len, reverse=True):
+        sq = _sq(it)
+        if len(sq) < 6 or sq not in g or sq in have:
+            continue
+        named = [f for f in ENGINE_FLAGS if sq in _sq(f)]
+        if named and not (set(named) & fired):
+            return it
+    return None
+
+
 def _item_not_held(goal: str, start: str) -> str | None:
     """An item this objective names by name that is not in the bag.
 
@@ -6411,12 +6476,7 @@ def _item_not_held(goal: str, start: str) -> str | None:
     # under other names: "Exchange the BIKE_VOUCHER for a BICYCLE" was
     # refused as done with the BICYCLE in the bag because the VOUCHER it was
     # spent on was not (run 16, 2026-09-08).
-    if re.search(r"\b(give|gives|giving|deliver|delivers|delivering|trade|"
-                 r"trades|trading|sell|sells|selling|use|uses|using|hand|"
-                 r"hands|handing|spend|spends|spending|exchange|exchanges|"
-                 r"exchanging|redeem|redeems|redeeming|swap|swaps|swapping|"
-                 r"turn in|turns in|turning in|pay|pays|paying|cash in|"
-                 r"cashes in|cashing in)\b", goal, re.I):
+    if re.search(GIVE_VERBS, goal, re.I):
         return None
     g = re.sub(r"[^A-Z]+", "", goal.upper())
     have = re.sub(r"[^A-Z]+", "", (start or "").upper())
@@ -6706,6 +6766,11 @@ def check_already_done(deed: str, start: str, model: str,
     if item:
         print(f"[already-done] refused: '{deed[:60]}' names {item} and it "
               f"is not in the bag", file=sys.stderr)
+        return False
+    gone = _never_held(deed, start)
+    if gone:
+        print(f"[already-done] refused: '{deed[:60]}' says {gone} was given "
+              f"away, and the run has never once held it", file=sys.stderr)
         return False
     body = (f"THE OBJECTIVE: {deed}\n\nWHERE THE RUN STANDS: {start}"
             + recent_events() + _events_bearing(deed)
@@ -8641,6 +8706,12 @@ def check_done(goal: str, start: str, model: str,
     if item:
         print(f"[check-done] refused: this objective names {item} and it is "
               f"not in the bag")
+        return False
+    gone = _never_held(goal, start)
+    if gone:
+        print(f"[check-done] refused: this objective says {gone} was given "
+              f"away, and the run has never once held it (not in the bag, "
+              f"and no event that names it has fired)")
         return False
     # A PLACE NAMED IN THE OBJECTIVE MUST BE THE PLACE IN THE EVIDENCE.
     # "Wake the Snorlax sleeping on ROUTE 12" was judged done on

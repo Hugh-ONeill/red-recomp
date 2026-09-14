@@ -26,6 +26,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "planner"))
 import author as A                                     # noqa: E402
 import brock_probe                                     # noqa: E402
+sys.path.insert(0, str(ROOT / 'tests'))
+from pinned_world import pinned                        # noqa: E402
 
 checks = []
 def ck(n, ok, d=""): checks.append((n, bool(ok), d))
@@ -42,8 +44,18 @@ START = ("BAG: BICYCLE, CARD_KEY, DOME_FOSSIL, ESCAPE_ROPE, HM_CUT, HM_FLY, "
          "DODRIO L41, NIDORINA L41")
 
 
-def done(deed):
-    return A.check_already_done(deed, START, "stub")
+# THE WORLD THIS RUNG READS IS THIS TEST'S OWN. check_already_done reads
+# run/obs.json for the events the run has fired, and a spend-deed is the
+# model's call only once that record shows the run HELD the thing it spent
+# (_never_held, 2026-09-14). Read off the live run, these two checks were
+# true or false depending on how far whoever was playing had got.
+WORLD = {"flags": ["EVENT_GAVE_GOLD_TEETH", "EVENT_RECEIVED_BIKE_VOUCHER"],
+         "map": {"id": "CINNABAR_ISLAND"}}
+
+
+def done(deed, flags=None):
+    with pinned(obs={**WORLD, "flags": WORLD["flags"] if flags is None else flags}):
+        return A.check_already_done(deed, START, "stub")
 
 
 # ---- the leg that was lost ---------------------------------------------
@@ -56,10 +68,12 @@ ck("...and the guard names the item, not the one in the reason",
 # ---- and the ones it must not refuse ------------------------------------
 ck("an item objective already satisfied is still crossed off",
    done("Retrieve the Card Key from Silph Co."))
-ck("a deed that SPENDS the item is left to the model",
-   done("Give the Gold Teeth to the Warden"))
+ck("a deed that SPENDS the item is left to the model, once the record "
+   "shows the run held it", done("Give the Gold Teeth to the Warden"))
 ck("...including the ones that spell spending another way",
    done("Exchange the Bike Voucher for a Bicycle"))
+ck("...but not when the run never held the thing it says it spent",
+   not done("Give the Gold Teeth to the Warden", flags=[]))
 ck("an objective naming no item is untouched by this",
    done("Reach Cinnabar Island"))
 
