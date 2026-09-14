@@ -2942,6 +2942,17 @@ class Executor:
             except Exception:
                 _near = ""
             ok, tr, cl = self._run_traced(sg, [_st], ignore_done=ignore_done)
+            # A DRY WALK COUNTS WHEREVER IT HAPPENS. The remote branch has
+            # counted these since 2026-08-29 and the LOCAL sweep never did
+            # — so a region the party is standing in could be swept for its
+            # unseen ground over and over with nothing coming into view and
+            # never earn the demotion the rule exists to give. Viridian's
+            # sleeping old man is the case: he is the wall across the north
+            # exit, seven of eighteen sweeps ended at him, five saw nothing
+            # at all, and the dry_walks ledger stayed empty the whole time
+            # (2026-09-13, user: "otherwise itll go to the blocker and not
+            # explore anywhere else").
+            self._count_dry_walk(self._where(obs), tr)
             return ok, [f"explore (sweeping unseen ground{_near}): {t}"
                         for t in tr], cl
         # THE FRONTIER ACROSS THE WATER COMES BEFORE LEAVING THE MAP. With
@@ -3276,14 +3287,15 @@ class Executor:
                 # untried exit and unseen ground are one tier; distance
                 # decides between them; only a things-only area ranks below.
                 _pri = (0 if (left or unseen or _unr) else 1) if _map_goal else 0
-            # A WALK THAT SAW NOTHING, TWICE, RANKS LAST. The museum's
-            # unseen spots sit behind a ticket desk whose script stops
-            # every sweep, so the area never stopped looking unfinished
-            # and explore walked the party there seven times in a row
-            # (2026-08-29). Two dry walks and it goes to the bottom.
+            # A WALK THAT SAW NOTHING, ENOUGH TIMES, RANKS LAST. The
+            # museum's unseen spots sit behind a ticket desk whose script
+            # stops every sweep, so the area never stopped looking
+            # unfinished and explore walked the party there seven times in
+            # a row (2026-08-29). The count is CUMULATIVE and lands at
+            # DRY_WALKS_RETIRE; see the helper for why it no longer resets.
             _dry = int((getattr(self, "_dry_walks", None) or {})
                        .get(region, 0) or 0)
-            if _dry >= 2:
+            if _dry >= self.DRY_WALKS_RETIRE:
                 _pri = 3
             # SEARCH THE WHOLE AREA YOU ARE IN BEFORE MOVING ON (user,
             # 2026-08-29: "we really want the bot to search the whole area
@@ -3510,20 +3522,7 @@ class Executor:
             ok, t2, cl = _run({"op": "sweep"},
                               "sweeping the ground there never on screen")
             # count the walk that saw nothing (see the picker's _dry rule)
-            _m2 = _re.search(r"(\d+) cell\(s\) newly on screen", " ".join(t2))
-            if not hasattr(self, "_dry_walks"):
-                self._dry_walks = {}
-            if _m2 and int(_m2.group(1)) == 0:
-                self._dry_walks[region] = int(self._dry_walks.get(region, 0) or 0) + 1
-                if self._dry_walks[region] >= 2:
-                    t2.append(
-                        f"explore: that is {self._dry_walks[region]} walk(s) "
-                        f"to {region} for its unseen ground with nothing new "
-                        f"coming into view; it ranks LAST for explore from "
-                        f"now on — what stops the sweep there is on the page")
-            else:
-                self._dry_walks.pop(region, None)
-            self._save_memory()
+            t2 += self._count_dry_walk(region, t2)
             return ok, tr + t2, cl
         if unseen:
             # CHOSEN FOR GROUND TO LOOK AT, AND THERE IS NONE HERE. The
@@ -3536,18 +3535,15 @@ class Executor:
             # Rock Tunnel's entrance chamber six times in one attempt for a
             # spot that was not there, each round ending as it arrived
             # (2026-09-03). A walk to look at nothing is a dry walk.
-            if not hasattr(self, "_dry_walks"):
-                self._dry_walks = {}
-            self._dry_walks[region] = int(self._dry_walks.get(region, 0) or 0) + 1
-            _n = self._dry_walks[region]
+            _retired = self._count_dry_walk(region)
+            _n = int((getattr(self, "_dry_walks", None) or {}).get(region, 0) or 0)
             tr.append(
                 f"explore: nothing here is left to look at from where you "
                 f"stand — the {unseen} spot(s) counted for {region} are in "
                 f"a part of this map no walk from here reaches"
                 + (f"; that is {_n} walk(s) here with nothing new coming "
                    f"into view, so it ranks LAST for explore from now on"
-                   if _n >= 2 else ""))
-            self._save_memory()
+                   if _retired else ""))
         if _map_goal and exits2:            # same rule as at home
             return _there(exits2[0])
         if things2:
@@ -3790,6 +3786,47 @@ class Executor:
             return False
         tail = str(name).replace("_", "").upper()
         return tail == (str(gym_map).replace("_", "") + who.replace("_", ""))
+
+    # HOW MANY DRY WALKS RETIRE A REGION. Cumulative, so a walk that saw
+    # nothing is never forgotten — the old rule reset the count on any
+    # productive sweep, and a region that gives up one cell every other
+    # visit stays near the top of the ranking for ever however much of it
+    # is wasted. Viridian ran 80, 80, 20, 0, 0, 90, 0, 16, 0, 0: four
+    # useful walks bought six wasted ones a clean slate twice over.
+    # Four rather than two BECAUSE it no longer resets, and because being
+    # wrong is cheap in both directions: this demotes a region to the
+    # bottom BAND of the ranking, it does not ban it, and one productive
+    # sweep there is still worth more to the picker than a stale count.
+    DRY_WALKS_RETIRE = int(os.environ.get("RED_DRY_WALKS") or 4)
+
+    def _count_dry_walk(self, region: str, trace=None) -> list:
+        """Count an explore walk that put nothing new on screen, and say so
+        once it has earned the bottom of the ranking. Returns lines to add
+        to the trace (empty until the threshold is reached).
+
+        `trace` is the sweep's own lines, read for the count of cells it
+        newly showed; pass None where there was no sweep to read, which is
+        the walk to a part whose counted unseen ground turned out to be in
+        a chamber no walk from the landing reaches."""
+        if not region or "None" in str(region):
+            return []
+        if trace is not None:
+            _m = _re.search(r"(\d+) cell\(s\) newly on screen",
+                            " ".join(str(t) for t in trace))
+            if not _m or int(_m.group(1)) != 0:
+                return []                  # it found something; not a dry walk
+        if not hasattr(self, "_dry_walks"):
+            self._dry_walks = {}
+        n = int(self._dry_walks.get(region, 0) or 0) + 1
+        self._dry_walks[region] = n
+        self.log("dry_walk", region=region, n=n, retires=self.DRY_WALKS_RETIRE)
+        self._save_memory()
+        if n < self.DRY_WALKS_RETIRE:
+            return []
+        return [f"explore: that is {n} walk(s) to {region} for its unseen "
+                f"ground with nothing new coming into view; it ranks LAST "
+                f"for explore from now on — what stops the sweep there is "
+                f"on the page"]
 
     def _sealed(self, region) -> set:
         """Seams still proven uncrossable AS OF NOW.
