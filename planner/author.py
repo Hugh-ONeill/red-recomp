@@ -4067,6 +4067,12 @@ final condition is really the goal. A plan that names places this run has
 proven it cannot reach is worse than a shorter one that starts somewhere
 it can stand right now.
 
+THE LAST STEP IS THE ONE THAT MATTERS MOST. A plan is finished when its
+LAST condition holds, and the leg is then judged on whether that was the
+goal — the steps before it are only the route to it. Where the drafts
+disagree about what finishes the leg, that disagreement is the choice you
+are making; decide it first, and let the rest follow.
+
 Reply with ONLY a JSON object, the reason FIRST:
 {"why": "one sentence", "pick": N}"""
 
@@ -4093,14 +4099,46 @@ def pick_plan(goal: str, plans: list, model: str,
     """
     if len(plans) == 1:
         return plans[0]
+    # MARK THE THING IT WAS TOLD TO JUDGE. The prompt has said "judge them
+    # on ... whether the final condition is really the goal" since it was
+    # written, and the drafts arrived as a flat list with nothing showing
+    # which line that was. Three drafts for "Travel through Rock Tunnel":
+    # two ended on ROUTE_10 past the part the run entered from, which is
+    # the far side of the tunnel, and one ended on ROUTE_9, the near side
+    # it had come from. The pick took the ROUTE_9 one and gave its whole
+    # reason as "Plan 1 is the most comprehensive as it includes buying
+    # Repels" — a true thing about a step in the middle, weighed against
+    # nothing, because the ending was not marked as the ending (2026-09-14,
+    # user: "im wondering how it got there in the first place so we can
+    # prevent this from happening again"). Same lesson as the statue rows:
+    # say it where the thing is, not only in a paragraph above it.
+    def _draft(pl):
+        subs = pl.get("subgoals") or []
+        out = []
+        for j, sg in enumerate(subs):
+            _mark = ("   <- THE LAST STEP: this plan is finished when this "
+                     "holds, and the leg is judged on it"
+                     if j == len(subs) - 1 else "")
+            out.append(f"{sg.get('id')}: {json.dumps(sg.get('done_when'))}{_mark}")
+        return "\n     ".join(out)
+
+    # ...AND SAY WHEN THEY DO NOT AGREE ABOUT IT. Counting is the harness's
+    # half; which ending is right is the model's.
+    _ends = [json.dumps((((p.get("subgoals") or [{}])[-1]) or {}).get("done_when"),
+                        sort_keys=True) for p in plans]
+    _split = ""
+    if len(set(_ends)) > 1:
+        _split = ("\n\nTHESE DRAFTS DO NOT AGREE ABOUT WHAT FINISHES THIS "
+                  "LEG:\n"
+                  + "\n".join(f"  {i}. {e}" for i, e in enumerate(_ends, 1))
+                  + "\nThat is the choice; the routes to it are the lesser "
+                    "half.")
     body = (f"THE GOAL: {goal}\n"
             + (f"WHERE THE PARTY STANDS NOW: {start}\n" if start else "")
             + "\nYOUR PLANS:\n"
-            + "\n\n".join(
-                f"  {i}. " + "\n     ".join(
-                    f"{s.get('id')}: {json.dumps(s.get('done_when'))}"
-                    for s in (p.get("subgoals") or []))
-                for i, p in enumerate(plans, 1)))
+            + "\n\n".join(f"  {i}. " + _draft(p)
+                          for i, p in enumerate(plans, 1))
+            + _split)
     try:
         reply = brock_probe.chat(
             [{"role": "system", "content": PLAN_PICK_SYS},
