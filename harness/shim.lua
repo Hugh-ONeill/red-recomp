@@ -4785,10 +4785,21 @@ local function bfs_dir_pass(G, tx, ty, wblock, gate)
       .. "it is what stops you; ground can simply not join up"
   end
   if gate and gate_unseen > 0 then
+    -- ...AND SAY WHAT EXPLORE ACTUALLY DOES. "explore walks toward it"
+    -- reads as a promise about that tile, and explore makes no such
+    -- promise: it aims its sweep at the nearest way out no walk reaches,
+    -- and only while this floor still has ground a walk can bring into
+    -- view. With no reachable frontier left it presses what is untried
+    -- here instead, which is right, because walking over ground already
+    -- seen shows nothing new. Watched in Mt Moon's basement, where the
+    -- run read this line, sent explore, and was taken somewhere else
+    -- entirely (2026-09-14, user: "but it did not it went a different
+    -- way").
     said = said .. ". THIS SEARCH RAN OVER GROUND THAT HAS BEEN ON SCREEN "
       .. "ONLY: it stopped where your footprint ends, not at a proven "
       .. "wall — ground you have never looked at may join up. explore "
-      .. "walks toward it"
+      .. "aims its sweep at the ways out no walk reaches, while this "
+      .. "floor still has ground a walk can bring into view"
   end
   if gate and gate_frozen > 0 and not tgt_frozen then
     said = said .. (". %d cell(s) that were WALLS the last time they were on "
@@ -6592,7 +6603,9 @@ function OPS.cross(G, c)
       _verdict = ("the %s seam of %s (to %s) cannot be reached over the "
         .. "ground you have SEEN — the search stopped where your "
         .. "footprint ends, NOT at a proven wall: ground you have never "
-        .. "looked at may hold the way. explore walks toward it."):format(
+        .. "looked at may hold the way. explore aims its sweep at the "
+        .. "ways out no walk reaches, while this floor still has ground "
+        .. "a walk can bring into view."):format(
           cmap[dir], tostring(startMap), tostring(dest and dest.map or "?"))
     else
       _verdict = ("the %s seam of %s (to %s) cannot be walked to from "
