@@ -38,8 +38,8 @@ def ck(n, ok): checks.append((n, bool(ok)))
 ck("thinking is off unless the environment asks for it",
    B.THINK_ON_STUCK == 0)
 ck("a call does not think unless its caller says to",
-   "def chat(msgs, model, retries=2, think=False)" in src
-   and "def _chat_once(msgs, model, think=False)" in src)
+   "def chat(msgs, model, retries=2, think=False, temp=None)" in src
+   and "def _chat_once(msgs, model, think=False, temp=None)" in src)   # + temp, 2026-09-14
 ck("the flag reaches the request body rather than stopping at the door",
    '"think": bool(think)' in src)
 ck("the threshold is set by environment, like the window and the ceiling",

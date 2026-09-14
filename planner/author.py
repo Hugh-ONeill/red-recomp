@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import os
 import re
 import re as _re
 import unicodedata
@@ -2534,8 +2535,15 @@ def witness_already_true_problems(plan: dict, obs: dict | None = None) -> list:
     return []
 
 
+# How freely a DRAFT is drawn. The pick between drafts, and every judgment
+# rung, keep the rounds' own temperature: variety is the point here and
+# flakiness everywhere else.
+DRAW_TEMP = float(os.environ.get("RED_DRAW_TEMP") or 0.8)
+
+
 def author(goal: str, model: str, rounds: int = 5,
-           start: str | None = None, think: bool = False) -> dict | None:
+           start: str | None = None, think: bool = False,
+           temp: float | None = None) -> dict | None:
     # 5 rounds, not 3: with correct suggestions in the feedback the author
     # still re-minted a DIFFERENT wrong id each round (HM01 -> flag guess
     # -> HM01 again) and three rounds died before the oscillation settled.
@@ -2588,7 +2596,8 @@ def author(goal: str, model: str, rounds: int = 5,
             _thought += 1
         reply = brock_probe.chat(
             [{"role": "system", "content": SYS},
-             {"role": "user", "content": user}], model, think=_thinking)
+             {"role": "user", "content": user}], model, think=_thinking,
+            temp=temp)
         # ...and keep what it deliberated about, same as the executor does.
         # An author trace is the more interesting of the two: it is the
         # model reasoning about a world it cannot see, on a leg that has
@@ -4233,7 +4242,7 @@ def author_best_of(goal: str, model: str, draws: int = 3,
         # that fails is a draw we do not have, nothing more.
         try:
             p = author(goal, model, start=start,
-                       think=bool(think) and i == 0)
+                       think=bool(think) and i == 0, temp=DRAW_TEMP)
         except (OSError, TimeoutError, ValueError) as e:
             print(f"[draws] draft {i + 1} failed ({type(e).__name__}: "
                   f"{str(e)[:80]}) — carrying on with the rest")
@@ -7856,7 +7865,6 @@ def _map_dims() -> dict:
     if _MAP_DIMS is not None:
         return _MAP_DIMS
     _MAP_DIMS = {}
-    import os
     cands = [Path(os.environ.get("RED_ENGINE_DIR") or "") / "data/generated/maps.lua",
              Path(__file__).resolve().parents[2] / "gen1recomp/data/generated/maps.lua"]
     for c in cands:
@@ -7982,7 +7990,6 @@ def _map_warps() -> dict:
     if _MAP_WARPS is not None:
         return _MAP_WARPS
     _MAP_WARPS = {}
-    import os
     cands = [Path(os.environ.get("RED_ENGINE_DIR") or "")
              / "data/generated/maps.lua",
              Path(__file__).resolve().parents[2]

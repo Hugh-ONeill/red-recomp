@@ -72,12 +72,12 @@ ck("the prompt says what is being named (the newest party member) and the limit"
    "NICKNAME?" in p and "RATTATA L4" in p and "UP TO 10" in p)
 p2 = E._naming_prompt({"naming": {"title": "YOUR NAME?", "max": 7, "presets": ["RED", "ASH", "JACK"]}})
 ck("...and the presets for the player's own name", "your own name" in p2 and "RED, ASH, JACK" in p2)
-E.brock_probe.chat = lambda msgs, model: '{"name": "Sir Ratty III <3"}'
+E.brock_probe.chat = lambda msgs, model, **kw: '{"name": "Sir Ratty III <3"}'
 ck("the reply is sanitised to the grid's letters and cut to the limit",
    E.ask_name(obs, "m") == "SIR RATTY ")          # in capitals since 2026-09-14
-E.brock_probe.chat = lambda msgs, model: "no json here"
+E.brock_probe.chat = lambda msgs, model, **kw: "no json here"
 ck("an unreadable reply keeps the default", E.ask_name(obs, "m") == "")
-E.brock_probe.chat = lambda msgs, model: (_ for _ in ()).throw(RuntimeError("down"))
+E.brock_probe.chat = lambda msgs, model, **kw: (_ for _ in ()).throw(RuntimeError("down"))
 ck("a model error keeps the default rather than wedging", E.ask_name(obs, "m") == "")
 ck("no model, no call", E.ask_name(obs, None) == "")
 ex = (ROOT / "planner" / "executor.py").read_text()

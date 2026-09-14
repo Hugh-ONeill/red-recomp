@@ -95,7 +95,7 @@ def run_author(reply_plan) -> tuple:
     seen = []
     real = B.chat
 
-    def fake(msgs, model, retries=2, think=False):
+    def fake(msgs, model, retries=2, think=False, **kw):
         seen.append(msgs[-1]["content"])
         return json.dumps(reply_plan)
 

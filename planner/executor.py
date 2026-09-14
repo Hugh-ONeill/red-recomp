@@ -21178,6 +21178,11 @@ NAME_SYS = (
     "keeps the game's default. Name it the way the player you are would."
 )
 
+# How freely a name is drawn. Its own knob because naming is the one call
+# whose answers are all correct; RED_NAME_TEMP is for a run that wants the
+# old repeatable names back.
+NAME_TEMP = float(os.environ.get("RED_NAME_TEMP") or 1.0)
+
 NAME_SYS_OWN = (
     "You are playing Pokemon Red and the game is asking you to type a "
     "NAME. Reply with a JSON object and nothing else: {\"name\":\"...\"}. "
@@ -21267,12 +21272,23 @@ def ask_name(obs: dict, model, log=None) -> str:
     insist, name = "", ""
     for attempt in range(3 if NICKNAMES_REQUIRED else 1):
         try:
+            # A NAME IS A CHOICE, SO LET IT BE ONE. At the rounds' 0.3 the
+            # reply is near enough a function of the prompt: the run
+            # returned SAGE, JERK, Ignis, Spike and Sparky on every replay,
+            # and one edited sentence in NAME_SYS_OWN moved all of them at
+            # once. Nothing here needs consistency — any name is valid, and
+            # what bounds it is structural: the sanitiser, and the refusal
+            # loop that turns down the menu's presets, the species and an
+            # empty reply (2026-09-14, user: "then itll come up with
+            # different names each time instead of the prompt determining
+            # the name").
             reply = brock_probe.chat(
                 [{"role": "system", "content": (NAME_SYS_OWN
                                                 if NICKNAMES_REQUIRED
                                                 else NAME_SYS)},
                  {"role": "user",
-                  "content": _naming_prompt(obs, insist)}], model)
+                  "content": _naming_prompt(obs, insist)}], model,
+                temp=NAME_TEMP)
         except Exception as e:
             if log:
                 log("name_chat_error", err=str(e)[:200])

@@ -225,7 +225,7 @@ def log_thinking(where: str, **fields) -> bool:
         return False          # a lost trace must never cost a round
 
 
-def chat(msgs, model, retries=2, think=False):
+def chat(msgs, model, retries=2, think=False, temp=None):
     """Ask the model, and do not lose a whole round to one bad second.
 
     `think` is per-call and defaults to off, so every existing caller keeps
@@ -246,7 +246,7 @@ def chat(msgs, model, retries=2, think=False):
     last, attempt = None, 0
     while True:
         try:
-            return _chat_once(msgs, model, think)
+            return _chat_once(msgs, model, think, temp)
         except Exception as e:
             last = e
             # a timeout has already spent its full 300s, so it gets one
@@ -275,7 +275,7 @@ def _is_timeout(e) -> bool:
     return False
 
 
-def _chat_once(msgs, model, think=False):
+def _chat_once(msgs, model, think=False, temp=None):
     # A REPLY HAS A CEILING. Nothing capped the generation, so a reply that
     # fell into a repetition loop ran on at 22 tok/s until the client's
     # 300 s timeout, was retried once, and ran on again: run 16 sat on the
@@ -291,7 +291,26 @@ def _chat_once(msgs, model, think=False):
     # the larger one — see NUM_PREDICT_THINK. A normal round is unchanged.
     body = json.dumps({"model": model, "messages": msgs, "stream": False,
                        "think": bool(think), "keep_alive": "30m",
-                       "options": {"temperature": 0.3,
+                       # WHAT THE CALL IS FOR DECIDES THE TEMPERATURE.
+                       # 0.3 is right for the rounds and the judgment rungs,
+                       # where variety is flakiness and an intermittently
+                       # wrong guard is worse than a consistently wrong one.
+                       # It is wrong for the two places whose whole purpose
+                       # is variety: naming, where any answer is valid and
+                       # at 0.3 the name is a function of the prompt (one
+                       # edited sentence moved every name in the run at
+                       # once), and the DRAWS, where a leg is drafted
+                       # several times and chosen between precisely because
+                       # a single draw is high variance. Measured over this
+                       # chain log: 1181 of 2019 draw sessions collapsed to
+                       # one shape, 669 of them writing the same plan three
+                       # times, so more than half the drafting was paying
+                       # two or three calls for one opinion and leaving the
+                       # picker nothing to pick (2026-09-14, user: "naming
+                       # is something that a higher temp could benefit
+                       # from"). Per call site, never global.
+                       "options": {"temperature": (0.3 if temp is None
+                                                   else float(temp)),
                                    "num_ctx": NUM_CTX,
                                    "num_predict": (NUM_PREDICT_THINK if think
                                                    else NUM_PREDICT)}}).encode()
