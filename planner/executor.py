@@ -11586,6 +11586,29 @@ class Executor:
     # sending; these refusals run to roughly 600-900 characters.
     WHY_BUDGET = 1400
 
+    @staticmethod
+    def _policy_unmet(obs):
+        """(dead, held): the items the battle policy's healing rules name
+        and the bag lacks — non-empty only when EVERY rule is dead, since
+        one rule that can still fire is a policy that can heal — and the
+        healing items the bag does hold. One computation, read by the
+        page line below and by the counter question (_ask_buy)."""
+        spec = ACTIVE_SPEC or {}
+        rules = spec.get("battle_items") or []
+        bag = (obs or {}).get("bag") or {}
+        held = sorted(k for k in bag
+                      if any(w in k for w in ("POTION", "RESTORE",
+                                              "REVIVE", "HEAL",
+                                              "ELIXER", "ETHER")))
+        if not rules:
+            return [], held
+        dead = [str(r.get("item")) for r in rules
+                if isinstance(r, dict) and r.get("item")
+                and not bag.get(str(r.get("item")))]
+        if not dead or len(dead) < len(rules):
+            return [], held
+        return dead, held
+
     def _policy_heal_line(self, obs) -> str:
         """A healing rule that names an item you do not carry never fires.
 
@@ -11603,20 +11626,9 @@ class Executor:
         cannot fire and what IS carried; rewriting it is not the harness's
         to do."""
         try:
-            spec = ACTIVE_SPEC or {}
-            rules = spec.get("battle_items") or []
-            if not rules:
-                return ""
-            bag = (obs or {}).get("bag") or {}
-            dead = [str(r.get("item")) for r in rules
-                    if isinstance(r, dict) and r.get("item")
-                    and not bag.get(str(r.get("item")))]
-            if not dead or len(dead) < len(rules):
+            dead, held = Executor._policy_unmet(obs)
+            if not dead:
                 return ""          # at least one rule can still fire
-            held = sorted(k for k in bag
-                          if any(w in k for w in ("POTION", "RESTORE",
-                                                  "REVIVE", "HEAL",
-                                                  "ELIXER", "ETHER")))
             return ("\nYOUR BATTLE POLICY CANNOT HEAL YOU RIGHT NOW: it "
                     "reaches for " + ", ".join(dead)
                     + " in a fight and you are carrying none. "
@@ -12181,6 +12193,24 @@ class Executor:
                 return True
         return False
 
+    @staticmethod
+    def _clerk_here(obs) -> list:
+        """The shop counters on this map that a walk can reach, by the
+        game's own names (VIRIDIANMART_CLERK; Celadon's floors have
+        several). Same standing as _nurse_here and _pc_here: things in the
+        room, not a map-name test. Empty when there is none, when none is
+        reachable, or when the party is not in the overworld."""
+        if (obs or {}).get("mode") != "overworld":
+            return []
+        out = []
+        for o in (((obs or {}).get("map") or {}).get("objects") or []):
+            if not isinstance(o, dict):
+                continue
+            n = str(o.get("name") or "")
+            if "CLERK" in n.upper() and o.get("reachable"):
+                out.append(n)
+        return out
+
     HEAL_SYS = (
         "You are playing Pokemon Red. You are standing in a room with a "
         "Pokemon Center counter, and your party is not at full health. "
@@ -12265,6 +12295,179 @@ class Executor:
         print(f"   (heal here? yes — {why}"
               + ("" if ok else f"; the counter did not heal: "
                  f"{str(res.get('detail') or '')[:80]}") + ")")
+        return obs
+
+    BUY_SYS = (
+        "You are playing Pokemon Red. You are standing in a room with a "
+        "shop counter. Decide whether to buy anything here now, and if "
+        "so what and how many. Buying spends money. A kind of item you "
+        "do not already carry takes one of the bag's twenty slots, and a "
+        "full bag refuses every gift and pickup until a slot goes. Saying "
+        "no is a real answer. Reply with a JSON object and nothing else: "
+        "{\"why\":\"<one short sentence>\",\"buy\":[{\"item\":\"POTION\","
+        "\"count\":2}]} with item spelled as the shelf spells it and count "
+        "the number to buy, at most 3 entries; or {\"why\":\"...\","
+        "\"buy\":[]} to buy nothing.")
+
+    BUY_MAX_ENTRIES = 3
+
+    def _ask_buy(self, obs, sg):
+        """Standing beside a shop counter: ask, then buy what the answer
+        says, for no round.
+
+        Buying was the one shop action still costing a round. The page
+        already said what each walked counter sells and that the battle
+        policy was reaching for a POTION the bag did not hold, and nothing
+        brought the two together except the model spending a round on it
+        — watched on leg 10 (2026-09-14): three blackouts against Misty,
+        466 money, a Center visit to withdraw ONE Potion from the PC, and
+        the Cerulean mart three doors away never entered. So it is the
+        Center heal's shape: the facts of the room (the shelf, the money,
+        the bag and its slots, what the policy cannot find), a small
+        answer space, one model call, no round.
+
+        A QUESTION, NOT A DEED. Unlike the heal, buying spends money that
+        has competing uses and fills bag slots, which is why the stow
+        order exists; both are judgments, so the harness asks and
+        executes and recommends nothing. Asked once per visit, on every
+        visit with money; whatever the answer, it is not put again until
+        the party has left the room and come back.
+
+        The answer is checked against the same facts the question came
+        from: an item the counter's own shelf does not list is refused
+        before any op (the shelf is the screen's own list, the standard
+        _item_not_held uses); a count the wallet cannot cover at a price
+        the run was already told is trimmed, and the trim is said; a new
+        kind into a full bag is refused; an unreadable reply buys nothing.
+        The counter's own refusal ends the list and is reported verbatim,
+        and its "it costs N" feeds _cant_afford as it does in a round.
+        """
+        clerks = self._clerk_here(obs)
+        if not clerks:
+            self._buy_asked_at = None
+            return obs
+        money = (obs or {}).get("money")
+        if isinstance(money, int) and money <= 0:
+            return obs
+        here = self._where(obs)
+        if getattr(self, "_buy_asked_at", None) == here:
+            return obs
+        self._buy_asked_at = here
+        mid = str(((obs or {}).get("map") or {}).get("id") or "")
+        shelf = list((getattr(self, "_shelves", None) or {}).get(mid) or [])
+        reads = ((getattr(self, "_shelf_reads", None) or {}).get(mid) or {})
+        n_reads = int(reads.get("n") or 0)
+        bag = dict((obs or {}).get("bag") or {})
+        prices = {k: v for k, v in (getattr(self, "_cant_afford", None) or {}).items()
+                  if k in shelf or not shelf}
+        dead, _held = self._policy_unmet(obs)
+        party = []
+        for m in ((obs or {}).get("party") or []):
+            party.append(f"{m.get('nickname') or m.get('species')} "
+                         f"L{m.get('level')} {m.get('hp')}/{m.get('max_hp')} hp")
+        user = ("THE COUNTER: " + ", ".join(clerks) + ", a few steps away."
+                + ("\nWHAT IT WAS SEEN TO SELL: " + ", ".join(shelf)
+                   + (f" (read {n_reads}x, the same list each time)"
+                      if n_reads > 1 and not reads.get("moved")
+                      else "")
+                   if shelf else
+                   "\nYou have never read this counter's list. A buy names "
+                   "an item and the counter answers whether it has it.")
+                + (("\nPRICES YOU HAVE BEEN TOLD: "
+                    + ", ".join(f"{k} costs {v}" for k, v in sorted(prices.items())))
+                   if prices else "")
+                + f"\nYOUR MONEY: {money}"
+                + f"\nYOUR BAG ({len(bag)} of {self.BAG_SLOTS} kinds): "
+                + (", ".join(f"{k} x{v}" for k, v in sorted(bag.items()))
+                   or "empty")
+                + ("\nYOUR PARTY: " + "; ".join(party) if party else "")
+                + self._policy_heal_line(obs)
+                + (("\nMore than one counter stands here; an entry may "
+                    "carry \"clerk\":<name> to say which, else the first.")
+                   if len(clerks) > 1 else "")
+                + "\n\nWHAT YOU ARE TRYING TO DO RIGHT NOW: "
+                + str((sg or {}).get("goal_text") or (sg or {}).get("id")
+                      or "make progress")
+                + "\nNo round is spent either way. Answer it.")
+        want, why, readable = [], "", False
+        try:
+            reply = brock_probe.chat(
+                [{"role": "system", "content": self.BUY_SYS},
+                 {"role": "user", "content": user}], self.model)
+            mm = _re.search(r"\{.*\}", reply or "", _re.S)
+            d = json.loads(mm.group(0)) if mm else {}
+            why = str(d.get("why") or "")[:200]
+            readable = "buy" in d
+            for e in (d.get("buy") or [])[:self.BUY_MAX_ENTRIES]:
+                if not isinstance(e, dict) or not e.get("item"):
+                    continue
+                item = str(e.get("item")).upper().strip().replace(" ", "_")
+                try:
+                    cnt = int(e.get("count") or 1)
+                except (TypeError, ValueError):
+                    cnt = 1
+                if cnt < 1:
+                    continue
+                ck = str(e.get("clerk") or "")
+                want.append({"item": item, "count": cnt,
+                             "clerk": ck if ck in clerks else clerks[0]})
+        except Exception as e:
+            self.log("buy_chat_error", subgoal=(sg or {}).get("id"),
+                     err=str(e)[:120])
+        self.log("buy_asked", subgoal=(sg or {}).get("id"), map=mid,
+                 shelf=",".join(shelf), money=money, bag_slots=len(bag),
+                 dead=",".join(dead), readable=readable,
+                 buy=json.dumps(want), why=why)
+        if not want:
+            print(f"   (buy here? no — {why or 'no usable answer'})")
+            return obs
+        # ---- the answer, checked against the facts it was asked on -------
+        bought, refused = [], []
+        for e in want:
+            item, cnt, clerk = e["item"], e["count"], e["clerk"]
+            bag = dict((obs or {}).get("bag") or {})
+            money = (obs or {}).get("money")
+            if shelf and item not in shelf:
+                refused.append(f"{item}: not on this counter's shelf")
+                continue
+            if len(bag) >= self.BAG_SLOTS and item not in bag:
+                refused.append(f"{item}: the bag is full and this is a "
+                               f"new kind, so it has no slot")
+                continue
+            price = (getattr(self, "_cant_afford", None) or {}).get(item)
+            trimmed = ""
+            if price and isinstance(money, int):
+                if money < price:
+                    refused.append(f"{item}: costs {price} and you have {money}")
+                    continue
+                if money // price < cnt:
+                    trimmed = f" (trimmed from {cnt}: {money} buys {money // price})"
+                    cnt = money // price
+            have = int(bag.get(item) or 0)
+            r = (self._send_safe("buy", item=item, count=have + cnt,
+                                 clerk=clerk) or {})
+            res = r.get("result") or {}
+            det = str(res.get("detail") or "")
+            obs = self.settle() or obs
+            ok = bool(res.get("ok"))
+            self.log("buy_done", subgoal=(sg or {}).get("id"), item=item,
+                     count=cnt, clerk=clerk, ok=ok, why=why,
+                     trimmed=trimmed.strip(), detail=det[:160])
+            if ok:
+                bought.append(f"{item} x{cnt}{trimmed}")
+                continue
+            # the counter's own refusal ends the list; a price it names
+            # is kept, as a round would keep it
+            m2 = _re.search(r"it costs (\d+)", det)
+            if "cannot afford" in det and m2:
+                self._cant_afford[item] = int(m2.group(1))
+            refused.append(f"{item}: {det[:160]}")
+            break
+        for r0 in refused:
+            self.log("buy_refused", subgoal=(sg or {}).get("id"), what=r0)
+        print(f"   (buy here? yes — {why}"
+              + (": bought " + ", ".join(bought) if bought else ": bought nothing")
+              + ("; refused " + "; ".join(refused) if refused else "") + ")")
         return obs
 
     @staticmethod
@@ -17875,6 +18078,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # go now. See _stow_at_pc.
             start = self._stow_at_pc(start, sg) or start
             start = self._ask_heal(start, sg) or start
+            # ...AND THE COUNTER, on the same standing: what to buy is a
+            # judgment (money has competing uses, a new kind takes a
+            # slot), so it is asked, not done, and no round is spent on
+            # the answer either way. See _ask_buy.
+            start = self._ask_buy(start, sg) or start
             # ...AND THE MACHINE NOBODY HAS BEEN ASKED ABOUT YET. Same
             # standing: a question, not a page section, and no round spent
             # on the answer either way. See _ask_teach.
