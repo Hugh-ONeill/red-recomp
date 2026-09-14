@@ -3094,7 +3094,11 @@ class Executor:
                          # had just chosen, on both Mansion floors
                          # (2026-08-28). The ledger still lists it; whether
                          # to press it is the model's call.
-                         and "SWITCH" not in str(c.key).upper()),
+                         and "SWITCH" not in str(c.key).upper()
+                         # ...NOR THE PC, THE NURSE OR THE LEADER: things
+                         # that are decisions (_not_for_explore_to_press)
+                         and not self._not_for_explore_to_press(
+                             c.key, c.kind, self._where(obs))),
                         key=_thing_key)
         # A WAY THAT JUST REFUSED YOU IS NOT AN UNTRIED WAY — and this is
         # the half that never learned it. plan_explore has filtered
@@ -3528,7 +3532,9 @@ class Executor:
                           and ASKING not in
                           ((outs2.get(c.key) or {}).get("last") or "")
                           and "No more room for items" not in
-                          ((outs2.get(c.key) or {}).get("last") or "")),
+                          ((outs2.get(c.key) or {}).get("last") or "")
+                          and not self._not_for_explore_to_press(
+                              c.key, c.kind, region)),
                          key=_thing_key)
         exits2 = [c for c in cands2
                   if c.status == "untried" and c.kind in ("door", "seam")]
@@ -3790,6 +3796,33 @@ class Executor:
         game, gettable from Daisy in Blue's house, and until the run has it
         the layout of Kanto is not something the player can read."""
         return "TOWN_MAP" in ((obs or {}).get("bag") or {})
+
+    def _not_for_explore_to_press(self, name, kind, where) -> str:
+        """Why explore must not press this thing ON ITS OWN: a reason, or
+        "" when a sweep may try it like anything else.
+
+        A sweep presses things to see what they say, and most things can
+        be untried. Three cannot, or are a decision rather than a thing:
+          - the PC: a menu, and what to do in it (store, withdraw, a box)
+            is the model's — it went to one itself for the Potion before
+            the Brock rematch, which is exactly the shape that stays its;
+          - the Center's nurse: the heal, which is the model's call by rule
+            (_ask_heal, 2026-09-14) — a sweep pressing her decides it;
+          - the gym's LEADER: a badge fight (the room sweep has skipped
+            leaders since 2026-09-13; explore's own press lists never did).
+        The ledger still lists all three, and the model presses them when
+        it means to (user, 2026-09-14: "explore harness shouldnt force the
+        bot to click the pc, similar issue with the gym leaders").
+        """
+        n = str(name or "")
+        if n == "PC":
+            return "the PC is a menu, and what to do in it is yours"
+        if "NURSE" in n.upper():
+            return "the counter is the heal you decide on"
+        _map = str(where or "").split("|")[0]
+        if str(kind or "") == "trainer" and self._is_gym_leader(n, _map):
+            return "this gym's LEADER — a badge fight"
+        return ""
 
     @staticmethod
     def _is_gym_leader(name: str, gym_map: str) -> bool:
@@ -19683,6 +19716,11 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                            if o.get("kind") == "cut_tree" and o.get("reachable")
                            and o.get("x") is not None]
                 loose = [n for n in loose if kinds.get(n) != "cut_tree"]
+                # ...and not the PC or the nurse either: a sweep tries
+                # things to see what they say, and those two are decisions
+                loose = [n for n in loose
+                         if not self._not_for_explore_to_press(
+                             n, kinds.get(n), here_s)]
                 # A ROOM WHOSE ONLY UNTOUCHED THING IS A BUSH still has
                 # something to say. Dropping bushes out of `loose` put them
                 # behind a guard that tests `loose`, so the very case this
