@@ -21085,11 +21085,48 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # cannot, because everything after it assumes it happened.
                 gate = bool(pred_keys(sg.get("done_when") or {})
                             & {"flag", "badge"})
+                # A MISSED HOP IS NOT CARRIED INTO THE HOP THAT NEEDED IT.
+                # The carry exists so ONE missed map hop does not forfeit a
+                # plan whose later steps may still be reachable. Three place
+                # steps in a chain are the case it was not written for: leg
+                # 9 gave up on go_to_vermilion_city, carried, gave up on
+                # enter_ss_anne (SS_ANNE_BOW, never walked), carried, and
+                # was trying reach_ss_anne_1f from Cerulean — each step
+                # strictly harder than the one just abandoned, and each
+                # spending its own escalation budget from a place it cannot
+                # succeed from (2026-09-14, user watching the CARRIED line
+                # grow). So: a PLACE step that failed is not carried into
+                # another PLACE step naming a map this run has never walked.
+                # The plan ends and is rewritten from where the party
+                # stands, which is the honest state to plan from. Carrying
+                # into a deed, or into a place already walked, is untouched.
+                _keys = lambda x: pred_keys((x or {}).get("done_when") or {})
+                _PLACE = {"map", "area", "not_area", "new_part"}
+                _nxt = (subgoals[idx + 1] if idx + 1 < len(subgoals)
+                        and isinstance(subgoals[idx + 1], dict) else None)
+                _nxt_map = ""
+                if _nxt is not None and (_keys(_nxt) or set()) <= _PLACE:
+                    _dw = _nxt.get("done_when") or {}
+                    _nxt_map = str(_dw.get("map") or _dw.get("new_part")
+                                   or str(_dw.get("area") or "").split("|")[0]
+                                   or "")
+                _unwalked = bool(_nxt_map) and not any(
+                    str(r).split("|")[0] == _nxt_map
+                    for r in (self.visits or {}))
+                _chain = (bool(_keys(sg)) and (_keys(sg) or set()) <= _PLACE
+                          and _unwalked)
                 if gate:
                     print(f"   !! {sg['id']} failed and it is an EVENT gate "
                           f"— not continuing past it")
                     self.log("gate_subgoal_failed", subgoal=sg["id"],
                              done_when=json.dumps(sg.get("done_when")))
+                elif _chain and not last:
+                    print(f"   !! {sg['id']} failed and the next step "
+                          f"({_nxt.get('id')}) asks for {_nxt_map}, which "
+                          f"this run has never walked — not carrying a "
+                          f"missed hop into the hop that needed it")
+                    self.log("chain_subgoal_failed", subgoal=sg["id"],
+                             next=_nxt.get("id"), wants=_nxt_map)
                 elif fails < 3 and not last:
                     print(f"   !! {sg['id']} failed — continuing")
                     self.log("subgoal_failed_continuing", subgoal=sg["id"],
