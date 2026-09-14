@@ -27,8 +27,12 @@ plan = {"subgoals": [
 probs = A.validate(plan)
 cut = [p for p in probs if "cut_gym_tree" in p and "is not an event this game defines" in p]
 ck("the invented cut event is refused", len(cut) == 1, probs)
-ck("...and told the game keeps no such event at all",
-   cut and "The game keeps NO event for this: nothing in its list begins with EVENT_CUT_GYM" in cut[0], cut)
+# ...SAID TRUTHFULLY. Until 2026-09-14 this read "the game keeps NO event
+# for this", and said so of the parcel, a deed the engine keeps two events
+# for under names that begin differently. Only the true half survives.
+ck("...and told that no event begins the way the guess did, and no more",
+   cut and "No event in this game's list begins with EVENT_CUT_GYM" in cut[0]
+   and "keeps NO event" not in cut[0], cut)
 ck("...with the two edits that work", cut and "REMOVE subgoal[1] (cut_gym_tree)" in cut[0]
    and 'give subgoal[1] exactly the condition of the step after it: {"map": "VERMILION_GYM"}' in cut[0], cut)
 ck("...and no further name-guessing", cut and "Do not spell another event name." in cut[0])

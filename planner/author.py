@@ -1272,12 +1272,27 @@ def validate(plan: dict) -> list:
             _nxt = subs[i + 1] if i + 1 < len(subs) and isinstance(subs[i + 1], dict) else None
             _ndw = (_nxt or {}).get("done_when")
             _stem = "_".join(str(dw["flag"]).split("_")[:3])
-            probs[-1] += (f" The game keeps NO event for this: nothing in its list "
-                          f"begins with {_stem}. Two edits work, nothing else will: "
-                          f"REMOVE {tag} ({sid}) and let the step after it stand, or "
-                          f"give {tag} exactly the condition of the step after it"
-                          + (f": {json.dumps(_ndw)}" if isinstance(_ndw, dict) and _ndw else "")
-                          + ". Do not spell another event name.")
+            # ...SAID TRUTHFULLY. This read "the game keeps NO event for
+            # this" until 2026-09-14, when it said so of the parcel — a deed
+            # the engine keeps two events for, under names that do not
+            # begin the way the guess did. The rule above is that a
+            # different event's name is the game's to reveal; that is a
+            # reason to say nothing about it, not to say there is none.
+            # ...AND THE TWO EDITS MUST EXIST. "Let the step after it stand"
+            # was said of the LAST step too, where there is none — the
+            # parcel leg's deliver step (2026-09-14) — so both edits on
+            # offer were impossible and the round could only fail again.
+            _fix = ((f"REMOVE {tag} ({sid}) and let the step after it stand, or "
+                     f"give {tag} exactly the condition of the step after it"
+                     + (f": {json.dumps(_ndw)}" if isinstance(_ndw, dict) and _ndw else ""))
+                    if _nxt is not None else
+                    (f"REMOVE {tag} ({sid}) and end the leg on the step before "
+                     f"it, or give {tag} a condition from the list above that "
+                     f"only this deed makes true"))
+            probs[-1] += (f" No event in this game's list begins with {_stem}, "
+                          f"and whether it keeps one under another name is not "
+                          f"yours to look up. Two edits work, nothing else will: "
+                          f"{_fix}. Do not spell another event name.")
     # A PLACE IS NOT THE DEED. Leg 11 of run 13 ("Chase the Team Rocket
     # thief out of the burgled house") ended on confront_thief:
     # {"map":"CERULEAN_CITY"} — walking out of the house satisfied it, the
@@ -2004,8 +2019,9 @@ def _check_pred(dw: dict, tag: str, sid, probs: list):
                     f"guess will fail the same way — do not spell a "
                     f"different one.{_hint} Finish this subgoal on "
                     f"something you can SEE instead: a map you could not "
-                    f"stand in before, an item the act leaves you holding, "
-                    f"a badge, or a party change.")
+                    f"stand in before, an item the act leaves you holding "
+                    f"(has_item) or takes from you (lacks_item), a badge, "
+                    f"or a party change.")
             elif k == "flag" and str(v).upper() in TRAINER_EVENT_MAP:
                 # A TRAINER FLAG IS SET IN ONE PLACE, AND THE STEP'S OWN NAME
                 # SAYS WHERE IT THINKS THAT IS. clear_ss_anne_2f_rooms ended
@@ -2471,10 +2487,27 @@ def author(goal: str, model: str, rounds: int = 5,
     # still re-minted a DIFFERENT wrong id each round (HM01 -> flag guess
     # -> HM01 again) and three rounds died before the oscillation settled.
     fb = ""
+    _last = None                 # the attempt the feedback is about
     _thought = 0                 # thinking rounds actually spent, see below
     for rnd in range(1, rounds + 1):
-        user = build_prompt(goal, start) + (
-            f"\n\nFIX THESE PROBLEMS from your last attempt — where a "
+        # SHOW THE ATTEMPT THE FEEDBACK IS ABOUT. Every round is a fresh
+        # two-message chat, and until 2026-09-14 the retry said "fix these
+        # problems from your last attempt ... change nothing else about
+        # your plan" with the last attempt nowhere in front of the model.
+        # It rewrote from scratch each round with only the error list, so
+        # it fixed the reported mistake and put the other one back: the
+        # parcel leg went flag / item / flag / item / flag for fifteen
+        # rounds across three draws, on a leg it had written correctly
+        # eight times before (plans/drafts/collect_the_oaks_parcel_*),
+        # and the chain pushed the leg later. "Change nothing else" is a
+        # thing you can only do to a plan you can see.
+        _shown = (f"\n\nYOUR LAST ATTEMPT, to correct and return whole:\n"
+                  f"{json.dumps(_last, separators=(',', ':'))}"
+                  if isinstance(_last, dict) else
+                  ("\n\n(Your last reply could not be read as a plan.)"
+                   if fb else ""))
+        user = build_prompt(goal, start) + _shown + (
+            f"\n\nFIX THESE PROBLEMS in that attempt — where a "
             f"problem offers a 'did you mean' suggestion, use that exact "
             f"id verbatim; where it tells you a name cannot be looked up, "
             f"do not guess another one, change the CONDITION. Change "
@@ -2511,12 +2544,13 @@ def author(goal: str, model: str, rounds: int = 5,
                                  draft=_thought)
         m = re.search(r"\{.*\}", reply, re.S)
         if not m:
-            fb = "your reply was not a JSON object"; continue
+            fb = "your reply was not a JSON object"; _last = None; continue
         try:
             plan = json.loads(m.group(0))
         except json.JSONDecodeError as e:
-            fb = f"invalid JSON: {e}"; continue
+            fb = f"invalid JSON: {e}"; _last = None; continue
         normalize_items(plan)
+        _last = plan
         probs = (validate(plan) or witness_already_true_problems(plan)
                  or held_step_problems(plan))
         if not probs:
