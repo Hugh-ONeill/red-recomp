@@ -14338,6 +14338,21 @@ class Executor:
             f"{json.dumps(obs.get('bag') or {})}",
             f"t+{round(time.time() - self.t0)}s",
         ]
+        # A STEP CARRIED PAST IS NOT A STEP DONE. The plan walks on past a
+        # failed map hop on purpose (a missed hop must not forfeit the
+        # plan), and the model is told so in its prompt (PREMISE UNMET) —
+        # but this file showed only the step now being tried, so
+        # "SUBGOAL get_hm01" read as reach_captain having been reached
+        # (2026-09-14, user: "its only reached that falsely, its not up
+        # to the captains room yet"). Say what was carried.
+        _carried = [c for c in (getattr(self, "_carried_ids", None) or [])]
+        if _carried:
+            _dws = {x.get("id"): x.get("done_when")
+                    for x in ((self.plan or {}).get("subgoals") or [])
+                    if isinstance(x, dict)}
+            lines.insert(2, "CARRIED  " + "; ".join(
+                f"{c} NOT achieved {json.dumps(_dws.get(c) or {})}"
+                for c in _carried) + " : carried past, this step is tried anyway")
         try:
             (RUN / "status.txt").write_text("\n".join(lines) + "\n")
         except OSError:
