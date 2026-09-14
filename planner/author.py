@@ -1621,6 +1621,59 @@ def validate(plan: dict) -> list:
                     f"the one you started from; if this step means the far side, that "
                     f"part IS it: end on " + '{"area": "' + _pt + '"}' + ".")
                 continue
+            # A STEP THE PLAN'S OWN EARLIER STEP ALREADY REACHES IS A STEP
+            # TO DELETE, and this said neither that nor that renaming is
+            # not the repair. "Travel through Rock Tunnel" was authored
+            # fifteen times across three drafts, every one refused on this
+            # line, and every retry changed only the step's NAME —
+            # exit_rock_tunnel, then reach_route_11, then exit_to_route_11
+            # — because the two repairs on offer (write new_part, or keep
+            # map and reword) are the repairs for the OTHER half of this
+            # rule, where the run's own feet have already been there.
+            # new_part is wrong advice here: the run has not stood on that
+            # map at all, so it would freeze to an empty exclusion. The leg
+            # could not be authored and was pushed twice (2026-09-14). Same
+            # shape as the no-such-event message: name the edits that work,
+            # and say that renaming is not one of them.
+            # ...BUT ONLY WHEN NOTHING BETWEEN THEM LEAVES THAT MAP. Two
+            # steps ending on one map are redundant when they sit together
+            # (traverse ROUTE_11 then exit ROUTE_11); they are NOT when the
+            # plan goes somewhere else in between, because coming back out
+            # is coming out on a different part — "arrive on ROUTE_2, cross
+            # VIRIDIAN_FOREST, come out on ROUTE_2" is the far side, and
+            # new_part is exactly right for it.
+            _prev_i, _leaves = None, False
+            for _j in range(_i5 - 1, -1, -1):
+                _x = subs[_j]
+                _xm = str((((_x.get("done_when") or {}) if isinstance(_x, dict)
+                            and isinstance(_x.get("done_when"), dict) else {})
+                           ).get("map") or "")
+                if _xm == _m5:
+                    _prev_i = _j
+                    break
+            if _prev_i is not None:
+                for _k in range(_prev_i + 1, _i5):
+                    _x = subs[_k]
+                    _xm = str((((_x.get("done_when") or {}) if isinstance(_x, dict)
+                                and isinstance(_x.get("done_when"), dict) else {})
+                               ).get("map") or "")
+                    if _xm and _xm != _m5:
+                        _leaves = True
+                        break
+            if not _parts5 and _prev_i is not None and not _leaves:
+                probs.append(
+                    f"subgoal[{_i5}] ({_s5.get('id')}) ends on "
+                    f"{{\"map\": \"{_m5}\"}} and its words say it comes OUT "
+                    f"somewhere — but {_how5}, so this step marks nothing "
+                    f"the step before it has not already marked. Two edits "
+                    f"work, nothing else will: REMOVE subgoal[{_i5}] "
+                    f"({_s5.get('id')}) and let the plan end on the step "
+                    f"before it, or — if the two steps are meant to end in "
+                    f"DIFFERENT places — change the MAP one of them ends "
+                    f"on, because as written they name the same one. Do not "
+                    f"rename this step: what is refused is its condition, "
+                    f"not what it is called.")
+                continue
             probs.append(
                 f"subgoal[{_i5}] ({_s5.get('id')}) ends on "
                 f"{{\"map\": \"{_m5}\"}} and its words say it comes OUT "
