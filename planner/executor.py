@@ -3277,7 +3277,25 @@ class Executor:
             if self._same_area(here, region) or self._same_area(region, here):
                 continue
             left = self._frontier_left(region)
-            unpressed = ledger.untouched_in(self, region)
+            # WORK EXPLORE HAS ALREADY REFUSED IS NOT WORK LEFT. The PC, a
+            # Center's nurse and a gym's own leader are things explore will
+            # never press (they are decisions, not things — 2026-09-14),
+            # and counting them here made every room holding one look
+            # unfinished for the rest of the run. CERULEAN_POKECENTER's
+            # untouched list was NURSE, SUPER_NERD, PC; the gym's was
+            # COOLTRAINER_F, GYM_GUIDE, MISTY. Both stayed "local with
+            # something left" for ever, and with _local ranked above
+            # everything but the band, ROUTE_24 — 13 spots of unseen
+            # ground, an untaken east edge, the only place on the board
+            # that could open new map — was picked ZERO times in nine
+            # visits while the Pokecenter and the gym took three each
+            # (user: "it should have explored its way up to bills house
+            # simply by virtue of the fact that its the only place to go
+            # with new area it hasnt seen"). Count what explore would
+            # actually do, the same filter its own press list uses.
+            unpressed = [n for n in ledger.untouched_in(self, region)
+                         if not self._not_for_explore_to_press(
+                             n, "trainer", region)]
             _unr = [k for k in ((getattr(self, "unreached_at", None) or {})
                                 .get(region) or [])
                     if k not in set(self._taken_here(region) or {})]
@@ -3387,7 +3405,20 @@ class Executor:
             # writes that way, so this reads the name and nothing else — no
             # claim about what is on any of them.
             _here_b, _reg_b = _building(here), _building(region)
-            _local = 0 if (_reg_b == _here_b or region in _rooms) else 1
+            # ...AND THE AREA YOU ARE IN IS ONLY "STILL BEING SEARCHED"
+            # WHILE IT HAS SOMETHING. _local was asked for so the run would
+            # "search the whole area its in before moving on" (user,
+            # 2026-08-29), and it does that to the letter — including long
+            # after the area IS searched, because it ranks above everything
+            # but the band. Once a room has no reachable frontier, no
+            # untaken exit and nothing left that explore would press, going
+            # back into it finds nothing, and holding it above the way out
+            # of town is what pinned ROUTE_24 at zero picks. A way out no
+            # walk reaches is deliberately not counted: walking there again
+            # cannot reach it either.
+            _has_left = bool(left or unpressed or unseen)
+            _local = 0 if ((_reg_b == _here_b or region in _rooms)
+                           and _has_left) else 1
             # WITHIN A TIER, DISTANCE LEADS; THEN A WAY OUT BEATS GROUND
             # TO LOOK AT. Raw counts made 4 unseen spots in an empty
             # pocket outweigh the one untaken way out of Mt Moon B2F, at

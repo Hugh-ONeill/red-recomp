@@ -34,7 +34,7 @@ ck("the room off this area is chosen over an untried seam one leg the other way"
    f"never tried is {HOUSE}" in words, words[:200])
 src = (ROOT / "planner" / "executor.py").read_text()
 ck("the deed ranks locality above distance, and a room means a DOOR not a seam",
-   "_local = 0 if (_reg_b == _here_b or region in _rooms) else 1" in src
+   "_local = 0 if ((_reg_b == _here_b or region in _rooms)\n                           and _has_left) else 1" in src
    and 'if str(k)[:1].isdigit() and (e or {}).get("to")}' in src
    # _picks (the starvation term) joined between _goal and distance, 2026-09-14
    and "r = (_pri, _stale, _local, _goal, _picks, len(path), _way_here," in src)

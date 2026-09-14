@@ -65,7 +65,8 @@ ck("...unless its door was taken from here, which is the older rule",
 src = (ROOT / "planner/executor.py").read_text()
 ck("the picker measures locality by building",
    "_here_b, _reg_b = _building(here), _building(region)" in src
-   and "_local = 0 if (_reg_b == _here_b or region in _rooms) else 1" in src)
+   # ...and only while that area still has something: _has_left, 2026-09-14
+   and "_local = 0 if ((_reg_b == _here_b or region in _rooms)\n                           and _has_left) else 1" in src)
 
 bad = [n for n, ok in checks if not ok]
 for n, ok in checks:
