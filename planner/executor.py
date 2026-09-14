@@ -16698,7 +16698,6 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                 # until you talk to him, and the run stood in front of him
                 # re-proposing the same warp. Talking is free and people
                 # move once their business is done.
-                import re as _re
                 if "cannot afford" in det and step.get("item"):
                     m = _re.search(r"it costs (\d+)", det)
                     if m:
