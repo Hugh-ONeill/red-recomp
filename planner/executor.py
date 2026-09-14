@@ -3734,6 +3734,41 @@ class Executor:
         return (region in _fh and int(_fh.get(region) or 0) == 0
                 and int(_rs.get(region, 0) or 0) > 0)
 
+    def _elsewhere_line(self, elsewhere, near_hint: str = "") -> str:
+        """Places with ways never taken: the nearest few AND the farthest.
+
+        NEAREST-FIRST BURIES THE ONLY WAY ON. The list is ranked by walked
+        distance, which is mechanical and fair, and on the day the run came
+        out of the far mouth of Rock Tunnel it buried the one region that
+        could open new map. ROUTE_10|14,52 held six spots of unseen ground
+        and a WEST edge never crossed, six legs away through the tunnel;
+        every slot went to ground one or two legs off, and the far mouth
+        never reached the page at all. So Route 10 read as one place
+        already explored, and the run set out for Lavender the long way
+        round, twice (2026-09-14, user: "its not quite connecting that
+        south rt10 is on the other side of rock tunnel").
+
+        Keeping the nearest is right: they are cheap. Keeping ONLY the
+        nearest is what hides a long way on. Both ends are shown, each
+        said for what it is, and which is worth the walk stays the
+        model's — the same words explore's own row already uses.
+        """
+        if not elsewhere:
+            return ""
+        _all = sorted(elsewhere)
+        _routable = [e for e in _all if not e[0][0]]
+        near = _all[:5]
+        far = [e for e in reversed(_routable) if e not in near][:2]
+        line = ("\nPlaces you have already been that still have ways "
+                "you have NEVER taken: "
+                + "; ".join(t for _r, t in near) + ".")
+        if far:
+            line += (" AND THE FARTHEST, which nothing nearer will lead you "
+                     "to: " + "; ".join(t for _r, t in far)
+                     + ". Nearest is not always most: which of these is "
+                       "worth the walk is yours.")
+        return line + near_hint
+
     def _unwalked_ground_line(self, here: str) -> str:
         """The most ground you have seen the edge of and never walked,
         wherever in the world it is.
@@ -13916,11 +13951,7 @@ class Executor:
                 searched_line else ""
             _elsewhere_str = ""
             if elsewhere:
-                _elsewhere_str = (
-                    "\nPlaces you have already been that still have ways "
-                    "you have NEVER taken: "
-                    + "; ".join(t for _r, t in sorted(elsewhere)[:6])
-                    + "." + near_hint)
+                _elsewhere_str = self._elsewhere_line(elsewhere, near_hint)
             # ...AND THE BIG UNWALKED SPACES, WHICH THAT LIST CANNOT REACH:
             # it is built from untried EXITS, and a floor whose doors have
             # all been taken has none. See _unwalked_ground_line.
@@ -14175,11 +14206,7 @@ class Executor:
         # suggestions to go away, and they belong after.
         _elsewhere_str = ""
         if elsewhere:
-            _elsewhere_str = (
-                "\nPlaces you have already been that still have ways "
-                "you have NEVER taken: "
-                + "; ".join(t for _r, t in sorted(elsewhere)[:6])
-                + "." + near_hint)
+            _elsewhere_str = self._elsewhere_line(elsewhere, near_hint)
         out += (floor_note + floor_away + route_line + searched_line + shut_line
                 + hint_line + loot_line + _elsewhere_str
                 + self._bag_line(obs, sg_for_bag)
