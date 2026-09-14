@@ -20933,8 +20933,9 @@ NAME_SYS = (
 NAME_SYS_OWN = (
     "You are playing Pokemon Red and the game is asking you to type a "
     "NAME. Reply with a JSON object and nothing else: {\"name\":\"...\"}. "
-    "Letters A-Z and a-z, space and - ? ! . , are typed; anything else is "
-    "dropped; the game cuts the name at its length limit.\n"
+    "Letters, space and - ? ! . , are typed, IN CAPITALS the way the game "
+    "writes every name; anything else is dropped; the game cuts the name "
+    "at its length limit.\n"
     "GIVE IT A NAME OF YOUR OWN. Not the ready-made name the menu offers, "
     "not the default, not the species in capitals, and never an empty "
     "reply. It is yours to choose and you will be living with it for the "
@@ -21037,6 +21038,13 @@ def ask_name(obs: dict, model, log=None) -> str:
                 name = ""
         name = "".join(ch for ch in name.strip()
                        if ch.isalnum() or ch in " -?!.,():;")[:cap]
+        # IN CAPITALS, LIKE EVERY OTHER NAME IN THIS GAME. The grid can
+        # type lower case and did — Ignis, Spike, Sparky beside PIKACHU,
+        # DUX and SAGE — and the mix reads wrong on every screen (user,
+        # 2026-09-14: "can we have it type in all caps like all the other
+        # names for things in game?"). The choice of name stays the
+        # model's; its case is the game's.
+        name = name.upper()
         if log:
             log("name_asked", title=str(nm.get("title")), name=name,
                 attempt=attempt + 1, reply=str(reply)[:200])

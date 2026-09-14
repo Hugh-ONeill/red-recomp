@@ -74,8 +74,8 @@ def stub(*replies):
 
 # ---- the prompt says what is wanted -------------------------------------
 seen = stub('{"name":"Ignis"}')
-ck("a name of its own is taken as given",
-   E.ask_name(STARTER, "stub") == "Ignis")
+ck("a name of its own is taken as given, in capitals like every name in the game",
+   E.ask_name(STARTER, "stub") == "IGNIS")
 ck("...and the page asked for one",
    "A NAME OF YOUR OWN" in seen[0])
 ck("...naming the default as NOT an option",
@@ -97,12 +97,12 @@ ck("...and the second ask says what came back",
 
 seen = stub('{"name":""}', '{"name":"Thistle"}')
 ck("an empty reply is refused and asked again",
-   E.ask_name(STARTER, "stub") == "Thistle"
+   E.ask_name(STARTER, "stub") == "THISTLE"
    and "YOUR LAST ANSWER WAS empty" in seen[1])
 
 seen = stub('{"name":"CHARMANDER"}', '{"name":"Ignis"}')
 ck("the species shouted back is not a nickname either",
-   E.ask_name(STARTER, "stub") == "Ignis" and len(seen) == 2)
+   E.ask_name(STARTER, "stub") == "IGNIS" and len(seen) == 2)
 
 seen = stub('{"name":"CHARMANDER"}')
 ck("...but three refusals let the game's default stand, never a wedge",
@@ -114,7 +114,7 @@ ck("a name is cut to the screen's own limit",
    len(E.ask_name(STARTER, "stub")) == 10)
 seen = stub('{"name":"Zap\\u2764\\u2764"}')
 ck("...and characters the grid has no key for are dropped",
-   E.ask_name(STARTER, "stub") == "Zap")
+   E.ask_name(STARTER, "stub") == "ZAP")
 
 # ---- the old behaviour is one variable away -----------------------------
 E.NICKNAMES_REQUIRED = False
