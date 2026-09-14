@@ -3415,12 +3415,28 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
         # executor's outcome book, "said"); see _record_outcome.
         _oc = (_book or {}).get(c.key) or {}
         _sd = _oc.get("said") or {}
-        if len(_sd) > 1 and c.kind in ("fixture", "person"):
+        _varied = len(_sd) > 1 and c.kind in ("fixture", "person")
+        if _varied:
             words = words.replace("; nothing changed", "")
+            # ...AND THE ANSWER BELONGS TO THE PRESS, NOT TO THE THING.
+            # "its answer changed between presses" was read as a label
+            # anyway: with TRASH_CAN_6's row saying it had answered "only
+            # trash" 5x and "there's a switch under the trash" 2x, and
+            # TRASH_CAN_8's saying "only trash" 1x and "the electric locks
+            # were reset" 1x, the run wrote "I know TRASH_CAN_6 is a switch
+            # and TRASH_CAN_8 resets the locks" and set out to re-trigger 6
+            # while avoiding 8 (2026-09-14, user: "its very much focused on
+            # 6 and 8 as the switch and reset respectively"). The record
+            # says the opposite of that and has to say it in words a label
+            # cannot be made of. Nothing here says WHY it changed.
             words += (" — it has NOT always said the same thing: "
                       + "; ".join('"%s" (%dx)' % (k, n) for k, n in
                                   sorted(_sd.items(), key=lambda kv: -kv[1])[:4])
-                      + " — its answer changed between presses")
+                      + " — so what it says belongs to the PRESS and not to "
+                        "this thing: the same one answered one way when you "
+                        "pressed it at one time and another way at another, "
+                        "and its last answer does not settle what the next "
+                        "one will be")
         # ONE LEVER, SEVERAL HANDLES, AND THE ROW HAS TO SAY SO. The
         # header has said "THEY ALL SHARE ONE SETTING" since 2026-08-24,
         # and the rows underneath went on keeping a separate book for each
@@ -3445,8 +3461,15 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
                       "have never pressed is not an untried thing, and "
                       "pressing a second one puts the first one back. Which "
                       "walls each setting opens is drawn on the screen")
-        elif c.kind == "fixture" and c.status in ("touched", "inert", "worth_a_word") \
+        elif (not _varied) and c.kind == "fixture" \
+                and c.status in ("touched", "inert", "worth_a_word") \
                 and str(c.key).upper().startswith(("SWITCH", "TRASH_CAN")):
+            # ...AND ONLY ONE THAT HAS ALWAYS SAID THE SAME. On a thing
+            # whose answers have differed, "it can be pressed again" reads
+            # as a free retry of a known result, which is how a can that
+            # once held a switch became a can to go back and re-trigger.
+            # The varied clause above already says pressing it again is
+            # another press with its own answer.
             words += " — a fixture; it can be pressed again"
         if c.kind == "shut_door" and c.status in ("touched", "inert",
                                                   "worth_a_word"):
@@ -3629,9 +3652,35 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     _varied_here = any(len(((_book or {}).get(c.key) or {}).get("said") or {}) > 1
                        for c in cands if c.kind in ("fixture", "person"))
     if _varied_here and len(_pl) >= 3:
-        lines.append("WHAT PRESSING THINGS HERE HAS SAID, IN ORDER (earliest first, "
-                     f"the last {len(_pl)}): "
-                     + " → ".join('%s: "%s"' % (k, t) for k, t in _pl)
+        # RUNS COLLAPSE, SO THE TURNS SURVIVE THE WINDOW. Vermilion's gym
+        # has fifteen cans and the run pressed nearly all of them: twelve
+        # entries of "Nope, there's only trash here." from twelve different
+        # cans filled the whole list and pushed the two lines the room
+        # turns on — a switch found, the locks reset — off the end of it
+        # (2026-09-14). Consecutive presses that said the same thing become
+        # ONE entry naming them, so every change of answer is on the page
+        # however much sameness lies between.
+        _runs: list = []
+        for _k, _t in _pl:
+            if _runs and _runs[-1][1] == _t:
+                _runs[-1][0].append(_k)
+            else:
+                _runs.append([[_k], _t])
+        _shown = _runs[-12:]
+
+        def _run_words(keys, txt):
+            if len(keys) == 1:
+                return '%s: "%s"' % (keys[0], txt)
+            _nm = ", ".join(keys[:4]) + (" +%d more" % (len(keys) - 4)
+                                         if len(keys) > 4 else "")
+            return '%s (%d presses, all the same answer): "%s"' % (
+                _nm, len(keys), txt)
+
+        lines.append("WHAT PRESSING THINGS HERE HAS SAID, IN ORDER (earliest "
+                     "first, the last %d press(es), presses in a row that "
+                     "said the same thing shown as one): "
+                     % sum(len(k) for k, _ in _shown)
+                     + " → ".join(_run_words(k, t) for k, t in _shown)
                      + ". The order is the record; what it means is yours to read.")
     lines.append("Every entry above may be taken; the ones marked never "
                  "taken / never pressed are the only ones that can find "

@@ -2487,7 +2487,11 @@ class Executor:
                 self._press_log = {}
             _pl = self._press_log.setdefault(here, [])
             _pl.append([key, _sd_txt or speech_excerpt(last.strip(), 70)])
-            del _pl[:-12]
+            # DEEP ENOUGH THAT A CHANGE OF ANSWER SURVIVES. The page folds
+            # runs of the same answer into one entry, so a room where one
+            # thing in fifteen says something different (Vermilion's gym)
+            # needs more than twelve presses of history to show the turn.
+            del _pl[:-60]
         # A WAY THAT SPOKE AND DID NOT OPEN turned you back: the fixed
         # ghost, a guard's line, a sleeping thing's — evidence for the
         # blockers ledger, in the words the game used.

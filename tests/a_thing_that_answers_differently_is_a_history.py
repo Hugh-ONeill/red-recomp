@@ -26,8 +26,11 @@ def ck(n, ok, d=""): checks.append((n, bool(ok), d))
 
 ck("the executor keeps every distinct reply, counted, per pressed thing",
    "_sd = rec.setdefault(\"said\", {})" in ex_src and "_sd[_sd_txt] = int(_sd.get(_sd_txt) or 0) + 1" in ex_src)
-ck("...and the room's presses in order, twelve deep",
-   "_pl = self._press_log.setdefault(here, [])" in ex_src and "del _pl[:-12]" in ex_src)
+# sixty deep since 2026-09-14: the page folds runs of one answer into a
+# single entry, so a room where one thing in fifteen says something
+# different needs more than twelve presses of history to show the turn
+ck("...and the room's presses in order, deep enough to hold a turn",
+   "_pl = self._press_log.setdefault(here, [])" in ex_src and "del _pl[:-60]" in ex_src)
 ck("the ledger reads the outcome book once per render",
    "_book = ((getattr(ex, \"_outcomes\", None) or {})" in lg_src)
 ck("a varied fixture loses 'nothing changed' and gets its replies counted",
