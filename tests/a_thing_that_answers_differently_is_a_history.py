@@ -37,6 +37,11 @@ ck("a varied fixture loses 'nothing changed' and gets its replies counted",
    'words = words.replace("; nothing changed", "")' in lg_src and "it has NOT always said the same thing" in lg_src)
 ck("the room's presses are printed in order when answers here have varied",
    "WHAT PRESSING THINGS HERE HAS SAID, IN ORDER" in lg_src and "The order is the record; what it means is yours to read." in lg_src)
+# a varied thing keeps its row: the fold for things pressed before the world
+# moved hid TRASH_CAN_14's "1st electric lock opened!" the moment the gym's
+# trainer flags moved the mark (2026-09-14)
+ck("a thing whose answers have varied is never folded into the weak line",
+   'weak = [c for c in shown if c.status == "worth_a_word"\n            and len(((_book or {}).get(c.key) or {}).get("said") or {}) <= 1]' in lg_src)
 # the wording is a record, not a rule
 ck("nothing on the page names the rule",
    "adjacent" not in lg_src.split("WHAT PRESSING THINGS HERE HAS SAID")[1][:600].lower()

@@ -3286,7 +3286,15 @@ def render(cands: list[Candidate], ex, obs: dict, target: str = "",
     # are the same fact eleven times over in a town square; they keep
     # their entries (lookup still finds each) but read as one line at the
     # rank of the first, names listed, so they cannot bury the doors.
-    weak = [c for c in shown if c.status == "worth_a_word"]
+    # ...BUT A THING THAT HAS NOT ALWAYS SAID THE SAME THING KEEPS ITS
+    # ROW. Its distinct replies are the fact a room can turn on, and the
+    # fold hid TRASH_CAN_14's "the 1st electric lock opened!" behind "also
+    # pressed here before" the moment the gym's trainer flags moved the
+    # world mark, while the ordered log below was the only place it was
+    # still said (2026-09-14). The history is rendered by the row; a
+    # folded thing has no row.
+    weak = [c for c in shown if c.status == "worth_a_word"
+            and len(((_book or {}).get(c.key) or {}).get("said") or {}) <= 1]
     weak_done = False
     # ...AND ONE LINE FOR A CROWD OF THE SAME THING. Same rule as the weak
     # leads, for the other way a page gets buried: the Rocket Game Corner
