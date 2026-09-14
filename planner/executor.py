@@ -524,12 +524,32 @@ def model_view(obs: dict, holding_map: bool = False,
         _mm = dict(o["map"])
         _mid = _mm.get("id")
         _ws = []
+        # A DOORWAY'S TILES ARE ONE DOOR HERE TOO. The ledger folds a
+        # two-tile doorway into one row ("door (4,7), two tiles wide ->
+        # ROUTE_2|3,43 — the door you came in by") and this list, the
+        # other half of the same page, handed over every tile on its own
+        # with walked_to looked up per TILE — so (4,7) said where it led
+        # and (5,7), the same opening, said nothing. Read together: "a warp
+        # at (5,7) that I haven't used yet", one round spent walking back
+        # out of the forest's south gate (2026-09-14, user watching; the
+        # same gate, the same tile, on 2026-08-29 and 2026-09-07). Where
+        # one tile of a doorway has been walked, every tile of it has: the
+        # destination is the doorway's, and the width is said as a count.
+        _grp = Executor._door_groups(_mm.get("warps") or [])
         for w in (_mm.get("warps") or []):
             w2 = {k: v for k, v in dict(w).items() if k != "dest"}
-            _known = walked_dest(_mid, f"{w.get('x')},{w.get('y')}") \
-                if walked_dest else None
+            _k = f"{w.get('x')},{w.get('y')}"
+            _tiles = _grp.get(_k) or (_k,)
+            _known = None
+            if walked_dest:
+                for _t in _tiles:
+                    _known = walked_dest(_mid, _t)
+                    if _known:
+                        break
             if _known:
                 w2["walked_to"] = _known
+            if len(_tiles) > 1:
+                w2["doorway_tiles"] = len(_tiles)
             _ws.append(w2)
         _mm["warps"] = _ws
         if not holding_map:
