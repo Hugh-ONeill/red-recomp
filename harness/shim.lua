@@ -10004,6 +10004,56 @@ function OPS.party_swap(G, c)
               and " — slot 1 is who gets sent out first" or "")
 end
 
+-- AN IN-GAME TRADE, AS ONE OP. Done through interact it costs three
+-- rounds by design: the first meeting of a question refuses a preset
+-- answer so the model reads what it is agreeing to, the second answers
+-- and picks the slot, and the round between is whatever detour the model
+-- takes (Vermilion, 2026-09-14: interact, then menu(1) with the party
+-- picker left open at the round's end, then interact again). Here the leg
+-- has already said what the trade is, so the model says WHO and WHICH
+-- Pokemon and the harness drives the yes, the pick and the exchange -- the
+-- daycare ops' shape (user: "we might need to facilitate trades a little
+-- bit ... its niche but might as well"). Everything it refuses is a fact
+-- the game would refuse on anyway, reported in the person's own words.
+function OPS.trade(G, c)
+  if not need_overworld(G) then
+    return false, "not in overworld (a box was up and would not close: "
+      .. _screen_name(G) .. ")"
+  end
+  if not c.name then
+    return false, "trade needs name= (the person offering the trade)"
+  end
+  local party = (G.save or {}).party or {}
+  local slot = math.floor(tonumber(c.slot) or 0)
+  if slot < 1 or slot > #party then
+    return false, ("no party slot %d -- the party has %d"):format(slot, #party)
+  end
+  local before = {}
+  for i, mon in ipairs(party) do before[i] = tostring(mon.species) end
+  local giving = before[slot]
+  -- the dialogue is interact's: walk up, talk, take the offer, pick the slot
+  local ok, why = OPS.interact(G, { name = c.name, answer = "yes", slot = slot,
+                                    read_question = true })
+  if not ok then return false, why end
+  for _ = 1, 80 do                     -- the exchange plays out in text
+    if G.stack:top() == G.overworld then break end
+    U.tap(G, "a"); U.wait(6)
+  end
+  ui_back_out(G)
+  local now = (G.save or {}).party or {}
+  local got
+  for i, mon in ipairs(now) do
+    if tostring(mon.species) ~= before[i] then got = mon break end
+  end
+  if got then
+    return true, ("traded %s (slot %d) for %s L%s%s -- a traded Pokemon keeps "
+      .. "the name it arrives with"):format(
+        tostring(giving), slot, tostring(got.species), tostring(got.level or "?"),
+        got.nickname and (", named " .. tostring(got.nickname)) or "")
+  end
+  return false, "the trade did not go through -- " .. tostring(why)
+end
+
 function OPS.daycare_deposit(G, c)
   if not need_overworld(G) then
     return false, "not in overworld (a box was up and would not close: "

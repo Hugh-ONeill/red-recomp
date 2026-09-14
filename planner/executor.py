@@ -14927,6 +14927,11 @@ one at a time and will not leave you with an empty party. obs.daycare says
 who is in and what taking them back costs),
 {"op":"daycare_withdraw"} (collect the boarded Pokemon and pay the fee;
 needs a free party slot and the money),
+{"op":"trade","name":"NAME","slot":N} (make the in-game trade that person
+offers, giving party member N: walks up, takes their offer, picks the slot
+and sits through the exchange, one op. Refuses in their own words when
+they want a different Pokemon or have already traded. A traded Pokemon
+keeps the name it arrives with),
 {"op":"elevator","floor":"B4F"} (ride a lift DOOR TO DOOR, from wherever
 you stand: if you are outside the car it walks in, then it presses the
 panel, picks that floor from the list it offers, waits out the ride and
