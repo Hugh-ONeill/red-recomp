@@ -64,8 +64,10 @@ with tempfile.TemporaryDirectory() as d:
        "SILPH_CO_1F" in (A.pull_into_held("Defeat the Silph Co. guards", obs) or ""))
 src = (ROOT / "planner" / "author.py").read_text()
 ck("author, review and the drafts pick all ask it",
-   "or held_step_problems(plan))" in src and "or held_step_problems(revised))" in src
-   and "if not (validate(p2) or held_step_problems(p2))" in src)
+   # pinned to "the chain asks it", not to its being the LAST term: the
+   # machine-slot check joined these chains after it (2026-09-14)
+   "or held_step_problems(plan)" in src and "or held_step_problems(revised)" in src
+   and "if not (validate(p2) or held_step_problems(p2)" in src)
 bad = [c for c in checks if not c[1]]
 for n, ok, dd in checks:
     print(("ok   " if ok else "FAIL ") + n + ("" if ok else f"\n      {str(dd)[:300]}"))

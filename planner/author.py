@@ -2552,7 +2552,7 @@ def author(goal: str, model: str, rounds: int = 5,
         normalize_items(plan)
         _last = plan
         probs = (validate(plan) or witness_already_true_problems(plan)
-                 or held_step_problems(plan))
+                 or held_step_problems(plan) or machine_slot_problems(plan))
         if not probs:
             # tag each subgoal so escalation/distillation runs it macro-less
             for s in plan["subgoals"]:
@@ -4176,7 +4176,8 @@ def author_best_of(goal: str, model: str, draws: int = 3,
     # the leg completed without buying a drink. Drop invalid drafts here;
     # if every one is invalid, say so and hand back the least-bad, which is
     # what happened before this check existed.
-    good = [p2 for p2 in plans if not (validate(p2) or held_step_problems(p2))]
+    good = [p2 for p2 in plans if not (validate(p2) or held_step_problems(p2)
+                                       or machine_slot_problems(p2))]
     if good and len(good) < len(plans):
         print(f"[draws] {len(plans) - len(good)} draft(s) dropped as invalid")
     return pick_plan(goal, good or plans, model, start=start)
@@ -4221,7 +4222,8 @@ def review(goal: str, plan: dict, model: str, start: str | None = None,
             continue
         normalize_items(revised)
         probs = (validate(revised) or witness_already_true_problems(revised)
-                 or held_step_problems(revised))
+                 or held_step_problems(revised)
+                 or machine_slot_problems(revised))
         if probs:
             print(f"[review] round {rnd} produced an invalid plan, keeping "
                   f"the previous one: {probs[0]}")
@@ -8153,6 +8155,64 @@ def _terrain_on_door(h: str) -> "tuple | None":
         if re.search(r"\(" + holder + r"[A-Z0-9_]* is standing there\)", str(h or "")):
             return holder, move
     return None
+
+
+def machine_slot_problems(plan: dict, obs: dict | None = None) -> list:
+    """A knows_move step written for a party slot the game marks NOT ABLE.
+
+    The item screen for a TM or HM marks every party member ABLE or NOT
+    ABLE, and the observation carries that mark (obs.machines). The author
+    wrote "Teach HM01 (Cut) to Nidorino", done_when knows_move CUT slot 3,
+    with the screen marking NIDORINO not able and CHARMELEON the one ABLE
+    member — a step that could never come true, and the round-by-round
+    model spent eleven rounds hunting a Moon Stone to evolve its way to a
+    mark that evolution does not give (2026-09-14, user: "its trying to
+    evolve nido to learn cut (even though that wont work)").
+
+    On-screen tier: the mark is the game's own, for the party as it stands.
+    Nothing is said about who ELSE could learn it — a catch or a trade
+    changes the party, and the mark is read again then; that is the
+    model's to think of. What is said is the two ways to write a step that
+    can be true: a slot the game marks ABLE, or no slot at all.
+    """
+    subs = (plan or {}).get("subgoals") or []
+    if not subs:
+        return []
+    obs = _obs_now() if obs is None else obs
+    party = (obs or {}).get("party") or []
+    machines = (obs or {}).get("machines") or {}
+    if not party or not isinstance(machines, dict):
+        return []
+    out = []
+    for i, sg in enumerate(subs):
+        dw = (sg or {}).get("done_when") if isinstance(sg, dict) else None
+        km = (dw or {}).get("knows_move") if isinstance(dw, dict) else None
+        if not (isinstance(km, dict) and isinstance(km.get("slot"), int)
+                and not isinstance(km.get("slot"), bool)):
+            continue
+        mv = str(km.get("move") or "").upper()
+        slot = km["slot"]
+        if not (1 <= slot <= len(party)):
+            continue
+        sp = str(party[slot - 1].get("species") or "").upper()
+        for item, m in sorted(machines.items()):
+            if not isinstance(m, dict) or str(m.get("move") or "").upper() != mv:
+                continue
+            if sp not in {str(x).upper() for x in (m.get("not_able") or [])}:
+                continue
+            able = [str(x) for x in (m.get("able") or [])]
+            out.append(
+                f"subgoal[{i}] ({sg.get('id')}) knows_move slot {slot} is "
+                f"{sp}, and the game's item screen for {item} marks {sp} "
+                f"NOT ABLE to learn {mv} — a step written for a Pokemon the "
+                f"game marks NOT ABLE can never come true. "
+                + (f"It marks ABLE: {', '.join(able)}. " if able
+                   else "It marks nobody in the party ABLE. ")
+                + f"Two ways to write a step that can be true: the slot of a "
+                  f"Pokemon the game marks ABLE, or no slot at all — "
+                  f"{{\"knows_move\":\"{mv}\"}} is true when ANY party "
+                  f"Pokemon knows it, whoever that turns out to be.")
+    return out
 
 
 def held_step_problems(plan: dict, observed="run/explored.json", party=None) -> list:
