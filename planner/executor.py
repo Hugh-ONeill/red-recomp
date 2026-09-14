@@ -21186,9 +21186,8 @@ NAME_TEMP = float(os.environ.get("RED_NAME_TEMP") or 1.0)
 NAME_SYS_OWN = (
     "You are playing Pokemon Red and the game is asking you to type a "
     "NAME. Reply with a JSON object and nothing else: {\"name\":\"...\"}. "
-    "Letters, space and - ? ! . , are typed, IN CAPITALS the way the game "
-    "writes every name; anything else is dropped; the game cuts the name "
-    "at its length limit.\n"
+    "Letters A-Z and a-z, space and - ? ! . , are typed; anything else is "
+    "dropped; the game cuts the name at its length limit.\n"
     "GIVE IT A NAME OF YOUR OWN. Not the ready-made name the menu offers, "
     "not the default, not the species in capitals, and never an empty "
     "reply. It is yours to choose and you will be living with it for the "
@@ -21302,6 +21301,14 @@ def ask_name(obs: dict, model, log=None) -> str:
                 name = ""
         name = "".join(ch for ch in name.strip()
                        if ch.isalnum() or ch in " -?!.,():;")[:cap]
+        # ...AND THE PROMPT SAYS NOTHING ABOUT IT. Asking for capitals in
+        # words was an unnecessary change to a prompt whose job is the
+        # CHOICE, and at the rounds' old temperature it moved every name
+        # in the run at once. Case is ours to impose and costs the model
+        # nothing to be ignorant of: the grid really can type either, and
+        # the refusal check below compares case-insensitively (user,
+        # 2026-09-14: "we can change the prompt back to what it was and
+        # just uppercase it afterwards").
         # IN CAPITALS, LIKE EVERY OTHER NAME IN THIS GAME. The grid can
         # type lower case and did — Ignis, Spike, Sparky beside PIKACHU,
         # DUX and SAGE — and the mix reads wrong on every screen (user,
