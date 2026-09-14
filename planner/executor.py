@@ -11902,6 +11902,67 @@ class Executor:
         return obs
 
     @staticmethod
+    def _nurse_here(obs) -> bool:
+        """Is there a nurse on this map that a walk can reach? The Center's
+        counter is an object the shim publishes by the game's own name
+        (CERULEANPOKECENTER_NURSE, and the Indigo lobby's the same way);
+        same standing as _pc_here: a thing in the room, not a map name."""
+        if (obs or {}).get("mode") != "overworld":
+            return False
+        for o in (((obs or {}).get("map") or {}).get("objects") or []):
+            if not isinstance(o, dict):
+                continue
+            if "NURSE" in str(o.get("name") or "").upper() and o.get("reachable"):
+                return True
+        return False
+
+    def _heal_here(self, obs, sg):
+        """Heal at the counter you are standing beside, for no round.
+
+        THERE IS NO REASON NOT TO. Standing in a Center with a party that
+        is not party_healthy, the only choice the counter offers is a free
+        full heal, and the one side effect (waking here after a blackout)
+        is one the run has never once wanted otherwise. So this is a deed,
+        not a question, exactly like the bag standing order beside it: the
+        model decided to come in; the harness does the thing the room is
+        for. Watched on 2026-09-14: the run walked into the Mt Moon Center
+        with Spike at 0/40 hp, pressed nothing, and walked back out to
+        fight on Route 4 with two Pokemon (user: "basically theres no
+        reason to not heal your pokemon unless party=healthy").
+
+        Fires once per visit: a counter that refused is not asked again
+        until the party has left the room and come back.
+        """
+        if not self._nurse_here(obs):
+            self._heal_tried_at = None
+            return obs
+        if pred_holds({"party_healthy": True}, obs):
+            return obs
+        here = self._where(obs)
+        if getattr(self, "_heal_tried_at", None) == here:
+            return obs
+        self._heal_tried_at = here
+        before = [f"{m.get('nickname') or m.get('species')} "
+                  f"{m.get('hp')}/{m.get('max_hp')}"
+                  for m in ((obs or {}).get("party") or [])
+                  if (m.get("hp") or 0) < (m.get("max_hp") or 0)
+                  or m.get("status") not in (None, "", "0", "NONE", "OK")]
+        r = (self._send_safe("heal") or {})
+        res = r.get("result") or {}
+        obs = self.settle() or obs
+        ok = bool(res.get("ok")) and pred_holds({"party_healthy": True}, obs)
+        self.log("heal_done", subgoal=(sg or {}).get("id"), ok=ok,
+                 before=", ".join(before),
+                 detail=str(res.get("detail") or "")[:120])
+        if ok:
+            print(f"   (standing order: healed at the counter — "
+                  f"{', '.join(before) or 'the party was not at full health'})")
+        else:
+            print(f"   (standing order: the counter did not heal — "
+                  f"{str(res.get('detail') or '')[:100]})")
+        return obs
+
+    @staticmethod
     def _usable_on_a_mon(items):
         """Which of these the game will let you USE on a party member.
         Mirrors src/inventory/ItemEffects.lua (STONES, VITAMINS, the TM/HM
@@ -17440,6 +17501,7 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
             # model has left an order and the things are in the bag, they
             # go now. See _stow_at_pc.
             start = self._stow_at_pc(start, sg) or start
+            start = self._heal_here(start, sg) or start
             # ...AND THE MACHINE NOBODY HAS BEEN ASKED ABOUT YET. Same
             # standing: a question, not a page section, and no round spent
             # on the answer either way. See _ask_teach.
