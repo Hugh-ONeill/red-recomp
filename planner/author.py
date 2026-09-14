@@ -6686,6 +6686,13 @@ _INFERRED = re.compile(
     r"\b(impl(?:y|ies|ying|ied)|suggest(?:s|ing|ed)?|likely|probably|"
     r"presumably|should have|must have|would have|assum(?:e|es|ing|ed)|"
     r"so (?:it|they|the \w+) (?:is|are|was|were) (?:presumably|likely)|"
+    # ...AND THE ORDER OF THE STORY IS INFERENCE TOO. "The player has
+    # already battled the rival in Oak's lab, which occurs after the parcel
+    # has been delivered" crossed off a delivery that never happened — the
+    # fight is the first thing in the game (2026-09-14). A deed is shown
+    # by its own trace, not by where it sits in a remembered sequence.
+    r"(?:which|that|this|it) (?:only )?(?:occurs|happens|comes|takes place) "
+    r"(?:only )?(?:after|before|once)\b|"
     # ...AND GAME LORE IS INFERENCE TOO. The missing rung put "Defeat all
     # trainers on the S.S. Anne" in front of the captain's cabin because
     # not having done so "is typical" (run 16, 2026-09-07) — no sailor
