@@ -6610,6 +6610,52 @@ def _blocks_a_place_you_have_walked(why: str, observed=None) -> str | None:
     return None
 
 
+def _not_through_yet(goal: str, observed=None) -> str | None:
+    """A place the objective says to go THROUGH, every walked way out of
+    which lands on the same ground. Names it, or None.
+
+    "Travel through Rock Tunnel" was crossed off twice before it ran, on
+    "the run has previously exited Rock Tunnel to Route 10, indicating the
+    tunnel has been traversed" and then, once "indicating" was refused as
+    a hedge, on "as evidenced by the walk record and the current location"
+    (2026-09-14). Both were true about exiting and false about traversing:
+    what it had come out onto was ROUTE_10|0,4, the very part it went in
+    from. Coming back out the way you came in is not going through.
+
+    The ledger settles this without any knowledge of the game. Take every
+    edge the run has walked from any part of that place to anywhere
+    outside it; if they all land on ONE region, it has used one mouth, and
+    a way through has two ends. Nothing here says where the other mouth
+    is, or that there is one.
+    """
+    if not _re.search(r"\b(through|across|traverse[sd]?|traversing)\b",
+                      str(goal or ""), _re.I):
+        return None
+    try:
+        d = json.loads(Path(observed).read_text() or "{}") if observed else {}
+    except (OSError, ValueError, TypeError):
+        return None
+    _fam = lambda m: _re.sub(r"_(B?\d+F|ROOF|ELEVATOR)$", "", str(m).split("|")[0])
+    words = _re.sub(r"[^A-Z0-9]+", " ", str(goal).upper()).split()
+    walked = (d.get("explored") or {})
+    fams = {_fam(r) for r in walked} | {_fam(r) for r in (d.get("visits") or {})}
+    for fam in sorted(fams, key=len, reverse=True):
+        parts = fam.split("_")
+        if len(parts) < 2 or not all(w in words for w in parts):
+            continue
+        out = set()
+        for _r, _edges in walked.items():
+            if _fam(_r) != fam:
+                continue
+            for _e in (_edges or {}).values():
+                _to = (_e or {}).get("to")
+                if _to and _fam(_to) != fam:
+                    out.add(str(_to))
+        if len(out) <= 1:
+            return f"{fam} ({'; '.join(sorted(out)) or 'no way out walked at all'})"
+    return None
+
+
 def _events_bearing(goal: str) -> str:
     """Events THIS RUN HAS FIRED whose names touch the objective's words.
 
@@ -6894,6 +6940,13 @@ def check_already_done(deed: str, start: str, model: str,
     if levels:
         print(f"[already-done] refused: '{deed[:60]}' names {levels}",
               file=sys.stderr)
+        return False
+    _through = _not_through_yet(deed, observed)
+    if _through:
+        print(f"[already-done] refused: this objective says to go THROUGH a "
+              f"place, and every way out of it this run has walked lands on "
+              f"the same ground: {_through} — one mouth used, and a way "
+              f"through has two ends", file=sys.stderr)
         return False
     item = _item_not_held(deed, start)
     if item:
@@ -8915,6 +8968,13 @@ def check_done(goal: str, start: str, model: str,
     if item:
         print(f"[check-done] refused: this objective names {item} and it is "
               f"not in the bag")
+        return False
+    _through = _not_through_yet(goal, observed)
+    if _through:
+        print(f"[check-done] refused: this objective says to go THROUGH a place, "
+              f"and every way out of it this run has walked lands on the "
+              f"same ground: {_through} — one mouth used, and a way through "
+              f"has two ends")
         return False
     gone = _never_held(goal, start)
     if gone:
