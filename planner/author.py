@@ -8675,6 +8675,92 @@ def attempt_yield_text(goal: str) -> tuple:
     return text, dry
 
 
+def _reword_points_at_what_failed(new_goal: str, journal) -> str | None:
+    """A restatement that names the very place this leg has just failed to
+    reach. Names it, or None.
+
+    THE GOAL MUST NOT BEND TO THE PLAN. Leg 9 was "Retrieve the S.S.
+    Ticket from Bill", which is right. Its plan sent the party SOUTH to
+    Vermilion, which is wrong — Bill is north of Cerulean — and the leg
+    failed on travel_to_vermilion, enter_ss_anne and reach_ss_anne_1f, one
+    after another. The wording rung then restated the objective as
+    "Retrieve the S.S. Ticket from the captain of the S.S. Anne", on a
+    flat claim about the game that is false, and the new leg was circular:
+    the captain's room is on a ship you cannot board without the ticket.
+    A whole attempt of evidence said "not from here", and the answer was
+    to move the goal to where the plan had been heading (2026-09-14, user:
+    "*especially* it should not then, with a whole leg of evidence saying
+    'this cant be done from this position', rewriting the goal to suit the
+    failed plan").
+
+    Mechanical and this-leg only: the targets of steps that ended without
+    success since this plan started, as the journal already records them,
+    against the words of the restatement. It says nothing about whether
+    the restatement is true; only that a place the leg has just proved it
+    cannot reach is not evidence for rewording the leg towards it.
+    """
+    if not new_goal or not journal:
+        return None
+    try:
+        lines = Path(journal).read_text().splitlines()
+    except (OSError, TypeError):
+        return None
+    rows = []
+    for l in reversed(lines[-4000:]):          # this plan only
+        try:
+            r = json.loads(l)
+        except ValueError:
+            continue
+        rows.append(r)
+        if r.get("kind") == "plan_start":
+            break
+    rows.reverse()
+    if not rows:
+        return None
+    _tgt, _bad = {}, set()
+    for r in rows:
+        if r.get("kind") == "escalate_context" and r.get("subgoal") and r.get("target"):
+            _tgt[r["subgoal"]] = str(r["target"])
+        if (r.get("kind") == "escalate_end" and r.get("success") is False)                 or r.get("kind") in ("subgoal_failed_continuing",
+                                     "chain_subgoal_failed",
+                                     "gate_subgoal_failed"):
+            if r.get("subgoal"):
+                _bad.add(r["subgoal"])
+    _fam = lambda m: re.sub(r"_(B?\d+F|ROOF|ELEVATOR)$", "", str(m).split("|")[0])
+    places = set()
+    for sid in _bad:
+        t = _tgt.get(sid) or ""
+        if ":" not in t:
+            continue
+        kind, val = t.split(":", 1)
+        if kind in ("map", "area", "new_part"):
+            places.add(_fam(val))
+    if not places:
+        return None
+    words = re.sub(r"[^A-Z0-9]+", " ", str(new_goal).upper()).split()
+    # ...AND A NAME THE PROSE PUNCTUATES. "the captain of the S.S. Anne"
+    # splits into S, S, ANNE, so SS_ANNE matched nothing word for word;
+    # compare the letters with everything else stripped as well.
+    _sq = lambda t: re.sub(r"[^A-Z0-9]+", "", str(t).upper())
+    _goal_sq = _sq(new_goal)
+    for place in sorted(places, key=len, reverse=True):
+        parts = [p for p in place.split("_") if p]
+        # ...AND THE BUILDING, NOT ONLY THE ROOM. A ship's bow is
+        # SS_ANNE_BOW, which no floor-suffix rule reduces, so "the S.S.
+        # Anne" matched nothing while the leg was failing to reach it.
+        # Try the place's own leading parts, longest first, and never
+        # fewer than two of them, so VERMILION_CITY never shrinks to
+        # VERMILION and ROUTE_25 never shrinks to ROUTE.
+        for _n in range(len(parts), 1, -1):
+            _pre = parts[:_n]
+            if all(w in words for w in _pre):
+                return "_".join(_pre)
+            _pre_sq = _sq("_".join(_pre))
+            if len(_pre_sq) >= 6 and _pre_sq in _goal_sq:
+                return "_".join(_pre)
+    return None
+
+
 def check_wording(goal: str, ahead: list, behind: list, start: str,
                   journal: str, model: str, observed=None, asked=None,
                   no_reword_reason: str = "") -> str:
@@ -8840,6 +8926,14 @@ def check_wording(goal: str, ahead: list, behind: list, start: str,
     if _norm_obj(new) in worn:
         print(f"[wording] refused: {new!r} is a wording this leg has "
               f"already failed in", file=sys.stderr)
+        return ""
+    _at = _reword_points_at_what_failed(new, journal)
+    if _at:
+        print(f"[wording] refused: {new!r} names {_at}, and this leg has "
+              f"just failed trying to reach it — a place the attempt "
+              f"proved it cannot get to is not evidence for moving the "
+              f"objective towards it; the wording stands",
+              file=sys.stderr)
         return ""
     others = [t for _, t in ahead if _norm_obj(t) != _norm_obj(goal)]
     others += [t for _, t in behind]
