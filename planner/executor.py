@@ -14213,6 +14213,31 @@ class Executor:
     # is bounded, and by the same rule: keep what is NEAR, say how much went.
     ATLAS_BUDGET = 4000
 
+    def _said_variously(self, region: str, who: str) -> dict:
+        """Every distinct reply this thing has given IN THIS REGION,
+        counted, across every target's outcome book (the books are keyed
+        by target, so one thing's history is split between them)."""
+        out: dict = {}
+        if not who:
+            return out
+        for _k, _book in (getattr(self, "_outcomes", None) or {}).items():
+            if not str(_k).endswith("|" + str(region)):
+                continue
+            for _t, _n in ((((_book or {}).get(who) or {}).get("said")) or {}).items():
+                out[_t] = int(out.get(_t) or 0) + int(_n or 0)
+        return out
+
+    @staticmethod
+    def _same_saying(a: str, b: str) -> bool:
+        """Two quotes of one sentence. The hints ledger keeps a saying
+        whole and the outcome book keeps an excerpt of it, so they are the
+        same line under two lengths: compare what they share."""
+        _n = lambda t: " ".join(str(t or "").split()).strip('" ').lower()
+        x, y = _n(a), _n(b)
+        if not x or not y:
+            return False
+        return x[:40] == y[:40] or x.startswith(y[:40]) or y.startswith(x[:40])
+
     def _dated(self, region: str, line: str, obs) -> str:
         """A hint line with WHEN it was heard, if that is known: how many
         events have fired since. Said before the world moved is a fact the
@@ -14228,6 +14253,31 @@ class Executor:
                    in ((getattr(self, "_gone", {}) or {}).get(region) or ()))
         _tail = (f" — and {_who} is NOT THERE ANY MORE: you have stood in "
                  f"{region} since and it was not on screen" if _absent else "")
+        # ...AND IT MAY HAVE SAID SOMETHING ELSE ON ANOTHER PRESS. A hint
+        # is filed under whoever said it, which is right for a person who
+        # keeps saying the same thing and wrong for a thing whose answer
+        # moves: Vermilion's gym listed "TRASH_CAN_6: Hey! There's a switch
+        # under the trash!" and "TRASH_CAN_7: ... the electric locks were
+        # reset!" with no count and no history beside them, and the run
+        # opened every attempt with "I know TRASH_CAN_6 is a switch and
+        # TRASH_CAN_8 resets the locks" (2026-09-14). The rows have said
+        # since that an answer belongs to the press; the hint that quotes
+        # the same sentence has to say it too, or the label is simply read
+        # from here instead. Nothing here says WHY it changed.
+        _said = self._said_variously(region, _who)
+        if len(_said) > 1:
+            _quote = str(line).split(":", 1)[1] if ":" in str(line) else ""
+            _others = [(t, n) for t, n in
+                       sorted(_said.items(), key=lambda kv: -kv[1])
+                       if not self._same_saying(t, _quote)]
+            if _others:
+                _tail += (f" — and {_who} has NOT always said this: it has "
+                          f"also said "
+                          + "; ".join('"%s" (%dx)' % (t, n)
+                                      for t, n in _others[:3])
+                          + f", so what was heard belongs to the PRESS and "
+                            f"not to {_who}, and this line does not settle "
+                            f"what the next press will say")
         then = ((getattr(self, "hints_at", {}) or {}).get(region) or {}).get(line)
         if then is None:
             return line + _tail
