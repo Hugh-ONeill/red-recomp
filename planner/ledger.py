@@ -449,7 +449,29 @@ def _left_parts(ex, region: str) -> list:
         parts.append(f"{len(things)} thing(s) never pressed "
                      f"({', '.join(things[:3])})")
     if unseen:
-        parts.append(f"{unseen} spot(s) of ground in there never on screen")
+        # ...AND WHETHER ANY OF IT CAN BE REACHED FROM THERE. The count is
+        # the MAP's pocket rule (kept positive while the map has unseen
+        # ground anywhere), so a part whose own reachable frontier was
+        # empty when the run last stood in it still read "still has 6
+        # spot(s) never on screen" from every other floor — and Mt Moon
+        # B2F's two parts were walked into eleven times between them to
+        # sweep ground no walk from either reaches (2026-09-14, user: "it
+        # gets to the different areas of b2f and only once there realizes
+        # its been worked"). The local page already says EVERYTHING YOU CAN
+        # REACH HERE IS DONE; the remote row now says the same thing.
+        _verdict = (ex._unseen_there(region)[1]
+                    if hasattr(ex, "_unseen_there") else "")
+        if _verdict == "done":
+            parts.append(f"{unseen} spot(s) of ground in there never on "
+                         f"screen, none of them reachable from where you "
+                         f"last stood — everything you could reach there "
+                         f"was done")
+        elif _verdict == "changed":
+            parts.append(f"{unseen} spot(s) of ground in there never on "
+                         f"screen — none was reachable from where you last "
+                         f"stood, but things have happened since")
+        else:
+            parts.append(f"{unseen} spot(s) of ground in there never on screen")
     if _unr:
         parts.append(f"{len(_unr)} way(s) out of it never taken that no "
                      f"walk reached")
@@ -1909,8 +1931,10 @@ def plan_explore(ex, obs: dict, cands: list[Candidate] | None = None,
             continue
         left = ex._frontier_left(region)
         things = untouched_in(ex, region)
-        unseen = int((getattr(ex, "region_seen", None) or {})
-                     .get(region, 0) or 0)
+        unseen = (ex._unseen_there(region)[0]
+                  if hasattr(ex, "_unseen_there") else
+                  int((getattr(ex, "region_seen", None) or {})
+                      .get(region, 0) or 0))
         unseen = max(unseen, _reach_from.get(region, 0))
         # ways out never taken that no walk reached from there (executor
         # note_frontier keeps them apart from the frontier)

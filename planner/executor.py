@@ -3242,8 +3242,10 @@ class Executor:
                     if k not in set(self._taken_here(region) or {})]
             # a floor whose seen ground ends somewhere is not finished
             # either (the north gate's exit had never been on screen)
-            unseen = int((getattr(self, "region_seen", None) or {})
-                         .get(region, 0) or 0)
+            # the count as a reason to walk there, not the raw pocket count
+            # (see _unseen_there): a part stood in with nothing reachable
+            # left, and nothing changed since, ranks 0 for unseen ground
+            unseen = self._unseen_there(region)[0]
             unseen = max(unseen, _reach_from.get(region, 0))
             if not (left or unpressed or unseen or _unr):
                 continue
@@ -3847,6 +3849,41 @@ class Executor:
                 f"ground with nothing new coming into view; it ranks LAST "
                 f"for explore from now on — what stops the sweep there is "
                 f"on the page"]
+
+    def _unseen_there(self, region) -> tuple:
+        """A region's count of ground never on screen, AS A REASON TO WALK
+        THERE, with the verdict behind it: (count to rank by, verdict).
+
+        The count is the map's pocket rule — kept positive for every part
+        while the MAP has unseen ground anywhere, so that a floor with
+        chambers not yet found keeps some part of it offered. But a part
+        the run has STOOD IN, whose reachable frontier was empty when it
+        stood there (frontier_here == 0), has nothing for a walk to look
+        at unless the world has changed since — and every reader of the
+        count said "still has 6 spot(s) never on screen" of Mt Moon B2F's
+        two parts from every other floor, while the local page in each of
+        them said EVERYTHING YOU CAN REACH HERE IS DONE. Eleven walks
+        between them (2026-09-14, user: "it gets to the different areas
+        of b2f and only once there realizes its been worked").
+
+        Verdicts: "" (the count stands), "done" (stood there, nothing
+        reachable was left, nothing has happened since: rank 0), "changed"
+        (stood there with nothing reachable left, but the world mark has
+        moved since — badges, events or bag kinds — so it may be different
+        now: the count stands, said with that caveat). ONE relation, read
+        by the explore picker and every ledger row (untried.py's law)."""
+        unseen = int((getattr(self, "region_seen", None) or {})
+                     .get(region, 0) or 0)
+        if not unseen:
+            return 0, ""
+        _fh = (getattr(self, "frontier_here", None) or {}).get(region)
+        if _fh != 0 or region not in (getattr(self, "visits", None) or {}):
+            return unseen, ""
+        _then = (getattr(self, "_region_mark", None) or {}).get(region)
+        _now = getattr(self, "_mark_now", None)
+        if _then is not None and _now is not None and list(_then) == list(_now):
+            return 0, "done"
+        return unseen, "changed"
 
     def _sealed(self, region) -> set:
         """Seams still proven uncrossable AS OF NOW.
