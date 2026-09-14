@@ -199,7 +199,11 @@ def map_family(m) -> str:
     MT_MOON_B2F -> MT_MOON; a map with no floor suffix is its own family.
     Harness-internal only: it decides which of the harness's OWN walk-backs
     stand down, and is never said to the model."""
-    mm = _re.match(r"^(.+?)_B?\d+F$", str(m or ""))
+    # ...WHEREVER THE FLOOR TOKEN SITS. The S.S. Anne's rooms are
+    # SS_ANNE_B1F_ROOMS and SS_ANNE_2F_ROOMS, and keyed on a TRAILING token
+    # each was its own family, so going below decks read as leaving the
+    # ship and the backtrack marched the party back to 1F (2026-09-14).
+    mm = _re.match(r"^(.+?)_B?\d+F(?:_[A-Z0-9_]+)?$", str(m or ""))
     return mm.group(1) if mm else str(m or "")
 
 
@@ -20754,6 +20758,30 @@ survives from one leg to the next","ops":[{"op":"use_warp","x":7,"y":1}]}
                     c = subgoals[back]
                     h = pred_holds(c.get("done_when") or {}, at)
                     if not h:
+                        # A PLACE STEP IS NOT UNDONE BY GOING DEEPER INTO ITS
+                        # BUILDING. enter_ss_anne (map SS_ANNE_1F) stopped
+                        # holding from the B1F rooms, so when reach_captain
+                        # failed it was re-opened and the party walked back
+                        # to 1F to satisfy it again, then started over
+                        # (2026-09-14, user: "dragging it back even though
+                        # it was making progress"). Boarding is done once;
+                        # floors of one building are one place (the
+                        # departure rule's lesson, 2026-08-25). A pure place
+                        # step whose map is this building is left as done,
+                        # and the scan goes on to an earlier step; the
+                        # relocate mode below, for a step that still HOLDS
+                        # with rooms unsearched, is untouched.
+                        _dw = c.get("done_when") or {}
+                        _want_pl = (_dw.get("map")
+                                    if set(_dw) <= {"map", "area", "not_area"}
+                                    else None)
+                        _here_map = str(((at or {}).get("map") or {}).get("id") or "")
+                        if (_want_pl and _here_map
+                                and map_family(_want_pl) == map_family(_here_map)):
+                            self.log("backtrack_place_held", failed=sg["id"],
+                                     candidate=c["id"], want=_want_pl,
+                                     here=_here_map)
+                            continue
                         cand, holds = c, False
                         break
                     want = (c.get("done_when") or {}).get("map")
