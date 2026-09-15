@@ -22,6 +22,7 @@ import json, sys, tempfile
 from pathlib import Path
 sys.path.insert(0, "planner")
 import author
+author.holding_town_map = lambda: True   # the roads blocks ride the Town Map gate (2026-09-15)
 
 checks = []
 def ck(name, cond): checks.append((name, bool(cond)))

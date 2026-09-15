@@ -3152,96 +3152,104 @@ def observed_text(path: Path) -> str:
             n = 1
         return n
 
-    blocked, untried = [], []
-    for m, edges in MAP_EDGES.items():
-        for dirn, nb in edges.items():
-            if not (vis.get(m, 0) >= 8 and not vis.get(nb)):
-                continue
-            _t = _tried_road(m, dirn, nb)
-            if _t:
-                blocked.append(
-                    f"  {m} --{dirn}--> {nb}  (stood in {m} {vis[m]}x, aimed "
-                    f"at it {_t}x, never once reached {nb})" + _road_words(m, nb))
-            else:
-                untried.append(
-                    f"  {m} --{dirn}--> {nb}  (stood in {m} {vis[m]}x, never "
-                    f"once reached {nb} — and NEVER TRIED: no crossing of "
-                    f"yours was ever aimed that way)" + _road_words(m, nb))
-    blocked.sort()
-    untried.sort()
-    if untried:
-        out += ("\n\nROADS YOU HAVE STOOD BESIDE AND NEVER TRIED. Each of "
-                "these is a printed connection out of a map you have stood "
-                "in many times, and no crossing of yours has ever been aimed "
-                "at it: nothing about it has worked, and nothing has failed. "
-                "Where the run's own record says that side has never been "
-                "on screen, the line says so. What lies that way is not "
-                "known:\n" + "\n".join(untried))
-    if blocked:
-        out += ("\n\nROADS YOU HAVE STOOD BESIDE AND NEVER CROSSED. Each of "
-                "these is a printed connection the run has had many chances "
-                "to take and has not taken. WHY is not recorded and is not "
-                "always the same: someone may want something, something may "
-                "be asleep on it, or the road may leave from a part of that "
-                "map the run has never stood in — a map can be split, and "
-                "where the run's own record says that side has never been "
-                "on screen, the line says so. What is true of every one of "
-                "them is that a route using it HAS NOT WORKED YET, so a "
-                "plan built on one needs something to change first — "
-                "reaching that road from somewhere else, or doing the deed "
-                "that opens it. WHICH, is yours to say:\n"
-                + "\n".join(blocked))
-    if blocked or untried:
-        # EVERY WAY IN, GROUPED BY THE PLACE. The lines above are one leg
-        # each, so "both the roads I have tried into Saffron are shut, and
-        # the map draws two more I have never stood on" had to be
-        # reassembled from scattered facts every time. The printed map
-        # knows all four approaches and the ledger knows which have been
-        # walked; putting them side by side is bookkeeping. Which untried
-        # approach to go and find, or whether to open one of the shut ones
-        # instead, is not.
-        into: dict = {}
+    # THE PRINTED MAP IS READ ONLY WHEN IT IS HELD. Every other printed-map
+    # block on this page (the road list, the door list, the printed-entrance
+    # guard, the walker's own roads block) already rides the Town Map gate;
+    # this one named the far side of roads never seen ("LAVENDER_TOWN
+    # --west--> ROUTE_8") and the labels of landmarks never entered
+    # ("a door into POWER PLANT") with nothing in the bag to read them off
+    # (2026-09-15, user: "yeah gate those two blocks"). Same condition.
+    if holding_town_map():
+        blocked, untried = [], []
         for m, edges in MAP_EDGES.items():
             for dirn, nb in edges.items():
-                into.setdefault(nb, []).append((m, dirn))
-        hammered = {nb for m, edges in MAP_EDGES.items()
-                    for nb in edges.values()
-                    if vis.get(m, 0) >= 8 and not vis.get(nb)}
-        walls = []
-        for dest in sorted(hammered):
-            rows, ways = [], 0
-            for src, dirn in sorted(into.get(dest, [])):
-                n = vis.get(src, 0)
-                ways += 1
-                _t = _tried_road(src, dirn, dest) if n else 0
-                rows.append(
-                    f"    from {src} heading {dirn}: "
-                    + (f"stood there {n}x, aimed at it {_t}x, never once "
-                       f"got through" if n and _t else
-                       f"stood there {n}x and never once tried it"
-                       if n else "you have never stood in that place"))
-                # A ROAD CAN HAVE HALVES. Where a road has a named place
-                # opening off it, its far side may be reachable only
-                # through that door — Route 10's south end is past Rock
-                # Tunnel, so a plan hopping ROUTE_10 -> LAVENDER_TOWN is
-                # standing at the north end asking for a road that leaves
-                # from the south. The two facts sat in different tables and
-                # were never put side by side. What that means here is
-                # yours to judge.
-                for lbl, ids in sorted((MAP_DOORS.get(src) or {}).items()):
-                    been = sum(vis.get(i, 0) for i in ids)
+                if not (vis.get(m, 0) >= 8 and not vis.get(nb)):
+                    continue
+                _t = _tried_road(m, dirn, nb)
+                if _t:
+                    blocked.append(
+                        f"  {m} --{dirn}--> {nb}  (stood in {m} {vis[m]}x, aimed "
+                        f"at it {_t}x, never once reached {nb})" + _road_words(m, nb))
+                else:
+                    untried.append(
+                        f"  {m} --{dirn}--> {nb}  (stood in {m} {vis[m]}x, never "
+                        f"once reached {nb} — and NEVER TRIED: no crossing of "
+                        f"yours was ever aimed that way)" + _road_words(m, nb))
+        blocked.sort()
+        untried.sort()
+        if untried:
+            out += ("\n\nROADS YOU HAVE STOOD BESIDE AND NEVER TRIED. Each of "
+                    "these is a printed connection out of a map you have stood "
+                    "in many times, and no crossing of yours has ever been aimed "
+                    "at it: nothing about it has worked, and nothing has failed. "
+                    "Where the run's own record says that side has never been "
+                    "on screen, the line says so. What lies that way is not "
+                    "known:\n" + "\n".join(untried))
+        if blocked:
+            out += ("\n\nROADS YOU HAVE STOOD BESIDE AND NEVER CROSSED. Each of "
+                    "these is a printed connection the run has had many chances "
+                    "to take and has not taken. WHY is not recorded and is not "
+                    "always the same: someone may want something, something may "
+                    "be asleep on it, or the road may leave from a part of that "
+                    "map the run has never stood in — a map can be split, and "
+                    "where the run's own record says that side has never been "
+                    "on screen, the line says so. What is true of every one of "
+                    "them is that a route using it HAS NOT WORKED YET, so a "
+                    "plan built on one needs something to change first — "
+                    "reaching that road from somewhere else, or doing the deed "
+                    "that opens it. WHICH, is yours to say:\n"
+                    + "\n".join(blocked))
+        if blocked or untried:
+            # EVERY WAY IN, GROUPED BY THE PLACE. The lines above are one leg
+            # each, so "both the roads I have tried into Saffron are shut, and
+            # the map draws two more I have never stood on" had to be
+            # reassembled from scattered facts every time. The printed map
+            # knows all four approaches and the ledger knows which have been
+            # walked; putting them side by side is bookkeeping. Which untried
+            # approach to go and find, or whether to open one of the shut ones
+            # instead, is not.
+            into: dict = {}
+            for m, edges in MAP_EDGES.items():
+                for dirn, nb in edges.items():
+                    into.setdefault(nb, []).append((m, dirn))
+            hammered = {nb for m, edges in MAP_EDGES.items()
+                        for nb in edges.values()
+                        if vis.get(m, 0) >= 8 and not vis.get(nb)}
+            walls = []
+            for dest in sorted(hammered):
+                rows, ways = [], 0
+                for src, dirn in sorted(into.get(dest, [])):
+                    n = vis.get(src, 0)
+                    ways += 1
+                    _t = _tried_road(src, dirn, dest) if n else 0
                     rows.append(
-                        f"      ({src} also has a door into {lbl} "
-                        f"[{ids[0]}] — "
-                        + (f"gone through {been}x" if been
-                           else "never gone through") + ")")
-            if rows:
-                walls.append(f"  {dest} — {ways} way(s) in on the "
-                             f"printed map:\n" + "\n".join(rows))
-        if walls:
-            out += ("\n\nEVERY PRINTED WAY INTO A PLACE YOU HAVE NEVER "
-                    "REACHED, and what has happened at each:\n"
-                    + "\n".join(walls))
+                        f"    from {src} heading {dirn}: "
+                        + (f"stood there {n}x, aimed at it {_t}x, never once "
+                           f"got through" if n and _t else
+                           f"stood there {n}x and never once tried it"
+                           if n else "you have never stood in that place"))
+                    # A ROAD CAN HAVE HALVES. Where a road has a named place
+                    # opening off it, its far side may be reachable only
+                    # through that door — Route 10's south end is past Rock
+                    # Tunnel, so a plan hopping ROUTE_10 -> LAVENDER_TOWN is
+                    # standing at the north end asking for a road that leaves
+                    # from the south. The two facts sat in different tables and
+                    # were never put side by side. What that means here is
+                    # yours to judge.
+                    for lbl, ids in sorted((MAP_DOORS.get(src) or {}).items()):
+                        been = sum(vis.get(i, 0) for i in ids)
+                        rows.append(
+                            f"      ({src} also has a door into {lbl} "
+                            f"[{ids[0]}] — "
+                            + (f"gone through {been}x" if been
+                               else "never gone through") + ")")
+                if rows:
+                    walls.append(f"  {dest} — {ways} way(s) in on the "
+                                 f"printed map:\n" + "\n".join(rows))
+            if walls:
+                out += ("\n\nEVERY PRINTED WAY INTO A PLACE YOU HAVE NEVER "
+                        "REACHED, and what has happened at each:\n"
+                        + "\n".join(walls))
     _live = _live_flags()
     fired = [f"  {f} fired in {region}" + _fired_row_note(f, _live)
              for f, region in sorted((d.get("flag_sites") or {}).items())]

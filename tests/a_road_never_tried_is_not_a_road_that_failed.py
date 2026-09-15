@@ -23,6 +23,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "planner"))
 import author as A                                        # noqa: E402
 
+# the roads blocks ride the Town Map gate (2026-09-15); this test reads them with the map held,
+# and checks below that without it they are absent
+A.holding_town_map = lambda: True
+
 checks = []
 def ck(n, ok, d=""): checks.append((n, bool(ok), d))
 
@@ -81,6 +85,11 @@ t5 = render(outcomes={}, no_cross={})
 ck("with nothing on any book, every such road is untried and the grouped block still renders",
    "NEVER TRIED" in line(t5, "ROUTE_12", "ROUTE_11") and "EVERY PRINTED WAY INTO A PLACE" in t5 and "NEVER CROSSED" not in t5)
 
+A.holding_town_map = lambda: False
+t6 = render()
+ck("without the Town Map in the bag, neither roads block is on the page",
+   "STOOD BESIDE" not in t6 and "EVERY PRINTED WAY INTO A PLACE" not in t6 and "ROUTE_8" not in t6)
+A.holding_town_map = lambda: True
 ck("nothing here points down a road",
    not any(w in t.lower() for w in ("you should", "go west", "take the west", "head west", "the way to celadon")))
 
