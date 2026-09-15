@@ -3113,12 +3113,70 @@ def observed_text(path: Path) -> str:
         return (f" — while aiming at {nb} you pressed {best[0]} on {m}, "
                 f"and it said: \"{best[1]}\"") + side
 
-    blocked = sorted(
-        f"  {m} --{dirn}--> {nb}  (stood in {m} {vis[m]}x, never once "
-        f"reached {nb})" + _road_words(m, nb)
-        for m, edges in MAP_EDGES.items()
-        for dirn, nb in edges.items()
-        if vis.get(m, 0) >= 8 and not vis.get(nb))
+    # STANDING BESIDE A ROAD IS NOT TRYING IT. This block listed every
+    # printed road out of a well-trodden map whose far side was never
+    # reached as "never once got through", under a preamble saying a
+    # route using it HAS NOT WORKED YET. Lavender's west road read
+    # "stood there 12x and never once got through" with no crossing ever
+    # aimed at it, and the author planned an eleven-step trek around the
+    # one road to Celadon (2026-09-14). The record can tell the two apart:
+    # a tried road has a crossing attempt on its book (an outcome entry
+    # under the direction, a no-cross record, a sealed seam) or something
+    # pressed on that map while aiming at the far side; an untried one
+    # has nothing. Said separately, in the record's own terms.
+    def _tried_road(m: str, dirn: str, nb: str) -> int:
+        n = 0
+        for key, rec in (d.get("outcomes") or {}).items():
+            tgt, _, region = str(key).partition("|")
+            if region.split("|")[0] != m:
+                continue
+            e = (rec or {}).get(dirn)
+            if isinstance(e, dict):
+                n += int(e.get("n") or 0) or 1
+            if nb in tgt:
+                # things PRESSED while aiming there; a seam entry is the
+                # crossing itself and was counted just above
+                n += sum(int((r or {}).get("n") or 0) or 1
+                         for th, r in (rec or {}).items()
+                         if isinstance(r, dict) and not str(th).startswith("TEXT_")
+                         and str(th) not in ("north", "south", "east", "west"))
+        # a no-cross note or a sealed seam is proof of a try, not a count
+        # of its own: it vouches only when nothing above was counted
+        sealed = any(str(region).split("|")[0] == m and dirn in (dirs or [])
+                     for region, dirs in (d.get("no_cross") or {}).items())
+        sealed = sealed or any(
+            isinstance(row, (list, tuple)) and len(row) >= 2
+            and str(row[0]).split("|")[0] == m and row[1] == dirn
+            for row in (d.get("bad_seam") or []))
+        if sealed and n == 0:
+            n = 1
+        return n
+
+    blocked, untried = [], []
+    for m, edges in MAP_EDGES.items():
+        for dirn, nb in edges.items():
+            if not (vis.get(m, 0) >= 8 and not vis.get(nb)):
+                continue
+            _t = _tried_road(m, dirn, nb)
+            if _t:
+                blocked.append(
+                    f"  {m} --{dirn}--> {nb}  (stood in {m} {vis[m]}x, aimed "
+                    f"at it {_t}x, never once reached {nb})" + _road_words(m, nb))
+            else:
+                untried.append(
+                    f"  {m} --{dirn}--> {nb}  (stood in {m} {vis[m]}x, never "
+                    f"once reached {nb} — and NEVER TRIED: no crossing of "
+                    f"yours was ever aimed that way)" + _road_words(m, nb))
+    blocked.sort()
+    untried.sort()
+    if untried:
+        out += ("\n\nROADS YOU HAVE STOOD BESIDE AND NEVER TRIED. Each of "
+                "these is a printed connection out of a map you have stood "
+                "in many times, and no crossing of yours has ever been aimed "
+                "at it: nothing about it has worked, and nothing has failed. "
+                "Where the run's own record says that side has never been "
+                "on screen, the line says so. What lies that way is not "
+                "known:\n" + "\n".join(untried))
     if blocked:
         out += ("\n\nROADS YOU HAVE STOOD BESIDE AND NEVER CROSSED. Each of "
                 "these is a printed connection the run has had many chances "
@@ -3133,6 +3191,7 @@ def observed_text(path: Path) -> str:
                 "reaching that road from somewhere else, or doing the deed "
                 "that opens it. WHICH, is yours to say:\n"
                 + "\n".join(blocked))
+    if blocked or untried:
         # EVERY WAY IN, GROUPED BY THE PLACE. The lines above are one leg
         # each, so "both the roads I have tried into Saffron are shut, and
         # the map draws two more I have never stood on" had to be
@@ -3154,9 +3213,12 @@ def observed_text(path: Path) -> str:
             for src, dirn in sorted(into.get(dest, [])):
                 n = vis.get(src, 0)
                 ways += 1
+                _t = _tried_road(src, dirn, dest) if n else 0
                 rows.append(
                     f"    from {src} heading {dirn}: "
-                    + (f"stood there {n}x and never once got through"
+                    + (f"stood there {n}x, aimed at it {_t}x, never once "
+                       f"got through" if n and _t else
+                       f"stood there {n}x and never once tried it"
                        if n else "you have never stood in that place"))
                 # A ROAD CAN HAVE HALVES. Where a road has a named place
                 # opening off it, its far side may be reachable only
