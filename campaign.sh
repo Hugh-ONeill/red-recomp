@@ -218,6 +218,19 @@ sys.path.insert(0, "planner")
 from executor import pred_holds
 plan = json.load(open(sys.argv[1]))
 obs = json.load(open(sys.argv[2]))
+# A WAY THROUGH HAS TWO ENDS, AND THE RECORD CAN SHOW BOTH. A through-leg
+# whose plan ends on a map the place never opens onto (Rock Tunnel ->
+# ROUTE_11, 2026-09-14) fails its last step for ever while the run stands
+# on the far side: the objective is met by the record, not by the plan.
+# Same reading as check-done's; see author._through_by_record.
+try:
+    from author import _through_by_record
+    _thr = _through_by_record(str(plan.get("goal") or ""), "run/explored.json")
+except Exception:
+    _thr = None
+if _thr:
+    print(f"    (the record shows both mouths of the place used: {_thr})")
+    sys.exit(0)
 last = (plan.get("subgoals") or [{}])[-1].get("done_when") or {}
 # AN ABSENCE IS NOT A DEED. lacks_item / bag_kinds_below are true before
 # the thing was ever held: a reused drink plan ending on lacks_item

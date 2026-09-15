@@ -95,6 +95,10 @@ ck("check-done accepts on two mouths after every refusal and before asking the m
 ad = src[src.index("def check_already_done("):src.index("def check_done(")]
 ck("...and so does the already-done rung",
    "_through_by_record(deed, observed)" in ad and ad.index("_never_held(deed, start)") < ad.index("_through_by_record(deed, observed)") < ad.index("brock_probe.chat("))
+camp = (ROOT / "campaign.sh").read_text()
+ck("the campaign's between-attempts check reads the record before the plan's last predicate",
+   '_through_by_record(str(plan.get("goal") or ""), "run/explored.json")' in camp
+   and camp.index('_through_by_record(str(plan.get("goal")') < camp.index('pred_holds(last, obs)'))
 ck("one definition, shared by refusal and acceptance",
    src.count("def _through_place_mouths") == 1 and "got = _through_place_mouths(goal, observed)" in src)
 
