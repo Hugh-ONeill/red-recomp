@@ -21,6 +21,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "planner"))
 import author as A                                        # noqa: E402
 
+# RECORD-FREE, on purpose: these are claims about the SHAPE of a plan. What the
+# record of the place's mouths adds (once both are walked, the step after the
+# place cannot name a map neither reaches) is pinned in
+# a_way_through_has_two_ends_and_the_record_can_show_both.py.
 checks = []
 def ck(n, ok, d=""): checks.append((n, bool(ok), d))
 
@@ -28,7 +32,7 @@ def P(goal, *dws):
     return {"goal": goal, "subgoals": [{"id": f"s{i}", "done_when": d}
                                        for i, d in enumerate(dws)]}
 
-p = A.through_a_place_problems(P("Travel through Rock Tunnel", {"map": "ROUTE_11"}))
+p = A.through_a_place_problems(observed=None, plan=P("Travel through Rock Tunnel", {"map": "ROUTE_11"}))
 ck("a through-plan with no step inside the place is refused", len(p) == 1, p)
 ck("...naming the place", "THROUGH ROCK_TUNNEL" in (p[0] if p else ""))
 ck("...and saying what it could finish without doing",
@@ -39,20 +43,20 @@ ck("...and naming no route, no exit and no destination",
    not any(w in (p[0] if p else "") for w in ("ROUTE_10", "ROUTE_11", "Lavender", "south", "north")))
 
 ck("a floor of the place counts as the place",
-   A.through_a_place_problems(P("Travel through Rock Tunnel",
+   A.through_a_place_problems(observed=None, plan=P("Travel through Rock Tunnel",
                                 {"map": "ROCK_TUNNEL_B1F"}, {"map": "ROUTE_11"})) == [])
 ck("...as does a new_part of it",
-   A.through_a_place_problems(P("Traverse Mt Moon", {"new_part": "MT_MOON_B2F"})) == [])
+   A.through_a_place_problems(observed=None, plan=P("Traverse Mt Moon", {"new_part": "MT_MOON_B2F"})) == [])
 ck("...and an area inside it",
-   A.through_a_place_problems(P("Travel across Rock Tunnel",
+   A.through_a_place_problems(observed=None, plan=P("Travel across Rock Tunnel",
                                 {"area": "ROCK_TUNNEL_1F|14,2"})) == [])
 ck("an objective with no through-word is not judged",
-   A.through_a_place_problems(P("Reach Lavender Town", {"map": "ROUTE_11"})) == []
-   and A.through_a_place_problems(P("Exit Rock Tunnel", {"map": "ROUTE_11"})) == [])
+   A.through_a_place_problems(observed=None, plan=P("Reach Lavender Town", {"map": "ROUTE_11"})) == []
+   and A.through_a_place_problems(observed=None, plan=P("Exit Rock Tunnel", {"map": "ROUTE_11"})) == [])
 ck("a through-objective naming no map this game has is not judged",
-   A.through_a_place_problems(P("Travel through the tall grass", {"map": "ROUTE_11"})) == [])
+   A.through_a_place_problems(observed=None, plan=P("Travel through the tall grass", {"map": "ROUTE_11"})) == [])
 ck("a plan with no subgoals at all is left to the other checks",
-   len(A.through_a_place_problems({"goal": "Travel through Rock Tunnel", "subgoals": []})) == 1)
+   len(A.through_a_place_problems(observed=None, plan={"goal": "Travel through Rock Tunnel", "subgoals": []})) == 1)
 
 src = (ROOT / "planner" / "author.py").read_text()
 ck("the author's rounds ask it", "or through_a_place_problems(plan))" in src)

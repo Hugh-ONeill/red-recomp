@@ -6675,24 +6675,11 @@ def _blocks_a_place_you_have_walked(why: str, observed=None) -> str | None:
     return None
 
 
-def _not_through_yet(goal: str, observed=None) -> str | None:
-    """A place the objective says to go THROUGH, every walked way out of
-    which lands on the same ground. Names it, or None.
-
-    "Travel through Rock Tunnel" was crossed off twice before it ran, on
-    "the run has previously exited Rock Tunnel to Route 10, indicating the
-    tunnel has been traversed" and then, once "indicating" was refused as
-    a hedge, on "as evidenced by the walk record and the current location"
-    (2026-09-14). Both were true about exiting and false about traversing:
-    what it had come out onto was ROUTE_10|0,4, the very part it went in
-    from. Coming back out the way you came in is not going through.
-
-    The ledger settles this without any knowledge of the game. Take every
-    edge the run has walked from any part of that place to anywhere
-    outside it; if they all land on ONE region, it has used one mouth, and
-    a way through has two ends. Nothing here says where the other mouth
-    is, or that there is one.
-    """
+def _through_place_mouths(goal: str, observed=None):
+    """(place, mouths) for an objective that says to go THROUGH a place
+    this run has walked: the place's family name, and every region OUTSIDE
+    it that a walked way out of it lands on. None when the objective does
+    not say through, or names no walked place, or there is no record."""
     if not _re.search(r"\b(through|across|traverse[sd]?|traversing)\b",
                       str(goal or ""), _re.I):
         return None
@@ -6716,8 +6703,57 @@ def _not_through_yet(goal: str, observed=None) -> str | None:
                 _to = (_e or {}).get("to")
                 if _to and _fam(_to) != fam:
                     out.add(str(_to))
-        if len(out) <= 1:
-            return f"{fam} ({'; '.join(sorted(out)) or 'no way out walked at all'})"
+        return fam, out
+    return None
+
+
+def _through_by_record(goal: str, observed=None) -> str | None:
+    """A place the objective says to go THROUGH, and the record shows two
+    of its mouths used: a walked way out of it lands on one region, and
+    another walked way out lands on a different one. Names them, or None.
+
+    THE OTHER HALF OF _not_through_yet, by the same definition: a way
+    through has two ends. "Travel through Rock Tunnel" had been walked in
+    from ROUTE_10|0,4 and out by another door onto ROUTE_10|14,52, and the
+    run stood in Lavender Town on the far side saying "my goal is to reach
+    Route 11 by exiting the Rock Tunnel" and walking back in (2026-09-14).
+    The step it was checking named a map the tunnel does not open onto;
+    the objective named the tunnel, and the record already held the deed.
+    Nothing here says where a place SHOULD come out — only that this one
+    has been left by two different ways."""
+    got = _through_place_mouths(goal, observed)
+    if not got:
+        return None
+    fam, out = got
+    if len(out) < 2:
+        return None
+    return f"{fam}: {', '.join(sorted(out))}"
+
+
+def _not_through_yet(goal: str, observed=None) -> str | None:
+    """A place the objective says to go THROUGH, every walked way out of
+    which lands on the same ground. Names it, or None.
+
+    "Travel through Rock Tunnel" was crossed off twice before it ran, on
+    "the run has previously exited Rock Tunnel to Route 10, indicating the
+    tunnel has been traversed" and then, once "indicating" was refused as
+    a hedge, on "as evidenced by the walk record and the current location"
+    (2026-09-14). Both were true about exiting and false about traversing:
+    what it had come out onto was ROUTE_10|0,4, the very part it went in
+    from. Coming back out the way you came in is not going through.
+
+    The ledger settles this without any knowledge of the game. Take every
+    edge the run has walked from any part of that place to anywhere
+    outside it; if they all land on ONE region, it has used one mouth, and
+    a way through has two ends. Nothing here says where the other mouth
+    is, or that there is one.
+    """
+    got = _through_place_mouths(goal, observed)
+    if not got:
+        return None
+    fam, out = got
+    if len(out) <= 1:
+        return f"{fam} ({'; '.join(sorted(out)) or 'no way out walked at all'})"
     return None
 
 
@@ -7023,6 +7059,12 @@ def check_already_done(deed: str, start: str, model: str,
         print(f"[already-done] refused: '{deed[:60]}' says {gone} was given "
               f"away, and the run has never once held it", file=sys.stderr)
         return False
+    _thr_done = _through_by_record(deed, observed)
+    if _thr_done:
+        print(f"[already-done] this objective says to go THROUGH a place, and "
+              f"the record shows two of its mouths used, in by one and out "
+              f"by another — {_thr_done}", file=sys.stderr)
+        return True
     body = (f"THE OBJECTIVE: {deed}\n\nWHERE THE RUN STANDS: {start}"
             + recent_events() + _events_bearing(deed)
             + walked_ground_text([(0, deed)], observed))
@@ -8370,7 +8412,7 @@ def _terrain_on_door(h: str) -> "tuple | None":
     return None
 
 
-def through_a_place_problems(plan: dict) -> list:
+def through_a_place_problems(plan: dict, observed="run/explored.json") -> list:
     """A plan for going THROUGH a place, with no step that ends inside it.
 
     "Travel through Rock Tunnel" was authored as one subgoal, exit_rock_
@@ -8398,19 +8440,56 @@ def through_a_place_problems(plan: dict) -> list:
             break
     if not named:
         return []
-    for sg in ((plan or {}).get("subgoals") or []):
-        dw = sg.get("done_when") if isinstance(sg, dict) else None
+    subs = [s for s in ((plan or {}).get("subgoals") or []) if isinstance(s, dict)]
+    inside = -1
+    for i, sg in enumerate(subs):
+        dw = sg.get("done_when")
         if not isinstance(dw, dict):
             continue
-        for key in ("map", "new_part"):
-            if _fam(dw.get(key) or "") == named:
-                return []
-        if _fam(str(dw.get("area") or "")) == named:
-            return []
-    return [f"this objective says to go THROUGH {named} and no step of this "
-            f"plan ends anywhere in {named} — as written the plan can finish "
-            f"without the party ever being in it. Give it a step that ends "
-            f"there."]
+        if any(_fam(dw.get(key) or "") == named for key in ("map", "new_part")) \
+                or _fam(str(dw.get("area") or "")) == named:
+            inside = i
+    if inside < 0:
+        return [f"this objective says to go THROUGH {named} and no step of this "
+                f"plan ends anywhere in {named} — as written the plan can finish "
+                f"without the party ever being in it. Give it a step that ends "
+                f"there."]
+    # ...AND ONCE THE RECORD HOLDS BOTH MOUTHS, THE STEP THAT COMES OUT
+    # CANNOT NAME A THIRD. "Travel through Rock Tunnel" was written a
+    # second time as enter_rock_tunnel -> traverse_rock_tunnel ending on
+    # {"map": "ROUTE_11"}, with the tunnel already walked in from
+    # ROUTE_10|0,4 and out onto ROUTE_10|14,52 (2026-09-14). The model
+    # believes the tunnel comes out on Route 11; the record says where it
+    # has come out. Nothing here says where a place comes out — only
+    # which regions the walked ways out of THIS one land on, and that a
+    # step naming a map none of them reaches, that the run has never stood
+    # on, is not one the record can ever satisfy.
+    got = _through_place_mouths(goal, observed)
+    if not got or len(got[1]) < 2:
+        return []
+    _, out = got
+    try:
+        d = json.loads(Path(observed).read_text() or "{}") if observed else {}
+    except (OSError, ValueError, TypeError):
+        d = {}
+    stood = {_fam(r) for r in (d.get("visits") or {})} | {_fam(r) for r in (d.get("explored") or {})}
+    for sg in subs[inside + 1:inside + 2]:
+        dw = sg.get("done_when") if isinstance(sg.get("done_when"), dict) else {}
+        m = str(dw.get("map") or "")
+        if not m or _fam(m) == named:
+            continue
+        if any(_fam(r) == _fam(m) for r in out) or _fam(m) in stood:
+            continue
+        return [f"this objective says to go THROUGH {named}, and the record "
+                f"already holds both of its mouths: the ways out of it you "
+                f"have walked land on {', '.join(sorted(out))}. The step after "
+                f"it ({sg.get('id')}) ends on {m}, which no walked way out of "
+                f"{named} lands on and you have never stood on. A step that "
+                f"comes out onto one of those mouths (with \"not_area\" for "
+                f"the one you went in by), or one that goes on from there over "
+                f"ground you have walked, is a step the record can meet; this "
+                f"one it cannot."]
+    return []
 
 
 def machine_slot_problems(plan: dict, obs: dict | None = None) -> list:
@@ -9182,6 +9261,15 @@ def check_done(goal: str, start: str, model: str,
               f"away, and the run has never once held it (not in the bag, "
               f"and no event that names it has fired)")
         return False
+    # ...AND THE SAME RECORD CAN SAY DONE. The refusal above stops a false
+    # "through" while one mouth has been used; this is its other half:
+    # two mouths used is the deed itself, and no judgment is asked for.
+    _thr_done = _through_by_record(goal, observed)
+    if _thr_done:
+        print(f"[check-done] done: this objective says to go THROUGH a place, "
+              f"and the record shows two of its mouths used, in by one and "
+              f"out by another — {_thr_done}")
+        return True
     # A PLACE NAMED IN THE OBJECTIVE MUST BE THE PLACE IN THE EVIDENCE.
     # "Wake the Snorlax sleeping on ROUTE 12" was judged done on
     # EVENT_BEAT_ROUTE16_SNORLAX — the other Snorlax, a map away. Event
