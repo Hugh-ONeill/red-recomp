@@ -18,12 +18,13 @@ ROOT = Path(__file__).resolve().parents[1]
 checks = []
 def ck(name, ok): checks.append((name, bool(ok)))
 lua = (ROOT / "harness/shim.lua").read_text()
-ck("the shim can see a learn anywhere on the stack", "local function learn_on_stack(G)" in lua)
-h = lua[lua.index("local function learn_on_stack(G)"):][:600]
+# (forward-declared since 2026-09-14 so the button wrapper above it can refuse presses while a learn is up)
+ck("the shim can see a learn anywhere on the stack", "learn_on_stack = function(G)" in lua and "local learn_on_stack\n" in lua)
+h = lua[lua.index("learn_on_stack = function(G)"):][:600]
 ck("...by newMoveId on any frame", "s.newMoveId ~= nil" in h)
 ck("...or a MoveLearnMenu on top", 'screenId == "MoveLearnMenu"' in h)
 ck("it is declared before observe uses it",
-   lua.index("local function learn_on_stack(G)") < lua.index("elseif battle_frame(G) and not learn_on_stack(G) then"))
+   lua.index("learn_on_stack = function(G)") < lua.index("elseif battle_frame(G) and not learn_on_stack(G) then"))
 ck("observe reports a battle only when no learn is on the stack",
    "elseif battle_frame(G) and not learn_on_stack(G) then" in lua)
 i = lua.index("elseif battle_frame(G) and not learn_on_stack(G) then")

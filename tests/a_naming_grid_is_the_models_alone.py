@@ -50,7 +50,7 @@ ck("...and the refusal names which button it was",
 ck("the name op is exempt, because START is its confirm",
    'naming_driver = (cmd.op == "name")' in SH)
 ck("...and the exemption is lowered by the dispatcher, not the op",
-   SH.split('naming_driver = (cmd.op == "name")')[1][:260]
+   SH.split('naming_driver = (cmd.op == "name")')[1][:700]
      .count("naming_driver = false") == 1)
 ck("...so no early return or watchdog kill can leave it open",
    "cannot\n      -- outlive the op that raised it" in SH)

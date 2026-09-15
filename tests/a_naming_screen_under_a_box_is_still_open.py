@@ -37,7 +37,8 @@ SH = (ROOT / "harness" / "shim.lua").read_text()
 EX = (ROOT / "planner" / "executor.py").read_text()
 
 # ---- the publication ----------------------------------------------------
-tail = SH.split('o.mode = "boot"', 1)[1][:1600]
+# (the learn report added 2026-09-14 sits between the mode chain and this block)
+tail = SH.split('o.mode = "boot"', 1)[1][:3400]
 ck("a naming screen is published even when it is not on top",
    "if not o.naming then" in tail and "local _ns = naming_on_stack(G)" in tail)
 ck("...from the same stack check the ops use",

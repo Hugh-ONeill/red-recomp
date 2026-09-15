@@ -265,10 +265,29 @@ end
 -- just typed. So this cannot be a blanket refusal: the op raises a flag
 -- while it is driving the grid and everyone else is refused.
 local naming_driver = false
+-- A LEVEL-UP MOVE PROMPT IS THE SAME KIND OF SCREEN AS THE NAMING GRID:
+-- while it is up, one press of A answers "delete an older move?" YES and
+-- the next forgets whatever the cursor rests on, which is slot 1. Every
+-- blind rider was told to stop at it — the fight's text loop, grind,
+-- observe — and it still happened: ZAPPER lost THUNDERBOLT to SWIFT and
+-- DUX lost PECK and then FURY ATTACK, with no record and nobody asked
+-- (2026-09-14). Fixing loops one at a time is how the naming grid went
+-- nine rounds. Same cure as the grid: while a learn is on the stack, no
+-- button lands unless the op that owns the choice is pressing it.
+-- learn_on_stack is defined further down; declared here so this wrapper
+-- can see it.
+local learn_on_stack
+local learn_driver = false
 do
   local _tap = U.tap
   U.tap = function(game, btn)
     if DLG_TRACE then dlg_trace(game, "tap:" .. tostring(btn), 0) end
+    if not learn_driver and learn_on_stack and learn_on_stack(game) then
+      if DLG_TRACE then
+        dlg_trace(game, "REFUSED-LEARN:" .. tostring(btn), 0)
+      end
+      return
+    end
     if not naming_driver and naming_on_stack(game) then
       -- EVERY button, not just START. Refusing START alone left the grid
       -- open and the same caller's next press was A — which on a letter
@@ -535,7 +554,7 @@ end
 -- "Abandon learning MIST?" until the user did (2026-08-28). Same scan
 -- grind() already makes before it lets go: a learn anywhere on the
 -- stack is the model's choice to make, so it is reported as ui.
-local function learn_on_stack(G)
+learn_on_stack = function(G)
   local st = G and G.stack and G.stack.states
   if type(st) == "table" then
     for _, s in ipairs(st) do
@@ -3485,6 +3504,43 @@ local function observe(G, seq, result)
     end
   else
     o.mode = "boot"
+  end
+  -- A LEARN ON THE STACK IS SAID WHATEVER IS ON TOP. The menu's own
+  -- preamble ("trying to learn ... delete an older move?") is a text box
+  -- above it, and the executor could only see the list once the text and
+  -- the YES were already pressed blind. Say it from the first page, with
+  -- what the summary screen would show: the learner's slot, the new move
+  -- and each known move with its type and power. Whether the new move is
+  -- worth a slot, and which, is the model's.
+  do
+    local lm
+    for _, s in ipairs((G.stack and G.stack.states) or {}) do
+      if type(s) == "table" and s.newMoveId ~= nil then lm = s end
+    end
+    if lm then
+      local function movefacts(id)
+        local md = G.data and G.data.moves and G.data.moves[id]
+        return { id = tostring(id),
+                 type = md and md.type and tostring(md.type) or nil,
+                 power = md and md.power or nil }
+      end
+      local known = {}
+      for i, m in ipairs((lm.mon and lm.mon.moves) or {}) do
+        known[i] = movefacts(type(m) == "table" and m.id or m)
+      end
+      local slot
+      for i, m in ipairs((G.save and G.save.party) or {}) do
+        if m == lm.mon then slot = i end
+      end
+      o.ui = o.ui or {}
+      o.ui.learn = {
+        learner = tostring(lm.mon and lm.mon.species or "?"),
+        learner_slot = slot,
+        new_move = movefacts(lm.newMoveId),
+        moves = known,
+        selecting = lm.selecting and true or false,
+      }
+    end
   end
   -- A NAMING SCREEN UNDER A TEXT BOX IS STILL A NAMING SCREEN. The chain
   -- above reports what is ON TOP, and TextBox is tested before naming --
@@ -12670,6 +12726,7 @@ local CEREMONY = { DexEntryMenu = true }
 local function decision_reached(G)
   local top = G.stack:top()
   if not top then return false end                        -- between states
+  if learn_on_stack(G) then return true end               -- the model's choice
   if G.overworld and top == G.overworld then
     return not scripts_busy(G)                            -- free roam only
   end
@@ -12796,8 +12853,14 @@ return function(G)
       -- it types; clearing it HERE means no early return, error or
       -- watchdog kill can leave the guard open for the next op.
       naming_driver = (cmd.op == "name")
+      -- ...and the learn prompt's owners: the executor drives a level-up
+      -- learn with tap (the text) and menu (YES, then the model's slot),
+      -- and use_item drives a machine's own learn list with its forget=.
+      learn_driver = (cmd.op == "menu" or cmd.op == "tap"
+                      or cmd.op == "use_item")
       local ok, detail = wd_run(G, cmd.op, OP_FRAME_BUDGET, op, G, cmd)
       naming_driver = false
+      learn_driver = false
       result = { op = cmd.op, ok = ok and true or false,
                  detail = detail and tostring(detail) or nil }
     else

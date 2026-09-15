@@ -10702,6 +10702,10 @@ class Executor:
         sat in that prompt for 23 escalations. Telling the model to answer it
         did not work; backing out is harness hygiene, like settle().
         """
+        # A LEARN PROMPT IS NOT A STRAY BOX: B on it is "abandon", and its
+        # list is the model's choice. Walk it (see _resolve_learn).
+        if ((obs or {}).get("ui") or {}).get("learn"):
+            return self._resolve_learn(obs, sg)
         # PATIENCE FIRST. A prompt the model has not had a turn to answer
         # may be the one it WANTS — pressing B on "Do you want the DOME
         # FOSSIL?" answers No and silently loses the item that opens Mt
@@ -10824,11 +10828,41 @@ class Executor:
                 and ui.get("screenId") == "MoveLearnMenu"
                 and ui.get("selecting")):
             return obs
-        moves = [str(m) for m in (ui.get("moves") or [])]
-        new = str(ui.get("new_move") or "?")
-        who = str(ui.get("learner") or "your Pokemon")
-        user = (f"{who} is trying to learn {new}. It knows: "
-                + ", ".join(f"{i}={m}" for i, m in enumerate(moves, 1))
+        # THE FACTS THE SUMMARY SCREEN SHOWS, as the TM question has had
+        # since 2026-09-14: the learner's types, the new move's type and
+        # power, each known move's type and power. The question named four
+        # moves and nothing else, and ZAPPER's THUNDERBOLT went for SWIFT
+        # on a page that said neither was ELECTRIC nor NORMAL nor 95 nor
+        # 60. What a type match is worth stays the model's to weigh.
+        lr = ui.get("learn") or {}
+        party = (obs or {}).get("party") or []
+        _slot = lr.get("learner_slot")
+        _mon = (party[_slot - 1] if isinstance(_slot, int)
+                and 0 < _slot <= len(party) and isinstance(party[_slot - 1], dict)
+                else {})
+        _types = "/".join(str(t).upper() for t in (_mon.get("types") or []))
+
+        def _shown(x):
+            if isinstance(x, dict):
+                bits = [str(x.get("type")).upper()] if x.get("type") else []
+                if x.get("power"):
+                    bits.append(f"power {x.get('power')}")
+                return str(x.get("id")) + (f" ({', '.join(bits)})" if bits else "")
+            return str(x)
+        if lr.get("moves"):
+            moves = [str((m or {}).get("id") if isinstance(m, dict) else m)
+                     for m in lr.get("moves")]
+            shown = [_shown(m) for m in lr.get("moves")]
+            new = _shown(lr.get("new_move") or ui.get("new_move") or "?")
+            who = str(lr.get("learner") or ui.get("learner") or "your Pokemon")
+        else:
+            moves = [str(m) for m in (ui.get("moves") or [])]
+            shown = list(moves)
+            new = str(ui.get("new_move") or "?")
+            who = str(ui.get("learner") or "your Pokemon")
+        user = (f"{who}" + (f" ({_types})" if _types else "")
+                + f" is trying to learn {new}. It knows: "
+                + ", ".join(f"{i}={m}" for i, m in enumerate(shown, 1))
                 + f".\nWHAT YOU ARE TRYING TO DO RIGHT NOW: "
                   f"{sg.get('goal_text') or sg.get('id') or 'make progress'}\n"
                   "Which move should be forgotten for it, if any?")
@@ -10876,6 +10910,51 @@ class Executor:
             self.b.send("tap", btn="a")
             cur = self.settle() or cur
         return cur
+
+    def _resolve_learn(self, obs, sg):
+        """A level-up learn prompt, from its first page to the model's
+        answer, with nothing pressed blind.
+
+        THE LIST WAS NEVER REACHED WITH A QUESTION STILL TO ASK. The
+        prompt is three pages of text, a yes/no, then the list; the
+        executor only ever looked for the list, and by the time anything
+        looked, a text-rider had pressed A through "delete an older move
+        to make room?" (YES) and once more on the list (slot 1). ZAPPER
+        lost THUNDERBOLT to SWIFT and DUX lost PECK and FURY ATTACK that
+        way, with no record (2026-09-14). The shim now refuses every
+        press while a learn is up except the ones sent here, and reports
+        the learn from its first page. This walks it: A for a page of
+        text, YES at the yes/no (the real choice is on the list, where
+        CANCEL is the no), and the list goes to the model (_maybe_forget).
+        """
+        if getattr(self, "_resolving_learn", False):
+            return obs
+        self._resolving_learn = True
+        try:
+            sg = sg or {}
+            seen = False
+            for _ in range(16):
+                ui = (obs or {}).get("ui") or {}
+                lr = ui.get("learn")
+                if not lr:
+                    break
+                if not seen:
+                    self.log("learn_seen", subgoal=sg.get("id"),
+                             learner=lr.get("learner"),
+                             new=((lr.get("new_move") or {}).get("id")
+                                  if isinstance(lr.get("new_move"), dict)
+                                  else lr.get("new_move")))
+                    seen = True
+                if lr.get("selecting") and ui.get("screenId") == "MoveLearnMenu":
+                    return self._maybe_forget(obs, sg)
+                if ui.get("is_choice"):
+                    self.b.send("menu", index=1)           # YES: open the list
+                else:
+                    self.b.send("tap", btn="a")            # a page of the prompt
+                obs = self.settle() or obs
+            return obs
+        finally:
+            self._resolving_learn = False
 
     @staticmethod
     def _is_question(obs) -> bool:
@@ -15245,6 +15324,10 @@ class Executor:
                          waited=NICKNAMES_REQUIRED)
         if o.get("naming") and not getattr(self, "_naming", False):
             o = self._resolve_naming(o)
+        # A LEVEL-UP LEARN IS ANSWERED WHERE IT IS ASKED, like a name.
+        if ((o.get("ui") or {}).get("learn")
+                and not getattr(self, "_resolving_learn", False)):
+            o = self._resolve_learn(o, getattr(self, "_cur_sg", None) or {})
         return o
 
     def _resolve_naming(self, obs):
